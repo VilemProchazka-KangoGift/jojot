@@ -10,7 +10,8 @@ namespace JoJot
     /// Application entry point.
     /// Orchestrates the full startup sequence: mutex guard, logging, database initialization,
     /// IPC server start, window creation, startup timing, and background migrations.
-    /// ShutdownMode is OnExplicitShutdown — the process stays alive when the window is closed.
+    /// ShutdownMode is OnExplicitShutdown — the process stays alive when all windows are closed.
+    /// Phase 3: per-desktop window registry replaces single _mainWindow field.
     /// </summary>
     public partial class App : Application
     {
@@ -21,7 +22,12 @@ namespace JoJot
         private static Mutex? _singleInstanceMutex;
 
         private readonly CancellationTokenSource _appShutdownCts = new();
-        private MainWindow? _mainWindow;
+
+        /// <summary>
+        /// Per-desktop window registry. Key is desktop GUID string (case-insensitive).
+        /// Windows are added on creation and removed on Closed event.
+        /// </summary>
+        private readonly Dictionary<string, MainWindow> _windows = new(StringComparer.OrdinalIgnoreCase);
 
         private async void OnAppStartup(object sender, StartupEventArgs e)
         {
@@ -62,9 +68,20 @@ namespace JoJot
 
             if (!createdNew)
             {
-                // Second instance detected (PROC-03): activate the first and exit
-                LogService.Info("Second instance detected — sending activate command");
-                await IpcService.SendCommandAsync(new ActivateCommand());
+                // Second instance detected (PROC-03): send command based on arguments and exit
+                bool isNewTab = e.Args.Any(a =>
+                    a.Equals("--new-tab", StringComparison.OrdinalIgnoreCase));
+
+                if (isNewTab)
+                {
+                    LogService.Info("Second instance detected \u2014 sending new-tab command");
+                    await IpcService.SendCommandAsync(new NewTabCommand());
+                }
+                else
+                {
+                    LogService.Info("Second instance detected \u2014 sending activate command");
+                    await IpcService.SendCommandAsync(new ActivateCommand());
+                }
                 Environment.Exit(0);
                 return;
             }
@@ -81,7 +98,7 @@ namespace JoJot
             bool healthy = await DatabaseService.VerifyIntegrityAsync();
             if (!healthy)
             {
-                LogService.Error("Database integrity check failed — initiating corruption recovery");
+                LogService.Error("Database integrity check failed \u2014 initiating corruption recovery");
                 await DatabaseService.HandleCorruptionAsync(dbPath);
             }
 
@@ -110,42 +127,32 @@ namespace JoJot
             // ── Step 8: Start IPC server (PROC-02) ────────────────────────────
             IpcService.StartServer(HandleIpcCommand, _appShutdownCts.Token);
 
-            // ── Step 9: Create and show window ────────────────────────────────
-            _mainWindow = new MainWindow();
-            _mainWindow.Show();
+            // ── Step 9: Create and show window for current desktop ────────────
+            string currentDesktopGuid = VirtualDesktopService.CurrentDesktopGuid;
+            await CreateWindowForDesktop(currentDesktopGuid);
 
-            // ── Step 9.5: Set window title and subscribe to rename events (VDSK-06) ──
-            if (VirtualDesktopService.IsAvailable)
-            {
-                var desktopInfo = VirtualDesktopService.GetCurrentDesktopInfo();
-                _mainWindow.UpdateDesktopTitle(
-                    VirtualDesktopService.CurrentDesktopName,
-                    desktopInfo.Index);
-            }
-            else
-            {
-                _mainWindow.UpdateDesktopTitle(null, null); // Shows "JoJot"
-            }
-
+            // ── Step 9.5: Wire desktop event handlers ──────────────────────────
             // Live title updates when desktop is renamed in Windows Settings
             VirtualDesktopService.DesktopRenamed += (desktopGuid, newName) =>
             {
-                if (desktopGuid.Equals(VirtualDesktopService.CurrentDesktopGuid, StringComparison.OrdinalIgnoreCase)
-                    && _mainWindow is not null)
+                Dispatcher.InvokeAsync(() =>
                 {
-                    var info = VirtualDesktopService.GetCurrentDesktopInfo();
-                    Dispatcher.InvokeAsync(() =>
+                    if (_windows.TryGetValue(desktopGuid, out var w))
                     {
-                        _mainWindow.UpdateDesktopTitle(newName, info.Index);
-                    });
-                }
+                        // Resolve the index for this desktop
+                        var desktops = VirtualDesktopService.GetAllDesktops();
+                        var info = desktops.FirstOrDefault(d =>
+                            d.Id.ToString().Equals(desktopGuid, StringComparison.OrdinalIgnoreCase));
+                        w.UpdateDesktopTitle(newName, info?.Index);
+                    }
+                });
             };
 
-            // Log desktop switches (Phase 3 will handle showing/hiding windows per desktop)
+            // Log desktop switches (no auto-create per user decision)
             VirtualDesktopService.CurrentDesktopChanged += (oldGuid, newGuid) =>
             {
                 LogService.Info($"Desktop switched: {oldGuid} -> {newGuid}");
-                // Phase 3 will handle multi-window visibility per desktop
+                // Per user decision: no auto-create; windows only appear via explicit taskbar click/launch
             };
 
             // ── Step 10: Log startup timing (STRT-01) ────────────────────────
@@ -157,28 +164,94 @@ namespace JoJot
             _ = Task.Run(() => StartupService.RunBackgroundMigrationsAsync());
         }
 
+        // ─── Window Factory ─────────────────────────────────────────────────────
+
         /// <summary>
-        /// Routes incoming IPC commands to the appropriate handler.
+        /// Creates a new MainWindow for the given desktop, restores its geometry,
+        /// sets its title, registers it in the window dictionary, and shows it.
+        /// </summary>
+        private async Task<MainWindow> CreateWindowForDesktop(string desktopGuid)
+        {
+            var window = new MainWindow(desktopGuid);
+
+            // Register cleanup on close — Closed fires after window is destroyed
+            window.Closed += (_, _) =>
+            {
+                _windows.Remove(desktopGuid);
+                LogService.Info($"Window removed from registry for desktop {desktopGuid} ({_windows.Count} windows remaining)");
+            };
+
+            // Restore geometry (must happen before Show for WindowStartupLocation to work)
+            var geo = await DatabaseService.GetWindowGeometryAsync(desktopGuid);
+            WindowPlacementHelper.ApplyGeometry(window, geo);
+
+            // Set title
+            if (VirtualDesktopService.IsAvailable)
+            {
+                var desktopInfo = VirtualDesktopService.GetCurrentDesktopInfo();
+                window.UpdateDesktopTitle(
+                    VirtualDesktopService.CurrentDesktopName,
+                    desktopInfo.Index);
+            }
+            else
+            {
+                window.UpdateDesktopTitle(null, null);
+            }
+
+            _windows[desktopGuid] = window;
+            window.Show();
+
+            // Apply geometry via SetWindowPlacement AFTER Show (needs HWND)
+            if (geo is not null)
+            {
+                WindowPlacementHelper.ApplyGeometry(window, geo);
+            }
+
+            WindowActivationHelper.ActivateWindow(window);
+            return window;
+        }
+
+        // ─── IPC Command Routing ─────────────────────────────────────────────────
+
+        /// <summary>
+        /// Routes incoming IPC commands to the correct desktop's window.
+        /// Resolves the current desktop GUID at handle time (live state, not send time).
         /// Always called on the UI Dispatcher (IpcService ensures this).
         /// </summary>
-        private void HandleIpcCommand(IpcMessage message)
+        private async void HandleIpcCommand(IpcMessage message)
         {
+            string desktopGuid = VirtualDesktopService.CurrentDesktopGuid;
+
             switch (message)
             {
                 case ActivateCommand:
-                    if (_mainWindow is not null)
+                    LogService.Info($"IPC: activate \u2014 desktop {desktopGuid}");
+                    if (_windows.TryGetValue(desktopGuid, out var existingWindow))
                     {
-                        LogService.Info("IPC: activate command received — showing window");
-                        _mainWindow.ActivateFromIpc();
+                        WindowActivationHelper.ActivateWindow(existingWindow);
+                    }
+                    else
+                    {
+                        await CreateWindowForDesktop(desktopGuid);
                     }
                     break;
 
                 case NewTabCommand:
-                    LogService.Info("IPC: new-tab command received (not implemented until Phase 4)");
+                    LogService.Info($"IPC: new-tab \u2014 desktop {desktopGuid}");
+                    if (_windows.TryGetValue(desktopGuid, out var tabWindow))
+                    {
+                        WindowActivationHelper.ActivateWindow(tabWindow);
+                        tabWindow.RequestNewTab();
+                    }
+                    else
+                    {
+                        var newWindow = await CreateWindowForDesktop(desktopGuid);
+                        newWindow.RequestNewTab();
+                    }
                     break;
 
-                case ShowDesktopCommand:
-                    LogService.Info("IPC: show-desktop command received (not implemented until Phase 2)");
+                case ShowDesktopCommand showCmd:
+                    LogService.Info($"IPC: show-desktop {showCmd.DesktopGuid} (Phase 10)");
                     break;
 
                 default:
