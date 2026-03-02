@@ -92,6 +92,10 @@ namespace JoJot
             else
                 LogService.Info("Virtual desktop: fallback mode (single-notepad)");
 
+            // ── Step 5.6: Session matching (VDSK-03, VDSK-04, VDSK-05) ────
+            await VirtualDesktopService.MatchSessionsAsync();
+            await VirtualDesktopService.EnsureCurrentDesktopSessionAsync();
+
             // ── Step 6: Pending moves check (stub for Phase 10 crash recovery) ─
             // Phase 10: await DatabaseService.ResolvePendingMovesAsync();
             LogService.Info("Pending moves check: skipped (Phase 10)");

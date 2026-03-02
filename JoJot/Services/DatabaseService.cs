@@ -252,6 +252,135 @@ namespace JoJot.Services
             }
         }
 
+        // ─── Session CRUD (Phase 2: VDSK-03) ─────────────────────────────────────
+
+        /// <summary>
+        /// Returns all desktop sessions from app_state.
+        /// Used by VirtualDesktopService.MatchSessionsAsync for three-tier matching.
+        /// </summary>
+        public static async Task<List<(string DesktopGuid, string? DesktopName, int? DesktopIndex)>> GetAllSessionsAsync()
+        {
+            var sessions = new List<(string, string?, int?)>();
+
+            await _writeLock.WaitAsync();
+            try
+            {
+                var cmd = _connection!.CreateCommand();
+                cmd.CommandText = "SELECT desktop_guid, desktop_name, desktop_index FROM app_state;";
+                using var reader = await cmd.ExecuteReaderAsync();
+                while (reader.Read())
+                {
+                    string guid = reader.GetString(0);
+                    string? name = reader.IsDBNull(1) ? null : reader.GetString(1);
+                    int? index = reader.IsDBNull(2) ? null : reader.GetInt32(2);
+                    sessions.Add((guid, name, index));
+                }
+            }
+            catch (Exception ex)
+            {
+                LogService.Error("GetAllSessionsAsync failed", ex);
+                throw;
+            }
+            finally
+            {
+                _writeLock.Release();
+            }
+
+            return sessions;
+        }
+
+        /// <summary>
+        /// Updates a session's desktop identity after successful matching.
+        /// Updates both app_state and notes tables to keep the FK consistent.
+        /// </summary>
+        public static async Task UpdateSessionAsync(string oldGuid, string newGuid, string? name, int? index)
+        {
+            await _writeLock.WaitAsync();
+            try
+            {
+                // Update app_state
+                var cmd = _connection!.CreateCommand();
+                cmd.CommandText = "UPDATE app_state SET desktop_guid=@newGuid, desktop_name=@name, desktop_index=@index WHERE desktop_guid=@oldGuid;";
+                cmd.Parameters.AddWithValue("@newGuid", newGuid);
+                cmd.Parameters.AddWithValue("@name", (object?)name ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@index", (object?)index ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@oldGuid", oldGuid);
+                await cmd.ExecuteNonQueryAsync();
+
+                // Update notes FK to stay consistent
+                if (oldGuid != newGuid)
+                {
+                    var notesCmd = _connection.CreateCommand();
+                    notesCmd.CommandText = "UPDATE notes SET desktop_guid=@newGuid WHERE desktop_guid=@oldGuid;";
+                    notesCmd.Parameters.AddWithValue("@newGuid", newGuid);
+                    notesCmd.Parameters.AddWithValue("@oldGuid", oldGuid);
+                    await notesCmd.ExecuteNonQueryAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                LogService.Error($"UpdateSessionAsync failed (old={oldGuid}, new={newGuid})", ex);
+                throw;
+            }
+            finally
+            {
+                _writeLock.Release();
+            }
+        }
+
+        /// <summary>
+        /// Creates a new desktop session in app_state.
+        /// Uses INSERT OR IGNORE — silently skips if a session already exists for this GUID.
+        /// </summary>
+        public static async Task CreateSessionAsync(string desktopGuid, string? desktopName, int? desktopIndex)
+        {
+            await _writeLock.WaitAsync();
+            try
+            {
+                var cmd = _connection!.CreateCommand();
+                cmd.CommandText = "INSERT OR IGNORE INTO app_state (desktop_guid, desktop_name, desktop_index) VALUES (@guid, @name, @index);";
+                cmd.Parameters.AddWithValue("@guid", desktopGuid);
+                cmd.Parameters.AddWithValue("@name", (object?)desktopName ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@index", (object?)desktopIndex ?? DBNull.Value);
+                await cmd.ExecuteNonQueryAsync();
+            }
+            catch (Exception ex)
+            {
+                LogService.Error($"CreateSessionAsync failed (guid={desktopGuid})", ex);
+                throw;
+            }
+            finally
+            {
+                _writeLock.Release();
+            }
+        }
+
+        /// <summary>
+        /// Updates the desktop_name for a session identified by its GUID.
+        /// Used by notification callbacks when a desktop is renamed.
+        /// </summary>
+        public static async Task UpdateDesktopNameAsync(string desktopGuid, string newName)
+        {
+            await _writeLock.WaitAsync();
+            try
+            {
+                var cmd = _connection!.CreateCommand();
+                cmd.CommandText = "UPDATE app_state SET desktop_name=@name WHERE desktop_guid=@guid;";
+                cmd.Parameters.AddWithValue("@name", newName);
+                cmd.Parameters.AddWithValue("@guid", desktopGuid);
+                await cmd.ExecuteNonQueryAsync();
+            }
+            catch (Exception ex)
+            {
+                LogService.Error($"UpdateDesktopNameAsync failed (guid={desktopGuid})", ex);
+                throw;
+            }
+            finally
+            {
+                _writeLock.Release();
+            }
+        }
+
         // ─── Private helpers ────────────────────────────────────────────────────
 
         /// <summary>
