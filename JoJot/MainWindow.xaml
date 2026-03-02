@@ -1,4 +1,4 @@
-﻿<Window x:Class="JoJot.MainWindow"
+<Window x:Class="JoJot.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
@@ -7,8 +7,82 @@
         mc:Ignorable="d"
         Title="JoJot"
         Width="500" Height="600"
-        MinWidth="320" MinHeight="420">
+        MinWidth="320" MinHeight="420"
+        PreviewKeyDown="Window_PreviewKeyDown">
+    <Window.Resources>
+        <!-- ListBoxItem style: no default selection highlight, stretch content -->
+        <Style TargetType="ListBoxItem">
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Margin" Value="0"/>
+            <!-- Override default selection brushes to transparent (we handle highlighting manually) -->
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListBoxItem">
+                        <ContentPresenter/>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
     <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="180"/>
+            <ColumnDefinition Width="1"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
 
+        <!-- Tab Panel (Column 0) -->
+        <DockPanel Grid.Column="0" Background="White">
+            <!-- Header: Search + New Tab button -->
+            <Border DockPanel.Dock="Top" BorderThickness="0,0,0,1" BorderBrush="#E0E0E0" Padding="6">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <!-- Search box with placeholder -->
+                    <Grid Grid.Column="0">
+                        <TextBox x:Name="SearchBox" FontSize="12" Padding="4,2"
+                                 VerticalContentAlignment="Center"
+                                 TextChanged="SearchBox_TextChanged"
+                                 PreviewKeyDown="SearchBox_PreviewKeyDown"/>
+                        <TextBlock x:Name="SearchPlaceholder" Text="Search tabs..."
+                                   IsHitTestVisible="False" Foreground="#999999" FontSize="12"
+                                   Padding="6,3" VerticalAlignment="Center"/>
+                    </Grid>
+                    <!-- New tab button -->
+                    <Button x:Name="NewTabButton" Grid.Column="1" Content="+"
+                            Width="28" Height="28" Margin="4,0,0,0"
+                            FontSize="16" FontWeight="Bold"
+                            Background="Transparent" BorderThickness="1"
+                            BorderBrush="#CCCCCC" Cursor="Hand"
+                            Click="NewTabButton_Click"
+                            ToolTip="New tab (Ctrl+T)"/>
+                </Grid>
+            </Border>
+
+            <!-- Tab list -->
+            <ListBox x:Name="TabList" BorderThickness="0" Background="Transparent"
+                     HorizontalContentAlignment="Stretch"
+                     VirtualizingStackPanel.IsVirtualizing="False"
+                     SelectionChanged="TabList_SelectionChanged"
+                     PreviewKeyDown="TabList_PreviewKeyDown"
+                     PreviewMouseDoubleClick="TabList_PreviewMouseDoubleClick"
+                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"/>
+        </DockPanel>
+
+        <!-- Separator (Column 1) -->
+        <Border Grid.Column="1" Background="#E0E0E0"/>
+
+        <!-- Content Area (Column 2) -->
+        <TextBox x:Name="ContentEditor" Grid.Column="2"
+                 AcceptsReturn="True" AcceptsTab="True"
+                 TextWrapping="Wrap" FontFamily="Consolas" FontSize="13"
+                 VerticalScrollBarVisibility="Auto"
+                 HorizontalScrollBarVisibility="Disabled"
+                 BorderThickness="0" Padding="12,8"
+                 IsUndoEnabled="False"
+                 IsEnabled="False"/>
     </Grid>
 </Window>

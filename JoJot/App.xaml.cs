@@ -207,6 +207,9 @@ namespace JoJot
                 WindowPlacementHelper.ApplyGeometry(window, geo);
             }
 
+            // Phase 4: Load tabs from database after window is shown
+            await window.LoadTabsAsync();
+
             WindowActivationHelper.ActivateWindow(window);
             return window;
         }
