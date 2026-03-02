@@ -12,7 +12,7 @@ JoJot is built in 9 phases that flow bottom-up from infrastructure to integratio
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Foundation** - SQLite data model, single-instance process, named pipe IPC, and startup sequence skeleton
+- [x] **Phase 1: Foundation** - SQLite data model, single-instance process, named pipe IPC, and startup sequence skeleton
 - [ ] **Phase 2: Virtual Desktop Integration** - COM interop isolation, desktop GUID detection, three-tier session matching, live title updates
 - [ ] **Phase 3: Window & Session Management** - One window per desktop lifecycle, taskbar click handling, geometry persistence, window close behavior
 - [ ] **Phase 4: Tab Management** - Tab panel, labels, reorder, rename, search, pin, clone, new/delete with focus rules
@@ -40,7 +40,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 Plans:
 - [x] 01-01-PLAN.md — Data layer: SQLite with WAL mode, schema for all four tables, integrity check, corruption recovery, logging service, IPC message types
 - [x] 01-02-PLAN.md — Process lifecycle: named mutex single-instance guard, named pipe IPC server/client, P/Invoke window activation, window close behavior
-- [ ] 01-03-PLAN.md — Startup wiring: full startup sequence orchestration in App.xaml.cs, welcome tab, background migrations, ReadyToRun config, end-to-end verification
+- [x] 01-03-PLAN.md — Startup wiring: full startup sequence orchestration in App.xaml.cs, welcome tab, background migrations, ReadyToRun config, end-to-end verification
 
 ### Phase 2: Virtual Desktop Integration
 **Goal**: The app can detect the current virtual desktop via COM, maintain a stable desktop identity across reboots via three-tier session matching, update window titles live, and fall back gracefully when the COM API is unavailable.
@@ -196,7 +196,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation | 2/3 | In progress | - |
+| 1. Foundation | 3/3 | Complete | 2026-03-02 |
 | 2. Virtual Desktop Integration | 0/TBD | Not started | - |
 | 3. Window & Session Management | 0/TBD | Not started | - |
 | 4. Tab Management | 0/TBD | Not started | - |

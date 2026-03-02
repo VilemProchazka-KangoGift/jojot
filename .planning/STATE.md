@@ -10,28 +10,28 @@ See: .planning/PROJECT.md (updated 2026-03-02)
 ## Current Position
 
 Phase: 1 of 10 (Foundation)
-Plan: 2 of 3 in current phase
-Status: In progress
-Last activity: 2026-03-02 — Plan 01-02 complete: IpcService, WindowActivationHelper, MainWindow IPC/hide-on-close wiring
+Plan: 3 of 3 in current phase — COMPLETE
+Status: Phase complete — ready for Phase 2
+Last activity: 2026-03-02 — Plan 01-03 complete: App.xaml.cs startup sequence, StartupService, ReadyToRun config, end-to-end verification passed
 
-Progress: [██░░░░░░░░] 6%
+Progress: [███░░░░░░░] 10%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 2
-- Average duration: ~3 min
-- Total execution time: ~6 min
+- Total plans completed: 3
+- Average duration: ~3.7 min
+- Total execution time: ~11 min
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 1. Foundation | 2 | ~6 min | ~3 min |
+| 1. Foundation | 3 | ~11 min | ~3.7 min |
 
 **Recent Trend:**
-- Last 5 plans: 01-01 (~2 min), 01-02 (~4 min)
-- Trend: —
+- Last 5 plans: 01-01 (~2 min), 01-02 (~4 min), 01-03 (~5 min)
+- Trend: Stable
 
 *Updated after each plan completion*
 
@@ -52,6 +52,10 @@ Recent decisions affecting current work:
 - [01-02]: Client Connect(timeoutMs) wrapped in Task.Run — async overload lacks timeout parameter; synchronous overload blocks
 - [01-02]: DispatcherPriority.ApplicationIdle for ActivateFromIpc — yields to pending WPF rendering before raising window
 - [01-02]: OnClosing hides instead of closing (e.Cancel=true); only FlushAndClose calls real Close() for PROC-05/PROC-06
+- [01-03]: GC.KeepAlive(_singleInstanceMutex) required — managed mutex can be collected if field appears unused; KeepAlive pins it for process lifetime
+- [01-03]: ShutdownMode.OnExplicitShutdown set in code not XAML — must be set before window creation; XAML parses before OnAppStartup
+- [01-03]: DispatcherUnhandledException sets args.Handled=true — prevents WPF crash dialog per "degrade gracefully" spec
+- [01-03]: Environment.Exit(0) in second-instance path — ensures clean exit even if WPF internals try to keep process alive
 
 ### Pending Todos
 
@@ -66,5 +70,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-02
-Stopped at: Completed 01-02-PLAN.md — IPC/process lifecycle complete, ready for Plan 01-03 (startup wiring)
-Resume file: .planning/phases/01-foundation/01-03-PLAN.md
+Stopped at: Completed 01-03-PLAN.md — Phase 1 Foundation complete; all 3 plans done, end-to-end verification passed
+Resume file: .planning/phases/02-virtual-desktop/ (Phase 2 — recommend /gsd:research-phase first)
