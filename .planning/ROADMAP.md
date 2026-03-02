@@ -14,7 +14,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Foundation** - SQLite data model, single-instance process, named pipe IPC, and startup sequence skeleton
 - [x] **Phase 2: Virtual Desktop Integration** - COM interop isolation, desktop GUID detection, three-tier session matching, live title updates
-- [ ] **Phase 3: Window & Session Management** - One window per desktop lifecycle, taskbar click handling, geometry persistence, window close behavior
+- [x] **Phase 3: Window & Session Management** - One window per desktop lifecycle, taskbar click handling, geometry persistence, window close behavior
 - [ ] **Phase 4: Tab Management** - Tab panel, labels, reorder, rename, search, pin, clone, new/delete with focus rules
 - [ ] **Phase 5: Deletion & Toast** - Tab deletion triggers, deletion toast with 4-second undo, bulk delete support
 - [ ] **Phase 6: Editor & Undo** - Plain-text editor, autosave with debounce, custom two-tier undo/redo stack, save as TXT, copy behavior
@@ -198,7 +198,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 |-------|----------------|--------|-----------|
 | 1. Foundation | 3/3 | Complete | 2026-03-02 |
 | 2. Virtual Desktop Integration | 3/3 | Complete | 2026-03-02 |
-| 3. Window & Session Management | 0/2 | In progress | - |
+| 3. Window & Session Management | 2/2 | Complete | 2026-03-02 |
 | 4. Tab Management | 0/TBD | Not started | - |
 | 5. Deletion & Toast | 0/TBD | Not started | - |
 | 6. Editor & Undo | 0/TBD | Not started | - |
