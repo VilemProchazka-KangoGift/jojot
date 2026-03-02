@@ -104,7 +104,7 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 05-01-PLAN.md — Toast overlay, deletion engine (soft-delete + commit lifecycle), undo restoration, bulk delete infrastructure, focus cascade
+- [x] 05-01-PLAN.md — Toast overlay, deletion engine (soft-delete + commit lifecycle), undo restoration, bulk delete infrastructure, focus cascade
 - [ ] 05-02-PLAN.md — Delete triggers: Ctrl+W, hover x icon on tabs, middle-click on tab
 
 ### Phase 6: Editor & Undo
@@ -200,7 +200,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 2. Virtual Desktop Integration | 3/3 | Complete | 2026-03-02 |
 | 3. Window & Session Management | 2/2 | Complete | 2026-03-02 |
 | 4. Tab Management | 3/3 | Complete | 2026-03-02 |
-| 5. Deletion & Toast | 0/TBD | Not started | - |
+| 5. Deletion & Toast | 1/2 | In progress | - |
 | 6. Editor & Undo | 0/TBD | Not started | - |
 | 7. Theming & Toolbar | 0/TBD | Not started | - |
 | 8. Menus, Context Actions & Orphaned Sessions | 0/TBD | Not started | - |

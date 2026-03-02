@@ -65,20 +65,20 @@ Requirements for initial release. Each maps to roadmap phases.
 ### Tab Deletion
 
 - [ ] **TDEL-01**: Multiple delete triggers: Ctrl+W, toolbar button, tab hover icon, middle-click on tab, context menu
-- [ ] **TDEL-02**: All single-tab deletions are immediate with no confirmation dialog
+- [x] **TDEL-02**: All single-tab deletions are immediate with no confirmation dialog
 - [ ] **TDEL-03**: Tab hover shows delete icon (12px, upper-right, fades in 100ms) with color change on hover
 - [ ] **TDEL-04**: Middle-click on any tab deletes it immediately
-- [ ] **TDEL-05**: Post-delete focus: first tab below → last tab in list → create new empty tab
-- [ ] **TDEL-06**: Pinned tabs are never deleted by bulk operations (silently skipped)
+- [x] **TDEL-05**: Post-delete focus: first tab below → last tab in list → create new empty tab
+- [x] **TDEL-06**: Pinned tabs are never deleted by bulk operations (silently skipped)
 
 ### Deletion Toast
 
-- [ ] **TOST-01**: Toast appears at bottom of window on every deletion, 36px tall, full width
-- [ ] **TOST-02**: Slides up from bottom (translateY 100%→0, 150ms ease-out), auto-dismisses after 4 seconds
-- [ ] **TOST-03**: Undo button restores tab (same content, position, custom name), dismisses toast
-- [ ] **TOST-04**: New deletion while toast visible replaces toast; previous deletion becomes permanent
-- [ ] **TOST-05**: Bulk delete toast shows "N notes deleted" with single undo for all
-- [ ] **TOST-06**: Toast styling: tab name in quotes/italic (truncated 30 chars), undo in accent color with underline
+- [x] **TOST-01**: Toast appears at bottom of window on every deletion, 36px tall, full width
+- [x] **TOST-02**: Slides up from bottom (translateY 100%→0, 150ms ease-out), auto-dismisses after 4 seconds
+- [x] **TOST-03**: Undo button restores tab (same content, position, custom name), dismisses toast
+- [x] **TOST-04**: New deletion while toast visible replaces toast; previous deletion becomes permanent
+- [x] **TOST-05**: Bulk delete toast shows "N notes deleted" with single undo for all
+- [x] **TOST-06**: Toast styling: tab name in quotes/italic (truncated 30 chars), undo in accent color with underline
 
 ### Editor
 
@@ -257,17 +257,17 @@ Deferred to future release. Tracked but not in current roadmap.
 | TABS-12 | Phase 4 | Pending |
 | TABS-13 | Phase 4 | Pending |
 | TDEL-01 | Phase 5 | Pending |
-| TDEL-02 | Phase 5 | Pending |
+| TDEL-02 | Phase 5 | Complete |
 | TDEL-03 | Phase 5 | Pending |
 | TDEL-04 | Phase 5 | Pending |
-| TDEL-05 | Phase 5 | Pending |
-| TDEL-06 | Phase 5 | Pending |
-| TOST-01 | Phase 5 | Pending |
-| TOST-02 | Phase 5 | Pending |
-| TOST-03 | Phase 5 | Pending |
-| TOST-04 | Phase 5 | Pending |
-| TOST-05 | Phase 5 | Pending |
-| TOST-06 | Phase 5 | Pending |
+| TDEL-05 | Phase 5 | Complete |
+| TDEL-06 | Phase 5 | Complete |
+| TOST-01 | Phase 5 | Complete |
+| TOST-02 | Phase 5 | Complete |
+| TOST-03 | Phase 5 | Complete |
+| TOST-04 | Phase 5 | Complete |
+| TOST-05 | Phase 5 | Complete |
+| TOST-06 | Phase 5 | Complete |
 | EDIT-01 | Phase 6 | Pending |
 | EDIT-02 | Phase 6 | Pending |
 | EDIT-03 | Phase 6 | Pending |

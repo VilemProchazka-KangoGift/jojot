@@ -23,11 +23,11 @@ See: .planning/PROJECT.md (updated 2026-03-02)
 ## Current Position
 
 Phase: 5 of 10 (Deletion & Toast)
-Plan: 0 of TBD in current phase
-Status: Not started — ready to plan
-Last activity: 2026-03-02 — Phase 4 complete (3 plans, verified)
+Plan: 1 of 2 in current phase
+Status: In progress — Plan 01 complete, Plan 02 ready
+Last activity: 2026-03-02 — Phase 5 Plan 01 complete (deletion engine + toast overlay)
 
-Progress: [████████░░] 40%
+Progress: [████████░░] 42%
 
 ## Performance Metrics
 
@@ -102,6 +102,12 @@ Recent decisions affecting current work:
 - [04-03]: ObservableCollection.Move() for single-notification reorder (no flicker)
 - [04-03]: System.Windows.Point fully qualified to avoid System.Drawing ambiguity
 
+- [05-01]: Storyboard.SetTarget uses object reference not element name — avoids WPF name-scope exceptions when animating programmatically
+- [05-01]: CommitPendingDeletionAsync nulls _pendingDeletion before Cancel+Dispose to prevent double-dispose races
+- [05-01]: UndoDeleteAsync inserts tabs in ascending originalIndex order with Math.Min clamping to handle shifted indexes correctly
+- [05-01]: ShowToast content-swap only (no re-animation) when toast already Visible — TOST-04 replace behavior
+- [05-01]: FlushAndClose calls CommitPendingDeletionAsync fire-and-forget — process stays alive long enough for DB write to complete
+
 ### Pending Todos
 
 None yet.
@@ -115,5 +121,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-02
-Stopped at: Phase 4 complete, Phase 5 ready
+Stopped at: Phase 5 Plan 01 complete — deletion engine + toast overlay implemented; Plan 02 (delete triggers) ready
 Resume file: .planning/ROADMAP.md
