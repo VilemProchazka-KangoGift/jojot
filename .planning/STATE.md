@@ -10,27 +10,27 @@ See: .planning/PROJECT.md (updated 2026-03-02)
 ## Current Position
 
 Phase: 1 of 10 (Foundation)
-Plan: 0 of TBD in current phase
-Status: Ready to plan
-Last activity: 2026-03-02 — Roadmap created; all 10 phases defined with success criteria; 95 v1 requirements mapped
+Plan: 1 of 3 in current phase
+Status: In progress
+Last activity: 2026-03-02 — Plan 01-01 complete: DatabaseService, LogService, IpcMessage types, SQLite WAL schema
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [█░░░░░░░░░] 3%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 0
-- Average duration: —
-- Total execution time: 0 hours
+- Total plans completed: 1
+- Average duration: ~2 min
+- Total execution time: ~2 min
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| - | - | - | - |
+| 1. Foundation | 1 | ~2 min | ~2 min |
 
 **Recent Trend:**
-- Last 5 plans: —
+- Last 5 plans: 01-01 (~2 min)
 - Trend: —
 
 *Updated after each plan completion*
@@ -45,6 +45,9 @@ Recent decisions affecting current work:
 - [Pre-Phase 1]: PublishAot=true is incompatible with WPF; use PublishReadyToRun=true instead (confirmed blocker, resolved in requirements)
 - [Pre-Phase 1]: Custom undo/redo required; WPF native TextBox undo clears on tab switch and cannot be used
 - [Pre-Phase 1]: Single process + named pipe IPC; not multi-process — one SQLite connection, consistent state
+- [01-01]: Do NOT use Cache=Shared with WAL mode (Microsoft.Data.Sqlite docs explicit warning)
+- [01-01]: SemaphoreSlim(1,1) for write serialization — async-compatible unlike lock; all DB operations go through ExecuteNonQueryAsync
+- [01-01]: PRAGMA quick_check over integrity_check at startup — O(N) vs O(NlogN), sufficient for table existence verification
 
 ### Pending Todos
 
@@ -59,5 +62,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-02
-Stopped at: Phase 1 context gathered; ready for /gsd:plan-phase 1
-Resume file: .planning/phases/01-foundation/01-CONTEXT.md
+Stopped at: Completed 01-01-PLAN.md — data layer complete, ready for Plan 01-02 (process lifecycle)
+Resume file: .planning/phases/01-foundation/01-02-PLAN.md
