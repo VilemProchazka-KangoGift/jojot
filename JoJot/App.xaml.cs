@@ -85,6 +85,13 @@ namespace JoJot
                 await DatabaseService.HandleCorruptionAsync(dbPath);
             }
 
+            // ── Step 5.5: Virtual desktop detection (VDSK-01, VDSK-08) ────
+            await VirtualDesktopService.InitializeAsync();
+            if (VirtualDesktopService.IsAvailable)
+                LogService.Info($"Virtual desktop: {VirtualDesktopService.CurrentDesktopGuid} ({VirtualDesktopService.CurrentDesktopName})");
+            else
+                LogService.Info("Virtual desktop: fallback mode (single-notepad)");
+
             // ── Step 6: Pending moves check (stub for Phase 10 crash recovery) ─
             // Phase 10: await DatabaseService.ResolvePendingMovesAsync();
             LogService.Info("Pending moves check: skipped (Phase 10)");
@@ -148,6 +155,7 @@ namespace JoJot
 
             _appShutdownCts.Cancel();
             IpcService.StopServer();
+            VirtualDesktopService.Shutdown();
 
             // Synchronous close in exit path — no async available here
             DatabaseService.CloseAsync().GetAwaiter().GetResult();
