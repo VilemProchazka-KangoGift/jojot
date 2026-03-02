@@ -18,7 +18,7 @@ namespace JoJot.Services
 
             LogService.Info("First launch detected — creating welcome tab");
 
-            const string welcomeContent =
+            string welcomeContent =
                 "Welcome to JoJot!\n\n" +
                 "JoJot is a lightweight note-taking app that ties your notes to your virtual desktops. " +
                 "Switch to a different desktop and JoJot automatically shows the notes you left there — " +
@@ -26,12 +26,12 @@ namespace JoJot.Services
                 "A few things to get you started:\n" +
                 "  • Ctrl+T  — open a new tab\n" +
                 "  • Ctrl+W  — close the current tab\n" +
-                "  • Closing the window hides JoJot (the process stays running in the background).\n\n" +
+                "  \u2022 Closing the window keeps JoJot running in the background \u2014 relaunch to get it back.\n\n" +
                 "Feel free to delete this tab once you're ready.";
 
             await DatabaseService.ExecuteNonQueryAsync(
                 $"INSERT INTO notes (desktop_guid, name, content, pinned, sort_order) " +
-                $"VALUES ('default', 'Welcome to JoJot', '{EscapeSql(welcomeContent)}', 0, 0);");
+                $"VALUES ('{EscapeSql(VirtualDesktopService.CurrentDesktopGuid)}', 'Welcome to JoJot', '{EscapeSql(welcomeContent)}', 0, 0);");
         }
 
         /// <summary>
