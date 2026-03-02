@@ -68,11 +68,11 @@ Plans:
   2. Middle-clicking the taskbar icon creates a new empty tab and focuses it immediately; if no window existed, it spawns one first
   3. Closing a window saves its geometry and flushes content; the process stays alive and responds to taskbar clicks again
   4. On reopen, the window restores to the saved position and size for that desktop
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 03-01: TBD
-- [ ] 03-02: TBD
+- [ ] 03-01-PLAN.md — Geometry infrastructure: WindowGeometry model, DatabaseService geometry CRUD, window_state schema migration, WindowPlacementHelper P/Invoke, off-screen recovery
+- [ ] 03-02-PLAN.md — Window lifecycle: per-desktop window registry, create-on-demand factory, OnClosing destroy with geometry save, IPC routing, --new-tab argument, desktop event wiring
 
 ### Phase 4: Tab Management
 **Goal**: Users can create, rename, search, reorder, pin, clone, and navigate tabs, with each tab displaying a smart label derived from its content.
@@ -198,7 +198,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 |-------|----------------|--------|-----------|
 | 1. Foundation | 3/3 | Complete | 2026-03-02 |
 | 2. Virtual Desktop Integration | 3/3 | Complete | 2026-03-02 |
-| 3. Window & Session Management | 0/TBD | Not started | - |
+| 3. Window & Session Management | 0/2 | In progress | - |
 | 4. Tab Management | 0/TBD | Not started | - |
 | 5. Deletion & Toast | 0/TBD | Not started | - |
 | 6. Editor & Undo | 0/TBD | Not started | - |
