@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: unknown
-last_updated: "2026-03-02T21:57:54.332Z"
+status: in-progress
+last_updated: "2026-03-02T22:33:32Z"
 progress:
-  total_phases: 4
-  completed_phases: 4
-  total_plans: 11
-  completed_plans: 11
+  total_phases: 10
+  completed_phases: 5
+  total_plans: 13
+  completed_plans: 13
 ---
 
 # Project State
@@ -23,11 +23,11 @@ See: .planning/PROJECT.md (updated 2026-03-02)
 ## Current Position
 
 Phase: 5 of 10 (Deletion & Toast)
-Plan: 1 of 2 in current phase
-Status: In progress — Plan 01 complete, Plan 02 ready
-Last activity: 2026-03-02 — Phase 5 Plan 01 complete (deletion engine + toast overlay)
+Plan: 2 of 2 in current phase — COMPLETE
+Status: Phase 5 complete — all delete triggers wired (Ctrl+W, middle-click, hover x icon)
+Last activity: 2026-03-02 — Phase 5 Plan 02 complete (three delete triggers)
 
-Progress: [████████░░] 42%
+Progress: [█████████░] 50%
 
 ## Performance Metrics
 
@@ -44,12 +44,21 @@ Progress: [████████░░] 42%
 | 2. Virtual Desktop Integration | 3 | ~16 min | ~5.3 min |
 | 3. Window & Session Management | 2 | ~6 min | ~3.0 min |
 | 4. Tab Management | 3 | ~13 min | ~4.3 min |
+| 5. Deletion & Toast | 2 | ~10 min | ~5.0 min |
 
 **Recent Trend:**
-- Last 5 plans: 02-03 (~10 min), 03-01 (~3 min), 03-02 (~3 min), 04-01 (~3 min), 04-02 (~5 min), 04-03 (~5 min)
-- Trend: Phase 4 plans moderate complexity (stock WPF, no external deps)
+- Last 5 plans: 04-01 (~3 min), 04-02 (~5 min), 04-03 (~5 min), 05-01 (~4 min), 05-02 (~6 min)
+- Trend: Phase 5 plans moderate complexity (WPF animation, event wiring)
 
 *Updated after each plan completion*
+
+| Phase | Plans | Total | Avg/Plan |
+|-------|-------|-------|----------|
+| 1. Foundation | 3 | ~11 min | ~3.7 min |
+| 2. Virtual Desktop Integration | 3 | ~16 min | ~5.3 min |
+| 3. Window & Session Management | 2 | ~6 min | ~3.0 min |
+| 4. Tab Management | 3 | ~13 min | ~4.3 min |
+| 5. Deletion & Toast | 2 | ~10 min | ~5.0 min |
 
 ## Accumulated Context
 
@@ -107,6 +116,8 @@ Recent decisions affecting current work:
 - [05-01]: UndoDeleteAsync inserts tabs in ascending originalIndex order with Math.Min clamping to handle shifted indexes correctly
 - [05-01]: ShowToast content-swap only (no re-animation) when toast already Visible — TOST-04 replace behavior
 - [05-01]: FlushAndClose calls CommitPendingDeletionAsync fire-and-forget — process stays alive long enough for DB write to complete
+- [Phase 05-02]: PreviewMouseDown used instead of PreviewMouseButtonDown — correct WPF event name for UIElement mouse button tunneling
+- [Phase 05-02]: Original outerBorder hover handlers merged with delete icon opacity animation to avoid double-subscription
 
 ### Pending Todos
 
@@ -121,5 +132,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-02
-Stopped at: Phase 5 Plan 01 complete — deletion engine + toast overlay implemented; Plan 02 (delete triggers) ready
+Stopped at: Phase 5 Plan 02 complete — Ctrl+W, middle-click, hover x icon delete triggers all wired to DeleteTabAsync
 Resume file: .planning/ROADMAP.md

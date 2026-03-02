@@ -64,10 +64,10 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Tab Deletion
 
-- [ ] **TDEL-01**: Multiple delete triggers: Ctrl+W, toolbar button, tab hover icon, middle-click on tab, context menu
+- [x] **TDEL-01**: Multiple delete triggers: Ctrl+W, toolbar button, tab hover icon, middle-click on tab, context menu
 - [x] **TDEL-02**: All single-tab deletions are immediate with no confirmation dialog
-- [ ] **TDEL-03**: Tab hover shows delete icon (12px, upper-right, fades in 100ms) with color change on hover
-- [ ] **TDEL-04**: Middle-click on any tab deletes it immediately
+- [x] **TDEL-03**: Tab hover shows delete icon (12px, upper-right, fades in 100ms) with color change on hover
+- [x] **TDEL-04**: Middle-click on any tab deletes it immediately
 - [x] **TDEL-05**: Post-delete focus: first tab below → last tab in list → create new empty tab
 - [x] **TDEL-06**: Pinned tabs are never deleted by bulk operations (silently skipped)
 
@@ -256,10 +256,10 @@ Deferred to future release. Tracked but not in current roadmap.
 | TABS-11 | Phase 4 | Pending |
 | TABS-12 | Phase 4 | Pending |
 | TABS-13 | Phase 4 | Pending |
-| TDEL-01 | Phase 5 | Pending |
+| TDEL-01 | Phase 5 | Complete |
 | TDEL-02 | Phase 5 | Complete |
-| TDEL-03 | Phase 5 | Pending |
-| TDEL-04 | Phase 5 | Pending |
+| TDEL-03 | Phase 5 | Complete |
+| TDEL-04 | Phase 5 | Complete |
 | TDEL-05 | Phase 5 | Complete |
 | TDEL-06 | Phase 5 | Complete |
 | TOST-01 | Phase 5 | Complete |

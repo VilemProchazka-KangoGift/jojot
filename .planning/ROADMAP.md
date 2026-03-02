@@ -16,7 +16,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 2: Virtual Desktop Integration** - COM interop isolation, desktop GUID detection, three-tier session matching, live title updates
 - [x] **Phase 3: Window & Session Management** - One window per desktop lifecycle, taskbar click handling, geometry persistence, window close behavior
 - [x] **Phase 4: Tab Management** - Tab panel, labels, reorder, rename, search, pin, clone, new/delete with focus rules (completed 2026-03-02)
-- [ ] **Phase 5: Deletion & Toast** - Tab deletion triggers, deletion toast with 4-second undo, bulk delete support
+- [x] **Phase 5: Deletion & Toast** - Tab deletion triggers, deletion toast with 4-second undo, bulk delete support (completed 2026-03-02)
 - [ ] **Phase 6: Editor & Undo** - Plain-text editor, autosave with debounce, custom two-tier undo/redo stack, save as TXT, copy behavior
 - [ ] **Phase 7: Theming & Toolbar** - Light/Dark/System themes via ResourceDictionary, all 10 color tokens, toolbar with all actions
 - [ ] **Phase 8: Menus, Context Actions & Orphaned Sessions** - Window menu, tab context menu, bulk delete operations, orphaned session recovery panel
@@ -200,7 +200,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 2. Virtual Desktop Integration | 3/3 | Complete | 2026-03-02 |
 | 3. Window & Session Management | 2/2 | Complete | 2026-03-02 |
 | 4. Tab Management | 3/3 | Complete | 2026-03-02 |
-| 5. Deletion & Toast | 1/2 | In progress | - |
+| 5. Deletion & Toast | 2/2 | Complete   | 2026-03-02 |
 | 6. Editor & Undo | 0/TBD | Not started | - |
 | 7. Theming & Toolbar | 0/TBD | Not started | - |
 | 8. Menus, Context Actions & Orphaned Sessions | 0/TBD | Not started | - |
