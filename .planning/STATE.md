@@ -103,5 +103,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-02
-Stopped at: Phase 3 complete, verified, advance to Phase 4
-Resume file: .planning/ROADMAP.md
+Stopped at: Phase 4 context gathered
+Resume file: .planning/phases/04-tab-management/04-CONTEXT.md
