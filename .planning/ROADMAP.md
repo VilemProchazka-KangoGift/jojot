@@ -35,12 +35,12 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. Schema creation happens synchronously on first launch; background migrations run after the window is shown and never block startup
   4. The published ReadyToRun binary launches and is interactive; startup time is measured and logged as the baseline
   5. Killing the process and restarting leaves the database intact with no corruption
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 01-01: TBD
-- [ ] 01-02: TBD
-- [ ] 01-03: TBD
+- [ ] 01-01-PLAN.md — Data layer: SQLite with WAL mode, schema for all four tables, integrity check, corruption recovery, logging service, IPC message types
+- [ ] 01-02-PLAN.md — Process lifecycle: named mutex single-instance guard, named pipe IPC server/client, P/Invoke window activation, window close behavior
+- [ ] 01-03-PLAN.md — Startup wiring: full startup sequence orchestration in App.xaml.cs, welcome tab, background migrations, ReadyToRun config, end-to-end verification
 
 ### Phase 2: Virtual Desktop Integration
 **Goal**: The app can detect the current virtual desktop via COM, maintain a stable desktop identity across reboots via three-tier session matching, update window titles live, and fall back gracefully when the COM API is unavailable.
@@ -192,11 +192,11 @@ Plans:
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10
+Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation | 0/TBD | Not started | - |
+| 1. Foundation | 0/3 | Planning complete | - |
 | 2. Virtual Desktop Integration | 0/TBD | Not started | - |
 | 3. Window & Session Management | 0/TBD | Not started | - |
 | 4. Tab Management | 0/TBD | Not started | - |
