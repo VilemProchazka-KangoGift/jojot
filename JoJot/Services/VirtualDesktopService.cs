@@ -15,6 +15,22 @@ namespace JoJot.Services
         private static string _currentDesktopName = "";
         private static int _currentDesktopIndex;
 
+        private static VirtualDesktopNotificationListener? _notificationListener;
+        private static uint _notificationCookie;
+        private static bool _notificationsRegistered;
+
+        /// <summary>
+        /// Fired when a desktop is renamed. Args: (desktopGuid, newName).
+        /// No COM types in the signature — safe for consumers outside the interop boundary.
+        /// </summary>
+        public static event Action<string, string>? DesktopRenamed;
+
+        /// <summary>
+        /// Fired when the current desktop changes. Args: (oldGuid, newGuid).
+        /// No COM types in the signature — safe for consumers outside the interop boundary.
+        /// </summary>
+        public static event Action<string, string>? CurrentDesktopChanged;
+
         /// <summary>
         /// Whether the virtual desktop COM API is available and functioning.
         /// When false, the app runs in single-notepad fallback mode.
@@ -274,12 +290,156 @@ namespace JoJot.Services
                 _isAvailable ? _currentDesktopIndex : (int?)null);
         }
 
+        // ─── Notification Subscription (VDSK-07) ────────────────────────────
+
+        /// <summary>
+        /// Registers for COM desktop notifications (rename, switch, create, destroy).
+        /// Must be called on the WPF UI thread (STA requirement for COM callbacks).
+        /// If subscription fails, logs a warning and continues — title won't update live
+        /// but static title still works at startup.
+        /// </summary>
+        public static void SubscribeNotifications()
+        {
+            if (!_isAvailable)
+            {
+                LogService.Info("Notification subscription skipped (fallback mode)");
+                return;
+            }
+
+            var notifService = VirtualDesktopInterop.GetNotificationService();
+            if (notifService is null)
+            {
+                LogService.Warn("Notification service unavailable — live title updates disabled");
+                return;
+            }
+
+            try
+            {
+                _notificationListener = new VirtualDesktopNotificationListener();
+
+                // Wire listener events to public events + database updates
+                _notificationListener.DesktopRenamed += OnDesktopRenamed;
+                _notificationListener.CurrentDesktopChanged += OnCurrentDesktopChanged;
+
+                int hr = notifService.Register(_notificationListener, out _notificationCookie);
+                if (hr != 0)
+                {
+                    LogService.Warn($"Notification registration failed (HRESULT: 0x{hr:X8}) — live updates disabled");
+                    _notificationListener = null;
+                    return;
+                }
+
+                _notificationsRegistered = true;
+                LogService.Info($"Desktop notifications registered (cookie={_notificationCookie})");
+            }
+            catch (Exception ex)
+            {
+                LogService.Warn($"Failed to subscribe to desktop notifications: {ex.Message}");
+                _notificationListener = null;
+            }
+        }
+
+        /// <summary>
+        /// Unregisters the COM notification callback and cleans up the listener.
+        /// Safe to call even if not subscribed or already unsubscribed.
+        /// </summary>
+        public static void UnsubscribeNotifications()
+        {
+            if (!_notificationsRegistered)
+                return;
+
+            try
+            {
+                var notifService = VirtualDesktopInterop.GetNotificationService();
+                if (notifService is not null && _notificationCookie != 0)
+                {
+                    notifService.Unregister(_notificationCookie);
+                    LogService.Info($"Desktop notifications unregistered (cookie={_notificationCookie})");
+                }
+            }
+            catch (Exception ex)
+            {
+                LogService.Warn($"Error unregistering desktop notifications: {ex.Message}");
+            }
+
+            if (_notificationListener is not null)
+            {
+                _notificationListener.DesktopRenamed -= OnDesktopRenamed;
+                _notificationListener.CurrentDesktopChanged -= OnCurrentDesktopChanged;
+                _notificationListener = null;
+            }
+
+            _notificationsRegistered = false;
+        }
+
+        /// <summary>
+        /// Handles desktop rename: updates internal state, persists to database,
+        /// and fires the public DesktopRenamed event.
+        /// Per user decision: "update both the window title AND app_state.desktop_name immediately."
+        /// </summary>
+        private static void OnDesktopRenamed(Guid desktopId, string newName)
+        {
+            string guidStr = desktopId.ToString();
+
+            // Update internal state if this is our current desktop
+            if (guidStr.Equals(_currentDesktopGuid, StringComparison.OrdinalIgnoreCase))
+            {
+                _currentDesktopName = newName;
+            }
+
+            // Persist to database immediately (fire-and-forget with error logging)
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await DatabaseService.UpdateDesktopNameAsync(guidStr, newName);
+                }
+                catch (Exception ex)
+                {
+                    LogService.Error($"Failed to persist desktop rename to database: {ex.Message}");
+                }
+            });
+
+            // Fire public event (consumers handle UI thread marshaling)
+            DesktopRenamed?.Invoke(guidStr, newName);
+        }
+
+        /// <summary>
+        /// Handles desktop switch: updates internal state and fires the public CurrentDesktopChanged event.
+        /// </summary>
+        private static void OnCurrentDesktopChanged(Guid oldDesktopId, Guid newDesktopId)
+        {
+            string oldGuid = oldDesktopId.ToString();
+            string newGuid = newDesktopId.ToString();
+
+            // Update internal state to reflect the new current desktop
+            _currentDesktopGuid = newGuid;
+
+            // Try to update name and index from the new desktop
+            try
+            {
+                var (id, name, index) = VirtualDesktopInterop.GetCurrentDesktop();
+                _currentDesktopName = name;
+                _currentDesktopIndex = index;
+            }
+            catch (Exception ex)
+            {
+                LogService.Warn($"Failed to refresh desktop info after switch: {ex.Message}");
+            }
+
+            // Fire public event (consumers handle UI thread marshaling)
+            CurrentDesktopChanged?.Invoke(oldGuid, newGuid);
+        }
+
         /// <summary>
         /// Shuts down the virtual desktop service and releases all COM objects.
+        /// Unsubscribes notifications before disposing COM objects.
         /// Safe to call even if not initialized or already shut down.
         /// </summary>
         public static void Shutdown()
         {
+            UnsubscribeNotifications();
+
             try
             {
                 VirtualDesktopInterop.Dispose();

@@ -92,6 +92,10 @@ namespace JoJot
             else
                 LogService.Info("Virtual desktop: fallback mode (single-notepad)");
 
+            // ── Step 5.55: Subscribe to desktop notifications (VDSK-07) ────
+            // Must happen on the UI thread (STA requirement for COM callbacks)
+            VirtualDesktopService.SubscribeNotifications();
+
             // ── Step 5.6: Session matching (VDSK-03, VDSK-04, VDSK-05) ────
             await VirtualDesktopService.MatchSessionsAsync();
             await VirtualDesktopService.EnsureCurrentDesktopSessionAsync();
@@ -109,6 +113,40 @@ namespace JoJot
             // ── Step 9: Create and show window ────────────────────────────────
             _mainWindow = new MainWindow();
             _mainWindow.Show();
+
+            // ── Step 9.5: Set window title and subscribe to rename events (VDSK-06) ──
+            if (VirtualDesktopService.IsAvailable)
+            {
+                var desktopInfo = VirtualDesktopService.GetCurrentDesktopInfo();
+                _mainWindow.UpdateDesktopTitle(
+                    VirtualDesktopService.CurrentDesktopName,
+                    desktopInfo.Index);
+            }
+            else
+            {
+                _mainWindow.UpdateDesktopTitle(null, null); // Shows "JoJot"
+            }
+
+            // Live title updates when desktop is renamed in Windows Settings
+            VirtualDesktopService.DesktopRenamed += (desktopGuid, newName) =>
+            {
+                if (desktopGuid.Equals(VirtualDesktopService.CurrentDesktopGuid, StringComparison.OrdinalIgnoreCase)
+                    && _mainWindow is not null)
+                {
+                    var info = VirtualDesktopService.GetCurrentDesktopInfo();
+                    Dispatcher.InvokeAsync(() =>
+                    {
+                        _mainWindow.UpdateDesktopTitle(newName, info.Index);
+                    });
+                }
+            };
+
+            // Log desktop switches (Phase 3 will handle showing/hiding windows per desktop)
+            VirtualDesktopService.CurrentDesktopChanged += (oldGuid, newGuid) =>
+            {
+                LogService.Info($"Desktop switched: {oldGuid} -> {newGuid}");
+                // Phase 3 will handle multi-window visibility per desktop
+            };
 
             // ── Step 10: Log startup timing (STRT-01) ────────────────────────
             sw.Stop();

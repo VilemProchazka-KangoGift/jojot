@@ -60,6 +60,30 @@ namespace JoJot
         }
 
         /// <summary>
+        /// Updates the window title based on the current desktop identity.
+        /// Title format (per user decision VDSK-06):
+        ///   - "JoJot — {desktop name}" when name is known and non-empty
+        ///   - "JoJot — Desktop N" when name is empty but index is known (N = index + 1)
+        ///   - "JoJot" in fallback mode or when no desktop info available
+        /// Uses em-dash (U+2014 —) with spaces, not hyphen (-) or en-dash (U+2013).
+        /// </summary>
+        public void UpdateDesktopTitle(string? desktopName, int? desktopIndex)
+        {
+            if (!string.IsNullOrEmpty(desktopName))
+            {
+                Title = $"JoJot \u2014 {desktopName}";
+            }
+            else if (desktopIndex.HasValue)
+            {
+                Title = $"JoJot \u2014 Desktop {desktopIndex.Value + 1}";
+            }
+            else
+            {
+                Title = "JoJot";
+            }
+        }
+
+        /// <summary>
         /// PROC-05: process stays alive when the user closes the window.
         /// Instead of closing, we hide the window. The app only truly exits via FlushAndClose.
         /// </summary>
