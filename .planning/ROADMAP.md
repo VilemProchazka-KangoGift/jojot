@@ -101,11 +101,11 @@ Plans:
   3. A new deletion while the toast is visible replaces it; the previously pending deletion becomes permanent
   4. Bulk delete shows "N notes deleted" with a single undo for all; pinned tabs are never deleted by bulk operations
   5. After deletion, focus moves to the first tab below, then the last tab, then a new empty tab — in that order
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 05-01: TBD
-- [ ] 05-02: TBD
+- [ ] 05-01-PLAN.md — Toast overlay, deletion engine (soft-delete + commit lifecycle), undo restoration, bulk delete infrastructure, focus cascade
+- [ ] 05-02-PLAN.md — Delete triggers: Ctrl+W, hover x icon on tabs, middle-click on tab
 
 ### Phase 6: Editor & Undo
 **Goal**: Users can write plain text that autosaves reliably, undo/redo across tab switches using a custom two-tier stack, copy full notes silently, and export to UTF-8 TXT files.
