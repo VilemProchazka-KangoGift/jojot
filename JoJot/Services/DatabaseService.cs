@@ -458,6 +458,241 @@ namespace JoJot.Services
             }
         }
 
+        // ─── Notes CRUD (Phase 4: TABS-*) ──────────────────────────────────────────
+
+        /// <summary>
+        /// Loads all notes for a desktop, ordered by pinned DESC then sort_order ASC.
+        /// Returns an empty list if no notes exist for the desktop.
+        /// </summary>
+        public static async Task<List<NoteTab>> GetNotesForDesktopAsync(string desktopGuid)
+        {
+            var notes = new List<NoteTab>();
+            await _writeLock.WaitAsync();
+            try
+            {
+                var cmd = _connection!.CreateCommand();
+                cmd.CommandText = @"
+                    SELECT id, desktop_guid, name, content, pinned, created_at, updated_at,
+                           sort_order, editor_scroll_offset, cursor_position
+                    FROM notes
+                    WHERE desktop_guid = @guid
+                    ORDER BY pinned DESC, sort_order ASC;";
+                cmd.Parameters.AddWithValue("@guid", desktopGuid);
+                using var reader = await cmd.ExecuteReaderAsync();
+                while (reader.Read())
+                {
+                    notes.Add(new NoteTab
+                    {
+                        Id = reader.GetInt64(0),
+                        DesktopGuid = reader.GetString(1),
+                        Name = reader.IsDBNull(2) ? null : reader.GetString(2),
+                        Content = reader.GetString(3),
+                        Pinned = reader.GetInt32(4) != 0,
+                        CreatedAt = DateTime.Parse(reader.GetString(5)),
+                        UpdatedAt = DateTime.Parse(reader.GetString(6)),
+                        SortOrder = reader.GetInt32(7),
+                        EditorScrollOffset = reader.GetInt32(8),
+                        CursorPosition = reader.GetInt32(9)
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                LogService.Error($"GetNotesForDesktopAsync failed (guid={desktopGuid})", ex);
+                throw;
+            }
+            finally
+            {
+                _writeLock.Release();
+            }
+            return notes;
+        }
+
+        /// <summary>
+        /// Inserts a new note and returns its auto-generated ID.
+        /// </summary>
+        public static async Task<long> InsertNoteAsync(string desktopGuid, string? name, string content, bool pinned, int sortOrder)
+        {
+            await _writeLock.WaitAsync();
+            try
+            {
+                var cmd = _connection!.CreateCommand();
+                cmd.CommandText = @"
+                    INSERT INTO notes (desktop_guid, name, content, pinned, sort_order)
+                    VALUES (@guid, @name, @content, @pinned, @sortOrder);
+                    SELECT last_insert_rowid();";
+                cmd.Parameters.AddWithValue("@guid", desktopGuid);
+                cmd.Parameters.AddWithValue("@name", (object?)name ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@content", content);
+                cmd.Parameters.AddWithValue("@pinned", pinned ? 1 : 0);
+                cmd.Parameters.AddWithValue("@sortOrder", sortOrder);
+                var result = await cmd.ExecuteScalarAsync();
+                return (long)result!;
+            }
+            catch (Exception ex)
+            {
+                LogService.Error($"InsertNoteAsync failed (guid={desktopGuid})", ex);
+                throw;
+            }
+            finally
+            {
+                _writeLock.Release();
+            }
+        }
+
+        /// <summary>
+        /// Updates a note's content and sets updated_at to now.
+        /// </summary>
+        public static async Task UpdateNoteContentAsync(long noteId, string content)
+        {
+            await _writeLock.WaitAsync();
+            try
+            {
+                var cmd = _connection!.CreateCommand();
+                cmd.CommandText = "UPDATE notes SET content = @content, updated_at = datetime('now') WHERE id = @id;";
+                cmd.Parameters.AddWithValue("@content", content);
+                cmd.Parameters.AddWithValue("@id", noteId);
+                await cmd.ExecuteNonQueryAsync();
+            }
+            catch (Exception ex)
+            {
+                LogService.Error($"UpdateNoteContentAsync failed (id={noteId})", ex);
+                throw;
+            }
+            finally
+            {
+                _writeLock.Release();
+            }
+        }
+
+        /// <summary>
+        /// Updates a note's custom name. Pass null to clear the name (reverts to content fallback).
+        /// </summary>
+        public static async Task UpdateNoteNameAsync(long noteId, string? name)
+        {
+            await _writeLock.WaitAsync();
+            try
+            {
+                var cmd = _connection!.CreateCommand();
+                cmd.CommandText = "UPDATE notes SET name = @name, updated_at = datetime('now') WHERE id = @id;";
+                cmd.Parameters.AddWithValue("@name", (object?)name ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@id", noteId);
+                await cmd.ExecuteNonQueryAsync();
+            }
+            catch (Exception ex)
+            {
+                LogService.Error($"UpdateNoteNameAsync failed (id={noteId})", ex);
+                throw;
+            }
+            finally
+            {
+                _writeLock.Release();
+            }
+        }
+
+        /// <summary>
+        /// Updates a note's pinned status.
+        /// </summary>
+        public static async Task UpdateNotePinnedAsync(long noteId, bool pinned)
+        {
+            await _writeLock.WaitAsync();
+            try
+            {
+                var cmd = _connection!.CreateCommand();
+                cmd.CommandText = "UPDATE notes SET pinned = @pinned, updated_at = datetime('now') WHERE id = @id;";
+                cmd.Parameters.AddWithValue("@pinned", pinned ? 1 : 0);
+                cmd.Parameters.AddWithValue("@id", noteId);
+                await cmd.ExecuteNonQueryAsync();
+            }
+            catch (Exception ex)
+            {
+                LogService.Error($"UpdateNotePinnedAsync failed (id={noteId})", ex);
+                throw;
+            }
+            finally
+            {
+                _writeLock.Release();
+            }
+        }
+
+        /// <summary>
+        /// Batch-updates sort_order for multiple notes. All updates execute under a single lock acquisition.
+        /// </summary>
+        public static async Task UpdateNoteSortOrdersAsync(IEnumerable<(long Id, int SortOrder)> updates)
+        {
+            await _writeLock.WaitAsync();
+            try
+            {
+                foreach (var (id, sortOrder) in updates)
+                {
+                    var cmd = _connection!.CreateCommand();
+                    cmd.CommandText = "UPDATE notes SET sort_order = @sortOrder WHERE id = @id;";
+                    cmd.Parameters.AddWithValue("@sortOrder", sortOrder);
+                    cmd.Parameters.AddWithValue("@id", id);
+                    await cmd.ExecuteNonQueryAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                LogService.Error("UpdateNoteSortOrdersAsync failed", ex);
+                throw;
+            }
+            finally
+            {
+                _writeLock.Release();
+            }
+        }
+
+        /// <summary>
+        /// Deletes a note by ID.
+        /// </summary>
+        public static async Task DeleteNoteAsync(long noteId)
+        {
+            await _writeLock.WaitAsync();
+            try
+            {
+                var cmd = _connection!.CreateCommand();
+                cmd.CommandText = "DELETE FROM notes WHERE id = @id;";
+                cmd.Parameters.AddWithValue("@id", noteId);
+                await cmd.ExecuteNonQueryAsync();
+            }
+            catch (Exception ex)
+            {
+                LogService.Error($"DeleteNoteAsync failed (id={noteId})", ex);
+                throw;
+            }
+            finally
+            {
+                _writeLock.Release();
+            }
+        }
+
+        /// <summary>
+        /// Returns the maximum sort_order for notes in a desktop, or -1 if no notes exist.
+        /// Callers use maxSort + 1 for new note insertion.
+        /// </summary>
+        public static async Task<int> GetMaxSortOrderAsync(string desktopGuid)
+        {
+            await _writeLock.WaitAsync();
+            try
+            {
+                var cmd = _connection!.CreateCommand();
+                cmd.CommandText = "SELECT COALESCE(MAX(sort_order), -1) FROM notes WHERE desktop_guid = @guid;";
+                cmd.Parameters.AddWithValue("@guid", desktopGuid);
+                var result = await cmd.ExecuteScalarAsync();
+                return Convert.ToInt32(result);
+            }
+            catch (Exception ex)
+            {
+                LogService.Error($"GetMaxSortOrderAsync failed (guid={desktopGuid})", ex);
+                throw;
+            }
+            finally
+            {
+                _writeLock.Release();
+            }
+        }
+
         // ─── Private helpers ────────────────────────────────────────────────────
 
         /// <summary>
