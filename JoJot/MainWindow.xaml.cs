@@ -259,6 +259,16 @@ namespace JoJot
             item.PreviewMouseMove += TabItem_PreviewMouseMove;
             item.PreviewMouseLeftButtonUp += TabItem_PreviewMouseLeftButtonUp;
 
+            // Middle-click: delete tab (TDEL-04)
+            item.PreviewMouseDown += (s, e) =>
+            {
+                if (e.ChangedButton == MouseButton.Middle)
+                {
+                    _ = DeleteTabAsync(tab);
+                    e.Handled = true; // Prevent WPF auto-scroll on middle-click
+                }
+            };
+
             return item;
         }
 
@@ -470,11 +480,22 @@ namespace JoJot
 
         /// <summary>
         /// Window-level keyboard shortcut handler.
-        /// Ctrl+T: new tab, Ctrl+F: focus search, Ctrl+Tab/Ctrl+Shift+Tab: cycle tabs,
-        /// Ctrl+P: pin/unpin, Ctrl+K: clone, F2: rename.
+        /// Ctrl+W: delete active tab, Ctrl+T: new tab, Ctrl+F: focus search,
+        /// Ctrl+Tab/Ctrl+Shift+Tab: cycle tabs, Ctrl+P: pin/unpin, Ctrl+K: clone, F2: rename.
         /// </summary>
         private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
         {
+            // Ctrl+W: Delete active tab (TDEL-01)
+            if (e.Key == Key.W && Keyboard.Modifiers == ModifierKeys.Control)
+            {
+                if (_activeTab != null)
+                {
+                    _ = DeleteTabAsync(_activeTab);
+                    e.Handled = true;
+                }
+                return;
+            }
+
             // Ctrl+P: Pin/unpin toggle (TABS-10)
             if (e.Key == Key.P && Keyboard.Modifiers == ModifierKeys.Control)
             {
