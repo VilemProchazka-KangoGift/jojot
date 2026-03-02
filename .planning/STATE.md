@@ -70,5 +70,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-02
-Stopped at: Phase 1 verified and complete; Phase 2 ready to plan
-Resume file: .planning/phases/02-virtual-desktop/ (Phase 2 — recommend /gsd:research-phase first due to COM GUID risk)
+Stopped at: Phase 2 context gathered
+Resume file: .planning/phases/02-virtual-desktop-integration/02-CONTEXT.md
