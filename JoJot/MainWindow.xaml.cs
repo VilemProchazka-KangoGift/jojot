@@ -22,6 +22,17 @@ namespace JoJot
         private NoteTab? _activeTab;
         private string _searchText = "";
 
+        // ─── Rename state ───────────────────────────────────────────────────────
+        private (ListBoxItem Item, NoteTab Tab, TextBox Box, TextBlock Label)? _activeRename;
+
+        // ─── Drag-to-reorder state ──────────────────────────────────────────────
+        private bool _isDragging;
+        private System.Windows.Point _dragStartPoint;
+        private ListBoxItem? _dragItem;
+        private NoteTab? _dragTab;
+        private int _dragInsertIndex = -1;
+        private Border? _dropIndicatorBorder;
+
         // ─── Accent color (pre-theming hardcoded, Phase 7 replaces with token) ──
         private static readonly SolidColorBrush AccentBrush =
             new(System.Windows.Media.Color.FromRgb(0x21, 0x96, 0xF3));
@@ -38,6 +49,12 @@ namespace JoJot
         {
             _desktopGuid = desktopGuid;
             InitializeComponent();
+
+            // Handle drag cancellation when mouse capture is lost
+            TabList.LostMouseCapture += (s, e) =>
+            {
+                if (_isDragging) CompleteDrag();
+            };
         }
 
         /// <summary>
@@ -188,6 +205,20 @@ namespace JoJot
             }
 
             row0.Children.Add(labelBlock);
+
+            // Hidden rename TextBox (shown on F2 / double-click)
+            var renameBox = new TextBox
+            {
+                FontSize = 13,
+                MinWidth = 80,
+                MaxWidth = 140,
+                Visibility = Visibility.Collapsed,
+                Padding = new Thickness(2, 0, 2, 0),
+                VerticalAlignment = VerticalAlignment.Center,
+                Tag = labelBlock // Store reference to label for show/hide toggling
+            };
+            row0.Children.Add(renameBox);
+
             Grid.SetRow(row0, 0);
             grid.Children.Add(row0);
 
@@ -429,11 +460,41 @@ namespace JoJot
 
         /// <summary>
         /// Window-level keyboard shortcut handler.
-        /// Ctrl+T: new tab, Ctrl+F: focus search, Ctrl+Tab/Ctrl+Shift+Tab: cycle tabs.
-        /// Additional shortcuts (Ctrl+P, Ctrl+K, F2) added in Plan 04-03.
+        /// Ctrl+T: new tab, Ctrl+F: focus search, Ctrl+Tab/Ctrl+Shift+Tab: cycle tabs,
+        /// Ctrl+P: pin/unpin, Ctrl+K: clone, F2: rename.
         /// </summary>
         private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
         {
+            // Ctrl+P: Pin/unpin toggle (TABS-10)
+            if (e.Key == Key.P && Keyboard.Modifiers == ModifierKeys.Control)
+            {
+                if (_activeTab != null)
+                {
+                    _ = TogglePinAsync(_activeTab);
+                    e.Handled = true;
+                }
+                return;
+            }
+
+            // Ctrl+K: Clone tab (TABS-09)
+            if (e.Key == Key.K && Keyboard.Modifiers == ModifierKeys.Control)
+            {
+                if (_activeTab != null)
+                {
+                    _ = CloneTabAsync(_activeTab);
+                    e.Handled = true;
+                }
+                return;
+            }
+
+            // F2: Rename active tab (TABS-06)
+            if (e.Key == Key.F2 && TabList.SelectedItem is ListBoxItem f2Item && f2Item.Tag is NoteTab f2Tab)
+            {
+                BeginRename(f2Item, f2Tab);
+                e.Handled = true;
+                return;
+            }
+
             // Ctrl+T: New tab (TABS-08)
             if (e.Key == Key.T && Keyboard.Modifiers == ModifierKeys.Control)
             {
@@ -483,19 +544,27 @@ namespace JoJot
         }
 
         /// <summary>
-        /// Tab list keyboard handler. F2 triggers rename (Plan 04-03).
+        /// Tab list keyboard handler. F2 triggers rename (TABS-06).
         /// </summary>
         private void TabList_PreviewKeyDown(object sender, KeyEventArgs e)
         {
-            // F2 and other tab-specific keys handled in Plan 04-03
+            if (e.Key == Key.F2 && TabList.SelectedItem is ListBoxItem selItem && selItem.Tag is NoteTab selTab)
+            {
+                BeginRename(selItem, selTab);
+                e.Handled = true;
+            }
         }
 
         /// <summary>
-        /// Double-click on tab triggers rename (Plan 04-03 fills in implementation).
+        /// Double-click on tab triggers rename (TABS-06).
         /// </summary>
         private void TabList_PreviewMouseDoubleClick(object sender, MouseButtonEventArgs e)
         {
-            // Rename implementation in Plan 04-03
+            if (TabList.SelectedItem is ListBoxItem item && item.Tag is NoteTab tab)
+            {
+                BeginRename(item, tab);
+                e.Handled = true;
+            }
         }
 
         // ─── New Tab Button ─────────────────────────────────────────────────────
@@ -505,21 +574,352 @@ namespace JoJot
             _ = CreateNewTabAsync();
         }
 
-        // ─── Drag-to-Reorder Stubs (Plan 04-03) ────────────────────────────────
+        // ─── Inline Rename (TABS-06, TABS-07) ──────────────────────────────────
+
+        /// <summary>
+        /// Starts inline rename for a tab. Hides the label TextBlock and shows a TextBox.
+        /// </summary>
+        private void BeginRename(ListBoxItem item, NoteTab tab)
+        {
+            if (_activeRename != null) CommitRename();
+            if (_isDragging) return;
+
+            // Find the rename TextBox and label in this item's visual tree
+            var renameBox = FindDescendant<TextBox>(item);
+            if (renameBox?.Tag is not TextBlock labelBlock) return;
+
+            labelBlock.Visibility = Visibility.Collapsed;
+            renameBox.Text = tab.Name ?? "";
+            renameBox.Visibility = Visibility.Visible;
+            renameBox.SelectAll();
+            Keyboard.Focus(renameBox);
+
+            _activeRename = (item, tab, renameBox, labelBlock);
+
+            renameBox.PreviewKeyDown += RenameBox_PreviewKeyDown;
+            renameBox.LostFocus += RenameBox_LostFocus;
+        }
+
+        /// <summary>
+        /// Commits the rename: updates the model, persists to database, refreshes display.
+        /// TABS-07: Empty/whitespace clears custom name, reverts to content fallback.
+        /// </summary>
+        private void CommitRename()
+        {
+            if (_activeRename == null) return;
+            var (item, tab, box, labelBlock) = _activeRename.Value;
+
+            box.PreviewKeyDown -= RenameBox_PreviewKeyDown;
+            box.LostFocus -= RenameBox_LostFocus;
+
+            string newName = box.Text.Trim();
+            tab.Name = string.IsNullOrWhiteSpace(newName) ? null : newName;
+
+            box.Visibility = Visibility.Collapsed;
+            labelBlock.Visibility = Visibility.Visible;
+
+            _activeRename = null;
+
+            UpdateTabItemDisplay(tab);
+            _ = DatabaseService.UpdateNoteNameAsync(tab.Id, tab.Name);
+        }
+
+        /// <summary>
+        /// Cancels the rename, restoring the original label without saving.
+        /// </summary>
+        private void CancelRename()
+        {
+            if (_activeRename == null) return;
+            var (_, _, box, labelBlock) = _activeRename.Value;
+
+            box.PreviewKeyDown -= RenameBox_PreviewKeyDown;
+            box.LostFocus -= RenameBox_LostFocus;
+
+            box.Visibility = Visibility.Collapsed;
+            labelBlock.Visibility = Visibility.Visible;
+
+            _activeRename = null;
+        }
+
+        private void RenameBox_PreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Return)
+            {
+                CommitRename();
+                e.Handled = true;
+            }
+            else if (e.Key == Key.Escape)
+            {
+                CancelRename();
+                e.Handled = true;
+            }
+        }
+
+        private void RenameBox_LostFocus(object sender, RoutedEventArgs e)
+        {
+            CommitRename();
+        }
+
+        // ─── Pin/Unpin Toggle (TABS-10) ─────────────────────────────────────────
+
+        /// <summary>
+        /// Toggles the pinned state of a tab, re-sorts the collection, and persists.
+        /// Pinned tabs always sort to top.
+        /// </summary>
+        private async Task TogglePinAsync(NoteTab tab)
+        {
+            tab.Pinned = !tab.Pinned;
+            await DatabaseService.UpdateNotePinnedAsync(tab.Id, tab.Pinned);
+
+            // Re-sort: pinned to top, then by sort_order
+            var sorted = _tabs.OrderByDescending(t => t.Pinned).ThenBy(t => t.SortOrder).ToList();
+            _tabs.Clear();
+            foreach (var t in sorted) _tabs.Add(t);
+
+            // Reassign sort_order to match new positions
+            for (int i = 0; i < _tabs.Count; i++)
+                _tabs[i].SortOrder = i;
+            await DatabaseService.UpdateNoteSortOrdersAsync(_tabs.Select(t => (t.Id, t.SortOrder)));
+
+            RebuildTabList();
+            SelectTabByNote(tab);
+        }
+
+        // ─── Clone Tab (TABS-09) ────────────────────────────────────────────────
+
+        /// <summary>
+        /// Clones the current tab: duplicates content into a new tab inserted after the source.
+        /// </summary>
+        private async Task CloneTabAsync(NoteTab source)
+        {
+            SaveCurrentTabContent();
+
+            int newSortOrder = source.SortOrder + 1;
+
+            // Shift sort_order of all tabs after the clone position
+            foreach (var tab in _tabs.Where(t => t.SortOrder >= newSortOrder))
+                tab.SortOrder++;
+
+            long newId = await DatabaseService.InsertNoteAsync(
+                _desktopGuid, source.Name, source.Content,
+                source.Pinned, newSortOrder);
+
+            var clone = new NoteTab
+            {
+                Id = newId,
+                DesktopGuid = _desktopGuid,
+                Name = source.Name,
+                Content = source.Content,
+                Pinned = source.Pinned,
+                SortOrder = newSortOrder,
+                CreatedAt = DateTime.Now,
+                UpdatedAt = DateTime.Now
+            };
+
+            // Insert into collection at correct position
+            int insertIndex = _tabs.IndexOf(source) + 1;
+            if (insertIndex >= _tabs.Count)
+                _tabs.Add(clone);
+            else
+                _tabs.Insert(insertIndex, clone);
+
+            // Persist sort orders
+            await DatabaseService.UpdateNoteSortOrdersAsync(_tabs.Select(t => (t.Id, t.SortOrder)));
+
+            RebuildTabList();
+            SelectTabByNote(clone);
+            Keyboard.Focus(ContentEditor);
+        }
+
+        // ─── Drag-to-Reorder (TABS-05) ─────────────────────────────────────────
 
         private void TabItem_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
-            // Drag start tracking — Plan 04-03
+            if (_activeRename != null) return; // No drag during rename
+            if (!string.IsNullOrEmpty(_searchText)) return; // No drag during search
+
+            _dragStartPoint = e.GetPosition(TabList);
+            _dragItem = sender as ListBoxItem;
+            _dragTab = _dragItem?.Tag as NoteTab;
         }
 
         private void TabItem_PreviewMouseMove(object sender, MouseEventArgs e)
         {
-            // Drag in progress — Plan 04-03
+            if (e.LeftButton != MouseButtonState.Pressed || _dragItem == null || _dragTab == null)
+                return;
+
+            System.Windows.Point current = e.GetPosition(TabList);
+            Vector diff = _dragStartPoint - current;
+
+            // Minimum 5px distance before drag starts
+            if (Math.Abs(diff.Y) < 5 && Math.Abs(diff.X) < 5) return;
+
+            if (!_isDragging)
+            {
+                _isDragging = true;
+                _dragItem.Opacity = 0.6;
+                Mouse.Capture(TabList);
+            }
+
+            UpdateDropIndicator(current);
         }
 
         private void TabItem_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
-            // Drag complete — Plan 04-03
+            CompleteDrag();
+        }
+
+        /// <summary>
+        /// Updates the drop indicator position during drag.
+        /// Enforces zone boundaries: pinned tabs stay in pinned zone, unpinned in unpinned.
+        /// </summary>
+        private void UpdateDropIndicator(System.Windows.Point mousePos)
+        {
+            RemoveDropIndicator();
+
+            _dragInsertIndex = -1;
+            double bestDistance = double.MaxValue;
+
+            for (int i = 0; i < TabList.Items.Count; i++)
+            {
+                if (TabList.Items[i] is not ListBoxItem candidate || candidate.Tag is not NoteTab candidateTab)
+                    continue;
+
+                // Zone enforcement: only allow drop between same-zone items
+                if (candidateTab.Pinned != _dragTab!.Pinned) continue;
+
+                try
+                {
+                    var transform = candidate.TransformToAncestor(TabList);
+                    var itemPos = transform.Transform(new System.Windows.Point(0, 0));
+
+                    // Check distance to top edge of item
+                    double distTop = Math.Abs(mousePos.Y - itemPos.Y);
+                    if (distTop < bestDistance)
+                    {
+                        bestDistance = distTop;
+                        _dragInsertIndex = i;
+                    }
+
+                    // Check distance to bottom edge of item
+                    double distBottom = Math.Abs(mousePos.Y - (itemPos.Y + candidate.ActualHeight));
+                    if (distBottom < bestDistance)
+                    {
+                        bestDistance = distBottom;
+                        _dragInsertIndex = i + 1;
+                    }
+                }
+                catch
+                {
+                    // TransformToAncestor can fail if item isn't in visual tree
+                }
+            }
+
+            // Show visual indicator on the border of the target item
+            if (_dragInsertIndex >= 0 && _dragInsertIndex < TabList.Items.Count)
+            {
+                if (TabList.Items[_dragInsertIndex] is ListBoxItem targetItem && targetItem.Content is Border border)
+                {
+                    border.BorderThickness = new Thickness(border.BorderThickness.Left, 2, 0, 0);
+                    border.BorderBrush = AccentBrush;
+                    _dropIndicatorBorder = border;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Completes the drag operation: moves the tab in the collection, updates sort orders.
+        /// </summary>
+        private void CompleteDrag()
+        {
+            if (!_isDragging) { ResetDragState(); return; }
+
+            Mouse.Capture(null);
+            RemoveDropIndicator();
+
+            if (_dragItem != null) _dragItem.Opacity = 1.0;
+
+            if (_dragInsertIndex >= 0 && _dragTab != null)
+            {
+                int oldIndex = _tabs.IndexOf(_dragTab);
+                int newIndex = CalculateCollectionIndex(_dragInsertIndex);
+
+                if (oldIndex >= 0 && newIndex >= 0 && oldIndex != newIndex)
+                {
+                    // Adjust for removal shifting indexes
+                    if (newIndex > oldIndex) newIndex--;
+
+                    _tabs.Move(oldIndex, newIndex);
+
+                    // Reassign sort_order to match new collection order
+                    for (int i = 0; i < _tabs.Count; i++)
+                        _tabs[i].SortOrder = i;
+
+                    _ = DatabaseService.UpdateNoteSortOrdersAsync(
+                        _tabs.Select(t => (t.Id, t.SortOrder)));
+
+                    RebuildTabList();
+                    SelectTabByNote(_dragTab);
+                }
+            }
+
+            ResetDragState();
+        }
+
+        /// <summary>
+        /// Maps a ListBoxItem index (which may include separator items) to a _tabs collection index.
+        /// </summary>
+        private int CalculateCollectionIndex(int listBoxIndex)
+        {
+            int collectionIndex = 0;
+            for (int i = 0; i < listBoxIndex && i < TabList.Items.Count; i++)
+            {
+                if (TabList.Items[i] is ListBoxItem item && item.Tag is NoteTab)
+                    collectionIndex++;
+            }
+            return Math.Min(collectionIndex, _tabs.Count);
+        }
+
+        /// <summary>
+        /// Removes the visual drop indicator, restoring the border to its original state.
+        /// </summary>
+        private void RemoveDropIndicator()
+        {
+            if (_dropIndicatorBorder != null)
+            {
+                _dropIndicatorBorder.BorderThickness = new Thickness(2, 0, 0, 0);
+                // Restore border brush based on selection state
+                var parentItem = _dropIndicatorBorder.Parent as ListBoxItem;
+                _dropIndicatorBorder.BorderBrush = parentItem != null && TabList.SelectedItem == parentItem
+                    ? AccentBrush
+                    : System.Windows.Media.Brushes.Transparent;
+                _dropIndicatorBorder = null;
+            }
+        }
+
+        private void ResetDragState()
+        {
+            _isDragging = false;
+            _dragItem = null;
+            _dragTab = null;
+            _dragInsertIndex = -1;
+        }
+
+        // ─── Visual Tree Helper ─────────────────────────────────────────────────
+
+        /// <summary>
+        /// Walks the visual tree to find the first descendant of type T.
+        /// </summary>
+        private static T? FindDescendant<T>(DependencyObject parent) where T : DependencyObject
+        {
+            for (int i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
+            {
+                var child = VisualTreeHelper.GetChild(parent, i);
+                if (child is T result) return result;
+                var found = FindDescendant<T>(child);
+                if (found != null) return found;
+            }
+            return null;
         }
 
         // ─── Window Title ───────────────────────────────────────────────────────
