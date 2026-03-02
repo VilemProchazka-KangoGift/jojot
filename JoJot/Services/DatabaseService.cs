@@ -1,5 +1,6 @@
 using Microsoft.Data.Sqlite;
 using System.IO;
+using JoJot.Models;
 
 namespace JoJot.Services
 {
@@ -228,13 +229,22 @@ namespace JoJot.Services
         }
 
         /// <summary>
-        /// Stub for future schema migrations. No migrations exist in Phase 1.
-        /// Migrations run in a background thread after the window is shown (STRT-03, DATA-07).
+        /// Runs pending schema migrations in the background.
+        /// Migrations are idempotent — safe to run on every launch.
         /// </summary>
-        public static Task RunPendingMigrationsAsync()
+        public static async Task RunPendingMigrationsAsync()
         {
-            LogService.Info("No pending migrations.");
-            return Task.CompletedTask;
+            // Migration 1 (Phase 3): add window_state column to app_state
+            bool hasWindowState = await ColumnExistsAsync("app_state", "window_state");
+            if (!hasWindowState)
+            {
+                await ExecuteNonQueryAsync("ALTER TABLE app_state ADD COLUMN window_state TEXT;");
+                LogService.Info("Migration: added window_state column to app_state");
+            }
+            else
+            {
+                LogService.Info("No pending migrations.");
+            }
         }
 
         /// <summary>
@@ -381,6 +391,73 @@ namespace JoJot.Services
             }
         }
 
+        // ─── Window Geometry (Phase 3: TASK-04) ─────────────────────────────────────
+
+        /// <summary>
+        /// Reads the saved window geometry for a desktop session.
+        /// Returns null if no geometry is saved (window_left is null) or the desktop has no app_state row.
+        /// </summary>
+        public static async Task<WindowGeometry?> GetWindowGeometryAsync(string desktopGuid)
+        {
+            await _writeLock.WaitAsync();
+            try
+            {
+                var cmd = _connection!.CreateCommand();
+                cmd.CommandText = "SELECT window_left, window_top, window_width, window_height, window_state FROM app_state WHERE desktop_guid = @guid;";
+                cmd.Parameters.AddWithValue("@guid", desktopGuid);
+                using var reader = await cmd.ExecuteReaderAsync();
+                if (reader.Read() && !reader.IsDBNull(0))
+                {
+                    double left = reader.GetDouble(0);
+                    double top = reader.GetDouble(1);
+                    double width = reader.GetDouble(2);
+                    double height = reader.GetDouble(3);
+                    bool isMaximized = !reader.IsDBNull(4) && reader.GetString(4) == "Maximized";
+                    return new WindowGeometry(left, top, width, height, isMaximized);
+                }
+                return null;
+            }
+            catch (Exception ex)
+            {
+                LogService.Error($"GetWindowGeometryAsync failed (guid={desktopGuid})", ex);
+                throw;
+            }
+            finally
+            {
+                _writeLock.Release();
+            }
+        }
+
+        /// <summary>
+        /// Persists window geometry for a desktop session.
+        /// Updates the existing app_state row — the row must already exist (created by session matching).
+        /// </summary>
+        public static async Task SaveWindowGeometryAsync(string desktopGuid, WindowGeometry geo)
+        {
+            await _writeLock.WaitAsync();
+            try
+            {
+                var cmd = _connection!.CreateCommand();
+                cmd.CommandText = "UPDATE app_state SET window_left=@l, window_top=@t, window_width=@w, window_height=@h, window_state=@s WHERE desktop_guid=@guid;";
+                cmd.Parameters.AddWithValue("@l", geo.Left);
+                cmd.Parameters.AddWithValue("@t", geo.Top);
+                cmd.Parameters.AddWithValue("@w", geo.Width);
+                cmd.Parameters.AddWithValue("@h", geo.Height);
+                cmd.Parameters.AddWithValue("@s", geo.IsMaximized ? "Maximized" : "Normal");
+                cmd.Parameters.AddWithValue("@guid", desktopGuid);
+                await cmd.ExecuteNonQueryAsync();
+            }
+            catch (Exception ex)
+            {
+                LogService.Error($"SaveWindowGeometryAsync failed (guid={desktopGuid})", ex);
+                throw;
+            }
+            finally
+            {
+                _writeLock.Release();
+            }
+        }
+
         // ─── Private helpers ────────────────────────────────────────────────────
 
         /// <summary>
@@ -418,6 +495,31 @@ namespace JoJot.Services
                 LogService.Error("PRAGMA quick_check failed with exception", ex);
                 return false;
             }
+        }
+        /// <summary>
+        /// Checks whether a column exists in a table via PRAGMA table_info.
+        /// SQLite does not support ALTER TABLE ADD COLUMN IF NOT EXISTS,
+        /// so this check is required for idempotent migrations.
+        /// </summary>
+        private static async Task<bool> ColumnExistsAsync(string table, string column)
+        {
+            bool found = false;
+            await _writeLock.WaitAsync();
+            try
+            {
+                var cmd = _connection!.CreateCommand();
+                cmd.CommandText = $"PRAGMA table_info({table});";
+                using var reader = await cmd.ExecuteReaderAsync();
+                while (reader.Read())
+                {
+                    if (reader.GetString(1) == column) { found = true; break; }
+                }
+            }
+            finally
+            {
+                _writeLock.Release();
+            }
+            return found;
         }
     }
 }
