@@ -13,7 +13,7 @@ JoJot is built in 9 phases that flow bottom-up from infrastructure to integratio
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Foundation** - SQLite data model, single-instance process, named pipe IPC, and startup sequence skeleton
-- [ ] **Phase 2: Virtual Desktop Integration** - COM interop isolation, desktop GUID detection, three-tier session matching, live title updates
+- [x] **Phase 2: Virtual Desktop Integration** - COM interop isolation, desktop GUID detection, three-tier session matching, live title updates
 - [ ] **Phase 3: Window & Session Management** - One window per desktop lifecycle, taskbar click handling, geometry persistence, window close behavior
 - [ ] **Phase 4: Tab Management** - Tab panel, labels, reorder, rename, search, pin, clone, new/delete with focus rules
 - [ ] **Phase 5: Deletion & Toast** - Tab deletion triggers, deletion toast with 4-second undo, bulk delete support
@@ -55,9 +55,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 02-01-PLAN.md — COM interop foundation: GUID dispatch dictionary, COM interface definitions, VirtualDesktopService with fallback mode
-- [ ] 02-02-PLAN.md — Session matching: three-tier algorithm (GUID -> name -> index), database integration, startup wiring
-- [ ] 02-03-PLAN.md — Window title: live title updates via COM notifications, desktop rename subscription, title format with em-dash
+- [x] 02-01-PLAN.md — COM interop foundation: GUID dispatch dictionary, COM interface definitions, VirtualDesktopService with fallback mode
+- [x] 02-02-PLAN.md — Session matching: three-tier algorithm (GUID -> name -> index), database integration, startup wiring
+- [x] 02-03-PLAN.md — Window title: live title updates via COM notifications, desktop rename subscription, title format with em-dash
 
 ### Phase 3: Window & Session Management
 **Goal**: Each virtual desktop gets exactly one JoJot window that persists its geometry, responds correctly to taskbar clicks, and handles window close without terminating the background process.
@@ -197,7 +197,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation | 3/3 | Complete | 2026-03-02 |
-| 2. Virtual Desktop Integration | 0/TBD | Not started | - |
+| 2. Virtual Desktop Integration | 3/3 | Complete | 2026-03-02 |
 | 3. Window & Session Management | 0/TBD | Not started | - |
 | 4. Tab Management | 0/TBD | Not started | - |
 | 5. Deletion & Toast | 0/TBD | Not started | - |
