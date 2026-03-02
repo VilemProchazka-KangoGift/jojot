@@ -10,9 +10,9 @@ See: .planning/PROJECT.md (updated 2026-03-02)
 ## Current Position
 
 Phase: 3 of 10 (Window & Session Management)
-Plan: 0 of 2 in current phase
-Status: Planned — ready to execute
-Last activity: 2026-03-02 — Phase 3 planned (2 plans, 2 waves)
+Plan: 1 of 2 in current phase
+Status: Executing — plan 03-01 complete
+Last activity: 2026-03-02 — Plan 03-01 complete (geometry infrastructure)
 
 Progress: [██████░░░░] 20%
 
@@ -67,6 +67,10 @@ Recent decisions affecting current work:
 - [02-03]: COM notification listener implements IVirtualDesktopNotification with [ComVisible(true)]
 - [02-03]: Database update from rename callback is fire-and-forget (Task.Run) to avoid blocking COM thread
 - [02-03]: Window title uses Unicode escape \u2014 for em-dash to ensure correct encoding
+
+- [03-01]: UseWindowsForms=true requires `<Using Remove="System.Windows.Forms" />` to avoid WPF Application ambiguity
+- [03-01]: ColumnExistsAsync via PRAGMA table_info for idempotent migrations (SQLite lacks IF NOT EXISTS for columns)
+- [03-01]: ClampToNearestScreen checks 50x50px region intersection, snaps to nearest screen by Manhattan distance
 
 ### Pending Todos
 
