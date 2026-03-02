@@ -39,7 +39,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 Plans:
 - [x] 01-01-PLAN.md — Data layer: SQLite with WAL mode, schema for all four tables, integrity check, corruption recovery, logging service, IPC message types
-- [ ] 01-02-PLAN.md — Process lifecycle: named mutex single-instance guard, named pipe IPC server/client, P/Invoke window activation, window close behavior
+- [x] 01-02-PLAN.md — Process lifecycle: named mutex single-instance guard, named pipe IPC server/client, P/Invoke window activation, window close behavior
 - [ ] 01-03-PLAN.md — Startup wiring: full startup sequence orchestration in App.xaml.cs, welcome tab, background migrations, ReadyToRun config, end-to-end verification
 
 ### Phase 2: Virtual Desktop Integration
@@ -196,7 +196,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation | 1/3 | In progress | - |
+| 1. Foundation | 2/3 | In progress | - |
 | 2. Virtual Desktop Integration | 0/TBD | Not started | - |
 | 3. Window & Session Management | 0/TBD | Not started | - |
 | 4. Tab Management | 0/TBD | Not started | - |

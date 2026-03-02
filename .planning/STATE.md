@@ -10,27 +10,27 @@ See: .planning/PROJECT.md (updated 2026-03-02)
 ## Current Position
 
 Phase: 1 of 10 (Foundation)
-Plan: 1 of 3 in current phase
+Plan: 2 of 3 in current phase
 Status: In progress
-Last activity: 2026-03-02 — Plan 01-01 complete: DatabaseService, LogService, IpcMessage types, SQLite WAL schema
+Last activity: 2026-03-02 — Plan 01-02 complete: IpcService, WindowActivationHelper, MainWindow IPC/hide-on-close wiring
 
-Progress: [█░░░░░░░░░] 3%
+Progress: [██░░░░░░░░] 6%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 1
-- Average duration: ~2 min
-- Total execution time: ~2 min
+- Total plans completed: 2
+- Average duration: ~3 min
+- Total execution time: ~6 min
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 1. Foundation | 1 | ~2 min | ~2 min |
+| 1. Foundation | 2 | ~6 min | ~3 min |
 
 **Recent Trend:**
-- Last 5 plans: 01-01 (~2 min)
+- Last 5 plans: 01-01 (~2 min), 01-02 (~4 min)
 - Trend: —
 
 *Updated after each plan completion*
@@ -48,6 +48,10 @@ Recent decisions affecting current work:
 - [01-01]: Do NOT use Cache=Shared with WAL mode (Microsoft.Data.Sqlite docs explicit warning)
 - [01-01]: SemaphoreSlim(1,1) for write serialization — async-compatible unlike lock; all DB operations go through ExecuteNonQueryAsync
 - [01-01]: PRAGMA quick_check over integrity_check at startup — O(N) vs O(NlogN), sufficient for table existence verification
+- [01-02]: PipeOptions.Asynchronous required on NamedPipeServerStream — without it WaitForConnectionAsync ignores CancellationToken on Windows
+- [01-02]: Client Connect(timeoutMs) wrapped in Task.Run — async overload lacks timeout parameter; synchronous overload blocks
+- [01-02]: DispatcherPriority.ApplicationIdle for ActivateFromIpc — yields to pending WPF rendering before raising window
+- [01-02]: OnClosing hides instead of closing (e.Cancel=true); only FlushAndClose calls real Close() for PROC-05/PROC-06
 
 ### Pending Todos
 
@@ -62,5 +66,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-02
-Stopped at: Completed 01-01-PLAN.md — data layer complete, ready for Plan 01-02 (process lifecycle)
-Resume file: .planning/phases/01-foundation/01-02-PLAN.md
+Stopped at: Completed 01-02-PLAN.md — IPC/process lifecycle complete, ready for Plan 01-03 (startup wiring)
+Resume file: .planning/phases/01-foundation/01-03-PLAN.md
