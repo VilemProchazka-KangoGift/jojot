@@ -1,63 +1,33 @@
 using System.ComponentModel;
 using System.Windows;
-using System.Windows.Threading;
 using JoJot.Services;
 
 namespace JoJot
 {
     /// <summary>
-    /// Interaction logic for MainWindow.xaml
+    /// Per-desktop window bound to a virtual desktop GUID.
+    /// Phase 3: Windows are created on-demand and destroyed on close (not hidden).
+    /// The process stays alive via ShutdownMode.OnExplicitShutdown.
     /// </summary>
     public partial class MainWindow : Window
     {
-        public MainWindow()
+        private readonly string _desktopGuid;
+
+        /// <summary>
+        /// Creates a MainWindow bound to a specific virtual desktop.
+        /// The desktopGuid is used for geometry save/restore and window registry keying.
+        /// </summary>
+        public MainWindow(string desktopGuid)
         {
+            _desktopGuid = desktopGuid;
             InitializeComponent();
         }
 
         /// <summary>
-        /// Called by the IPC command handler when an ActivateCommand arrives.
-        /// Brings the window to the foreground at ApplicationIdle priority.
-        /// If the window is hidden (process-alive state), shows it first.
+        /// The virtual desktop GUID this window is bound to.
+        /// Used by App for registry keying and event routing.
         /// </summary>
-        public void ActivateFromIpc()
-        {
-            Dispatcher.InvokeAsync(() =>
-            {
-                if (!IsVisible)
-                {
-                    ShowAndActivate();
-                }
-                else
-                {
-                    WindowActivationHelper.ActivateWindow(this);
-                }
-                LogService.Info("Window activated via IPC");
-            }, DispatcherPriority.ApplicationIdle);
-        }
-
-        /// <summary>
-        /// Shows the window (if hidden) and activates it.
-        /// Used when IPC activate arrives and window was hidden.
-        /// </summary>
-        public void ShowAndActivate()
-        {
-            Show();
-            WindowActivationHelper.ActivateWindow(this);
-        }
-
-        /// <summary>
-        /// Flushes content, removes empty tabs, saves window geometry, then closes for real.
-        /// Phase 1 stub: logs the call and immediately closes.
-        /// Full implementation deferred to phases when tabs and content exist (PROC-06).
-        /// </summary>
-        public void FlushAndClose()
-        {
-            LogService.Info("FlushAndClose called");
-            // Phase 1 stub — no tabs or content yet; just close.
-            // Later phases will: flush tab content, delete empty tabs, persist window geometry.
-            Close();
-        }
+        public string DesktopGuid => _desktopGuid;
 
         /// <summary>
         /// Updates the window title based on the current desktop identity.
@@ -84,17 +54,48 @@ namespace JoJot
         }
 
         /// <summary>
-        /// PROC-05: process stays alive when the user closes the window.
-        /// Instead of closing, we hide the window. The app only truly exits via FlushAndClose.
+        /// Creates a new empty tab and focuses it.
+        /// Phase 3 stub: logs the request. Full implementation in Phase 4 when tab UI exists.
+        /// </summary>
+        public void RequestNewTab()
+        {
+            LogService.Info($"RequestNewTab called for desktop {_desktopGuid} (stub until Phase 4)");
+            // Phase 4 will: create notes row, add tab to UI, focus editor
+        }
+
+        /// <summary>
+        /// Flushes content, removes empty tabs, saves window geometry, then closes for real.
+        /// Called by App on explicit shutdown (Exit menu, etc.).
+        /// Phase 3: saves geometry. Full content flush deferred to Phase 6.
+        /// </summary>
+        public void FlushAndClose()
+        {
+            LogService.Info($"FlushAndClose called for desktop {_desktopGuid}");
+            // Phase 6 will: flush tab content, delete empty tabs
+            // Geometry is saved in OnClosing which fires when Close() is called below
+            Close();
+        }
+
+        /// <summary>
+        /// TASK-05: Window close saves geometry, flushes content, deletes empty tabs, then destroys.
+        /// The process stays alive (ShutdownMode.OnExplicitShutdown).
+        /// Unlike Phase 1 which hid the window, Phase 3 actually destroys it.
+        /// The window is recreated fresh when needed via IPC (WPF windows cannot be reopened after Close).
         /// </summary>
         protected override void OnClosing(CancelEventArgs e)
         {
             base.OnClosing(e);
 
-            // Cancel the OS close — we hide instead of closing
-            e.Cancel = true;
-            Hide();
-            LogService.Info("Window hidden (process stays alive per PROC-05)");
+            // Capture geometry while the HWND is still valid
+            var geo = WindowPlacementHelper.CaptureGeometry(this);
+
+            // Fire-and-forget: save geometry to database (process stays alive so this completes)
+            _ = DatabaseService.SaveWindowGeometryAsync(_desktopGuid, geo);
+
+            // Stub: flush content and delete empty tabs (Phase 6 will implement content flush)
+            LogService.Info($"Window closing for desktop {_desktopGuid} \u2014 geometry saved ({geo.Left},{geo.Top} {geo.Width}x{geo.Height} maximized={geo.IsMaximized})");
+
+            // Do NOT set e.Cancel = true — let the window close and be destroyed
         }
     }
 }
