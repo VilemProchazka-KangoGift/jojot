@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-last_updated: "2026-03-02T21:31:10.543Z"
+last_updated: "2026-03-02T21:57:54.332Z"
 progress:
-  total_phases: 3
-  completed_phases: 3
-  total_plans: 8
-  completed_plans: 8
+  total_phases: 4
+  completed_phases: 4
+  total_plans: 11
+  completed_plans: 11
 ---
 
 # Project State
@@ -18,23 +18,23 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-02)
 
 **Core value:** Instant note capture tied to your virtual desktop context — switch desktops, switch notes, zero friction.
-**Current focus:** Phase 4 — Tab Management
+**Current focus:** Phase 5 — Deletion & Toast
 
 ## Current Position
 
-Phase: 4 of 10 (Tab Management)
+Phase: 5 of 10 (Deletion & Toast)
 Plan: 0 of TBD in current phase
 Status: Not started — ready to plan
-Last activity: 2026-03-02 — Phase 3 complete (2 plans, verified)
+Last activity: 2026-03-02 — Phase 4 complete (3 plans, verified)
 
-Progress: [███████░░░] 30%
+Progress: [████████░░] 40%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 8
-- Average duration: ~4.1 min
-- Total execution time: ~33 min
+- Total plans completed: 11
+- Average duration: ~4.2 min
+- Total execution time: ~46 min
 
 **By Phase:**
 
@@ -43,10 +43,11 @@ Progress: [███████░░░] 30%
 | 1. Foundation | 3 | ~11 min | ~3.7 min |
 | 2. Virtual Desktop Integration | 3 | ~16 min | ~5.3 min |
 | 3. Window & Session Management | 2 | ~6 min | ~3.0 min |
+| 4. Tab Management | 3 | ~13 min | ~4.3 min |
 
 **Recent Trend:**
-- Last 5 plans: 02-01 (~15 min), 02-02 (~10 min), 02-03 (~10 min), 03-01 (~3 min), 03-02 (~3 min)
-- Trend: Phase 3 plans faster (less complex than COM interop)
+- Last 5 plans: 02-03 (~10 min), 03-01 (~3 min), 03-02 (~3 min), 04-01 (~3 min), 04-02 (~5 min), 04-03 (~5 min)
+- Trend: Phase 4 plans moderate complexity (stock WPF, no external deps)
 
 *Updated after each plan completion*
 
@@ -90,6 +91,17 @@ Recent decisions affecting current work:
 - [03-02]: Desktop switch events logged but no auto-create (user decision honored)
 - [03-02]: Welcome note uses VirtualDesktopService.CurrentDesktopGuid instead of hardcoded 'default'
 
+- [04-01]: No INotifyPropertyChanged — project uses code-behind pattern, not MVVM binding
+- [04-01]: DateTime.Parse for SQLite datetime strings (converts UTC to local)
+- [04-02]: System.Windows.Media fully qualified for Color/Brushes (UseWindowsForms=true causes System.Drawing conflict)
+- [04-02]: ListBoxItem template overridden to remove default selection highlight (manual accent border instead)
+- [04-02]: Hover effect via MouseEnter/MouseLeave on Border (not ListBoxItem style triggers)
+- [04-03]: Rename TextBox embedded in each tab item (hidden by default) rather than creating on-the-fly
+- [04-03]: Drag uses raw mouse events (not DragDrop.DoDragDrop) — cleaner for intra-ListBox reorder
+- [04-03]: Zone enforcement by checking Pinned state equality between drag source and drop target
+- [04-03]: ObservableCollection.Move() for single-notification reorder (no flicker)
+- [04-03]: System.Windows.Point fully qualified to avoid System.Drawing ambiguity
+
 ### Pending Todos
 
 None yet.
@@ -103,5 +115,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-02
-Stopped at: Phase 4 context gathered
-Resume file: .planning/phases/04-tab-management/04-CONTEXT.md
+Stopped at: Phase 4 complete, Phase 5 ready
+Resume file: .planning/ROADMAP.md

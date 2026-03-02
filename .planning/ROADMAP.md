@@ -15,7 +15,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 1: Foundation** - SQLite data model, single-instance process, named pipe IPC, and startup sequence skeleton
 - [x] **Phase 2: Virtual Desktop Integration** - COM interop isolation, desktop GUID detection, three-tier session matching, live title updates
 - [x] **Phase 3: Window & Session Management** - One window per desktop lifecycle, taskbar click handling, geometry persistence, window close behavior
-- [ ] **Phase 4: Tab Management** - Tab panel, labels, reorder, rename, search, pin, clone, new/delete with focus rules
+- [x] **Phase 4: Tab Management** - Tab panel, labels, reorder, rename, search, pin, clone, new/delete with focus rules (completed 2026-03-02)
 - [ ] **Phase 5: Deletion & Toast** - Tab deletion triggers, deletion toast with 4-second undo, bulk delete support
 - [ ] **Phase 6: Editor & Undo** - Plain-text editor, autosave with debounce, custom two-tier undo/redo stack, save as TXT, copy behavior
 - [ ] **Phase 7: Theming & Toolbar** - Light/Dark/System themes via ResourceDictionary, all 10 color tokens, toolbar with all actions
@@ -71,8 +71,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 03-01-PLAN.md — Geometry infrastructure: WindowGeometry model, DatabaseService geometry CRUD, window_state schema migration, WindowPlacementHelper P/Invoke, off-screen recovery
-- [ ] 03-02-PLAN.md — Window lifecycle: per-desktop window registry, create-on-demand factory, OnClosing destroy with geometry save, IPC routing, --new-tab argument, desktop event wiring
+- [x] 03-01-PLAN.md — Geometry infrastructure: WindowGeometry model, DatabaseService geometry CRUD, window_state schema migration, WindowPlacementHelper P/Invoke, off-screen recovery
+- [x] 03-02-PLAN.md — Window lifecycle: per-desktop window registry, create-on-demand factory, OnClosing destroy with geometry save, IPC routing, --new-tab argument, desktop event wiring
 
 ### Phase 4: Tab Management
 **Goal**: Users can create, rename, search, reorder, pin, clone, and navigate tabs, with each tab displaying a smart label derived from its content.
@@ -84,12 +84,12 @@ Plans:
   3. Double-clicking or pressing F2 on a tab opens inline rename; Enter commits; Escape cancels; empty submission reverts to content fallback
   4. Ctrl+F opens the search box and filters tabs by label and content; Escape clears search and returns focus to the editor
   5. Pinned tabs are always sorted to the top; drag-to-reorder works within the pinned and unpinned zones independently
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 04-01: TBD
-- [ ] 04-02: TBD
-- [ ] 04-03: TBD
+- [x] 04-01-PLAN.md — NoteTab model with DisplayLabel 3-tier fallback, DatabaseService 8 CRUD methods for notes
+- [x] 04-02-PLAN.md — Tab panel UI (180px ListBox), content editor (Consolas 13pt), search filtering, keyboard shortcuts, save-on-switch
+- [x] 04-03-PLAN.md — Inline rename (F2/double-click), drag-to-reorder with zone enforcement, pin/unpin toggle, clone tab
 
 ### Phase 5: Deletion & Toast
 **Goal**: Users can delete tabs through any of five triggers with no confirmation dialog; a 4-second undo toast with slide-up animation provides recovery; bulk deletion is supported.
@@ -199,7 +199,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 1. Foundation | 3/3 | Complete | 2026-03-02 |
 | 2. Virtual Desktop Integration | 3/3 | Complete | 2026-03-02 |
 | 3. Window & Session Management | 2/2 | Complete | 2026-03-02 |
-| 4. Tab Management | 0/TBD | Not started | - |
+| 4. Tab Management | 3/3 | Complete | 2026-03-02 |
 | 5. Deletion & Toast | 0/TBD | Not started | - |
 | 6. Editor & Undo | 0/TBD | Not started | - |
 | 7. Theming & Toolbar | 0/TBD | Not started | - |
