@@ -10,18 +10,18 @@ See: .planning/PROJECT.md (updated 2026-03-02)
 ## Current Position
 
 Phase: 3 of 10 (Window & Session Management)
-Plan: 1 of 2 in current phase
-Status: Executing — plan 03-01 complete
-Last activity: 2026-03-02 — Plan 03-01 complete (geometry infrastructure)
+Plan: 2 of 2 in current phase
+Status: Executing — all plans complete, pending verification
+Last activity: 2026-03-02 — Plan 03-02 complete (window lifecycle)
 
 Progress: [██████░░░░] 20%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 6
-- Average duration: ~4.5 min
-- Total execution time: ~27 min
+- Total plans completed: 8
+- Average duration: ~4.1 min
+- Total execution time: ~33 min
 
 **By Phase:**
 
@@ -29,10 +29,11 @@ Progress: [██████░░░░] 20%
 |-------|-------|-------|----------|
 | 1. Foundation | 3 | ~11 min | ~3.7 min |
 | 2. Virtual Desktop Integration | 3 | ~16 min | ~5.3 min |
+| 3. Window & Session Management | 2 | ~6 min | ~3.0 min |
 
 **Recent Trend:**
-- Last 5 plans: 01-02 (~4 min), 01-03 (~5 min), 02-01 (~15 min), 02-02 (~10 min), 02-03 (~10 min)
-- Trend: Stable (Phase 2 plans larger due to COM interop complexity)
+- Last 5 plans: 02-01 (~15 min), 02-02 (~10 min), 02-03 (~10 min), 03-01 (~3 min), 03-02 (~3 min)
+- Trend: Phase 3 plans faster (less complex than COM interop)
 
 *Updated after each plan completion*
 
@@ -71,6 +72,10 @@ Recent decisions affecting current work:
 - [03-01]: UseWindowsForms=true requires `<Using Remove="System.Windows.Forms" />` to avoid WPF Application ambiguity
 - [03-01]: ColumnExistsAsync via PRAGMA table_info for idempotent migrations (SQLite lacks IF NOT EXISTS for columns)
 - [03-01]: ClampToNearestScreen checks 50x50px region intersection, snaps to nearest screen by Manhattan distance
+- [03-02]: Windows destroyed on close (not hidden) — WPF cannot reopen after Close(); fresh instances via IPC
+- [03-02]: HandleIpcCommand is async void — acceptable as IPC event handler on Dispatcher
+- [03-02]: Desktop switch events logged but no auto-create (user decision honored)
+- [03-02]: Welcome note uses VirtualDesktopService.CurrentDesktopGuid instead of hardcoded 'default'
 
 ### Pending Todos
 
@@ -85,5 +90,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-02
-Stopped at: Phase 2 complete, advance to Phase 3
+Stopped at: Phase 3 execution complete, pending verification
 Resume file: .planning/ROADMAP.md

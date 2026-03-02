@@ -40,11 +40,11 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Taskbar & Window Management
 
-- [ ] **TASK-01**: Left-click on taskbar icon: focus existing window or create new window for current desktop
-- [ ] **TASK-02**: Middle-click on taskbar icon: quick capture — new empty tab on current desktop, focused immediately
-- [ ] **TASK-03**: Middle-click with no existing window: spawn window, load saved tabs, but create and focus new empty tab
+- [x] **TASK-01**: Left-click on taskbar icon: focus existing window or create new window for current desktop
+- [x] **TASK-02**: Middle-click on taskbar icon: quick capture — new empty tab on current desktop, focused immediately
+- [x] **TASK-03**: Middle-click with no existing window: spawn window, load saved tabs, but create and focus new empty tab
 - [x] **TASK-04**: Restore saved window geometry (position, size) per desktop
-- [ ] **TASK-05**: Window close: flush content, delete empty tabs, save geometry, destroy window (process stays alive)
+- [x] **TASK-05**: Window close: flush content, delete empty tabs, save geometry, destroy window (process stays alive)
 
 ### Tab Management
 
@@ -238,11 +238,11 @@ Deferred to future release. Tracked but not in current roadmap.
 | VDSK-07 | Phase 2 | Pending |
 | VDSK-08 | Phase 2 | Pending |
 | VDSK-09 | Phase 2 | Pending |
-| TASK-01 | Phase 3 | Pending |
-| TASK-02 | Phase 3 | Pending |
-| TASK-03 | Phase 3 | Pending |
+| TASK-01 | Phase 3 | Complete |
+| TASK-02 | Phase 3 | Complete |
+| TASK-03 | Phase 3 | Complete |
 | TASK-04 | Phase 3 | Complete |
-| TASK-05 | Phase 3 | Pending |
+| TASK-05 | Phase 3 | Complete |
 | TABS-01 | Phase 4 | Pending |
 | TABS-02 | Phase 4 | Pending |
 | TABS-03 | Phase 4 | Pending |
