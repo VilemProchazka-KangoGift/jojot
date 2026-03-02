@@ -212,127 +212,127 @@ Deferred to future release. Tracked but not in current roadmap.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| DATA-01 | — | Pending |
-| DATA-02 | — | Pending |
-| DATA-03 | — | Pending |
-| DATA-04 | — | Pending |
-| DATA-05 | — | Pending |
-| DATA-06 | — | Pending |
-| DATA-07 | — | Pending |
-| PROC-01 | — | Pending |
-| PROC-02 | — | Pending |
-| PROC-03 | — | Pending |
-| PROC-04 | — | Pending |
-| PROC-05 | — | Pending |
-| PROC-06 | — | Pending |
-| VDSK-01 | — | Pending |
-| VDSK-02 | — | Pending |
-| VDSK-03 | — | Pending |
-| VDSK-04 | — | Pending |
-| VDSK-05 | — | Pending |
-| VDSK-06 | — | Pending |
-| VDSK-07 | — | Pending |
-| VDSK-08 | — | Pending |
-| VDSK-09 | — | Pending |
-| TASK-01 | — | Pending |
-| TASK-02 | — | Pending |
-| TASK-03 | — | Pending |
-| TASK-04 | — | Pending |
-| TASK-05 | — | Pending |
-| TABS-01 | — | Pending |
-| TABS-02 | — | Pending |
-| TABS-03 | — | Pending |
-| TABS-04 | — | Pending |
-| TABS-05 | — | Pending |
-| TABS-06 | — | Pending |
-| TABS-07 | — | Pending |
-| TABS-08 | — | Pending |
-| TABS-09 | — | Pending |
-| TABS-10 | — | Pending |
-| TABS-11 | — | Pending |
-| TABS-12 | — | Pending |
-| TABS-13 | — | Pending |
-| TDEL-01 | — | Pending |
-| TDEL-02 | — | Pending |
-| TDEL-03 | — | Pending |
-| TDEL-04 | — | Pending |
-| TDEL-05 | — | Pending |
-| TDEL-06 | — | Pending |
-| TOST-01 | — | Pending |
-| TOST-02 | — | Pending |
-| TOST-03 | — | Pending |
-| TOST-04 | — | Pending |
-| TOST-05 | — | Pending |
-| TOST-06 | — | Pending |
-| EDIT-01 | — | Pending |
-| EDIT-02 | — | Pending |
-| EDIT-03 | — | Pending |
-| EDIT-04 | — | Pending |
-| EDIT-05 | — | Pending |
-| EDIT-06 | — | Pending |
-| EDIT-07 | — | Pending |
-| UNDO-01 | — | Pending |
-| UNDO-02 | — | Pending |
-| UNDO-03 | — | Pending |
-| UNDO-04 | — | Pending |
-| UNDO-05 | — | Pending |
-| UNDO-06 | — | Pending |
-| UNDO-07 | — | Pending |
-| UNDO-08 | — | Pending |
-| DROP-01 | — | Pending |
-| DROP-02 | — | Pending |
-| DROP-03 | — | Pending |
-| DROP-04 | — | Pending |
-| DROP-05 | — | Pending |
-| DROP-06 | — | Pending |
-| DROP-07 | — | Pending |
-| MENU-01 | — | Pending |
-| MENU-02 | — | Pending |
-| MENU-03 | — | Pending |
-| MENU-04 | — | Pending |
-| MENU-05 | — | Pending |
-| CTXM-01 | — | Pending |
-| CTXM-02 | — | Pending |
-| ORPH-01 | — | Pending |
-| ORPH-02 | — | Pending |
-| ORPH-03 | — | Pending |
-| ORPH-04 | — | Pending |
-| DRAG-01 | — | Pending |
-| DRAG-02 | — | Pending |
-| DRAG-03 | — | Pending |
-| DRAG-04 | — | Pending |
-| DRAG-05 | — | Pending |
-| DRAG-06 | — | Pending |
-| DRAG-07 | — | Pending |
-| DRAG-08 | — | Pending |
-| DRAG-09 | — | Pending |
-| DRAG-10 | — | Pending |
-| THME-01 | — | Pending |
-| THME-02 | — | Pending |
-| THME-03 | — | Pending |
-| THME-04 | — | Pending |
-| PREF-01 | — | Pending |
-| PREF-02 | — | Pending |
-| PREF-03 | — | Pending |
-| PREF-04 | — | Pending |
-| PREF-05 | — | Pending |
-| KEYS-01 | — | Pending |
-| KEYS-02 | — | Pending |
-| KEYS-03 | — | Pending |
-| KEYS-04 | — | Pending |
-| TOOL-01 | — | Pending |
-| TOOL-02 | — | Pending |
-| TOOL-03 | — | Pending |
-| STRT-01 | — | Pending |
-| STRT-02 | — | Pending |
-| STRT-03 | — | Pending |
-| STRT-04 | — | Pending |
+| DATA-01 | Phase 1 | Pending |
+| DATA-02 | Phase 1 | Pending |
+| DATA-03 | Phase 1 | Pending |
+| DATA-04 | Phase 1 | Pending |
+| DATA-05 | Phase 1 | Pending |
+| DATA-06 | Phase 1 | Pending |
+| DATA-07 | Phase 1 | Pending |
+| PROC-01 | Phase 1 | Pending |
+| PROC-02 | Phase 1 | Pending |
+| PROC-03 | Phase 1 | Pending |
+| PROC-04 | Phase 1 | Pending |
+| PROC-05 | Phase 1 | Pending |
+| PROC-06 | Phase 1 | Pending |
+| STRT-01 | Phase 1 | Pending |
+| STRT-02 | Phase 1 | Pending |
+| STRT-03 | Phase 1 | Pending |
+| STRT-04 | Phase 1 | Pending |
+| VDSK-01 | Phase 2 | Pending |
+| VDSK-02 | Phase 2 | Pending |
+| VDSK-03 | Phase 2 | Pending |
+| VDSK-04 | Phase 2 | Pending |
+| VDSK-05 | Phase 2 | Pending |
+| VDSK-06 | Phase 2 | Pending |
+| VDSK-07 | Phase 2 | Pending |
+| VDSK-08 | Phase 2 | Pending |
+| VDSK-09 | Phase 2 | Pending |
+| TASK-01 | Phase 3 | Pending |
+| TASK-02 | Phase 3 | Pending |
+| TASK-03 | Phase 3 | Pending |
+| TASK-04 | Phase 3 | Pending |
+| TASK-05 | Phase 3 | Pending |
+| TABS-01 | Phase 4 | Pending |
+| TABS-02 | Phase 4 | Pending |
+| TABS-03 | Phase 4 | Pending |
+| TABS-04 | Phase 4 | Pending |
+| TABS-05 | Phase 4 | Pending |
+| TABS-06 | Phase 4 | Pending |
+| TABS-07 | Phase 4 | Pending |
+| TABS-08 | Phase 4 | Pending |
+| TABS-09 | Phase 4 | Pending |
+| TABS-10 | Phase 4 | Pending |
+| TABS-11 | Phase 4 | Pending |
+| TABS-12 | Phase 4 | Pending |
+| TABS-13 | Phase 4 | Pending |
+| TDEL-01 | Phase 5 | Pending |
+| TDEL-02 | Phase 5 | Pending |
+| TDEL-03 | Phase 5 | Pending |
+| TDEL-04 | Phase 5 | Pending |
+| TDEL-05 | Phase 5 | Pending |
+| TDEL-06 | Phase 5 | Pending |
+| TOST-01 | Phase 5 | Pending |
+| TOST-02 | Phase 5 | Pending |
+| TOST-03 | Phase 5 | Pending |
+| TOST-04 | Phase 5 | Pending |
+| TOST-05 | Phase 5 | Pending |
+| TOST-06 | Phase 5 | Pending |
+| EDIT-01 | Phase 6 | Pending |
+| EDIT-02 | Phase 6 | Pending |
+| EDIT-03 | Phase 6 | Pending |
+| EDIT-04 | Phase 6 | Pending |
+| EDIT-05 | Phase 6 | Pending |
+| EDIT-06 | Phase 6 | Pending |
+| EDIT-07 | Phase 6 | Pending |
+| UNDO-01 | Phase 6 | Pending |
+| UNDO-02 | Phase 6 | Pending |
+| UNDO-03 | Phase 6 | Pending |
+| UNDO-04 | Phase 6 | Pending |
+| UNDO-05 | Phase 6 | Pending |
+| UNDO-06 | Phase 6 | Pending |
+| UNDO-07 | Phase 6 | Pending |
+| UNDO-08 | Phase 6 | Pending |
+| THME-01 | Phase 7 | Pending |
+| THME-02 | Phase 7 | Pending |
+| THME-03 | Phase 7 | Pending |
+| THME-04 | Phase 7 | Pending |
+| TOOL-01 | Phase 7 | Pending |
+| TOOL-02 | Phase 7 | Pending |
+| TOOL-03 | Phase 7 | Pending |
+| MENU-01 | Phase 8 | Pending |
+| MENU-02 | Phase 8 | Pending |
+| MENU-03 | Phase 8 | Pending |
+| MENU-04 | Phase 8 | Pending |
+| MENU-05 | Phase 8 | Pending |
+| CTXM-01 | Phase 8 | Pending |
+| CTXM-02 | Phase 8 | Pending |
+| ORPH-01 | Phase 8 | Pending |
+| ORPH-02 | Phase 8 | Pending |
+| ORPH-03 | Phase 8 | Pending |
+| ORPH-04 | Phase 8 | Pending |
+| DROP-01 | Phase 9 | Pending |
+| DROP-02 | Phase 9 | Pending |
+| DROP-03 | Phase 9 | Pending |
+| DROP-04 | Phase 9 | Pending |
+| DROP-05 | Phase 9 | Pending |
+| DROP-06 | Phase 9 | Pending |
+| DROP-07 | Phase 9 | Pending |
+| PREF-01 | Phase 9 | Pending |
+| PREF-02 | Phase 9 | Pending |
+| PREF-03 | Phase 9 | Pending |
+| PREF-04 | Phase 9 | Pending |
+| PREF-05 | Phase 9 | Pending |
+| KEYS-01 | Phase 9 | Pending |
+| KEYS-02 | Phase 9 | Pending |
+| KEYS-03 | Phase 9 | Pending |
+| KEYS-04 | Phase 9 | Pending |
+| DRAG-01 | Phase 10 | Pending |
+| DRAG-02 | Phase 10 | Pending |
+| DRAG-03 | Phase 10 | Pending |
+| DRAG-04 | Phase 10 | Pending |
+| DRAG-05 | Phase 10 | Pending |
+| DRAG-06 | Phase 10 | Pending |
+| DRAG-07 | Phase 10 | Pending |
+| DRAG-08 | Phase 10 | Pending |
+| DRAG-09 | Phase 10 | Pending |
+| DRAG-10 | Phase 10 | Pending |
 
 **Coverage:**
-- v1 requirements: 95 total
-- Mapped to phases: 0
-- Unmapped: 95 (roadmap not yet created)
+- v1 requirements: 120 total (note: initial estimate was 95; actual count after enumeration is 120)
+- Mapped to phases: 120
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-02*
-*Last updated: 2026-03-02 after initial definition*
+*Last updated: 2026-03-02 after roadmap creation — all requirements mapped to phases*
