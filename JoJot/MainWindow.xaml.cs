@@ -169,18 +169,6 @@ namespace JoJot
                 Name = "OuterBorder"
             };
 
-            // Hover effect
-            outerBorder.MouseEnter += (s, e) =>
-            {
-                if (item != TabList.SelectedItem)
-                    outerBorder.Background = HoverBrush;
-            };
-            outerBorder.MouseLeave += (s, e) =>
-            {
-                if (item != TabList.SelectedItem)
-                    outerBorder.Background = System.Windows.Media.Brushes.Transparent;
-            };
-
             var grid = new Grid();
             grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
@@ -250,6 +238,50 @@ namespace JoJot
             });
             Grid.SetRow(row1, 1);
             grid.Children.Add(row1);
+
+            // Delete icon: × overlay, upper-right, hidden until hover (TDEL-03)
+            var deleteIcon = new TextBlock
+            {
+                Text = "\u00D7",
+                FontSize = 12,
+                Foreground = MutedTextBrush,
+                Opacity = 0,
+                HorizontalAlignment = HorizontalAlignment.Right,
+                VerticalAlignment = VerticalAlignment.Top,
+                Margin = new Thickness(0, 2, 4, 0),
+                Cursor = Cursors.Hand,
+                IsHitTestVisible = true
+            };
+            Grid.SetRowSpan(deleteIcon, 2);
+            grid.Children.Add(deleteIcon);
+
+            // Fade icon in/out on tab hover
+            outerBorder.MouseEnter += (s, e) =>
+            {
+                if (item != TabList.SelectedItem)
+                    outerBorder.Background = HoverBrush;
+                AnimateOpacity(deleteIcon, 0, 1, 100);
+            };
+            outerBorder.MouseLeave += (s, e) =>
+            {
+                if (item != TabList.SelectedItem)
+                    outerBorder.Background = System.Windows.Media.Brushes.Transparent;
+                AnimateOpacity(deleteIcon, 1, 0, 100);
+            };
+
+            // Color change on x icon hover: gray → red → gray
+            deleteIcon.MouseEnter += (s, e) =>
+                deleteIcon.Foreground = new System.Windows.Media.SolidColorBrush(
+                    System.Windows.Media.Color.FromRgb(0xe7, 0x4c, 0x3c));
+            deleteIcon.MouseLeave += (s, e) =>
+                deleteIcon.Foreground = MutedTextBrush;
+
+            // Click x to delete tab
+            deleteIcon.MouseLeftButtonDown += (s, e) =>
+            {
+                _ = DeleteTabAsync(tab);
+                e.Handled = true; // Prevent bubbling to ListBoxItem selection
+            };
 
             outerBorder.Child = grid;
             item.Content = outerBorder;
@@ -1153,6 +1185,16 @@ namespace JoJot
         {
             ToastMessageBlock.Inlines.Clear();
             ToastMessageBlock.Inlines.Add(new System.Windows.Documents.Run($"{count} notes deleted"));
+        }
+
+        /// <summary>
+        /// Animates the Opacity property of a UIElement from one value to another over durationMs.
+        /// Used for the tab x icon fade-in/out on hover (TDEL-03).
+        /// </summary>
+        private static void AnimateOpacity(UIElement element, double from, double to, int durationMs)
+        {
+            var anim = new DoubleAnimation(from, to, TimeSpan.FromMilliseconds(durationMs));
+            element.BeginAnimation(UIElement.OpacityProperty, anim);
         }
 
         /// <summary>
