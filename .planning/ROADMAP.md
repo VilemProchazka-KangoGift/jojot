@@ -52,12 +52,12 @@ Plans:
   3. When the virtual desktop COM API is unavailable, JoJot launches successfully in single-notepad fallback mode
   4. All COM interop code is behind the VirtualDesktopService boundary; no COM types appear in business logic
   5. The service is verified against Windows 11 23H2 and 24H2 with the correct GUID dispatch per OS build
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 02-01: TBD
-- [ ] 02-02: TBD
-- [ ] 02-03: TBD
+- [ ] 02-01-PLAN.md — COM interop foundation: GUID dispatch dictionary, COM interface definitions, VirtualDesktopService with fallback mode
+- [ ] 02-02-PLAN.md — Session matching: three-tier algorithm (GUID -> name -> index), database integration, startup wiring
+- [ ] 02-03-PLAN.md — Window title: live title updates via COM notifications, desktop rename subscription, title format with em-dash
 
 ### Phase 3: Window & Session Management
 **Goal**: Each virtual desktop gets exactly one JoJot window that persists its geometry, responds correctly to taskbar clicks, and handles window close without terminating the background process.
