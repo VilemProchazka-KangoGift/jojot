@@ -114,10 +114,10 @@ Requirements for initial release. Each maps to roadmap phases.
 ### Window Menu
 
 - [x] **MENU-01**: Window menu (hamburger icon) with: Recover sessions, Delete all older than, Delete all except pinned, Delete all, separator, Preferences, Exit
-- [ ] **MENU-02**: Recover sessions opens orphaned session panel (badge on menu button when orphaned sessions exist)
-- [ ] **MENU-03**: "Delete all older than N days" dialog; deletes non-pinned tabs by updated_at; confirmation required
-- [ ] **MENU-04**: "Delete all except pinned" and "Delete all" with confirmation; pinned tabs always preserved
-- [ ] **MENU-05**: Bulk deletes show single toast with "N notes deleted" and one undo
+- [x] **MENU-02**: Recover sessions opens orphaned session panel (badge on menu button when orphaned sessions exist)
+- [x] **MENU-03**: "Delete all older than N days" dialog; deletes non-pinned tabs by updated_at; confirmation required
+- [x] **MENU-04**: "Delete all except pinned" and "Delete all" with confirmation; pinned tabs always preserved
+- [x] **MENU-05**: Bulk deletes show single toast with "N notes deleted" and one undo
 
 ### Tab Context Menu
 
@@ -126,10 +126,10 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Orphaned Sessions
 
-- [ ] **ORPH-01**: Sessions with no desktop match become orphaned (stay in DB until user acts)
-- [ ] **ORPH-02**: Recovery panel lists orphaned sessions with desktop name, tab count, last updated date
-- [ ] **ORPH-03**: Actions per session: Adopt into current desktop (merge tabs), Open as new window, Delete
-- [ ] **ORPH-04**: Non-blocking badge on menu button when orphaned sessions exist (no dialog on startup)
+- [x] **ORPH-01**: Sessions with no desktop match become orphaned (stay in DB until user acts)
+- [x] **ORPH-02**: Recovery panel lists orphaned sessions with desktop name, tab count, last updated date
+- [x] **ORPH-03**: Actions per session: Adopt into current desktop (merge tabs), Open as new window, Delete
+- [x] **ORPH-04**: Non-blocking badge on menu button when orphaned sessions exist (no dialog on startup)
 
 ### Window Drag (Desktop Transfer)
 
@@ -291,16 +291,16 @@ Deferred to future release. Tracked but not in current roadmap.
 | TOOL-02 | Phase 7 | Pending |
 | TOOL-03 | Phase 7 | Pending |
 | MENU-01 | Phase 8 Plan 01 | Complete |
-| MENU-02 | Phase 8 | Pending |
-| MENU-03 | Phase 8 | Pending |
-| MENU-04 | Phase 8 | Pending |
-| MENU-05 | Phase 8 | Pending |
+| MENU-02 | Phase 8 Plan 03 | Complete |
+| MENU-03 | Phase 8 Plan 02 | Complete |
+| MENU-04 | Phase 8 Plan 02 | Complete |
+| MENU-05 | Phase 8 Plan 02 | Complete |
 | CTXM-01 | Phase 8 Plan 01 | Complete |
 | CTXM-02 | Phase 8 Plan 01 | Complete |
-| ORPH-01 | Phase 8 | Pending |
-| ORPH-02 | Phase 8 | Pending |
-| ORPH-03 | Phase 8 | Pending |
-| ORPH-04 | Phase 8 | Pending |
+| ORPH-01 | Phase 8 Plan 03 | Complete |
+| ORPH-02 | Phase 8 Plan 03 | Complete |
+| ORPH-03 | Phase 8 Plan 03 | Complete |
+| ORPH-04 | Phase 8 Plan 03 | Complete |
 | DROP-01 | Phase 9 | Pending |
 | DROP-02 | Phase 9 | Pending |
 | DROP-03 | Phase 9 | Pending |

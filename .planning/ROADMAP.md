@@ -19,7 +19,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 5: Deletion & Toast** - Tab deletion triggers, deletion toast with 4-second undo, bulk delete support (completed 2026-03-02)
 - [x] **Phase 6: Editor & Undo** - Plain-text editor, autosave with debounce, custom two-tier undo/redo stack, save as TXT, copy behavior (completed 2026-03-03)
 - [x] **Phase 7: Theming & Toolbar** - Light/Dark/System themes via ResourceDictionary, all 10 color tokens, toolbar with all actions (completed 2026-03-03)
-- [ ] **Phase 8: Menus, Context Actions & Orphaned Sessions** - Window menu, tab context menu, bulk delete operations, orphaned session recovery panel
+- [x] **Phase 8: Menus, Context Actions & Orphaned Sessions** - Window menu, tab context menu, bulk delete operations, orphaned session recovery panel (completed 2026-03-03)
 - [ ] **Phase 9: File Drop, Preferences, Hotkeys & Keyboard** - File drop with content inspection, preferences dialog, global hotkey, all keyboard shortcuts
 - [ ] **Phase 10: Window Drag & Crash Recovery** - Inter-desktop drag detection, lock overlay, reparent/merge/cancel flow, pending_moves crash recovery
 
@@ -149,12 +149,12 @@ Plans:
   3. When orphaned sessions exist, a badge appears on the menu button; the recovery panel lists each session with name, tab count, and last updated date
   4. Adopting an orphaned session merges its tabs into the current desktop; opening it creates a new window; deleting removes it permanently
   5. Bulk delete operations (delete older than N days, delete all except pinned, delete all) require confirmation and show the deletion toast with undo
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
 - [x] 08-01-PLAN.md — Hamburger menu button + popup (7 items, submenu), tab right-click context menu (7 items), Exit handler, bulk delete stubs, recovery panel XAML pre-wired
 - [x] 08-02-PLAN.md — Bulk delete confirmation overlay: wire ConfirmAndDeleteOlderThanAsync/ExceptPinned/All with confirmation dialog and toast
-- [ ] 08-03-PLAN.md — Orphaned session recovery panel: ShowRecoveryPanel, session cards, Adopt/Open/Delete actions, orphan badge
+- [x] 08-03-PLAN.md — Orphaned session recovery panel: ShowRecoveryPanel, session cards, Adopt/Open/Delete actions, orphan badge
 
 ### Phase 9: File Drop, Preferences, Hotkeys & Keyboard
 **Goal**: Users can drag text files into JoJot to open them as tabs, configure all preferences live, activate JoJot from anywhere with a global hotkey, and operate the app entirely from the keyboard.
@@ -203,6 +203,6 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 5. Deletion & Toast | 2/2 | Complete    | 2026-03-02 |
 | 6. Editor & Undo | 3/3 | Complete | 2026-03-03 |
 | 7. Theming & Toolbar | 2/2 | Complete | 2026-03-03 |
-| 8. Menus, Context Actions & Orphaned Sessions | 1/3 | In progress | - |
+| 8. Menus, Context Actions & Orphaned Sessions | 3/3 | Complete | 2026-03-03 |
 | 9. File Drop, Preferences, Hotkeys & Keyboard | 0/TBD | Not started | - |
 | 10. Window Drag & Crash Recovery | 0/TBD | Not started | - |

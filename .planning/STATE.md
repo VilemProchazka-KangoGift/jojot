@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: in-progress
-last_updated: "2026-03-03T09:55:00Z"
+last_updated: "2026-03-03T09:57:15Z"
 progress:
   total_phases: 10
-  completed_phases: 7
+  completed_phases: 8
   total_plans: 21
-  completed_plans: 20
+  completed_plans: 21
 ---
 
 # Project State
@@ -23,11 +23,11 @@ See: .planning/PROJECT.md (updated 2026-03-02)
 ## Current Position
 
 Phase: 8 of 10 (Menus, Context Actions & Orphaned Sessions)
-Plan: 2 of 3 complete
-Status: Phase 8 in progress — Plan 02 complete
-Last activity: 2026-03-03 — Phase 8 Plan 02: bulk delete confirmation overlay wired (8 min)
+Plan: 3 of 3 complete — Phase 8 DONE
+Status: Phase 8 complete — ready for Phase 9
+Last activity: 2026-03-03 — Phase 8 Plan 03: orphan recovery flyout panel, badge, DB methods (15 min)
 
-Progress: [███████████████] 75%
+Progress: [████████████████] 80%
 
 ## Performance Metrics
 
@@ -47,11 +47,11 @@ Progress: [███████████████] 75%
 | 5. Deletion & Toast | 2 | ~10 min | ~5.0 min |
 | 6. Editor & Undo | 3 | ~11 min | ~3.7 min |
 | 7. Theming & Toolbar | 2 | ~10 min | ~5.0 min |
-| 8. Menus & Context Actions | 2/3 | ~12 min | ~6.0 min |
+| 8. Menus & Context Actions | 3 | ~27 min | ~9.0 min |
 
 **Recent Trend:**
-- Last 5 plans: 07-01 (~5 min), 07-02 (~5 min), 08-01 (~4 min), 08-02 (~8 min)
-- Trend: Phase 8 Plan 02 slightly longer due to linter-added Plan 03 code requiring build fixes
+- Last 5 plans: 07-02 (~5 min), 08-01 (~4 min), 08-02 (~8 min), 08-03 (~15 min)
+- Trend: Phase 8 Plan 03 longer due to full orphan recovery system (DB methods + flyout panel + badge)
 
 *Updated after each plan completion*
 
@@ -146,6 +146,12 @@ Recent decisions affecting current work:
 - [08-02]: All keyboard shortcuts blocked while overlay visible (not just Escape/Enter) — prevents accidental Ctrl+W during overlay interaction
 - [08-02]: App.OpenWindowForOrphanAsync added as stub — required by linter-added Plan 03 recovery panel code
 
+- [08-03]: OrphanedSessionGuids stored as IReadOnlyList<string> static property on VirtualDesktopService — populated by MatchSessionsAsync, updated by SetOrphanedSessionGuids after recovery actions
+- [08-03]: MigrateTabsAsync uses base+sort_order formula (base = max target sort_order + 1) so migrated tabs always appear after existing unpinned; source tabs unpinned during migration
+- [08-03]: DeleteSessionAndNotesAsync safe to call after MigrateTabsAsync — notes already moved, deletes 0 notes + session row only
+- [08-03]: RefreshAfterOrphanAction always calls LoadTabsAsync to cover Adopt case (new tabs visible) and general state consistency
+- [08-03]: UpdateOrphanBadge is public — App.xaml.cs calls it at startup step 9.1 after window creation
+
 ### Pending Todos
 
 None yet.
@@ -159,5 +165,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-03
-Stopped at: Phase 8 Plan 02 complete — bulk delete confirmation overlay wired with keyboard handling and count preview
-Resume file: .planning/phases/08-menus-context-actions-orphaned-sessions/08-02-SUMMARY.md
+Stopped at: Phase 8 complete — Plans 01 (hamburger menu + context menu), 02 (bulk delete confirmation), 03 (orphan recovery flyout) all executed and verified
+Resume file: .planning/phases/08-menus-context-actions-orphaned-sessions/08-03-SUMMARY.md
