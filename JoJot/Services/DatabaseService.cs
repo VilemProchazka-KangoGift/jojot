@@ -937,5 +937,111 @@ namespace JoJot.Services
             }
             return found;
         }
+
+        // ─── Pending Moves (Phase 10) ───────────────────────────────────────────
+
+        /// <summary>
+        /// Inserts a pending_moves row when a window drag is detected (DRAG-02).
+        /// Written immediately before showing the lock overlay for crash recovery.
+        /// </summary>
+        public static async Task<long> InsertPendingMoveAsync(string windowId, string fromDesktop, string? toDesktop)
+        {
+            await _writeLock.WaitAsync();
+            try
+            {
+                var cmd = _connection!.CreateCommand();
+                cmd.CommandText = "INSERT INTO pending_moves (window_id, from_desktop, to_desktop) VALUES (@wid, @from, @to);";
+                cmd.Parameters.AddWithValue("@wid", windowId);
+                cmd.Parameters.AddWithValue("@from", fromDesktop);
+                cmd.Parameters.AddWithValue("@to", (object?)toDesktop ?? DBNull.Value);
+                await cmd.ExecuteNonQueryAsync();
+
+                var idCmd = _connection.CreateCommand();
+                idCmd.CommandText = "SELECT last_insert_rowid();";
+                var id = (long)(await idCmd.ExecuteScalarAsync())!;
+
+                LogService.Info($"InsertPendingMove: id={id}, window={windowId}, from={fromDesktop}, to={toDesktop}");
+                return id;
+            }
+            catch (Exception ex)
+            {
+                LogService.Error($"InsertPendingMoveAsync failed (window={windowId})", ex);
+                throw;
+            }
+            finally
+            {
+                _writeLock.Release();
+            }
+        }
+
+        /// <summary>
+        /// Deletes the pending_moves row for a window after drag resolution (DRAG-04/05/06).
+        /// </summary>
+        public static async Task DeletePendingMoveAsync(string windowId)
+        {
+            await _writeLock.WaitAsync();
+            try
+            {
+                var cmd = _connection!.CreateCommand();
+                cmd.CommandText = "DELETE FROM pending_moves WHERE window_id = @wid;";
+                cmd.Parameters.AddWithValue("@wid", windowId);
+                int deleted = await cmd.ExecuteNonQueryAsync();
+                LogService.Info($"DeletePendingMove: window={windowId}, rows={deleted}");
+            }
+            catch (Exception ex)
+            {
+                LogService.Error($"DeletePendingMoveAsync failed (window={windowId})", ex);
+                throw;
+            }
+            finally
+            {
+                _writeLock.Release();
+            }
+        }
+
+        /// <summary>
+        /// Reads all pending_moves rows for crash recovery (DRAG-09).
+        /// </summary>
+        public static async Task<List<PendingMove>> GetPendingMovesAsync()
+        {
+            var moves = new List<PendingMove>();
+            var cmd = _connection!.CreateCommand();
+            cmd.CommandText = "SELECT id, window_id, from_desktop, to_desktop, detected_at FROM pending_moves;";
+            using var reader = await cmd.ExecuteReaderAsync();
+            while (await reader.ReadAsync())
+            {
+                moves.Add(new PendingMove(
+                    reader.GetInt64(0),
+                    reader.GetString(1),
+                    reader.GetString(2),
+                    reader.IsDBNull(3) ? null : reader.GetString(3),
+                    reader.GetString(4)));
+            }
+            return moves;
+        }
+
+        /// <summary>
+        /// Deletes all pending_moves rows after crash recovery resolves them (DRAG-09).
+        /// </summary>
+        public static async Task DeleteAllPendingMovesAsync()
+        {
+            await _writeLock.WaitAsync();
+            try
+            {
+                var cmd = _connection!.CreateCommand();
+                cmd.CommandText = "DELETE FROM pending_moves;";
+                int deleted = await cmd.ExecuteNonQueryAsync();
+                LogService.Info($"DeleteAllPendingMoves: rows={deleted}");
+            }
+            catch (Exception ex)
+            {
+                LogService.Error($"DeleteAllPendingMovesAsync failed", ex);
+                throw;
+            }
+            finally
+            {
+                _writeLock.Release();
+            }
+        }
     }
 }
