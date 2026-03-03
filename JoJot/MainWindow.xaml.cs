@@ -49,13 +49,11 @@ namespace JoJot
         private bool _suppressTextChanged;
         private string? _lastSaveDirectory;
 
-        // ─── Accent color (pre-theming hardcoded, Phase 7 replaces with token) ──
-        private static readonly SolidColorBrush AccentBrush =
-            new(System.Windows.Media.Color.FromRgb(0x21, 0x96, 0xF3));
-        private static readonly SolidColorBrush MutedTextBrush =
-            new(System.Windows.Media.Color.FromRgb(0x88, 0x88, 0x88));
-        private static readonly SolidColorBrush HoverBrush =
-            new(System.Windows.Media.Color.FromRgb(0xF0, 0xF0, 0xF0));
+        // ─── Theme-aware brush helper (Phase 7: replaces hardcoded static brushes) ──
+        // Use SetResourceReference for element properties that should auto-update on theme switch.
+        // Use GetBrush for one-time assignments or comparisons.
+        private SolidColorBrush GetBrush(string key) =>
+            (SolidColorBrush)FindResource(key);
 
         /// <summary>
         /// Creates a MainWindow bound to a specific virtual desktop.
@@ -230,7 +228,7 @@ namespace JoJot
             if (tab.IsPlaceholder)
             {
                 labelBlock.FontStyle = FontStyles.Italic;
-                labelBlock.Foreground = MutedTextBrush;
+                labelBlock.SetResourceReference(TextBlock.ForegroundProperty, "c-text-muted");
             }
 
             row0.Children.Add(labelBlock);
@@ -253,20 +251,22 @@ namespace JoJot
 
             // Row 1: created date (left) + updated time (right)
             var row1 = new Grid { Margin = new Thickness(0, 2, 0, 0) };
-            row1.Children.Add(new TextBlock
+            var createdBlock = new TextBlock
             {
                 Text = tab.CreatedDisplay,
                 FontSize = 10,
-                Foreground = MutedTextBrush,
                 HorizontalAlignment = HorizontalAlignment.Left
-            });
-            row1.Children.Add(new TextBlock
+            };
+            createdBlock.SetResourceReference(TextBlock.ForegroundProperty, "c-text-muted");
+            row1.Children.Add(createdBlock);
+            var updatedBlock = new TextBlock
             {
                 Text = tab.UpdatedDisplay,
                 FontSize = 10,
-                Foreground = MutedTextBrush,
                 HorizontalAlignment = HorizontalAlignment.Right
-            });
+            };
+            updatedBlock.SetResourceReference(TextBlock.ForegroundProperty, "c-text-muted");
+            row1.Children.Add(updatedBlock);
             Grid.SetRow(row1, 1);
             grid.Children.Add(row1);
 
@@ -275,7 +275,6 @@ namespace JoJot
             {
                 Text = "\u00D7",
                 FontSize = 12,
-                Foreground = MutedTextBrush,
                 Opacity = 0,
                 HorizontalAlignment = HorizontalAlignment.Right,
                 VerticalAlignment = VerticalAlignment.Top,
@@ -283,6 +282,7 @@ namespace JoJot
                 Cursor = Cursors.Hand,
                 IsHitTestVisible = true
             };
+            deleteIcon.SetResourceReference(TextBlock.ForegroundProperty, "c-text-muted");
             Grid.SetRowSpan(deleteIcon, 2);
             grid.Children.Add(deleteIcon);
 
@@ -290,7 +290,7 @@ namespace JoJot
             outerBorder.MouseEnter += (s, e) =>
             {
                 if (item != TabList.SelectedItem)
-                    outerBorder.Background = HoverBrush;
+                    outerBorder.Background = GetBrush("c-hover-bg");
                 AnimateOpacity(deleteIcon, 0, 1, 100);
             };
             outerBorder.MouseLeave += (s, e) =>
@@ -305,7 +305,7 @@ namespace JoJot
                 deleteIcon.Foreground = new System.Windows.Media.SolidColorBrush(
                     System.Windows.Media.Color.FromRgb(0xe7, 0x4c, 0x3c));
             deleteIcon.MouseLeave += (s, e) =>
-                deleteIcon.Foreground = MutedTextBrush;
+                deleteIcon.SetResourceReference(TextBlock.ForegroundProperty, "c-text-muted");
 
             // Click x to delete tab
             deleteIcon.MouseLeftButtonDown += (s, e) =>
@@ -444,11 +444,11 @@ namespace JoJot
         /// <summary>
         /// Applies the 2px left accent border to a selected tab item.
         /// </summary>
-        private static void ApplyActiveHighlight(ListBoxItem item)
+        private void ApplyActiveHighlight(ListBoxItem item)
         {
             if (item.Content is Border border)
             {
-                border.BorderBrush = AccentBrush;
+                border.BorderBrush = GetBrush("c-accent");
                 border.Background = System.Windows.Media.Brushes.Transparent; // Clear hover if active
             }
         }
@@ -1014,7 +1014,7 @@ namespace JoJot
                 if (TabList.Items[_dragInsertIndex] is ListBoxItem targetItem && targetItem.Content is Border border)
                 {
                     border.BorderThickness = new Thickness(border.BorderThickness.Left, 2, 0, 0);
-                    border.BorderBrush = AccentBrush;
+                    border.BorderBrush = GetBrush("c-accent");
                     _dropIndicatorBorder = border;
                 }
             }
@@ -1084,7 +1084,7 @@ namespace JoJot
                 // Restore border brush based on selection state
                 var parentItem = _dropIndicatorBorder.Parent as ListBoxItem;
                 _dropIndicatorBorder.BorderBrush = parentItem != null && TabList.SelectedItem == parentItem
-                    ? AccentBrush
+                    ? GetBrush("c-accent")
                     : System.Windows.Media.Brushes.Transparent;
                 _dropIndicatorBorder = null;
             }

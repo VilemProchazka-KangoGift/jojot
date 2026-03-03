@@ -1,0 +1,26 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!-- JoJot Dark Theme — 10 core tokens + 2 supplementary (THME-04) -->
+
+    <!-- Window & Layout -->
+    <SolidColorBrush x:Key="c-win-bg" Color="#1E1E1E"/>
+    <SolidColorBrush x:Key="c-sidebar-bg" Color="#252526"/>
+    <SolidColorBrush x:Key="c-editor-bg" Color="#1E1E1E"/>
+    <SolidColorBrush x:Key="c-border" Color="#3C3C3C"/>
+
+    <!-- Text -->
+    <SolidColorBrush x:Key="c-text-primary" Color="#D4D4D4"/>
+    <SolidColorBrush x:Key="c-text-muted" Color="#808080"/>
+
+    <!-- Interactive -->
+    <SolidColorBrush x:Key="c-accent" Color="#2196F3"/>
+    <SolidColorBrush x:Key="c-hover-bg" Color="#2D2D2D"/>
+
+    <!-- Toolbar -->
+    <SolidColorBrush x:Key="c-toolbar-icon" Color="#AAAAAA"/>
+    <SolidColorBrush x:Key="c-toolbar-icon-hover" Color="#FFFFFF"/>
+
+    <!-- Supplementary -->
+    <SolidColorBrush x:Key="c-toast-bg" Color="#3C3C3C"/>
+    <SolidColorBrush x:Key="c-toast-fg" Color="#D4D4D4"/>
+</ResourceDictionary>

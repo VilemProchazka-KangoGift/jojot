@@ -25,7 +25,7 @@
             </Setter>
         </Style>
     </Window.Resources>
-    <Grid>
+    <Grid Background="{DynamicResource c-win-bg}">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="180"/>
             <ColumnDefinition Width="1"/>
@@ -33,9 +33,9 @@
         </Grid.ColumnDefinitions>
 
         <!-- Tab Panel (Column 0) -->
-        <DockPanel Grid.Column="0" Background="White">
+        <DockPanel Grid.Column="0" Background="{DynamicResource c-sidebar-bg}">
             <!-- Header: Search + New Tab button -->
-            <Border DockPanel.Dock="Top" BorderThickness="0,0,0,1" BorderBrush="#E0E0E0" Padding="6">
+            <Border DockPanel.Dock="Top" BorderThickness="0,0,0,1" BorderBrush="{DynamicResource c-border}" Padding="6">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
@@ -45,18 +45,21 @@
                     <Grid Grid.Column="0">
                         <TextBox x:Name="SearchBox" FontSize="12" Padding="4,2"
                                  VerticalContentAlignment="Center"
+                                 Background="{DynamicResource c-sidebar-bg}"
+                                 Foreground="{DynamicResource c-text-primary}"
                                  TextChanged="SearchBox_TextChanged"
                                  PreviewKeyDown="SearchBox_PreviewKeyDown"/>
                         <TextBlock x:Name="SearchPlaceholder" Text="Search tabs..."
-                                   IsHitTestVisible="False" Foreground="#999999" FontSize="12"
+                                   IsHitTestVisible="False" Foreground="{DynamicResource c-text-muted}" FontSize="12"
                                    Padding="6,3" VerticalAlignment="Center"/>
                     </Grid>
                     <!-- New tab button -->
                     <Button x:Name="NewTabButton" Grid.Column="1" Content="+"
                             Width="28" Height="28" Margin="4,0,0,0"
                             FontSize="16" FontWeight="Bold"
+                            Foreground="{DynamicResource c-text-muted}"
                             Background="Transparent" BorderThickness="1"
-                            BorderBrush="#CCCCCC" Cursor="Hand"
+                            BorderBrush="{DynamicResource c-border}" Cursor="Hand"
                             Click="NewTabButton_Click"
                             ToolTip="New tab (Ctrl+T)"/>
                 </Grid>
@@ -73,7 +76,7 @@
         </DockPanel>
 
         <!-- Separator (Column 1) -->
-        <Border Grid.Column="1" Background="#E0E0E0"/>
+        <Border Grid.Column="1" Background="{DynamicResource c-border}"/>
 
         <!-- Content Area (Column 2) — Grid overlay for editor + toast -->
         <Grid Grid.Column="2" ClipToBounds="True">
@@ -83,13 +86,16 @@
                      VerticalScrollBarVisibility="Auto"
                      HorizontalScrollBarVisibility="Disabled"
                      BorderThickness="0" Padding="12,8"
+                     Background="{DynamicResource c-editor-bg}"
+                     Foreground="{DynamicResource c-text-primary}"
+                     CaretBrush="{DynamicResource c-text-primary}"
                      IsUndoEnabled="False"
                      IsEnabled="False"/>
 
             <!-- Toast notification overlay (Phase 5: soft-delete undo) -->
             <Border x:Name="ToastBorder"
                     VerticalAlignment="Bottom" Height="36"
-                    Background="#333333" Visibility="Collapsed"
+                    Background="{DynamicResource c-toast-bg}" Visibility="Collapsed"
                     Panel.ZIndex="10">
                 <Border.RenderTransform>
                     <TranslateTransform x:Name="ToastTranslate" Y="36"/>
@@ -100,10 +106,10 @@
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
                     <TextBlock x:Name="ToastMessageBlock" Grid.Column="0"
-                               VerticalAlignment="Center" Foreground="White" FontSize="13"
+                               VerticalAlignment="Center" Foreground="{DynamicResource c-toast-fg}" FontSize="13"
                                TextTrimming="CharacterEllipsis"/>
                     <TextBlock Grid.Column="1" VerticalAlignment="Center"
-                               Foreground="#2196F3" FontSize="13"
+                               Foreground="{DynamicResource c-accent}" FontSize="13"
                                TextDecorations="Underline" Cursor="Hand"
                                Margin="12,0,0,0"
                                MouseLeftButtonDown="UndoToast_Click">

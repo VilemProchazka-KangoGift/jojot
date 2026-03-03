@@ -731,6 +731,59 @@ namespace JoJot.Services
                 return false;
             }
         }
+        // ─── Preferences (Phase 7: Theming) ────────────────────────────────
+
+        /// <summary>
+        /// Gets a preference value by key. Returns null if the key doesn't exist.
+        /// </summary>
+        public static async Task<string?> GetPreferenceAsync(string key)
+        {
+            await _writeLock.WaitAsync();
+            try
+            {
+                var cmd = _connection!.CreateCommand();
+                cmd.CommandText = "SELECT value FROM preferences WHERE key = @key;";
+                cmd.Parameters.AddWithValue("@key", key);
+                var result = await cmd.ExecuteScalarAsync();
+                return result as string;
+            }
+            catch (Exception ex)
+            {
+                LogService.Error($"GetPreferenceAsync failed for key: {key}", ex);
+                return null;
+            }
+            finally
+            {
+                _writeLock.Release();
+            }
+        }
+
+        /// <summary>
+        /// Upserts a preference value. Creates the key if it doesn't exist,
+        /// updates the value if it does.
+        /// </summary>
+        public static async Task SetPreferenceAsync(string key, string value)
+        {
+            await _writeLock.WaitAsync();
+            try
+            {
+                var cmd = _connection!.CreateCommand();
+                cmd.CommandText = "INSERT INTO preferences (key, value) VALUES (@key, @value) ON CONFLICT(key) DO UPDATE SET value = @value;";
+                cmd.Parameters.AddWithValue("@key", key);
+                cmd.Parameters.AddWithValue("@value", value);
+                await cmd.ExecuteNonQueryAsync();
+            }
+            catch (Exception ex)
+            {
+                LogService.Error($"SetPreferenceAsync failed for key: {key}", ex);
+                throw;
+            }
+            finally
+            {
+                _writeLock.Release();
+            }
+        }
+
         /// <summary>
         /// Checks whether a column exists in a table via PRAGMA table_info.
         /// SQLite does not support ALTER TABLE ADD COLUMN IF NOT EXISTS,
