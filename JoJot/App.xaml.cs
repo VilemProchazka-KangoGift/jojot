@@ -272,6 +272,11 @@ namespace JoJot
         }
 
         /// <summary>
+        /// Returns all open JoJot windows. Used by Exit menu to flush all before termination.
+        /// </summary>
+        public List<MainWindow> GetAllWindows() => _windows.Values.ToList();
+
+        /// <summary>
         /// Called when the application exits. Cancels the IPC server, flushes the database,
         /// and releases the single-instance mutex.
         /// </summary>
