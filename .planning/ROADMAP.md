@@ -24,6 +24,8 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 8.2: Gap Closure — Verification** (INSERTED) - Missing VERIFICATION.md for Phases 6 and 7 (completed 2026-03-03)
 - [x] **Phase 9: File Drop, Preferences, Hotkeys & Keyboard** - File drop with content inspection, preferences dialog, global hotkey, all keyboard shortcuts (completed 2026-03-03)
 - [x] **Phase 10: Window Drag & Crash Recovery** - Inter-desktop drag detection, lock overlay, reparent/merge/cancel flow, pending_moves crash recovery (completed 2026-03-03)
+- [ ] **Phase 10.1: Gap Closure — Integration Fixes** (INSERTED) - OnClosing pending deletion commit, FlushAsync before drag detection, FlushAndClose await fix, THME-02 checkbox
+- [ ] **Phase 10.2: Gap Closure — Verification** (INSERTED) - Missing VERIFICATION.md for Phases 9 and 10, REQUIREMENTS.md checkbox updates
 
 ## Phase Details
 
@@ -217,10 +219,40 @@ Plans:
 - [x] 10-01: Infrastructure — PendingMove model, DB CRUD, MoveWindowToDesktop COM wrapper, detection event chain
 - [x] 10-02: Lock overlay UI, resolution flows (reparent/merge/cancel), crash recovery, misplaced detection
 
+### Phase 10.1: Gap Closure — Integration Fixes (INSERTED)
+**Goal**: Fix 3 integration findings from v1.0 audit (pending deletion commit on close, autosave flush before drag detection, FlushAndClose await) and correct THME-02 checkbox in REQUIREMENTS.md.
+**Depends on**: Phase 10
+**Requirements**: TDEL-02, TOST-02, EDIT-02, DRAG-02, DRAG-09, PROC-06 (hardening fixes for already-satisfied requirements)
+**Gap Closure**: Closes integration gaps from v1.0 audit + THME-02 documentation artifact
+**Success Criteria** (what must be TRUE):
+  1. OnClosing commits pending deletions before geometry save — closing window while toast visible permanently deletes the tab
+  2. ShowDragOverlayAsync calls FlushAsync before InsertPendingMoveAsync — no unsaved content window during drag
+  3. FlushAndClose awaits CommitPendingDeletionAsync instead of fire-and-forget — deletion completes before Exit
+  4. THME-02 checkbox in REQUIREMENTS.md changed from `[ ] Pending` to `[x] Complete`
+**Plans**: TBD
+
+Plans:
+- [ ] 10.1-01: TBD
+
+### Phase 10.2: Gap Closure — Verification (INSERTED)
+**Goal**: Create missing VERIFICATION.md files for Phases 9 and 10, formally verifying all 26 requirements that SUMMARY files already confirm as complete. Update REQUIREMENTS.md checkboxes.
+**Depends on**: Phase 10.1
+**Requirements**: Documentation gap closure (DROP-01..07, PREF-01..05, KEYS-01..04, DRAG-01..10)
+**Gap Closure**: Closes verification gaps from v1.0 audit
+**Success Criteria** (what must be TRUE):
+  1. Phase 9 has a VERIFICATION.md that verifies DROP-01..07, PREF-01..05, KEYS-01..04 against the codebase
+  2. Phase 10 has a VERIFICATION.md that verifies DRAG-01..10 against the codebase
+  3. All 26 requirements updated to `[x] Complete` in REQUIREMENTS.md traceability table
+  4. Coverage count updated in REQUIREMENTS.md
+**Plans**: TBD
+
+Plans:
+- [ ] 10.2-01: TBD
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 8.1 -> 8.2 -> 9 -> 10
+Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 8.1 -> 8.2 -> 9 -> 10 -> 10.1 -> 10.2
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -236,3 +268,5 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 8.1 -> 
 | 8.2. Gap Closure — Verification | 2/2 | Complete    | 2026-03-03 |
 | 9. File Drop, Preferences, Hotkeys & Keyboard | 3/3 | Complete | 2026-03-03 |
 | 10. Window Drag & Crash Recovery | 2/2 | Complete | 2026-03-03 |
+| 10.1. Gap Closure — Integration Fixes | 0/1 | Not Started | — |
+| 10.2. Gap Closure — Verification | 0/1 | Not Started | — |
