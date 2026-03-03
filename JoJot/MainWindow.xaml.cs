@@ -43,6 +43,12 @@ namespace JoJot
 
         private PendingDeletion? _pendingDeletion;
 
+        // ─── Autosave & Undo (Phase 6) ─────────────────────────────────────────
+        private readonly AutosaveService _autosaveService = new();
+        private readonly System.Windows.Threading.DispatcherTimer _checkpointTimer;
+        private bool _suppressTextChanged;
+        private string? _lastSaveDirectory;
+
         // ─── Accent color (pre-theming hardcoded, Phase 7 replaces with token) ──
         private static readonly SolidColorBrush AccentBrush =
             new(System.Windows.Media.Color.FromRgb(0x21, 0x96, 0xF3));
@@ -58,7 +64,32 @@ namespace JoJot
         public MainWindow(string desktopGuid)
         {
             _desktopGuid = desktopGuid;
+
+            // Phase 6: Initialize checkpoint timer before InitializeComponent
+            _checkpointTimer = new System.Windows.Threading.DispatcherTimer
+            {
+                Interval = TimeSpan.FromMinutes(5)
+            };
+            _checkpointTimer.Tick += CheckpointTimer_Tick;
+
             InitializeComponent();
+
+            // Phase 6: Configure autosave service
+            _autosaveService.Configure(
+                contentProvider: () => _activeTab != null ? (_activeTab.Id, ContentEditor.Text) : (0L, ""),
+                onSaveCompleted: (tabId) =>
+                {
+                    var tab = _tabs.FirstOrDefault(t => t.Id == tabId);
+                    if (tab != null)
+                    {
+                        tab.UpdatedAt = DateTime.Now;
+                        UpdateTabItemDisplay(tab);
+                    }
+                }
+            );
+
+            // Phase 6: Wire TextChanged for autosave debounce
+            ContentEditor.TextChanged += ContentEditor_TextChanged;
 
             // Handle drag cancellation when mouse capture is lost
             TabList.LostMouseCapture += (s, e) =>
@@ -351,6 +382,18 @@ namespace JoJot
                 }
             }
 
+            // Phase 6: Stop autosave timer and checkpoint timer before switching
+            _autosaveService.Stop();
+            _checkpointTimer.Stop();
+
+            // Phase 6: Save scroll offset for outgoing tab
+            if (_activeTab != null)
+            {
+                var scrollViewer = GetScrollViewer(ContentEditor);
+                if (scrollViewer != null)
+                    _activeTab.EditorScrollOffset = (int)scrollViewer.VerticalOffset;
+            }
+
             // Save current tab content before switching
             SaveCurrentTabContent();
 
@@ -360,17 +403,41 @@ namespace JoJot
                 ApplyActiveHighlight(newItem);
 
                 _activeTab = tab;
+
+                // Phase 6: Suppress TextChanged during programmatic text assignment
+                _suppressTextChanged = true;
                 ContentEditor.Text = tab.Content;
+                _suppressTextChanged = false;
+
                 ContentEditor.IsEnabled = true;
 
                 // Restore cursor position (best effort — clamp to content length)
                 ContentEditor.CaretIndex = Math.Min(tab.CursorPosition, ContentEditor.Text.Length);
+
+                // Phase 6 (EDIT-05): Restore scroll offset after layout completes
+                ContentEditor.Dispatcher.BeginInvoke(() =>
+                {
+                    var sv = GetScrollViewer(ContentEditor);
+                    sv?.ScrollToVerticalOffset(tab.EditorScrollOffset);
+                }, System.Windows.Threading.DispatcherPriority.Loaded);
+
+                // Phase 6 (UNDO-07): Bind this tab's UndoStack
+                UndoManager.Instance.SetActiveTab(tab.Id);
+                var stack = UndoManager.Instance.GetOrCreateStack(tab.Id);
+                // Push initial content as first snapshot if stack is empty (UNDO-01)
+                if (!UndoManager.Instance.CanUndo(tab.Id) && !UndoManager.Instance.CanRedo(tab.Id))
+                {
+                    stack.PushInitialContent(tab.Content);
+                }
             }
             else
             {
                 _activeTab = null;
+                _suppressTextChanged = true;
                 ContentEditor.Text = "";
+                _suppressTextChanged = false;
                 ContentEditor.IsEnabled = false;
+                UndoManager.Instance.SetActiveTab(null);
             }
         }
 
@@ -406,7 +473,7 @@ namespace JoJot
 
         /// <summary>
         /// Saves current content from the editor to the active tab model and database.
-        /// No-op if no changes or no active tab. Fire-and-forget for database persistence.
+        /// Phase 6: Also saves scroll offset and pushes undo snapshot.
         /// </summary>
         private void SaveCurrentTabContent()
         {
@@ -417,7 +484,16 @@ namespace JoJot
             _activeTab.Content = currentContent;
             _activeTab.CursorPosition = ContentEditor.CaretIndex;
             _activeTab.UpdatedAt = DateTime.Now;
+
+            // Phase 6: Save scroll offset
+            var scrollViewer = GetScrollViewer(ContentEditor);
+            if (scrollViewer != null)
+                _activeTab.EditorScrollOffset = (int)scrollViewer.VerticalOffset;
+
             _ = DatabaseService.UpdateNoteContentAsync(_activeTab.Id, currentContent);
+
+            // Phase 6: Push undo snapshot on explicit save
+            UndoManager.Instance.PushSnapshot(_activeTab.Id, currentContent);
 
             // Refresh display label in case content changed the fallback
             UpdateTabItemDisplay(_activeTab);
@@ -517,6 +593,60 @@ namespace JoJot
         /// </summary>
         private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
         {
+            // Phase 6 — Ctrl+Z: Undo (UNDO-04) — MUST be first to prevent WPF native undo
+            if (e.Key == Key.Z && Keyboard.Modifiers == ModifierKeys.Control)
+            {
+                if (_activeTab != null)
+                {
+                    PerformUndo();
+                }
+                e.Handled = true; // Always handle to prevent WPF native undo
+                return;
+            }
+
+            // Phase 6 — Ctrl+Y or Ctrl+Shift+Z: Redo (UNDO-04)
+            if ((e.Key == Key.Y && Keyboard.Modifiers == ModifierKeys.Control) ||
+                (e.Key == Key.Z && Keyboard.Modifiers == (ModifierKeys.Control | ModifierKeys.Shift)))
+            {
+                if (_activeTab != null)
+                {
+                    PerformRedo();
+                }
+                e.Handled = true;
+                return;
+            }
+
+            // Phase 6 — Ctrl+C: Enhanced copy — no selection copies entire note (EDIT-06)
+            if (e.Key == Key.C && Keyboard.Modifiers == ModifierKeys.Control)
+            {
+                if (ContentEditor.SelectionLength == 0 && _activeTab != null && !string.IsNullOrEmpty(_activeTab.Content))
+                {
+                    try
+                    {
+                        Clipboard.SetText(_activeTab.Content);
+                    }
+                    catch (Exception ex)
+                    {
+                        LogService.Warn($"Clipboard access failed: {ex.Message}");
+                    }
+                    e.Handled = true;
+                    return;
+                }
+                // If there IS a selection, do NOT set e.Handled — let WPF handle normal copy
+                return;
+            }
+
+            // Phase 6 — Ctrl+S: Save as TXT (EDIT-07)
+            if (e.Key == Key.S && Keyboard.Modifiers == ModifierKeys.Control)
+            {
+                if (_activeTab != null)
+                {
+                    SaveAsTxt();
+                }
+                e.Handled = true;
+                return;
+            }
+
             // Ctrl+W: Delete active tab (TDEL-01)
             if (e.Key == Key.W && Keyboard.Modifiers == ModifierKeys.Control)
             {
@@ -1004,7 +1134,11 @@ namespace JoJot
             pending.Cts.Dispose();
 
             foreach (var tab in pending.Tabs)
+            {
                 await DatabaseService.DeleteNoteAsync(tab.Id);
+                // Phase 6: Remove undo stack on permanent deletion
+                UndoManager.Instance.RemoveStack(tab.Id);
+            }
         }
 
         /// <summary>
@@ -1295,6 +1429,11 @@ namespace JoJot
         public void FlushAndClose()
         {
             LogService.Info($"FlushAndClose called for desktop {_desktopGuid}");
+
+            // Phase 6 (EDIT-04): Stop autosave and flush synchronously
+            _autosaveService.Stop();
+            _checkpointTimer.Stop();
+
             // Commit pending deletion before closing (fire-and-forget: DB write is fast,
             // process stays alive long enough for it to complete).
             _ = CommitPendingDeletionAsync();
@@ -1303,15 +1442,31 @@ namespace JoJot
         }
 
         /// <summary>
-        /// TASK-05: Window close saves content and geometry, then destroys.
+        /// TASK-05 + EDIT-04: Window close saves content and geometry, then destroys.
+        /// Phase 6: Synchronous flush — no data loss on close.
         /// The process stays alive (ShutdownMode.OnExplicitShutdown).
         /// </summary>
         protected override void OnClosing(CancelEventArgs e)
         {
             base.OnClosing(e);
 
-            // Save active tab content before closing
-            SaveCurrentTabContent();
+            // Phase 6 (EDIT-04): Stop autosave timer and flush synchronously
+            _autosaveService.Stop();
+            _checkpointTimer.Stop();
+
+            // Synchronous flush — block until save completes (no data loss)
+            if (_activeTab != null)
+            {
+                string content = ContentEditor.Text;
+                if (content != _activeTab.Content)
+                {
+                    _activeTab.Content = content;
+                    _activeTab.CursorPosition = ContentEditor.CaretIndex;
+                    _activeTab.UpdatedAt = DateTime.Now;
+                    DatabaseService.UpdateNoteContentAsync(_activeTab.Id, content)
+                        .GetAwaiter().GetResult(); // Sync flush on close — no data loss
+                }
+            }
 
             // Capture geometry while the HWND is still valid
             var geo = WindowPlacementHelper.CaptureGeometry(this);
@@ -1322,6 +1477,160 @@ namespace JoJot
             LogService.Info($"Window closing for desktop {_desktopGuid} \u2014 geometry saved ({geo.Left},{geo.Top} {geo.Width}x{geo.Height} maximized={geo.IsMaximized})");
 
             // Do NOT set e.Cancel = true — let the window close and be destroyed
+        }
+
+        // ─── Phase 6: Autosave & Undo Helpers ────────────────────────────────────
+
+        /// <summary>
+        /// Phase 6: TextChanged handler for autosave debounce trigger.
+        /// Only fires for user-initiated changes (suppressed during programmatic text assignment).
+        /// </summary>
+        private void ContentEditor_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (_suppressTextChanged || _activeTab == null) return;
+            _autosaveService.NotifyTextChanged();
+
+            // Start/reset checkpoint timer on user input
+            _checkpointTimer.Stop();
+            _checkpointTimer.Start();
+        }
+
+        /// <summary>
+        /// Phase 6: 5-minute checkpoint timer tick. Creates a tier-2 checkpoint if content
+        /// has changed since the last checkpoint (UNDO-03).
+        /// </summary>
+        private void CheckpointTimer_Tick(object? sender, EventArgs e)
+        {
+            _checkpointTimer.Stop();
+            if (_activeTab == null) return;
+
+            var stack = UndoManager.Instance.GetStack(_activeTab.Id);
+            if (stack != null && stack.ShouldCreateCheckpoint())
+            {
+                string content = ContentEditor.Text;
+                stack.PushCheckpoint(content);
+            }
+
+            // Restart for next 5-minute interval
+            _checkpointTimer.Start();
+        }
+
+        /// <summary>
+        /// UNDO-04: Performs undo by restoring previous snapshot from the per-tab UndoStack.
+        /// Sets _suppressTextChanged to prevent the text assignment from triggering autosave.
+        /// </summary>
+        private void PerformUndo()
+        {
+            if (_activeTab == null) return;
+            var content = UndoManager.Instance.Undo(_activeTab.Id);
+            if (content == null) return;
+
+            _suppressTextChanged = true;
+            _activeTab.Content = content;
+            ContentEditor.Text = content;
+            ContentEditor.CaretIndex = Math.Min(_activeTab.CursorPosition, content.Length);
+            _suppressTextChanged = false;
+
+            UpdateTabItemDisplay(_activeTab);
+        }
+
+        /// <summary>
+        /// UNDO-04: Performs redo by advancing to next snapshot in the per-tab UndoStack.
+        /// </summary>
+        private void PerformRedo()
+        {
+            if (_activeTab == null) return;
+            var content = UndoManager.Instance.Redo(_activeTab.Id);
+            if (content == null) return;
+
+            _suppressTextChanged = true;
+            _activeTab.Content = content;
+            ContentEditor.Text = content;
+            ContentEditor.CaretIndex = Math.Min(_activeTab.CursorPosition, content.Length);
+            _suppressTextChanged = false;
+
+            UpdateTabItemDisplay(_activeTab);
+        }
+
+        /// <summary>
+        /// EDIT-07: Opens a Save As dialog for exporting the active note as UTF-8 TXT with BOM.
+        /// Remembers the last save directory within the session (resets on app launch).
+        /// </summary>
+        private void SaveAsTxt()
+        {
+            if (_activeTab == null) return;
+
+            var dialog = new Microsoft.Win32.SaveFileDialog
+            {
+                Filter = "Text files (*.txt)|*.txt|All files (*.*)|*.*",
+                DefaultExt = ".txt",
+                FileName = GetDefaultFilename(_activeTab)
+            };
+
+            if (!string.IsNullOrEmpty(_lastSaveDirectory))
+                dialog.InitialDirectory = _lastSaveDirectory;
+
+            if (dialog.ShowDialog(this) == true)
+            {
+                var utf8Bom = new System.Text.UTF8Encoding(encoderShouldEmitUTF8Identifier: true);
+                System.IO.File.WriteAllText(dialog.FileName, _activeTab.Content, utf8Bom);
+                _lastSaveDirectory = System.IO.Path.GetDirectoryName(dialog.FileName);
+            }
+        }
+
+        /// <summary>
+        /// Generates a default filename for the Save As dialog.
+        /// Priority: tab name, first 30 chars of content, "JoJot note YYYY-MM-DD".
+        /// </summary>
+        private static string GetDefaultFilename(NoteTab tab)
+        {
+            if (!string.IsNullOrWhiteSpace(tab.Name))
+                return SanitizeFilename(tab.Name) + ".txt";
+
+            if (!string.IsNullOrWhiteSpace(tab.Content))
+            {
+                string preview = tab.Content.Trim();
+                if (preview.Length > 30)
+                    preview = preview[..30];
+                return SanitizeFilename(preview) + ".txt";
+            }
+
+            return $"JoJot note {DateTime.Now:yyyy-MM-dd}.txt";
+        }
+
+        /// <summary>
+        /// Removes characters that are illegal in Windows filenames.
+        /// </summary>
+        private static string SanitizeFilename(string name)
+        {
+            char[] invalid = System.IO.Path.GetInvalidFileNameChars();
+            var sanitized = new System.Text.StringBuilder(name.Length);
+            foreach (char c in name)
+            {
+                if (Array.IndexOf(invalid, c) < 0)
+                    sanitized.Append(c);
+                else
+                    sanitized.Append('_');
+            }
+            // Trim trailing dots and spaces (Windows doesn't allow them in filenames)
+            string result = sanitized.ToString().TrimEnd('.', ' ');
+            return string.IsNullOrWhiteSpace(result) ? "JoJot note" : result;
+        }
+
+        /// <summary>
+        /// Finds the ScrollViewer inside a TextBox visual tree.
+        /// Used for saving/restoring scroll position on tab switch (EDIT-05).
+        /// </summary>
+        private static ScrollViewer? GetScrollViewer(DependencyObject parent)
+        {
+            for (int i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
+            {
+                var child = VisualTreeHelper.GetChild(parent, i);
+                if (child is ScrollViewer sv) return sv;
+                var result = GetScrollViewer(child);
+                if (result != null) return result;
+            }
+            return null;
         }
     }
 }
