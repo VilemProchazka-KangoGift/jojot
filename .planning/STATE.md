@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: in-progress
-last_updated: "2026-03-03T09:50:58Z"
+last_updated: "2026-03-03T09:55:00Z"
 progress:
   total_phases: 10
   completed_phases: 7
   total_plans: 21
-  completed_plans: 19
+  completed_plans: 20
 ---
 
 # Project State
@@ -23,11 +23,11 @@ See: .planning/PROJECT.md (updated 2026-03-02)
 ## Current Position
 
 Phase: 8 of 10 (Menus, Context Actions & Orphaned Sessions)
-Plan: 1 of 3 complete
-Status: Phase 8 in progress — Plan 01 complete
-Last activity: 2026-03-03 — Phase 8 Plan 01: hamburger menu + tab context menu complete (4 min)
+Plan: 2 of 3 complete
+Status: Phase 8 in progress — Plan 02 complete
+Last activity: 2026-03-03 — Phase 8 Plan 02: bulk delete confirmation overlay wired (8 min)
 
-Progress: [███████████████] 73%
+Progress: [███████████████] 75%
 
 ## Performance Metrics
 
@@ -47,11 +47,11 @@ Progress: [███████████████] 73%
 | 5. Deletion & Toast | 2 | ~10 min | ~5.0 min |
 | 6. Editor & Undo | 3 | ~11 min | ~3.7 min |
 | 7. Theming & Toolbar | 2 | ~10 min | ~5.0 min |
-| 8. Menus & Context Actions | 1/3 | ~4 min | ~4.0 min |
+| 8. Menus & Context Actions | 2/3 | ~12 min | ~6.0 min |
 
 **Recent Trend:**
-- Last 5 plans: 06-03 (~2 min), 07-01 (~5 min), 07-02 (~5 min), 08-01 (~4 min)
-- Trend: Phase 8 Plan 01 on pace (~4 min, XAML-heavy UI work)
+- Last 5 plans: 07-01 (~5 min), 07-02 (~5 min), 08-01 (~4 min), 08-02 (~8 min)
+- Trend: Phase 8 Plan 02 slightly longer due to linter-added Plan 03 code requiring build fixes
 
 *Updated after each plan completion*
 
@@ -141,6 +141,11 @@ Recent decisions affecting current work:
 - [08-01]: Context menu delegates to existing ToolbarPin/Clone/Save handlers by setting _activeTab first — no behavior duplication
 - [08-01]: ExitApplication uses App.GetAllWindows() — keeps _windows field private while enabling cross-window access for Exit
 
+- [08-02]: ConfirmAndDelete* methods return Task.CompletedTask (not truly async) — ShowConfirmation is synchronous, deletion runs in stored _confirmAction callback
+- [08-02]: Enter key in overlay calls HideConfirmation() before _confirmAction?.Invoke() — overlay collapses before deletion to avoid visual artifact
+- [08-02]: All keyboard shortcuts blocked while overlay visible (not just Escape/Enter) — prevents accidental Ctrl+W during overlay interaction
+- [08-02]: App.OpenWindowForOrphanAsync added as stub — required by linter-added Plan 03 recovery panel code
+
 ### Pending Todos
 
 None yet.
@@ -154,5 +159,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-03
-Stopped at: Phase 8 Plan 01 complete — hamburger menu + tab context menu executed, verified, SUMMARY created
-Resume file: .planning/phases/08-menus-context-actions-orphaned-sessions/08-01-SUMMARY.md
+Stopped at: Phase 8 Plan 02 complete — bulk delete confirmation overlay wired with keyboard handling and count preview
+Resume file: .planning/phases/08-menus-context-actions-orphaned-sessions/08-02-SUMMARY.md

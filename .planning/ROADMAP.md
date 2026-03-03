@@ -153,7 +153,7 @@ Plans:
 
 Plans:
 - [x] 08-01-PLAN.md — Hamburger menu button + popup (7 items, submenu), tab right-click context menu (7 items), Exit handler, bulk delete stubs, recovery panel XAML pre-wired
-- [ ] 08-02-PLAN.md — Bulk delete confirmation overlay: wire ConfirmAndDeleteOlderThanAsync/ExceptPinned/All with confirmation dialog and toast
+- [x] 08-02-PLAN.md — Bulk delete confirmation overlay: wire ConfirmAndDeleteOlderThanAsync/ExceptPinned/All with confirmation dialog and toast
 - [ ] 08-03-PLAN.md — Orphaned session recovery panel: ShowRecoveryPanel, session cards, Adopt/Open/Delete actions, orphan badge
 
 ### Phase 9: File Drop, Preferences, Hotkeys & Keyboard
