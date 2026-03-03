@@ -33,7 +33,7 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
 
 **Milestone Goal:** Fix critical crashes and freezes, polish the tab panel and UI, and ship a Windows installer — based on first-round manual review of v1.0.
 
-- [ ] **Phase 11: Critical Bug Fixes** — Eliminate stack overflow crashes on pin/unpin and delete, and fix tab rename freeze
+- [x] **Phase 11: Critical Bug Fixes** — Eliminate stack overflow crashes on pin/unpin and delete, and fix tab rename freeze (completed 2026-03-03)
 - [ ] **Phase 12: Tab Panel UX** — Replace border highlight with background highlight, add pin icon, improve title sizing, make panel user-resizable, and verify drag-to-reorder
 - [ ] **Phase 13: Theme, Display & Menu Polish** — Fix dark mode tab legibility, change font size display to percentages, verify window title shows desktop name, and fix hamburger menu dismiss behavior
 - [ ] **Phase 14: Installer** — Produce a Windows MSI or MSIX installer for distribution
@@ -102,7 +102,7 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
 | 10. Window Drag & Recovery | v1.0 | 2/2 | Complete | 2026-03-03 |
 | 10.1. Gap Closure — Integration | v1.0 | 1/1 | Complete | 2026-03-03 |
 | 10.2. Gap Closure — Verification | v1.0 | 1/1 | Complete | 2026-03-03 |
-| 11. Critical Bug Fixes | v1.1 | 1/? | In progress (checkpoint:human-verify) | - |
+| 11. Critical Bug Fixes | v1.1 | 1/1 | Complete | 2026-03-03 |
 | 12. Tab Panel UX | v1.1 | 0/? | Not started | - |
 | 13. Theme, Display & Menu Polish | v1.1 | 0/? | Not started | - |
 | 14. Installer | v1.1 | 0/? | Not started | - |

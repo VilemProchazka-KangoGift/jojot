@@ -9,9 +9,9 @@ Requirements for v1.1 Polish & Stability release. Each maps to roadmap phases.
 
 ### Bug Fixes
 
-- [ ] **BUG-01**: Pin/unpin no longer causes stack overflow exception
-- [ ] **BUG-02**: Delete no longer causes stack overflow exception
-- [ ] **BUG-03**: Renaming a tab no longer freezes the app
+- [x] **BUG-01**: Pin/unpin no longer causes stack overflow exception
+- [x] **BUG-02**: Delete no longer causes stack overflow exception
+- [x] **BUG-03**: Renaming a tab no longer freezes the app
 
 ### Tab Panel UX
 
@@ -54,9 +54,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| BUG-01 | Phase 11 | Code complete — awaiting human-verify |
-| BUG-02 | Phase 11 | Code complete — awaiting human-verify |
-| BUG-03 | Phase 11 | Code complete — awaiting human-verify |
+| BUG-01 | Phase 11 | Complete — human-verified 2026-03-03 |
+| BUG-02 | Phase 11 | Complete — human-verified 2026-03-03 |
+| BUG-03 | Phase 11 | Complete — human-verified 2026-03-03 |
 | TABUX-01 | Phase 12 | Pending |
 | TABUX-02 | Phase 12 | Pending |
 | TABUX-03 | Phase 12 | Pending |
@@ -75,4 +75,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-03-03*
-*Last updated: 2026-03-03 — BUG-01/02/03 code complete in 11-01, awaiting human verify*
+*Last updated: 2026-03-03 — BUG-01/02/03 complete and human-verified in 11-01*
