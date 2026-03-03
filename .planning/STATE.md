@@ -31,14 +31,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-02)
 
 **Core value:** Instant note capture tied to your virtual desktop context — switch desktops, switch notes, zero friction.
-**Current focus:** Phase 5 — Deletion & Toast
+**Current focus:** Phase 6 — Editor & Undo
 
 ## Current Position
 
-Phase: 5 of 10 (Deletion & Toast)
-Plan: 2 of 2 in current phase — COMPLETE
-Status: Phase 5 complete — all delete triggers wired (Ctrl+W, middle-click, hover x icon)
-Last activity: 2026-03-02 — Phase 5 Plan 02 complete (three delete triggers)
+Phase: 6 of 10 (Editor & Undo)
+Plan: 0 of 3 in current phase — CONTEXT GATHERED
+Status: Phase 6 context gathered — ready for planning
+Last activity: 2026-03-03 — Phase 6 context discussion complete
 
 Progress: [█████████░] 50%
 
