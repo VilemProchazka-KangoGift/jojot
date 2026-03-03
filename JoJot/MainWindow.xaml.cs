@@ -56,6 +56,13 @@ namespace JoJot
         private int _currentFindIndex = -1;
         private bool _helpBuilt;
 
+        // ─── Phase 10 state: Window Drag Detection ──────────────────────────────
+        private bool _isDragOverlayActive;     // DRAG-08: guard against second drag
+        private string? _dragFromDesktopGuid;  // Origin desktop GUID for cancel flow
+        private string? _dragToDesktopGuid;    // Target desktop GUID
+        private string? _dragToDesktopName;    // Target desktop name for display
+        private bool _isMisplaced;            // DRAG-10: window GUID doesn't match desktop
+
         // ─── Soft-delete / toast state (Phase 5) ────────────────────────────────
         private record PendingDeletion(
             List<NoteTab> Tabs,
@@ -131,6 +138,10 @@ namespace JoJot
 
             // Phase 7: Initial toolbar state — all buttons disabled until tab selected
             UpdateToolbarState();
+
+            // Phase 10: Window drag detection (DRAG-01) and misplaced check (DRAG-10)
+            VirtualDesktopService.WindowMovedToDesktop += OnWindowMovedToDesktop;
+            Activated += OnWindowActivated_CheckMisplaced;
         }
 
         /// <summary>
@@ -639,6 +650,13 @@ namespace JoJot
         /// </summary>
         private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
         {
+            // Phase 10: Block all keyboard shortcuts while drag overlay is active (DRAG-08)
+            if (_isDragOverlayActive)
+            {
+                e.Handled = true;
+                return;
+            }
+
             // Phase 8: Confirmation dialog keyboard handling — intercept before all other shortcuts
             if (ConfirmationOverlay.Visibility == Visibility.Visible)
             {
@@ -1609,6 +1627,9 @@ namespace JoJot
         public void FlushAndClose()
         {
             LogService.Info($"FlushAndClose called for desktop {_desktopGuid}");
+
+            // Phase 10: Unsubscribe from drag detection to prevent events firing during close
+            VirtualDesktopService.WindowMovedToDesktop -= OnWindowMovedToDesktop;
 
             // Phase 6 (EDIT-04): Stop autosave and flush synchronously
             _autosaveService.Stop();
@@ -3139,6 +3160,269 @@ namespace JoJot
         private void HelpClose_Click(object sender, MouseButtonEventArgs e)
         {
             HideHelpOverlay();
+        }
+
+        // ─── Phase 10: Window Drag Resolution (DRAG-01 through DRAG-10) ─────────
+
+        /// <summary>
+        /// Handles window drag detection from VirtualDesktopService (DRAG-01).
+        /// Only processes the event if this window's HWND matches the moved window.
+        /// </summary>
+        private void OnWindowMovedToDesktop(IntPtr movedHwnd, string fromGuid, string toGuid, string toName)
+        {
+            Dispatcher.InvokeAsync(async () =>
+            {
+                var myHwnd = new System.Windows.Interop.WindowInteropHelper(this).Handle;
+                if (myHwnd != movedHwnd) return;
+
+                await ShowDragOverlayAsync(fromGuid, toGuid, toName);
+            });
+        }
+
+        /// <summary>
+        /// Shows the lock overlay for window drag resolution (DRAG-02, DRAG-03).
+        /// Writes pending_moves row immediately, then configures buttons based on conflict type.
+        /// </summary>
+        private async Task ShowDragOverlayAsync(string fromGuid, string toGuid, string toName)
+        {
+            // DRAG-08: Ignore if overlay already active
+            if (_isDragOverlayActive) return;
+            _isDragOverlayActive = true;
+
+            _dragFromDesktopGuid = fromGuid;
+            _dragToDesktopGuid = toGuid;
+            _dragToDesktopName = toName;
+
+            // DRAG-02: Write pending_moves row immediately
+            await DatabaseService.InsertPendingMoveAsync(_desktopGuid, fromGuid, toGuid);
+
+            // Determine if target desktop has an existing JoJot session
+            var app = System.Windows.Application.Current as App;
+            bool targetHasSession = app?.HasWindowForDesktop(toGuid) ?? false;
+
+            // Configure overlay content
+            string displayName = string.IsNullOrEmpty(toName) ? "another desktop" : toName;
+            DragOverlayTitle.Text = $"Moved to {displayName}";
+
+            if (targetHasSession)
+            {
+                DragOverlayMessage.Text = "This desktop already has a JoJot window. What would you like to do?";
+                DragMergeBtn.Visibility = Visibility.Visible;
+            }
+            else
+            {
+                DragOverlayMessage.Text = "Keep your notes on this desktop, or go back?";
+                DragMergeBtn.Visibility = Visibility.Collapsed;
+            }
+
+            // Reset cancel failure state
+            DragCancelBtn.Content = "Go back";
+            DragCancelFailureText.Visibility = Visibility.Collapsed;
+
+            // Show with 150ms fade-in animation
+            DragOverlay.Opacity = 0;
+            DragOverlay.Visibility = Visibility.Visible;
+            var fadeIn = new System.Windows.Media.Animation.DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(150))
+            {
+                EasingFunction = new System.Windows.Media.Animation.CubicEase
+                {
+                    EasingMode = System.Windows.Media.Animation.EasingMode.EaseOut
+                }
+            };
+            DragOverlay.BeginAnimation(OpacityProperty, fadeIn);
+        }
+
+        /// <summary>
+        /// DRAG-04: Reparent — re-scope window and all notes to the new desktop.
+        /// </summary>
+        private async void DragKeepHere_Click(object sender, RoutedEventArgs e)
+        {
+            if (_dragToDesktopGuid is null) return;
+
+            string oldGuid = _desktopGuid;
+            string newGuid = _dragToDesktopGuid;
+
+            // Update notes in database to new desktop
+            await DatabaseService.MigrateNotesDesktopGuidAsync(oldGuid, newGuid);
+
+            // Update this window's desktop GUID
+            _desktopGuid = newGuid;
+
+            // Update window registry in App
+            var app = System.Windows.Application.Current as App;
+            app?.ReparentWindow(oldGuid, newGuid);
+
+            // Update window title to new desktop name
+            string name = _dragToDesktopName ?? "";
+            var desktops = VirtualDesktopService.GetAllDesktops();
+            var targetInfo = desktops.FirstOrDefault(d =>
+                d.Id.ToString().Equals(newGuid, StringComparison.OrdinalIgnoreCase));
+            UpdateDesktopTitle(name, targetInfo?.Index);
+
+            // Update app_state session to new desktop
+            await DatabaseService.UpdateSessionDesktopGuidAsync(oldGuid, newGuid);
+
+            // Clear pending move
+            await DatabaseService.DeletePendingMoveAsync(oldGuid);
+
+            // Clear misplaced state
+            _isMisplaced = false;
+
+            // Hide overlay with fade-out
+            await HideDragOverlayAsync();
+
+            LogService.Info($"Reparented window from {oldGuid} to {newGuid}");
+        }
+
+        /// <summary>
+        /// DRAG-05: Merge — append tabs to existing window on target desktop, close this window.
+        /// </summary>
+        private async void DragMerge_Click(object sender, RoutedEventArgs e)
+        {
+            if (_dragToDesktopGuid is null || _dragFromDesktopGuid is null) return;
+
+            string sourceGuid = _desktopGuid;
+            string targetGuid = _dragToDesktopGuid;
+
+            // Migrate tabs preserving pin state (unlike orphan recovery which unpins)
+            await DatabaseService.MigrateTabsPreservePinsAsync(sourceGuid, targetGuid);
+
+            // Clear pending move
+            await DatabaseService.DeletePendingMoveAsync(sourceGuid);
+
+            // Notify target window to reload tabs
+            var app = System.Windows.Application.Current as App;
+            app?.ReloadWindowTabs(targetGuid);
+
+            // Show toast on target window
+            int tabCount = _tabs.Count;
+            string fromName = Title.Replace("JoJot \u2014 ", "").Replace(" (misplaced)", "");
+            app?.ShowMergeToast(targetGuid, tabCount, fromName);
+
+            // Hide overlay and close this window
+            _isDragOverlayActive = false;
+            DragOverlay.Visibility = Visibility.Collapsed;
+
+            // Unsubscribe from events before closing
+            VirtualDesktopService.WindowMovedToDesktop -= OnWindowMovedToDesktop;
+
+            FlushAndClose();
+
+            LogService.Info($"Merged {tabCount} tabs from {sourceGuid} to {targetGuid}");
+        }
+
+        /// <summary>
+        /// DRAG-06: Cancel — move window back to original desktop.
+        /// DRAG-07: On failure, replace Go back with Retry + instruction text.
+        /// </summary>
+        private async void DragCancel_Click(object sender, RoutedEventArgs e)
+        {
+            if (_dragFromDesktopGuid is null) return;
+
+            var hwnd = new System.Windows.Interop.WindowInteropHelper(this).Handle;
+            bool success = VirtualDesktopService.TryMoveWindowToDesktop(hwnd, _dragFromDesktopGuid);
+
+            if (success)
+            {
+                // Clear pending move
+                await DatabaseService.DeletePendingMoveAsync(_desktopGuid);
+                _isMisplaced = false;
+
+                // Hide overlay with fade-out
+                await HideDragOverlayAsync();
+
+                LogService.Info($"Cancel: moved window back to {_dragFromDesktopGuid}");
+            }
+            else
+            {
+                // DRAG-07: Cancel failed — show retry + instruction
+                DragCancelBtn.Content = "Retry";
+                DragCancelFailureText.Visibility = Visibility.Visible;
+
+                LogService.Warn($"Cancel failed: could not move window back to {_dragFromDesktopGuid}");
+            }
+        }
+
+        /// <summary>
+        /// Fades out the drag overlay over 150ms, then collapses it and resets state.
+        /// </summary>
+        private async Task HideDragOverlayAsync()
+        {
+            var fadeOut = new System.Windows.Media.Animation.DoubleAnimation(1, 0, TimeSpan.FromMilliseconds(150))
+            {
+                EasingFunction = new System.Windows.Media.Animation.CubicEase
+                {
+                    EasingMode = System.Windows.Media.Animation.EasingMode.EaseIn
+                }
+            };
+
+            var tcs = new TaskCompletionSource<bool>();
+            fadeOut.Completed += (_, _) => tcs.SetResult(true);
+            DragOverlay.BeginAnimation(OpacityProperty, fadeOut);
+            await tcs.Task;
+
+            DragOverlay.Visibility = Visibility.Collapsed;
+            _isDragOverlayActive = false;
+            _dragFromDesktopGuid = null;
+            _dragToDesktopGuid = null;
+            _dragToDesktopName = null;
+        }
+
+        /// <summary>
+        /// DRAG-10: When a misplaced window gains focus, auto-show the lock overlay.
+        /// A window is misplaced when its stored desktop GUID doesn't match the desktop
+        /// it's currently on (detected via COM).
+        /// </summary>
+        private async void OnWindowActivated_CheckMisplaced(object? sender, EventArgs e)
+        {
+            if (_isDragOverlayActive) return; // Already showing overlay
+            if (!VirtualDesktopService.IsAvailable) return;
+
+            try
+            {
+                var hwnd = new System.Windows.Interop.WindowInteropHelper(this).Handle;
+                if (hwnd == IntPtr.Zero) return;
+
+                Guid currentDesktop = Interop.VirtualDesktopInterop.GetWindowDesktopId(hwnd);
+                string currentGuid = currentDesktop.ToString();
+
+                if (!currentGuid.Equals(_desktopGuid, StringComparison.OrdinalIgnoreCase))
+                {
+                    if (!_isMisplaced)
+                    {
+                        _isMisplaced = true;
+                        // Update title with "(misplaced)" badge
+                        string currentTitle = Title;
+                        if (!currentTitle.Contains("(misplaced)"))
+                        {
+                            Title = currentTitle + " (misplaced)";
+                        }
+                    }
+
+                    // Auto-show lock overlay
+                    string toName = "";
+                    var desktops = VirtualDesktopService.GetAllDesktops();
+                    var targetInfo = desktops.FirstOrDefault(d =>
+                        d.Id.ToString().Equals(currentGuid, StringComparison.OrdinalIgnoreCase));
+                    toName = targetInfo?.Name ?? "";
+
+                    await ShowDragOverlayAsync(_desktopGuid, currentGuid, toName);
+                }
+                else if (_isMisplaced)
+                {
+                    // Window is now on correct desktop — clear misplaced state
+                    _isMisplaced = false;
+                    string currentTitle = Title;
+                    if (currentTitle.Contains(" (misplaced)"))
+                    {
+                        Title = currentTitle.Replace(" (misplaced)", "");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                LogService.Warn($"Misplaced check failed: {ex.Message}");
+            }
         }
     }
 }

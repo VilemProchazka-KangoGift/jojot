@@ -531,6 +531,81 @@
                 </StackPanel>
             </Border>
         </Grid>
+        <!-- Phase 10: Lock overlay for window drag resolution (DRAG-03) -->
+        <Grid x:Name="DragOverlay" Visibility="Collapsed" Panel.ZIndex="200"
+              Grid.ColumnSpan="3">
+            <!-- Semi-transparent backdrop (DRAG-03: rgba 0,0,0,0.65) -->
+            <Border Background="#A6000000" />
+
+            <!-- Centered card -->
+            <Border Background="{DynamicResource c-win-bg}"
+                    CornerRadius="8" Padding="32,24"
+                    HorizontalAlignment="Center" VerticalAlignment="Center"
+                    MinWidth="360" MaxWidth="480">
+                <Border.Effect>
+                    <DropShadowEffect BlurRadius="20" Opacity="0.3" ShadowDepth="6" Direction="270"/>
+                </Border.Effect>
+                <StackPanel>
+                    <!-- Context message -->
+                    <TextBlock x:Name="DragOverlayTitle"
+                               FontSize="18" FontWeight="SemiBold"
+                               Foreground="{DynamicResource c-text-primary}"
+                               TextWrapping="Wrap"
+                               HorizontalAlignment="Center"
+                               Margin="0,0,0,8" />
+                    <TextBlock x:Name="DragOverlayMessage"
+                               FontSize="13"
+                               Foreground="{DynamicResource c-text-muted}"
+                               TextWrapping="Wrap"
+                               HorizontalAlignment="Center"
+                               Margin="0,0,0,24" />
+
+                    <!-- Action buttons -->
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,8">
+                        <Button x:Name="DragKeepHereBtn"
+                                Content="Keep here"
+                                Click="DragKeepHere_Click"
+                                Padding="16,8" Margin="0,0,8,0"
+                                FontSize="13"
+                                Background="{DynamicResource c-accent}"
+                                Foreground="White"
+                                BorderThickness="0"
+                                Cursor="Hand" />
+                        <Button x:Name="DragMergeBtn"
+                                Content="Merge notes"
+                                Click="DragMerge_Click"
+                                Padding="16,8" Margin="0,0,8,0"
+                                FontSize="13"
+                                Background="{DynamicResource c-tab-bg}"
+                                Foreground="{DynamicResource c-text-primary}"
+                                BorderBrush="{DynamicResource c-border}"
+                                BorderThickness="1"
+                                Cursor="Hand" />
+                        <Button x:Name="DragCancelBtn"
+                                Content="Go back"
+                                Click="DragCancel_Click"
+                                Padding="16,8"
+                                FontSize="13"
+                                Background="{DynamicResource c-tab-bg}"
+                                Foreground="{DynamicResource c-text-primary}"
+                                BorderBrush="{DynamicResource c-border}"
+                                BorderThickness="1"
+                                Cursor="Hand" />
+                    </StackPanel>
+
+                    <!-- Cancel failure instruction (DRAG-07) — hidden by default -->
+                    <TextBlock x:Name="DragCancelFailureText"
+                               Text="If retry fails, move this window back manually via Win+Tab"
+                               FontSize="11"
+                               Foreground="{DynamicResource c-text-muted}"
+                               FontStyle="Italic"
+                               TextWrapping="Wrap"
+                               HorizontalAlignment="Center"
+                               Visibility="Collapsed"
+                               Margin="0,8,0,0" />
+                </StackPanel>
+            </Border>
+        </Grid>
         <!-- Phase 9: Preferences slide-in panel (PREF-01 through PREF-05) -->
         <Border x:Name="PreferencesPanel" Width="300" HorizontalAlignment="Right"
                 Background="{DynamicResource c-win-bg}" BorderBrush="{DynamicResource c-border}"

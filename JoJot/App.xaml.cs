@@ -120,9 +120,8 @@ namespace JoJot
             await VirtualDesktopService.MatchSessionsAsync();
             await VirtualDesktopService.EnsureCurrentDesktopSessionAsync();
 
-            // ── Step 6: Pending moves check (stub for Phase 10 crash recovery) ─
-            // Phase 10: await DatabaseService.ResolvePendingMovesAsync();
-            LogService.Info("Pending moves check: skipped (Phase 10)");
+            // ── Step 6: Pending moves check (Phase 10 crash recovery: DRAG-09) ─
+            await ResolvePendingMovesAsync();
 
             // ── Step 7: Welcome tab on first launch ───────────────────────────
             await StartupService.CreateWelcomeTabIfFirstLaunch();
@@ -257,6 +256,14 @@ namespace JoJot
             await window.InitializePreferencesAsync();
 
             WindowActivationHelper.ActivateWindow(window);
+
+            // Phase 10 (DRAG-09): Show recovery toast if crash recovery happened
+            if (_pendingRecoveryToast)
+            {
+                _pendingRecoveryToast = false;
+                window.ShowInfoToast("Recovered window from interrupted move");
+            }
+
             return window;
         }
 
@@ -326,6 +333,97 @@ namespace JoJot
                 return;
             }
             await CreateWindowForDesktop(orphanGuid);
+        }
+
+        // ─── Phase 10: Window Drag Helper Methods ─────────────────────────────
+
+        private bool _pendingRecoveryToast;
+
+        /// <summary>
+        /// Checks if a window exists for the given desktop GUID (Phase 10: DRAG-05 merge check).
+        /// </summary>
+        public bool HasWindowForDesktop(string desktopGuid)
+        {
+            return _windows.ContainsKey(desktopGuid);
+        }
+
+        /// <summary>
+        /// Updates the window registry when a window is reparented to a new desktop (Phase 10: DRAG-04).
+        /// Removes the old GUID key and adds the new one pointing to the same MainWindow.
+        /// </summary>
+        public void ReparentWindow(string oldGuid, string newGuid)
+        {
+            if (_windows.TryGetValue(oldGuid, out var window))
+            {
+                _windows.Remove(oldGuid);
+                _windows[newGuid] = window;
+                LogService.Info($"Window reparented in registry: {oldGuid} -> {newGuid}");
+            }
+        }
+
+        /// <summary>
+        /// Tells the target window to reload its tabs from database (Phase 10: DRAG-05 merge).
+        /// </summary>
+        public void ReloadWindowTabs(string desktopGuid)
+        {
+            if (_windows.TryGetValue(desktopGuid, out var window))
+            {
+                _ = window.LoadTabsAsync();
+            }
+        }
+
+        /// <summary>
+        /// Shows a merge completion toast on the target window (Phase 10: DRAG-05).
+        /// </summary>
+        public void ShowMergeToast(string desktopGuid, int tabCount, string fromDesktopName)
+        {
+            if (_windows.TryGetValue(desktopGuid, out var window))
+            {
+                window.ShowInfoToast($"Merged {tabCount} notes from {fromDesktopName}");
+            }
+        }
+
+        /// <summary>
+        /// Phase 10 (DRAG-09): Resolves any pending_moves rows left by a crash during a window drag.
+        /// Reads all pending moves and attempts to restore windows to their origin desktop.
+        /// Called during startup after session matching, before window creation.
+        /// </summary>
+        private async Task ResolvePendingMovesAsync()
+        {
+            var moves = await DatabaseService.GetPendingMovesAsync();
+            if (moves.Count == 0)
+            {
+                LogService.Info("Pending moves check: none found");
+                return;
+            }
+
+            LogService.Info($"Pending moves check: {moves.Count} unresolved move(s) found \u2014 recovering");
+            bool recovered = false;
+
+            foreach (var move in moves)
+            {
+                LogService.Info($"Recovering pending move: window={move.WindowId}, from={move.FromDesktop}, to={move.ToDesktop}");
+                if (move.ToDesktop is not null && !move.FromDesktop.Equals(move.ToDesktop, StringComparison.OrdinalIgnoreCase))
+                {
+                    try
+                    {
+                        await DatabaseService.MigrateTabsPreservePinsAsync(move.ToDesktop, move.FromDesktop);
+                        recovered = true;
+                    }
+                    catch (Exception ex)
+                    {
+                        LogService.Error($"Failed to recover pending move {move.Id}: {ex.Message}");
+                    }
+                }
+            }
+
+            await DatabaseService.DeleteAllPendingMovesAsync();
+
+            if (recovered)
+            {
+                _pendingRecoveryToast = true;
+            }
+            LogService.Info("Pending moves check: recovery complete");
         }
 
         /// <summary>

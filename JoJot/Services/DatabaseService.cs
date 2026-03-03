@@ -1043,5 +1043,99 @@ namespace JoJot.Services
                 _writeLock.Release();
             }
         }
+
+        /// <summary>
+        /// Updates all notes from one desktop_guid to another, preserving sort_order and pin state.
+        /// Used by DRAG-04 (reparent/keep here) — different from MigrateTabsAsync which unpins.
+        /// </summary>
+        public static async Task MigrateNotesDesktopGuidAsync(string fromGuid, string toGuid)
+        {
+            await _writeLock.WaitAsync();
+            try
+            {
+                var cmd = _connection!.CreateCommand();
+                cmd.CommandText = "UPDATE notes SET desktop_guid = @to WHERE desktop_guid = @from;";
+                cmd.Parameters.AddWithValue("@to", toGuid);
+                cmd.Parameters.AddWithValue("@from", fromGuid);
+                int affected = await cmd.ExecuteNonQueryAsync();
+                LogService.Info($"Reparented {affected} notes from {fromGuid} to {toGuid}");
+            }
+            catch (Exception ex)
+            {
+                LogService.Error($"MigrateNotesDesktopGuidAsync failed (from={fromGuid}, to={toGuid})", ex);
+                throw;
+            }
+            finally
+            {
+                _writeLock.Release();
+            }
+        }
+
+        /// <summary>
+        /// Migrates tabs from source to target desktop, appending at bottom of target's tab list.
+        /// UNLIKE MigrateTabsAsync, this preserves pin state — pinned tabs stay pinned (DRAG-05).
+        /// </summary>
+        public static async Task MigrateTabsPreservePinsAsync(string sourceGuid, string targetGuid)
+        {
+            await _writeLock.WaitAsync();
+            try
+            {
+                // Get max sort_order on target
+                var maxCmd = _connection!.CreateCommand();
+                maxCmd.CommandText = "SELECT COALESCE(MAX(sort_order), 0) FROM notes WHERE desktop_guid = @guid;";
+                maxCmd.Parameters.AddWithValue("@guid", targetGuid);
+                var maxResult = await maxCmd.ExecuteScalarAsync();
+                int maxSortOrder = Convert.ToInt32(maxResult);
+
+                // Move notes: update desktop_guid and reassign sort_order, but keep pinned state
+                var migrateCmd = _connection.CreateCommand();
+                migrateCmd.CommandText = @"
+                    UPDATE notes
+                    SET desktop_guid = @target,
+                        sort_order = @base + sort_order
+                    WHERE desktop_guid = @source;";
+                migrateCmd.Parameters.AddWithValue("@target", targetGuid);
+                migrateCmd.Parameters.AddWithValue("@source", sourceGuid);
+                migrateCmd.Parameters.AddWithValue("@base", maxSortOrder + 1);
+                await migrateCmd.ExecuteNonQueryAsync();
+
+                LogService.Info($"Migrated tabs (preserving pins) from {sourceGuid} to {targetGuid} (base sort_order: {maxSortOrder + 1})");
+            }
+            catch (Exception ex)
+            {
+                LogService.Error($"MigrateTabsPreservePinsAsync failed (source={sourceGuid}, target={targetGuid})", ex);
+                throw;
+            }
+            finally
+            {
+                _writeLock.Release();
+            }
+        }
+
+        /// <summary>
+        /// Updates a session's desktop_guid in app_state (DRAG-04 reparent).
+        /// </summary>
+        public static async Task UpdateSessionDesktopGuidAsync(string oldGuid, string newGuid)
+        {
+            await _writeLock.WaitAsync();
+            try
+            {
+                var cmd = _connection!.CreateCommand();
+                cmd.CommandText = "UPDATE app_state SET desktop_guid = @new WHERE desktop_guid = @old;";
+                cmd.Parameters.AddWithValue("@new", newGuid);
+                cmd.Parameters.AddWithValue("@old", oldGuid);
+                await cmd.ExecuteNonQueryAsync();
+                LogService.Info($"Updated session GUID: {oldGuid} -> {newGuid}");
+            }
+            catch (Exception ex)
+            {
+                LogService.Error($"UpdateSessionDesktopGuidAsync failed (old={oldGuid}, new={newGuid})", ex);
+                throw;
+            }
+            finally
+            {
+                _writeLock.Release();
+            }
+        }
     }
 }
