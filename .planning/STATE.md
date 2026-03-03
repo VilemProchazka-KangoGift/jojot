@@ -22,10 +22,10 @@ See: .planning/PROJECT.md (updated 2026-03-03)
 
 ## Current Position
 
-Phase: 10 of 10 (Window Drag & Crash Recovery) — COMPLETE
-Plan: 2/2
+Phase: 10.1 of 10.2 (Gap Closure — Integration Fixes) — COMPLETE
+Plan: 1/1
 Status: Phase complete
-Last activity: 2026-03-03 — Phase 10 complete: window drag detection, lock overlay, resolution flows, crash recovery (2 plans)
+Last activity: 2026-03-03 — Phase 10.1 complete: OnClosing deletion commit, FlushAndClose await, FlushAsync before drag, THME-02 checkbox (1 plan)
 
 Progress: [████████████████████] 100%
 

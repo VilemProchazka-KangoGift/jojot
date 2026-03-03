@@ -24,7 +24,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 8.2: Gap Closure — Verification** (INSERTED) - Missing VERIFICATION.md for Phases 6 and 7 (completed 2026-03-03)
 - [x] **Phase 9: File Drop, Preferences, Hotkeys & Keyboard** - File drop with content inspection, preferences dialog, global hotkey, all keyboard shortcuts (completed 2026-03-03)
 - [x] **Phase 10: Window Drag & Crash Recovery** - Inter-desktop drag detection, lock overlay, reparent/merge/cancel flow, pending_moves crash recovery (completed 2026-03-03)
-- [ ] **Phase 10.1: Gap Closure — Integration Fixes** (INSERTED) - OnClosing pending deletion commit, FlushAsync before drag detection, FlushAndClose await fix, THME-02 checkbox
+- [x] **Phase 10.1: Gap Closure — Integration Fixes** (INSERTED) - OnClosing pending deletion commit, FlushAsync before drag detection, FlushAndClose await fix, THME-02 checkbox (completed 2026-03-03)
 - [ ] **Phase 10.2: Gap Closure — Verification** (INSERTED) - Missing VERIFICATION.md for Phases 9 and 10, REQUIREMENTS.md checkbox updates
 
 ## Phase Details
@@ -229,10 +229,10 @@ Plans:
   2. ShowDragOverlayAsync calls FlushAsync before InsertPendingMoveAsync — no unsaved content window during drag
   3. FlushAndClose awaits CommitPendingDeletionAsync instead of fire-and-forget — deletion completes before Exit
   4. THME-02 checkbox in REQUIREMENTS.md changed from `[ ] Pending` to `[x] Complete`
-**Plans**: TBD
+**Plans**: 1
 
 Plans:
-- [ ] 10.1-01: TBD
+- [x] 10.1-01: Integration fixes (OnClosing deletion commit, FlushAndClose await, FlushAsync before drag, THME-02 checkbox)
 
 ### Phase 10.2: Gap Closure — Verification (INSERTED)
 **Goal**: Create missing VERIFICATION.md files for Phases 9 and 10, formally verifying all 26 requirements that SUMMARY files already confirm as complete. Update REQUIREMENTS.md checkboxes.
@@ -268,5 +268,5 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 8.1 -> 
 | 8.2. Gap Closure — Verification | 2/2 | Complete    | 2026-03-03 |
 | 9. File Drop, Preferences, Hotkeys & Keyboard | 3/3 | Complete | 2026-03-03 |
 | 10. Window Drag & Crash Recovery | 2/2 | Complete | 2026-03-03 |
-| 10.1. Gap Closure — Integration Fixes | 0/1 | Not Started | — |
+| 10.1. Gap Closure — Integration Fixes | 1/1 | Complete | 2026-03-03 |
 | 10.2. Gap Closure — Verification | 0/1 | Not Started | — |
