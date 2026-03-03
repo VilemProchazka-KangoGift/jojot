@@ -29,6 +29,9 @@ namespace JoJot
 
         // ─── Drag-to-reorder state ──────────────────────────────────────────────
         private bool _isDragging;
+
+        // ─── Tab list rebuild guard (BUG-01, BUG-02) ────────────────────────────
+        private bool _isRebuildingTabList;
         private System.Windows.Point _dragStartPoint;
         private ListBoxItem? _dragItem;
         private NoteTab? _dragTab;
@@ -187,6 +190,7 @@ namespace JoJot
         private void RebuildTabList()
         {
             TabList.SelectionChanged -= TabList_SelectionChanged;
+            _isRebuildingTabList = true;
             TabList.Items.Clear();
 
             bool hasPinned = false;
@@ -223,6 +227,7 @@ namespace JoJot
             }
 
             TabList.SelectionChanged += TabList_SelectionChanged;
+            _isRebuildingTabList = false;
 
             // Re-select active tab if still visible
             if (_activeTab != null)
@@ -428,6 +433,8 @@ namespace JoJot
         /// </summary>
         private async void TabList_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
+            if (_isRebuildingTabList) return;
+
             // Remove accent from deselected items
             foreach (var removed in e.RemovedItems)
             {
@@ -1072,7 +1079,6 @@ namespace JoJot
             await DatabaseService.UpdateNoteSortOrdersAsync(_tabs.Select(t => (t.Id, t.SortOrder)));
 
             RebuildTabList();
-            SelectTabByNote(tab);
             UpdateToolbarState(); // Phase 7: refresh pin icon
         }
 
