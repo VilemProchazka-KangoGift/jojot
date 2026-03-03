@@ -3,6 +3,19 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
+last_updated: "2026-03-03T14:38:12.196Z"
+progress:
+  total_phases: 11
+  completed_phases: 9
+  total_plans: 22
+  completed_plans: 22
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
+status: unknown
 last_updated: "2026-03-03T13:26:20.072Z"
 progress:
   total_phases: 8
@@ -67,6 +80,7 @@ Progress: [████████████████] 80%
 - Trend: Phase 8 Plan 03 longer due to full orphan recovery system (DB methods + flyout panel + badge)
 
 *Updated after each plan completion*
+| Phase 08.1-gap-closure-code-fixes P01 | 1 | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -164,6 +178,8 @@ Recent decisions affecting current work:
 - [08-03]: DeleteSessionAndNotesAsync safe to call after MigrateTabsAsync — notes already moved, deletes 0 notes + session row only
 - [08-03]: RefreshAfterOrphanAction always calls LoadTabsAsync to cover Adopt case (new tabs visible) and general state consistency
 - [08-03]: UpdateOrphanBadge is public — App.xaml.cs calls it at startup step 9.1 after window creation
+- [Phase 08.1-01]: TabList_SelectionChanged made async void — WPF event handler pattern, FlushAsync stops timer internally removing need for explicit Stop()
+- [Phase 08.1-01]: Open button in orphan recovery uses same action/cleanup pattern as Adopt/Delete: await action -> RemoveOrphanGuid -> RefreshAfterOrphanAction
 
 ### Pending Todos
 
@@ -178,5 +194,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-03
-Stopped at: Phase 8.1 context gathered
-Resume file: .planning/phases/08.1-gap-closure-code-fixes/08.1-CONTEXT.md
+Stopped at: Completed 08.1-01-PLAN.md
+Resume file: .planning/phases/08.1-gap-closure-code-fixes/8.1-01-SUMMARY.md

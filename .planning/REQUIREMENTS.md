@@ -84,7 +84,7 @@ Requirements for initial release. Each maps to roadmap phases.
 
 - [x] **EDIT-01**: Plain-text editor with monospace font (Consolas, default 13pt), word-wrap on, no horizontal scrollbar
 - [x] **EDIT-02**: Autosave with configurable debounce (default 500ms) to SQLite; updated_at set on every write
-- [ ] **EDIT-03**: Write frequency cap: new write cannot be scheduled sooner than debounce interval after previous write completed
+- [x] **EDIT-03**: Write frequency cap: new write cannot be scheduled sooner than debounce interval after previous write completed
 - [x] **EDIT-04**: On app close: flush immediately, no data loss
 - [x] **EDIT-05**: On tab restore: reload content, cursor position, and scroll offset from database
 - [x] **EDIT-06**: Copy behavior: selection copied normally; no selection copies entire note content silently
@@ -128,7 +128,7 @@ Requirements for initial release. Each maps to roadmap phases.
 
 - [x] **ORPH-01**: Sessions with no desktop match become orphaned (stay in DB until user acts)
 - [x] **ORPH-02**: Recovery panel lists orphaned sessions with desktop name, tab count, last updated date
-- [ ] **ORPH-03**: Actions per session: Adopt into current desktop (merge tabs), Open as new window, Delete
+- [x] **ORPH-03**: Actions per session: Adopt into current desktop (merge tabs), Open as new window, Delete
 - [x] **ORPH-04**: Non-blocking badge on menu button when orphaned sessions exist (no dialog on startup)
 
 ### Window Drag (Desktop Transfer)
@@ -270,7 +270,7 @@ Deferred to future release. Tracked but not in current roadmap.
 | TOST-06 | Phase 5 | Complete |
 | EDIT-01 | Phase 6 | Complete |
 | EDIT-02 | Phase 6 | Complete |
-| EDIT-03 | Phase 8.1 | Pending |
+| EDIT-03 | Phase 8.1 | Complete |
 | EDIT-04 | Phase 6 | Complete |
 | EDIT-05 | Phase 6 | Complete |
 | EDIT-06 | Phase 6 | Complete |
@@ -299,7 +299,7 @@ Deferred to future release. Tracked but not in current roadmap.
 | CTXM-02 | Phase 8 Plan 01 | Complete |
 | ORPH-01 | Phase 8 Plan 03 | Complete |
 | ORPH-02 | Phase 8 Plan 03 | Complete |
-| ORPH-03 | Phase 8.1 | Pending |
+| ORPH-03 | Phase 8.1 | Complete |
 | ORPH-04 | Phase 8 Plan 03 | Complete |
 | DROP-01 | Phase 9 | Pending |
 | DROP-02 | Phase 9 | Pending |
