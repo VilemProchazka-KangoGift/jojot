@@ -18,7 +18,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 4: Tab Management** - Tab panel, labels, reorder, rename, search, pin, clone, new/delete with focus rules (completed 2026-03-02)
 - [x] **Phase 5: Deletion & Toast** - Tab deletion triggers, deletion toast with 4-second undo, bulk delete support (completed 2026-03-02)
 - [x] **Phase 6: Editor & Undo** - Plain-text editor, autosave with debounce, custom two-tier undo/redo stack, save as TXT, copy behavior (completed 2026-03-03)
-- [ ] **Phase 7: Theming & Toolbar** - Light/Dark/System themes via ResourceDictionary, all 10 color tokens, toolbar with all actions
+- [x] **Phase 7: Theming & Toolbar** - Light/Dark/System themes via ResourceDictionary, all 10 color tokens, toolbar with all actions (completed 2026-03-03)
 - [ ] **Phase 8: Menus, Context Actions & Orphaned Sessions** - Window menu, tab context menu, bulk delete operations, orphaned session recovery panel
 - [ ] **Phase 9: File Drop, Preferences, Hotkeys & Keyboard** - File drop with content inspection, preferences dialog, global hotkey, all keyboard shortcuts
 - [ ] **Phase 10: Window Drag & Crash Recovery** - Inter-desktop drag detection, lock overlay, reparent/merge/cancel flow, pending_moves crash recovery
@@ -133,11 +133,11 @@ Plans:
   2. Setting Windows to dark mode with JoJot on System theme causes JoJot to switch themes automatically
   3. All 10 color tokens are applied consistently across every UI element with no hardcoded colors remaining
   4. The toolbar shows Undo, Redo, Pin, Clone, Copy, Paste, Save as TXT, and Delete buttons; Delete is right-aligned in red at 70% opacity; all buttons have tooltips with shortcut info after 600ms
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 07-01: TBD
-- [ ] 07-02: TBD
+- [x] 07-01-PLAN.md — Theme infrastructure: LightTheme.xaml + DarkTheme.xaml ResourceDictionaries, ThemeService with Light/Dark/System switching, replace all hardcoded colors with DynamicResource
+- [x] 07-02-PLAN.md — Toolbar: 8 action buttons with Segoe Fluent Icons above editor, button grouping with separators, delete right-aligned in red, UpdateToolbarState
 
 ### Phase 8: Menus, Context Actions & Orphaned Sessions
 **Goal**: Users can access window-level operations via the hamburger menu, tab-level operations via right-click context menu, and recover orphaned desktop sessions from the recovery panel.
@@ -202,7 +202,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 4. Tab Management | 3/3 | Complete | 2026-03-02 |
 | 5. Deletion & Toast | 2/2 | Complete    | 2026-03-02 |
 | 6. Editor & Undo | 3/3 | Complete | 2026-03-03 |
-| 7. Theming & Toolbar | 0/TBD | Not started | - |
+| 7. Theming & Toolbar | 2/2 | Complete | 2026-03-03 |
 | 8. Menus, Context Actions & Orphaned Sessions | 0/TBD | Not started | - |
 | 9. File Drop, Preferences, Hotkeys & Keyboard | 0/TBD | Not started | - |
 | 10. Window Drag & Crash Recovery | 0/TBD | Not started | - |

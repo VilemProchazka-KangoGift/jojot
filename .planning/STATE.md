@@ -2,26 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: unknown
-last_updated: "2026-03-02T22:38:01.237Z"
-progress:
-  total_phases: 5
-  completed_phases: 5
-  total_plans: 13
-  completed_plans: 13
----
-
----
-gsd_state_version: 1.0
-milestone: v1.0
-milestone_name: milestone
 status: in-progress
-last_updated: "2026-03-02T22:33:32Z"
+last_updated: "2026-03-03T09:12:38Z"
 progress:
   total_phases: 10
-  completed_phases: 5
-  total_plans: 13
-  completed_plans: 13
+  completed_phases: 7
+  total_plans: 18
+  completed_plans: 18
 ---
 
 # Project State
@@ -31,23 +18,23 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-02)
 
 **Core value:** Instant note capture tied to your virtual desktop context — switch desktops, switch notes, zero friction.
-**Current focus:** Phase 7 — Theming & Toolbar
+**Current focus:** Phase 8 — Menus, Context Actions & Orphaned Sessions
 
 ## Current Position
 
-Phase: 7 of 10 (Theming & Toolbar)
+Phase: 8 of 10 (Menus, Context Actions & Orphaned Sessions)
 Plan: 0 of TBD in current phase — NOT STARTED
-Status: Phase 6 complete — ready for Phase 7
-Last activity: 2026-03-03 — Phase 6 Editor & Undo complete (3 plans)
+Status: Phase 7 complete — ready for Phase 8
+Last activity: 2026-03-03 — Phase 7 Theming & Toolbar complete (2 plans)
 
-Progress: [██████████] 60%
+Progress: [██████████████] 70%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 16
-- Average duration: ~4.0 min
-- Total execution time: ~57 min
+- Total plans completed: 18
+- Average duration: ~3.8 min
+- Total execution time: ~67 min
 
 **By Phase:**
 
@@ -59,10 +46,11 @@ Progress: [██████████] 60%
 | 4. Tab Management | 3 | ~13 min | ~4.3 min |
 | 5. Deletion & Toast | 2 | ~10 min | ~5.0 min |
 | 6. Editor & Undo | 3 | ~11 min | ~3.7 min |
+| 7. Theming & Toolbar | 2 | ~10 min | ~5.0 min |
 
 **Recent Trend:**
-- Last 5 plans: 05-01 (~4 min), 05-02 (~6 min), 06-01 (~4 min), 06-02 (~5 min), 06-03 (~2 min)
-- Trend: Phase 6 plans efficient (service classes + UI wiring)
+- Last 5 plans: 06-01 (~4 min), 06-02 (~5 min), 06-03 (~2 min), 07-01 (~5 min), 07-02 (~5 min)
+- Trend: Phase 7 plans moderate complexity (theme infrastructure + toolbar UI)
 
 *Updated after each plan completion*
 
@@ -137,6 +125,15 @@ Recent decisions affecting current work:
 - [06-03]: SaveFileDialog.InitialDirectory tracked per-session in _lastSaveDirectory field (resets on launch)
 - [06-03]: SanitizeFilename replaces Path.GetInvalidFileNameChars() with underscore, trims trailing dots/spaces
 
+- [07-01]: 12 color tokens (not just 10) — added c-toast-bg and c-toast-fg for toast overlay since toast colors differ from main UI in both themes
+- [07-01]: SetResourceReference preferred over GetBrush for code-behind color assignments — ensures instant update on theme switch
+- [07-01]: ApplyActiveHighlight changed from static to instance method — needed FindResource access for theme-aware accent brush
+- [07-01]: CaretBrush added to ContentEditor — ensures cursor is visible in both light and dark themes
+- [07-02]: Clone uses glyph \uF413 instead of same glyph as Copy (\uE8C8) — visually distinct in toolbar
+- [07-02]: UpdateToolbarState called on tab switch, undo/redo, and pin toggle — not on every text change (too frequent)
+- [07-02]: Toolbar copy handler duplicates EDIT-06 behavior (selection or full content) rather than depending on keyboard shortcut path
+- [07-02]: ApplicationCommands.Paste used for toolbar paste — focuses editor first to ensure correct paste target
+
 ### Pending Todos
 
 None yet.
@@ -150,5 +147,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-03
-Stopped at: Phase 7 context gathered — warm white/true dark palette, Segoe Fluent Icons toolbar, instant theme switching
-Resume file: .planning/phases/07-theming-toolbar/07-CONTEXT.md
+Stopped at: Phase 7 complete — theme infrastructure + toolbar executed, verified, roadmap updated
+Resume file: .planning/phases/07-theming-toolbar/07-02-SUMMARY.md
