@@ -166,10 +166,10 @@ Plans:
 **Success Criteria** (what must be TRUE):
   1. The orphan recovery panel shows Adopt, Open, and Delete buttons; clicking Open calls App.OpenWindowForOrphanAsync and creates a new window for the orphaned session
   2. Tab switching calls AutosaveService.FlushAsync instead of bypassing the service, keeping frequency cap state accurate
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
-- [ ] 8.1-01: TBD
+- [ ] 8.1-01-PLAN.md — ORPH-03 Open button in recovery panel, EDIT-03 FlushAsync on tab switch, MenuRecover_Click docstring fix
 
 ### Phase 8.2: Gap Closure — Verification (INSERTED)
 **Goal**: Create missing VERIFICATION.md files for Phases 6 and 7, formally verifying all 22 requirements that SUMMARY files already confirm as complete.
@@ -232,7 +232,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 8.1 -> 
 | 6. Editor & Undo | 3/3 | Complete | 2026-03-03 |
 | 7. Theming & Toolbar | 2/2 | Complete | 2026-03-03 |
 | 8. Menus, Context Actions & Orphaned Sessions | 3/3 | Complete | 2026-03-03 |
-| 8.1. Gap Closure — Code Fixes | 0/TBD | Not started | - |
+| 8.1. Gap Closure — Code Fixes | 0/1 | Planned | - |
 | 8.2. Gap Closure — Verification | 0/TBD | Not started | - |
 | 9. File Drop, Preferences, Hotkeys & Keyboard | 0/TBD | Not started | - |
 | 10. Window Drag & Crash Recovery | 0/TBD | Not started | - |
