@@ -122,6 +122,37 @@
                      ScrollViewer.HorizontalScrollBarVisibility="Disabled"/>
         </DockPanel>
 
+        <!-- Recovery flyout panel (Phase 8: ORPH-02, ORPH-03) -->
+        <Border x:Name="RecoveryPanel" Background="{DynamicResource c-sidebar-bg}"
+                BorderBrush="{DynamicResource c-border}" BorderThickness="0,0,1,0"
+                Visibility="Collapsed" Panel.ZIndex="10">
+            <Border.RenderTransform>
+                <TranslateTransform x:Name="RecoveryPanelTranslate" X="-180"/>
+            </Border.RenderTransform>
+            <DockPanel>
+                <!-- Header -->
+                <Border DockPanel.Dock="Top" Padding="10,8" BorderThickness="0,0,0,1"
+                        BorderBrush="{DynamicResource c-border}">
+                    <Grid>
+                        <TextBlock Text="Recover Sessions" FontSize="14" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource c-text-primary}" VerticalAlignment="Center"/>
+                        <Button x:Name="RecoveryCloseButton" Content="&#xE711;"
+                                FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                FontSize="12" HorizontalAlignment="Right"
+                                Style="{StaticResource ToolbarButtonStyle}"
+                                Click="RecoveryClose_Click"/>
+                    </Grid>
+                </Border>
+
+                <!-- Session list (scrollable) -->
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                              Padding="8,4">
+                    <StackPanel x:Name="RecoverySessionList"/>
+                </ScrollViewer>
+            </DockPanel>
+        </Border>
+        </Grid>
+
         <!-- Separator (Column 1) -->
         <Border Grid.Column="1" Background="{DynamicResource c-border}"/>
 

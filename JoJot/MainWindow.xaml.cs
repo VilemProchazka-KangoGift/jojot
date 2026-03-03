@@ -41,6 +41,9 @@ namespace JoJot
         // ─── Confirmation dialog state (Phase 8) ──────────────────────────
         private Action? _confirmAction;
 
+        // ─── Recovery panel state (Phase 8: ORPH-02) ──────────────────────
+        private bool _recoveryPanelOpen;
+
         // ─── Soft-delete / toast state (Phase 5) ────────────────────────────────
         private record PendingDeletion(
             List<NoteTab> Tabs,
@@ -1832,6 +1835,14 @@ namespace JoJot
         }
 
         private void ShowRecoveryPanel() { /* Wired in Plan 03 */ }
+
+        /// <summary>
+        /// Closes the recovery flyout panel (ORPH-03 — wired in Plan 03).
+        /// </summary>
+        private void RecoveryClose_Click(object sender, RoutedEventArgs e)
+        {
+            RecoveryPanel.Visibility = Visibility.Collapsed;
+        }
 
         /// <summary>
         /// Preferences — stub until Phase 9 (PREF-01).
