@@ -54,25 +54,25 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| BUG-01 | — | Pending |
-| BUG-02 | — | Pending |
-| BUG-03 | — | Pending |
-| TABUX-01 | — | Pending |
-| TABUX-02 | — | Pending |
-| TABUX-03 | — | Pending |
-| TABUX-04 | — | Pending |
-| TABUX-05 | — | Pending |
-| THEME-01 | — | Pending |
-| THEME-02 | — | Pending |
-| WIN-01 | — | Pending |
-| WIN-02 | — | Pending |
-| DIST-01 | — | Pending |
+| BUG-01 | Phase 11 | Pending |
+| BUG-02 | Phase 11 | Pending |
+| BUG-03 | Phase 11 | Pending |
+| TABUX-01 | Phase 12 | Pending |
+| TABUX-02 | Phase 12 | Pending |
+| TABUX-03 | Phase 12 | Pending |
+| TABUX-04 | Phase 12 | Pending |
+| TABUX-05 | Phase 12 | Pending |
+| THEME-01 | Phase 13 | Pending |
+| THEME-02 | Phase 13 | Pending |
+| WIN-01 | Phase 13 | Pending |
+| WIN-02 | Phase 13 | Pending |
+| DIST-01 | Phase 14 | Pending |
 
 **Coverage:**
 - v1.1 requirements: 13 total
-- Mapped to phases: 0
-- Unmapped: 13 ⚠️
+- Mapped to phases: 13
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-03-03*
-*Last updated: 2026-03-03 after initial definition*
+*Last updated: 2026-03-03 — traceability complete after roadmap creation*
