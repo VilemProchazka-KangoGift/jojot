@@ -184,5 +184,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-03
-Stopped at: Phase 9 complete, ready to plan Phase 10
-Resume file: None
+Stopped at: Phase 10 context gathered
+Resume file: .planning/phases/10-window-drag-crash-recovery/10-CONTEXT.md
