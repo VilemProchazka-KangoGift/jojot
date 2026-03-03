@@ -107,4 +107,4 @@ Spec documents (in `resources/`):
 | No confirmation dialogs for delete | Speed over safety; 4-second undo toast provides recovery path | -- Pending |
 
 ---
-*Last updated: 2026-03-03 after Phase 8.1*
+*Last updated: 2026-03-03 after Phase 8.2*
