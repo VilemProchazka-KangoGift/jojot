@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
@@ -33,6 +34,12 @@ namespace JoJot
         private NoteTab? _dragTab;
         private int _dragInsertIndex = -1;
         private Border? _dropIndicatorBorder;
+
+        // ─── Context menu state (Phase 8) ─────────────────────────────────────────
+        private Popup? _activeContextMenu;
+
+        // ─── Confirmation dialog state (Phase 8) ──────────────────────────
+        private Action? _confirmAction;
 
         // ─── Soft-delete / toast state (Phase 5) ────────────────────────────────
         private record PendingDeletion(
@@ -98,6 +105,9 @@ namespace JoJot
             // Phase 7: Delete button hover — opacity 0.7 → 1.0 (TOOL-02)
             ToolbarDelete.MouseEnter += (s, e) => DeleteIconText.Opacity = 1.0;
             ToolbarDelete.MouseLeave += (s, e) => DeleteIconText.Opacity = 0.7;
+
+            // Phase 8: Close submenu when hamburger menu closes (MENU-01)
+            HamburgerMenu.Closed += (s, e) => { DeleteOlderSubmenu.IsOpen = false; };
 
             // Phase 7: Initial toolbar state — all buttons disabled until tab selected
             UpdateToolbarState();
@@ -337,6 +347,14 @@ namespace JoJot
                     _ = DeleteTabAsync(tab);
                     e.Handled = true; // Prevent WPF auto-scroll on middle-click
                 }
+            };
+
+            // Right-click: show themed context menu (Phase 8: CTXM-01)
+            item.MouseRightButtonUp += (s, e) =>
+            {
+                var contextMenu = BuildTabContextMenu(tab, item);
+                contextMenu.IsOpen = true;
+                e.Handled = true;
             };
 
             return item;
@@ -1722,6 +1740,369 @@ namespace JoJot
                 PinIconText.Text = "\uE718"; // Pin
                 ToolbarPin.ToolTip = "Pin (Ctrl+P)";
             }
+        }
+
+        // ─── Hamburger Menu (Phase 8: MENU-01) ──────────────────────────────────
+
+        /// <summary>
+        /// Generic hover handler for themed menu item Borders (hover background highlight).
+        /// </summary>
+        private void MenuItem_MouseEnter(object sender, MouseEventArgs e)
+        {
+            if (sender is Border b) b.Background = GetBrush("c-hover-bg");
+        }
+
+        private void MenuItem_MouseLeave(object sender, MouseEventArgs e)
+        {
+            if (sender is Border b) b.Background = System.Windows.Media.Brushes.Transparent;
+        }
+
+        private void HamburgerButton_Click(object sender, RoutedEventArgs e)
+        {
+            HamburgerMenu.IsOpen = !HamburgerMenu.IsOpen;
+        }
+
+        /// <summary>
+        /// "Delete older than" submenu hover — shows submenu on hover.
+        /// </summary>
+        private void MenuDeleteOlder_MouseEnter(object sender, MouseEventArgs e)
+        {
+            if (sender is Border b) b.Background = GetBrush("c-hover-bg");
+            DeleteOlderSubmenu.IsOpen = true;
+        }
+
+        private void MenuDeleteOlder_MouseLeave(object sender, MouseEventArgs e)
+        {
+            if (sender is Border b) b.Background = System.Windows.Media.Brushes.Transparent;
+            // Don't close submenu here — let StaysOpen=false handle it or close when main menu closes
+        }
+
+        /// <summary>
+        /// "Delete older than" row click — submenu opens on hover; click is no-op.
+        /// </summary>
+        private void MenuDeleteOlder_Click(object sender, MouseButtonEventArgs e) { /* submenu opens on hover */ }
+
+        private void MenuDeleteOlder7_Click(object sender, MouseButtonEventArgs e)
+        {
+            HamburgerMenu.IsOpen = false;
+            DeleteOlderSubmenu.IsOpen = false;
+            _ = ConfirmAndDeleteOlderThanAsync(7);
+        }
+
+        private void MenuDeleteOlder14_Click(object sender, MouseButtonEventArgs e)
+        {
+            HamburgerMenu.IsOpen = false;
+            DeleteOlderSubmenu.IsOpen = false;
+            _ = ConfirmAndDeleteOlderThanAsync(14);
+        }
+
+        private void MenuDeleteOlder30_Click(object sender, MouseButtonEventArgs e)
+        {
+            HamburgerMenu.IsOpen = false;
+            DeleteOlderSubmenu.IsOpen = false;
+            _ = ConfirmAndDeleteOlderThanAsync(30);
+        }
+
+        private void MenuDeleteOlder90_Click(object sender, MouseButtonEventArgs e)
+        {
+            HamburgerMenu.IsOpen = false;
+            DeleteOlderSubmenu.IsOpen = false;
+            _ = ConfirmAndDeleteOlderThanAsync(90);
+        }
+
+        private void MenuDeleteExceptPinned_Click(object sender, MouseButtonEventArgs e)
+        {
+            HamburgerMenu.IsOpen = false;
+            _ = ConfirmAndDeleteExceptPinnedAsync();
+        }
+
+        private void MenuDeleteAll_Click(object sender, MouseButtonEventArgs e)
+        {
+            HamburgerMenu.IsOpen = false;
+            _ = ConfirmAndDeleteAllAsync();
+        }
+
+        /// <summary>
+        /// Recover sessions — stub until Plan 03 wires the recovery panel.
+        /// </summary>
+        private void MenuRecover_Click(object sender, MouseButtonEventArgs e)
+        {
+            HamburgerMenu.IsOpen = false;
+            ShowRecoveryPanel();
+        }
+
+        private void ShowRecoveryPanel() { /* Wired in Plan 03 */ }
+
+        /// <summary>
+        /// Preferences — stub until Phase 9 (PREF-01).
+        /// </summary>
+        private void MenuPreferences_Click(object sender, MouseButtonEventArgs e)
+        {
+            HamburgerMenu.IsOpen = false;
+            /* Phase 9: PREF-01 */
+        }
+
+        /// <summary>
+        /// Exit — flush all windows and terminate (PROC-06).
+        /// Uses Dispatcher.BeginInvoke so the menu closes before shutdown begins.
+        /// </summary>
+        private void MenuExit_Click(object sender, MouseButtonEventArgs e)
+        {
+            HamburgerMenu.IsOpen = false;
+            if (Application.Current is App app)
+            {
+                Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    ExitApplication(app);
+                }), System.Windows.Threading.DispatcherPriority.Background);
+            }
+        }
+
+        private static void ExitApplication(App app)
+        {
+            var windows = app.GetAllWindows();
+            foreach (var window in windows)
+            {
+                window.FlushAndClose();
+            }
+            Environment.Exit(0);
+        }
+
+        // ─── Bulk Delete Stubs (Phase 8: Plan 02 wires confirmation) ────────────
+
+        /// <summary>
+        /// Stub for "Delete older than N days" — confirmation dialog wired in Plan 02.
+        /// </summary>
+        private Task ConfirmAndDeleteOlderThanAsync(int days)
+        {
+            // Plan 02: wire confirmation dialog + filter tabs by age
+            return Task.CompletedTask;
+        }
+
+        /// <summary>
+        /// Stub for "Delete all except pinned" — confirmation dialog wired in Plan 02.
+        /// </summary>
+        private Task ConfirmAndDeleteExceptPinnedAsync()
+        {
+            // Plan 02: wire confirmation dialog
+            return Task.CompletedTask;
+        }
+
+        /// <summary>
+        /// Stub for "Delete all" — confirmation dialog wired in Plan 02.
+        /// </summary>
+        private Task ConfirmAndDeleteAllAsync()
+        {
+            // Plan 02: wire confirmation dialog
+            return Task.CompletedTask;
+        }
+
+        // ─── Confirmation Overlay (Phase 8: Plan 02 — MENU-03, MENU-04, MENU-05) ──
+
+        /// <summary>
+        /// Shows the confirmation overlay with a title and message.
+        /// The onConfirm action is called when the user clicks Delete.
+        /// </summary>
+        private void ShowConfirmation(string title, string message, Action onConfirm)
+        {
+            ConfirmTitle.Text = title;
+            ConfirmMessage.Text = message;
+            _confirmAction = onConfirm;
+            ConfirmationOverlay.Visibility = Visibility.Visible;
+            ConfirmCancelButton.Focus();
+        }
+
+        private void HideConfirmation()
+        {
+            ConfirmationOverlay.Visibility = Visibility.Collapsed;
+            _confirmAction = null;
+        }
+
+        /// <summary>
+        /// Backdrop click dismisses the confirmation overlay without deleting.
+        /// </summary>
+        private void ConfirmOverlayBackdrop_Click(object sender, MouseButtonEventArgs e)
+        {
+            HideConfirmation();
+        }
+
+        /// <summary>
+        /// Cancel button hides the confirmation overlay without deleting.
+        /// </summary>
+        private void ConfirmCancel_Click(object sender, RoutedEventArgs e)
+        {
+            HideConfirmation();
+        }
+
+        /// <summary>
+        /// Delete button executes the confirmed bulk delete action.
+        /// </summary>
+        private void ConfirmDelete_Click(object sender, RoutedEventArgs e)
+        {
+            HideConfirmation();
+            _confirmAction?.Invoke();
+        }
+
+        // ─── Tab Context Menu (Phase 8: CTXM-01, CTXM-02) ──────────────────────
+
+        /// <summary>
+        /// Builds a themed context menu Popup for a tab. Matches hamburger menu styling (CTXM-01).
+        /// Uses Popup instead of WPF ContextMenu for consistent theming.
+        /// </summary>
+        private Popup BuildTabContextMenu(NoteTab tab, ListBoxItem item)
+        {
+            // Close any existing context popup
+            if (_activeContextMenu != null) _activeContextMenu.IsOpen = false;
+
+            var popup = new Popup
+            {
+                StaysOpen = false,
+                AllowsTransparency = true,
+                Placement = PlacementMode.MousePoint,
+                HorizontalOffset = 0,
+                VerticalOffset = 0
+            };
+
+            var border = new Border
+            {
+                Background = GetBrush("c-sidebar-bg"),
+                BorderBrush = GetBrush("c-border"),
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(6),
+                Padding = new Thickness(4),
+                MinWidth = 200,
+                Effect = new System.Windows.Media.Effects.DropShadowEffect
+                {
+                    BlurRadius = 12, Opacity = 0.25, ShadowDepth = 4, Direction = 270
+                }
+            };
+
+            var stack = new StackPanel();
+
+            // Local helper to create a styled menu item Border
+            Border CreateCtxItem(string icon, string text, string? shortcut, Action onClick)
+            {
+                var b = new Border
+                {
+                    Padding = new Thickness(8, 6, 8, 6),
+                    Cursor = Cursors.Hand,
+                    Background = System.Windows.Media.Brushes.Transparent
+                };
+                b.MouseEnter += MenuItem_MouseEnter;
+                b.MouseLeave += MenuItem_MouseLeave;
+
+                var grid = new Grid();
+                grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(28) });
+                grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+                if (shortcut != null)
+                    grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+                var iconBlock = new TextBlock
+                {
+                    Text = icon,
+                    FontFamily = new System.Windows.Media.FontFamily("Segoe Fluent Icons, Segoe MDL2 Assets"),
+                    FontSize = 14,
+                    VerticalAlignment = VerticalAlignment.Center
+                };
+                iconBlock.SetResourceReference(TextBlock.ForegroundProperty, "c-toolbar-icon");
+                Grid.SetColumn(iconBlock, 0);
+                grid.Children.Add(iconBlock);
+
+                var textBlock = new TextBlock
+                {
+                    Text = text,
+                    FontSize = 13,
+                    VerticalAlignment = VerticalAlignment.Center
+                };
+                textBlock.SetResourceReference(TextBlock.ForegroundProperty, "c-text-primary");
+                Grid.SetColumn(textBlock, 1);
+                grid.Children.Add(textBlock);
+
+                if (shortcut != null)
+                {
+                    var shortcutBlock = new TextBlock
+                    {
+                        Text = shortcut,
+                        FontSize = 12,
+                        VerticalAlignment = VerticalAlignment.Center,
+                        Margin = new Thickness(16, 0, 0, 0)
+                    };
+                    shortcutBlock.SetResourceReference(TextBlock.ForegroundProperty, "c-text-muted");
+                    Grid.SetColumn(shortcutBlock, 2);
+                    grid.Children.Add(shortcutBlock);
+                }
+
+                b.Child = grid;
+                b.MouseLeftButtonDown += (s, e) => { popup.IsOpen = false; onClick(); };
+                return b;
+            }
+
+            // Rename
+            stack.Children.Add(CreateCtxItem("\uE8AC", "Rename", "F2", () =>
+            {
+                StartRename(item, tab);
+            }));
+
+            // Pin/Unpin (dynamic text based on tab state)
+            string pinText = tab.Pinned ? "Unpin" : "Pin";
+            string pinIcon = tab.Pinned ? "\uE77A" : "\uE718";
+            stack.Children.Add(CreateCtxItem(pinIcon, pinText, "Ctrl+P", () =>
+            {
+                _activeTab = tab;
+                SelectTabByNote(tab);
+                ToolbarPin_Click(this, new RoutedEventArgs());
+            }));
+
+            // Clone to new tab
+            stack.Children.Add(CreateCtxItem("\uF413", "Clone to new tab", "Ctrl+K", () =>
+            {
+                _activeTab = tab;
+                SelectTabByNote(tab);
+                ToolbarClone_Click(this, new RoutedEventArgs());
+            }));
+
+            // Save as TXT
+            stack.Children.Add(CreateCtxItem("\uE74E", "Save as TXT", "Ctrl+S", () =>
+            {
+                _activeTab = tab;
+                SelectTabByNote(tab);
+                ToolbarSave_Click(this, new RoutedEventArgs());
+            }));
+
+            // Separator
+            var sep = new Separator { Margin = new Thickness(4, 2, 4, 2) };
+            sep.SetResourceReference(Separator.BackgroundProperty, "c-border");
+            stack.Children.Add(sep);
+
+            // Delete
+            stack.Children.Add(CreateCtxItem("\uE74D", "Delete", "Ctrl+W", () =>
+            {
+                _ = DeleteTabAsync(tab);
+            }));
+
+            // Delete all below (CTXM-02)
+            stack.Children.Add(CreateCtxItem("\uE75C", "Delete all below", null, () =>
+            {
+                int tabIndex = _tabs.IndexOf(tab);
+                if (tabIndex < 0) return;
+                var belowTabs = _tabs.Skip(tabIndex + 1).ToList();
+                if (belowTabs.Count == 0) return;
+                _ = DeleteMultipleAsync(belowTabs); // Skips pinned tabs internally (TDEL-06)
+            }));
+
+            border.Child = stack;
+            popup.Child = border;
+            _activeContextMenu = popup;
+            return popup;
+        }
+
+        /// <summary>
+        /// Starts inline rename for a tab item via context menu action.
+        /// Delegates to BeginRename (same as F2 / double-click).
+        /// </summary>
+        private void StartRename(ListBoxItem item, NoteTab tab)
+        {
+            BeginRename(item, tab);
         }
     }
 }
