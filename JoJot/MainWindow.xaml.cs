@@ -413,11 +413,14 @@ namespace JoJot
                     int index = TabList.Items.IndexOf(item);
                     TabList.SelectionChanged -= TabList_SelectionChanged;
                     TabList.Items[index] = newItem;
+                    if (wasSelected)
+                    {
+                        TabList.SelectedItem = newItem;     // guarded — no SelectionChanged fired
+                    }
                     TabList.SelectionChanged += TabList_SelectionChanged;
 
                     if (wasSelected)
                     {
-                        TabList.SelectedItem = newItem;
                         ApplyActiveHighlight(newItem);
                     }
                     return;
