@@ -24,6 +24,35 @@
                 </Setter.Value>
             </Setter>
         </Style>
+
+        <!-- Phase 7: Toolbar button style — rounded-rectangle hover background, disabled opacity -->
+        <Style x:Key="ToolbarButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Width" Value="28"/>
+            <Setter Property="Height" Value="28"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="HoverBorder" Background="Transparent"
+                                CornerRadius="4" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="HoverBorder" Property="Background"
+                                        Value="{DynamicResource c-hover-bg}"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.35"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Window.Resources>
     <Grid Background="{DynamicResource c-win-bg}">
         <Grid.ColumnDefinitions>
@@ -78,45 +107,148 @@
         <!-- Separator (Column 1) -->
         <Border Grid.Column="1" Background="{DynamicResource c-border}"/>
 
-        <!-- Content Area (Column 2) — Grid overlay for editor + toast -->
+        <!-- Content Area (Column 2) — toolbar + editor + toast -->
         <Grid Grid.Column="2" ClipToBounds="True">
-            <TextBox x:Name="ContentEditor"
-                     AcceptsReturn="True" AcceptsTab="True"
-                     TextWrapping="Wrap" FontFamily="Consolas" FontSize="13"
-                     VerticalScrollBarVisibility="Auto"
-                     HorizontalScrollBarVisibility="Disabled"
-                     BorderThickness="0" Padding="12,8"
-                     Background="{DynamicResource c-editor-bg}"
-                     Foreground="{DynamicResource c-text-primary}"
-                     CaretBrush="{DynamicResource c-text-primary}"
-                     IsUndoEnabled="False"
-                     IsEnabled="False"/>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
 
-            <!-- Toast notification overlay (Phase 5: soft-delete undo) -->
-            <Border x:Name="ToastBorder"
-                    VerticalAlignment="Bottom" Height="36"
-                    Background="{DynamicResource c-toast-bg}" Visibility="Collapsed"
-                    Panel.ZIndex="10">
-                <Border.RenderTransform>
-                    <TranslateTransform x:Name="ToastTranslate" Y="36"/>
-                </Border.RenderTransform>
-                <Grid Margin="12,0">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
-                    <TextBlock x:Name="ToastMessageBlock" Grid.Column="0"
-                               VerticalAlignment="Center" Foreground="{DynamicResource c-toast-fg}" FontSize="13"
-                               TextTrimming="CharacterEllipsis"/>
-                    <TextBlock Grid.Column="1" VerticalAlignment="Center"
-                               Foreground="{DynamicResource c-accent}" FontSize="13"
-                               TextDecorations="Underline" Cursor="Hand"
-                               Margin="12,0,0,0"
-                               MouseLeftButtonDown="UndoToast_Click">
-                        Undo
-                    </TextBlock>
-                </Grid>
+            <!-- Toolbar (Row 0) — TOOL-01, TOOL-02, TOOL-03 -->
+            <Border Grid.Row="0" BorderThickness="0,0,0,1"
+                    BorderBrush="{DynamicResource c-border}"
+                    Background="{DynamicResource c-win-bg}"
+                    Padding="4,2">
+                <DockPanel>
+                    <!-- Delete button — right-aligned via DockPanel.Dock="Right" (TOOL-02) -->
+                    <Button x:Name="ToolbarDelete" DockPanel.Dock="Right"
+                            Style="{StaticResource ToolbarButtonStyle}"
+                            Click="ToolbarDelete_Click"
+                            ToolTip="Delete (Ctrl+W)" ToolTipService.InitialShowDelay="600">
+                        <TextBlock x:Name="DeleteIconText" Text="&#xE74D;"
+                                   FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                   FontSize="14" Foreground="#e74c3c" Opacity="0.7"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Button>
+
+                    <!-- Left-aligned buttons -->
+                    <StackPanel Orientation="Horizontal">
+                        <!-- Undo -->
+                        <Button x:Name="ToolbarUndo" Style="{StaticResource ToolbarButtonStyle}"
+                                Click="ToolbarUndo_Click"
+                                ToolTip="Undo (Ctrl+Z)" ToolTipService.InitialShowDelay="600">
+                            <TextBlock Text="&#xE7A7;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                       FontSize="14" Foreground="{DynamicResource c-toolbar-icon}"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Button>
+
+                        <!-- Redo -->
+                        <Button x:Name="ToolbarRedo" Style="{StaticResource ToolbarButtonStyle}"
+                                Click="ToolbarRedo_Click"
+                                ToolTip="Redo (Ctrl+Y)" ToolTipService.InitialShowDelay="600">
+                            <TextBlock Text="&#xE7A6;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                       FontSize="14" Foreground="{DynamicResource c-toolbar-icon}"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Button>
+
+                        <!-- Separator -->
+                        <Border Width="1" Margin="4,4" Background="{DynamicResource c-border}"/>
+
+                        <!-- Pin -->
+                        <Button x:Name="ToolbarPin" Style="{StaticResource ToolbarButtonStyle}"
+                                Click="ToolbarPin_Click"
+                                ToolTip="Pin (Ctrl+P)" ToolTipService.InitialShowDelay="600">
+                            <TextBlock x:Name="PinIconText" Text="&#xE718;"
+                                       FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                       FontSize="14" Foreground="{DynamicResource c-toolbar-icon}"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Button>
+
+                        <!-- Clone -->
+                        <Button x:Name="ToolbarClone" Style="{StaticResource ToolbarButtonStyle}"
+                                Click="ToolbarClone_Click"
+                                ToolTip="Clone to new tab (Ctrl+K)" ToolTipService.InitialShowDelay="600">
+                            <TextBlock Text="&#xF413;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                       FontSize="14" Foreground="{DynamicResource c-toolbar-icon}"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Button>
+
+                        <!-- Separator -->
+                        <Border Width="1" Margin="4,4" Background="{DynamicResource c-border}"/>
+
+                        <!-- Copy -->
+                        <Button x:Name="ToolbarCopy" Style="{StaticResource ToolbarButtonStyle}"
+                                Click="ToolbarCopy_Click"
+                                ToolTip="Copy (Ctrl+C)" ToolTipService.InitialShowDelay="600">
+                            <TextBlock Text="&#xE8C8;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                       FontSize="14" Foreground="{DynamicResource c-toolbar-icon}"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Button>
+
+                        <!-- Paste -->
+                        <Button x:Name="ToolbarPaste" Style="{StaticResource ToolbarButtonStyle}"
+                                Click="ToolbarPaste_Click"
+                                ToolTip="Paste (Ctrl+V)" ToolTipService.InitialShowDelay="600">
+                            <TextBlock Text="&#xE77F;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                       FontSize="14" Foreground="{DynamicResource c-toolbar-icon}"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Button>
+
+                        <!-- Separator -->
+                        <Border Width="1" Margin="4,4" Background="{DynamicResource c-border}"/>
+
+                        <!-- Save as TXT -->
+                        <Button x:Name="ToolbarSave" Style="{StaticResource ToolbarButtonStyle}"
+                                Click="ToolbarSave_Click"
+                                ToolTip="Save as TXT (Ctrl+S)" ToolTipService.InitialShowDelay="600">
+                            <TextBlock Text="&#xE74E;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                       FontSize="14" Foreground="{DynamicResource c-toolbar-icon}"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Button>
+                    </StackPanel>
+                </DockPanel>
             </Border>
+
+            <!-- Editor + Toast (Row 1) -->
+            <Grid Grid.Row="1">
+                <TextBox x:Name="ContentEditor"
+                         AcceptsReturn="True" AcceptsTab="True"
+                         TextWrapping="Wrap" FontFamily="Consolas" FontSize="13"
+                         VerticalScrollBarVisibility="Auto"
+                         HorizontalScrollBarVisibility="Disabled"
+                         BorderThickness="0" Padding="12,8"
+                         Background="{DynamicResource c-editor-bg}"
+                         Foreground="{DynamicResource c-text-primary}"
+                         CaretBrush="{DynamicResource c-text-primary}"
+                         IsUndoEnabled="False"
+                         IsEnabled="False"/>
+
+                <!-- Toast notification overlay (Phase 5: soft-delete undo) -->
+                <Border x:Name="ToastBorder"
+                        VerticalAlignment="Bottom" Height="36"
+                        Background="{DynamicResource c-toast-bg}" Visibility="Collapsed"
+                        Panel.ZIndex="10">
+                    <Border.RenderTransform>
+                        <TranslateTransform x:Name="ToastTranslate" Y="36"/>
+                    </Border.RenderTransform>
+                    <Grid Margin="12,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock x:Name="ToastMessageBlock" Grid.Column="0"
+                                   VerticalAlignment="Center" Foreground="{DynamicResource c-toast-fg}" FontSize="13"
+                                   TextTrimming="CharacterEllipsis"/>
+                        <TextBlock Grid.Column="1" VerticalAlignment="Center"
+                                   Foreground="{DynamicResource c-accent}" FontSize="13"
+                                   TextDecorations="Underline" Cursor="Hand"
+                                   Margin="12,0,0,0"
+                                   MouseLeftButtonDown="UndoToast_Click">
+                            Undo
+                        </TextBlock>
+                    </Grid>
+                </Border>
+            </Grid>
         </Grid>
     </Grid>
 </Window>
