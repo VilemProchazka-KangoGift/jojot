@@ -19,7 +19,7 @@ namespace JoJot
     /// </summary>
     public partial class MainWindow : Window
     {
-        private readonly string _desktopGuid;
+        private string _desktopGuid;
         private readonly ObservableCollection<NoteTab> _tabs = new();
         private NoteTab? _activeTab;
         private string _searchText = "";

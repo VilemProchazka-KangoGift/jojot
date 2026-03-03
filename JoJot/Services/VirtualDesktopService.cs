@@ -32,6 +32,13 @@ namespace JoJot.Services
         public static event Action<string, string>? CurrentDesktopChanged;
 
         /// <summary>
+        /// Fired when a window is detected moving to a different desktop (DRAG-01).
+        /// Args: (windowHwnd, fromDesktopGuid, toDesktopGuid, toDesktopName).
+        /// The handler should show the lock overlay for conflict resolution.
+        /// </summary>
+        public static event Action<IntPtr, string, string, string>? WindowMovedToDesktop;
+
+        /// <summary>
         /// Whether the virtual desktop COM API is available and functioning.
         /// When false, the app runs in single-notepad fallback mode.
         /// </summary>
@@ -352,6 +359,7 @@ namespace JoJot.Services
                 // Wire listener events to public events + database updates
                 _notificationListener.DesktopRenamed += OnDesktopRenamed;
                 _notificationListener.CurrentDesktopChanged += OnCurrentDesktopChanged;
+                _notificationListener.WindowViewChanged += OnWindowViewChanged;
 
                 int hr = notifService.Register(_notificationListener, out _notificationCookie);
                 if (hr != 0)
@@ -398,6 +406,7 @@ namespace JoJot.Services
             {
                 _notificationListener.DesktopRenamed -= OnDesktopRenamed;
                 _notificationListener.CurrentDesktopChanged -= OnCurrentDesktopChanged;
+                _notificationListener.WindowViewChanged -= OnWindowViewChanged;
                 _notificationListener = null;
             }
 
@@ -461,6 +470,103 @@ namespace JoJot.Services
 
             // Fire public event (consumers handle UI thread marshaling)
             CurrentDesktopChanged?.Invoke(oldGuid, newGuid);
+        }
+
+        // ─── Window Drag Detection (Phase 10: DRAG-01) ────────────────────────
+
+        /// <summary>
+        /// Handles the ViewVirtualDesktopChanged COM callback.
+        /// The IntPtr view parameter is an IApplicationView pointer (NOT an HWND).
+        /// We cannot directly map it to a window, so we check all known windows
+        /// to find which one has moved to a different desktop.
+        /// Uses Dispatcher.BeginInvoke to let COM state settle before querying.
+        /// </summary>
+        private static void OnWindowViewChanged(IntPtr view)
+        {
+            // Must dispatch to UI thread and let COM state settle
+            System.Windows.Application.Current?.Dispatcher.BeginInvoke(
+                System.Windows.Threading.DispatcherPriority.Normal,
+                new Action(() =>
+                {
+                    try
+                    {
+                        DetectMovedWindow();
+                    }
+                    catch (Exception ex)
+                    {
+                        LogService.Warn($"Error detecting moved window: {ex.Message}");
+                    }
+                }));
+        }
+
+        /// <summary>
+        /// Iterates all known JoJot windows and checks if any has moved to a different desktop.
+        /// Called after COM state has settled via Dispatcher.BeginInvoke.
+        /// </summary>
+        private static void DetectMovedWindow()
+        {
+            if (!_isAvailable) return;
+
+            var app = System.Windows.Application.Current as App;
+            if (app is null) return;
+
+            var allWindows = app.GetAllWindows();
+            foreach (var window in allWindows)
+            {
+                try
+                {
+                    var hwnd = new System.Windows.Interop.WindowInteropHelper(window).Handle;
+                    if (hwnd == IntPtr.Zero) continue;
+
+                    Guid currentDesktopId = VirtualDesktopInterop.GetWindowDesktopId(hwnd);
+                    string currentDesktopGuid = currentDesktopId.ToString();
+                    string expectedDesktopGuid = window.DesktopGuid;
+
+                    if (!currentDesktopGuid.Equals(expectedDesktopGuid, StringComparison.OrdinalIgnoreCase))
+                    {
+                        // This window has moved!
+                        string toDesktopName = "";
+                        try
+                        {
+                            var desktops = GetAllDesktops();
+                            var targetDesktop = desktops.FirstOrDefault(d =>
+                                d.Id.ToString().Equals(currentDesktopGuid, StringComparison.OrdinalIgnoreCase));
+                            toDesktopName = targetDesktop?.Name ?? "";
+                        }
+                        catch { /* name lookup is best-effort */ }
+
+                        LogService.Info($"Window drag detected: {expectedDesktopGuid} -> {currentDesktopGuid} (target: \"{toDesktopName}\")");
+                        WindowMovedToDesktop?.Invoke(hwnd, expectedDesktopGuid, currentDesktopGuid, toDesktopName);
+                        return; // Only one window can move at a time
+                    }
+                }
+                catch (Exception ex)
+                {
+                    LogService.Warn($"Error checking window desktop: {ex.Message}");
+                }
+            }
+        }
+
+        /// <summary>
+        /// Moves a window to the specified desktop via COM API (DRAG-06: Cancel/Go back flow).
+        /// Returns true if successful, false if the COM call failed.
+        /// </summary>
+        public static bool TryMoveWindowToDesktop(IntPtr hwnd, string desktopGuid)
+        {
+            if (!_isAvailable) return false;
+
+            try
+            {
+                Guid targetId = Guid.Parse(desktopGuid);
+                VirtualDesktopInterop.MoveWindowToDesktop(hwnd, targetId);
+                LogService.Info($"Moved window to desktop {desktopGuid}");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                LogService.Error($"MoveWindowToDesktop failed for {desktopGuid}: {ex.Message}");
+                return false;
+            }
         }
 
         /// <summary>

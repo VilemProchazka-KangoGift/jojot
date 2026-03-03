@@ -29,6 +29,9 @@ namespace JoJot.Interop
         /// <summary>Fired when a desktop is destroyed. Args: (destroyedDesktopId)</summary>
         public event Action<Guid>? DesktopDestroyed;
 
+        /// <summary>Fired when a window's view changes desktop (DRAG-01). Args: (viewPtr)</summary>
+        public event Action<IntPtr>? WindowViewChanged;
+
         public int VirtualDesktopCreated(IntPtr monitors, IVirtualDesktop desktop)
         {
             try
@@ -93,7 +96,16 @@ namespace JoJot.Interop
 
         public int ViewVirtualDesktopChanged(IntPtr view)
         {
-            return 0; // S_OK — no action needed
+            try
+            {
+                LogService.Info($"Notification: window view changed (view=0x{view:X})");
+                WindowViewChanged?.Invoke(view);
+            }
+            catch (Exception ex)
+            {
+                LogService.Warn($"Error in ViewVirtualDesktopChanged callback: {ex.Message}");
+            }
+            return 0; // S_OK
         }
 
         public int CurrentVirtualDesktopChanged(IntPtr monitors, IVirtualDesktop desktopOld, IVirtualDesktop desktopNew)

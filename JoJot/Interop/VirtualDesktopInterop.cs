@@ -100,6 +100,18 @@ namespace JoJot.Interop
         }
 
         /// <summary>
+        /// Moves a window to the specified virtual desktop.
+        /// Used by DRAG-06 (Cancel/Go back) to return a window to its origin desktop.
+        /// </summary>
+        public static void MoveWindowToDesktop(IntPtr hwnd, Guid desktopId)
+        {
+            EnsureInitialized();
+            int hr = _manager!.MoveWindowToDesktop(hwnd, ref desktopId);
+            if (hr != 0)
+                throw new COMException($"MoveWindowToDesktop failed (HRESULT: 0x{hr:X8})", hr);
+        }
+
+        /// <summary>
         /// Gets the current virtual desktop's GUID, name, and index.
         /// </summary>
         public static (Guid Id, string Name, int Index) GetCurrentDesktop()
