@@ -169,7 +169,7 @@ Plans:
 **Plans**: 1 plan
 
 Plans:
-- [ ] 8.1-01-PLAN.md — ORPH-03 Open button in recovery panel, EDIT-03 FlushAsync on tab switch, MenuRecover_Click docstring fix
+- [x] 8.1-01-PLAN.md — ORPH-03 Open button in recovery panel, EDIT-03 FlushAsync on tab switch, MenuRecover_Click docstring fix
 
 ### Phase 8.2: Gap Closure — Verification (INSERTED)
 **Goal**: Create missing VERIFICATION.md files for Phases 6 and 7, formally verifying all 22 requirements that SUMMARY files already confirm as complete.
