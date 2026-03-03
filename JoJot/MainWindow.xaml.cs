@@ -1903,7 +1903,7 @@ namespace JoJot
         }
 
         /// <summary>
-        /// Recover sessions — stub until Plan 03 wires the recovery panel.
+        /// Recover sessions — opens the orphan recovery flyout panel (ORPH-02, MENU-02).
         /// </summary>
         private void MenuRecover_Click(object sender, MouseButtonEventArgs e)
         {
@@ -2047,6 +2047,16 @@ namespace JoJot
                 await RefreshAfterOrphanAction();
             };
             buttonPanel.Children.Add(adoptBtn);
+
+            // Open — create a new window for the orphaned session
+            var openBtn = CreateCardButton("Open");
+            openBtn.Click += async (s, e) =>
+            {
+                await ((App)Application.Current).OpenWindowForOrphanAsync(guid);
+                RemoveOrphanGuid(guid);
+                await RefreshAfterOrphanAction();
+            };
+            buttonPanel.Children.Add(openBtn);
 
             // Delete — permanently delete session and all its notes
             var deleteBtn = CreateCardButton("Delete", isDestructive: true);
