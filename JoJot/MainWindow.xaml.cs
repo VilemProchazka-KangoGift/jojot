@@ -40,6 +40,8 @@ namespace JoJot
 
         // ─── Confirmation dialog state (Phase 8) ──────────────────────────
         private Action? _confirmAction;
+        private DateTime _hamburgerClosedAt;
+        private System.Windows.Threading.DispatcherTimer? _submenuCloseTimer;
 
         // ─── Recovery panel state (Phase 8: ORPH-02) ──────────────────────
         private bool _recoveryPanelOpen;
@@ -109,8 +111,13 @@ namespace JoJot
             ToolbarDelete.MouseEnter += (s, e) => DeleteIconText.Opacity = 1.0;
             ToolbarDelete.MouseLeave += (s, e) => DeleteIconText.Opacity = 0.7;
 
-            // Phase 8: Close submenu when hamburger menu closes (MENU-01)
-            HamburgerMenu.Closed += (s, e) => { DeleteOlderSubmenu.IsOpen = false; };
+            // Phase 8: Track hamburger close time for toggle behavior (MENU-01)
+            HamburgerMenu.Closed += (s, e) =>
+            {
+                _hamburgerClosedAt = DateTime.UtcNow;
+                DeleteOlderSubmenu.IsOpen = false;
+                HamburgerMenu.StaysOpen = false;
+            };
 
             // Phase 7: Initial toolbar state — all buttons disabled until tab selected
             UpdateToolbarState();
@@ -634,8 +641,9 @@ namespace JoJot
                 }
                 else if (e.Key == Key.Enter)
                 {
+                    var action = _confirmAction;
                     HideConfirmation();
-                    _confirmAction?.Invoke();
+                    action?.Invoke();
                     e.Handled = true;
                 }
                 else
@@ -1774,6 +1782,48 @@ namespace JoJot
         private void MenuItem_MouseEnter(object sender, MouseEventArgs e)
         {
             if (sender is Border b) b.Background = GetBrush("c-hover-bg");
+            ScheduleSubmenuClose();
+        }
+
+        private void SubmenuItem_MouseEnter(object sender, MouseEventArgs e)
+        {
+            if (sender is Border b) b.Background = GetBrush("c-hover-bg");
+            CancelSubmenuClose();
+        }
+
+        private void SubmenuBorder_MouseLeave(object sender, MouseEventArgs e)
+        {
+            ScheduleSubmenuClose();
+        }
+
+        private void ScheduleSubmenuClose()
+        {
+            CancelSubmenuClose();
+            _submenuCloseTimer = new System.Windows.Threading.DispatcherTimer
+            {
+                Interval = TimeSpan.FromMilliseconds(250)
+            };
+            _submenuCloseTimer.Tick += (s, e) =>
+            {
+                _submenuCloseTimer?.Stop();
+                CloseSubmenu();
+            };
+            _submenuCloseTimer.Start();
+        }
+
+        private void CancelSubmenuClose()
+        {
+            _submenuCloseTimer?.Stop();
+            _submenuCloseTimer = null;
+        }
+
+        private void CloseSubmenu()
+        {
+            if (DeleteOlderSubmenu.IsOpen)
+            {
+                DeleteOlderSubmenu.IsOpen = false;
+                HamburgerMenu.StaysOpen = false;
+            }
         }
 
         private void MenuItem_MouseLeave(object sender, MouseEventArgs e)
@@ -1783,6 +1833,10 @@ namespace JoJot
 
         private void HamburgerButton_Click(object sender, RoutedEventArgs e)
         {
+            // StaysOpen=False closes the popup before Click fires, so the toggle
+            // always sees IsOpen=false. Detect this by checking if it just closed.
+            if ((DateTime.UtcNow - _hamburgerClosedAt).TotalMilliseconds < 300)
+                return;
             HamburgerMenu.IsOpen = !HamburgerMenu.IsOpen;
         }
 
@@ -1792,13 +1846,15 @@ namespace JoJot
         private void MenuDeleteOlder_MouseEnter(object sender, MouseEventArgs e)
         {
             if (sender is Border b) b.Background = GetBrush("c-hover-bg");
+            CancelSubmenuClose();
+            HamburgerMenu.StaysOpen = true;
             DeleteOlderSubmenu.IsOpen = true;
         }
 
         private void MenuDeleteOlder_MouseLeave(object sender, MouseEventArgs e)
         {
             if (sender is Border b) b.Background = System.Windows.Media.Brushes.Transparent;
-            // Don't close submenu here — let StaysOpen=false handle it or close when main menu closes
+            ScheduleSubmenuClose();
         }
 
         /// <summary>
@@ -1808,29 +1864,29 @@ namespace JoJot
 
         private void MenuDeleteOlder7_Click(object sender, MouseButtonEventArgs e)
         {
+            CloseSubmenu();
             HamburgerMenu.IsOpen = false;
-            DeleteOlderSubmenu.IsOpen = false;
             _ = ConfirmAndDeleteOlderThanAsync(7);
         }
 
         private void MenuDeleteOlder14_Click(object sender, MouseButtonEventArgs e)
         {
+            CloseSubmenu();
             HamburgerMenu.IsOpen = false;
-            DeleteOlderSubmenu.IsOpen = false;
             _ = ConfirmAndDeleteOlderThanAsync(14);
         }
 
         private void MenuDeleteOlder30_Click(object sender, MouseButtonEventArgs e)
         {
+            CloseSubmenu();
             HamburgerMenu.IsOpen = false;
-            DeleteOlderSubmenu.IsOpen = false;
             _ = ConfirmAndDeleteOlderThanAsync(30);
         }
 
         private void MenuDeleteOlder90_Click(object sender, MouseButtonEventArgs e)
         {
+            CloseSubmenu();
             HamburgerMenu.IsOpen = false;
-            DeleteOlderSubmenu.IsOpen = false;
             _ = ConfirmAndDeleteOlderThanAsync(90);
         }
 
@@ -1885,33 +1941,20 @@ namespace JoJot
 
             RecoveryPanel.Visibility = Visibility.Visible;
             _recoveryPanelOpen = true;
-
-            var slideIn = new DoubleAnimation
-            {
-                From = -180, To = 0,
-                Duration = TimeSpan.FromMilliseconds(150),
-                EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
-            };
-            RecoveryPanelTranslate.BeginAnimation(TranslateTransform.XProperty, slideIn);
         }
 
         private void HideRecoveryPanel()
         {
-            var slideOut = new DoubleAnimation
-            {
-                From = 0, To = -180,
-                Duration = TimeSpan.FromMilliseconds(150),
-                EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseIn }
-            };
-            slideOut.Completed += (s, e) =>
-            {
-                RecoveryPanel.Visibility = Visibility.Collapsed;
-                _recoveryPanelOpen = false;
-            };
-            RecoveryPanelTranslate.BeginAnimation(TranslateTransform.XProperty, slideOut);
+            RecoveryPanel.Visibility = Visibility.Collapsed;
+            _recoveryPanelOpen = false;
         }
 
         private void RecoveryClose_Click(object sender, RoutedEventArgs e)
+        {
+            HideRecoveryPanel();
+        }
+
+        private void RecoveryBackdrop_Click(object sender, MouseButtonEventArgs e)
         {
             HideRecoveryPanel();
         }
@@ -2004,17 +2047,6 @@ namespace JoJot
                 await RefreshAfterOrphanAction();
             };
             buttonPanel.Children.Add(adoptBtn);
-
-            // Open — open as new window using the orphan's stored GUID
-            var openBtn = CreateCardButton("Open");
-            openBtn.Click += async (s, e) =>
-            {
-                if (Application.Current is App app)
-                    await app.OpenWindowForOrphanAsync(guid);
-                RemoveOrphanGuid(guid);
-                await RefreshAfterOrphanAction();
-            };
-            buttonPanel.Children.Add(openBtn);
 
             // Delete — permanently delete session and all its notes
             var deleteBtn = CreateCardButton("Delete", isDestructive: true);
@@ -2125,7 +2157,11 @@ namespace JoJot
             var cutoff = DateTime.Now.AddDays(-days);
             var candidates = _tabs.Where(t => !t.Pinned && t.UpdatedAt < cutoff).ToList();
 
-            if (candidates.Count == 0) return Task.CompletedTask;
+            if (candidates.Count == 0)
+            {
+                ShowConfirmation($"Delete notes older than {days} days", $"No notes are older than {days} days.", null);
+                return Task.CompletedTask;
+            }
 
             ShowConfirmation(
                 $"Delete notes older than {days} days",
@@ -2142,7 +2178,11 @@ namespace JoJot
         {
             var candidates = _tabs.Where(t => !t.Pinned).ToList();
 
-            if (candidates.Count == 0) return Task.CompletedTask;
+            if (candidates.Count == 0)
+            {
+                ShowConfirmation("Delete all except pinned", "All notes are pinned — nothing to delete.", null);
+                return Task.CompletedTask;
+            }
 
             ShowConfirmation(
                 "Delete all except pinned",
@@ -2160,7 +2200,11 @@ namespace JoJot
         {
             var candidates = _tabs.Where(t => !t.Pinned).ToList();
 
-            if (candidates.Count == 0) return Task.CompletedTask;
+            if (candidates.Count == 0)
+            {
+                ShowConfirmation("Delete all notes", "All notes are pinned — nothing to delete.", null);
+                return Task.CompletedTask;
+            }
 
             int pinnedCount = _tabs.Count(t => t.Pinned);
             string pinnedNote = pinnedCount > 0
@@ -2181,11 +2225,13 @@ namespace JoJot
         /// Shows the confirmation overlay with a title and message.
         /// The onConfirm action is called when the user clicks Delete.
         /// </summary>
-        private void ShowConfirmation(string title, string message, Action onConfirm)
+        private void ShowConfirmation(string title, string message, Action? onConfirm)
         {
             ConfirmTitle.Text = title;
             ConfirmMessage.Text = message;
             _confirmAction = onConfirm;
+            ConfirmDeleteButton.Visibility = onConfirm != null ? Visibility.Visible : Visibility.Collapsed;
+            ConfirmCancelButton.Content = onConfirm != null ? "Cancel" : "OK";
             ConfirmationOverlay.Visibility = Visibility.Visible;
             ConfirmCancelButton.Focus();
         }
@@ -2217,8 +2263,9 @@ namespace JoJot
         /// </summary>
         private void ConfirmDelete_Click(object sender, RoutedEventArgs e)
         {
+            var action = _confirmAction;
             HideConfirmation();
-            _confirmAction?.Invoke();
+            action?.Invoke();
         }
 
         // ─── Tab Context Menu (Phase 8: CTXM-01, CTXM-02) ──────────────────────

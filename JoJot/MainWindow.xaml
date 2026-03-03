@@ -122,35 +122,7 @@
                      ScrollViewer.HorizontalScrollBarVisibility="Disabled"/>
         </DockPanel>
 
-        <!-- Recovery flyout panel (Phase 8: ORPH-02, ORPH-03) -->
-        <Border x:Name="RecoveryPanel" Background="{DynamicResource c-sidebar-bg}"
-                BorderBrush="{DynamicResource c-border}" BorderThickness="0,0,1,0"
-                Visibility="Collapsed" Panel.ZIndex="10">
-            <Border.RenderTransform>
-                <TranslateTransform x:Name="RecoveryPanelTranslate" X="-180"/>
-            </Border.RenderTransform>
-            <DockPanel>
-                <!-- Header -->
-                <Border DockPanel.Dock="Top" Padding="10,8" BorderThickness="0,0,0,1"
-                        BorderBrush="{DynamicResource c-border}">
-                    <Grid>
-                        <TextBlock Text="Recover Sessions" FontSize="14" FontWeight="SemiBold"
-                                   Foreground="{DynamicResource c-text-primary}" VerticalAlignment="Center"/>
-                        <Button x:Name="RecoveryCloseButton" Content="&#xE711;"
-                                FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
-                                FontSize="12" HorizontalAlignment="Right"
-                                Style="{StaticResource ToolbarButtonStyle}"
-                                Click="RecoveryClose_Click"/>
-                    </Grid>
-                </Border>
-
-                <!-- Session list (scrollable) -->
-                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
-                              Padding="8,4">
-                    <StackPanel x:Name="RecoverySessionList"/>
-                </ScrollViewer>
-            </DockPanel>
-        </Border>
+        <!-- Recovery panel placeholder (modal is in the root Grid) -->
         </Grid>
 
         <!-- Separator (Column 1) -->
@@ -348,34 +320,35 @@
                         </Grid>
                     </Border>
 
-                    <!-- Delete older than submenu popup -->
-                    <Popup x:Name="DeleteOlderSubmenu" StaysOpen="False" AllowsTransparency="True"
+                    <!-- Delete older than submenu popup (right-side flyout) -->
+                    <Popup x:Name="DeleteOlderSubmenu" StaysOpen="True" AllowsTransparency="True"
                            PlacementTarget="{Binding ElementName=MenuDeleteOlder}"
                            Placement="Right" HorizontalOffset="0" VerticalOffset="-6">
                         <Border Background="{DynamicResource c-sidebar-bg}"
                                 BorderBrush="{DynamicResource c-border}" BorderThickness="1"
-                                CornerRadius="6" Padding="4" MinWidth="140">
+                                CornerRadius="6" Padding="4" MinWidth="140"
+                                MouseLeave="SubmenuBorder_MouseLeave">
                             <Border.Effect>
                                 <DropShadowEffect BlurRadius="8" Opacity="0.2" ShadowDepth="3" Direction="270"/>
                             </Border.Effect>
                             <StackPanel>
                                 <Border Padding="8,5" Cursor="Hand" Background="Transparent"
-                                        MouseEnter="MenuItem_MouseEnter" MouseLeave="MenuItem_MouseLeave"
+                                        MouseEnter="SubmenuItem_MouseEnter" MouseLeave="MenuItem_MouseLeave"
                                         MouseLeftButtonDown="MenuDeleteOlder7_Click">
                                     <TextBlock Text="7 days" FontSize="13" Foreground="{DynamicResource c-text-primary}"/>
                                 </Border>
                                 <Border Padding="8,5" Cursor="Hand" Background="Transparent"
-                                        MouseEnter="MenuItem_MouseEnter" MouseLeave="MenuItem_MouseLeave"
+                                        MouseEnter="SubmenuItem_MouseEnter" MouseLeave="MenuItem_MouseLeave"
                                         MouseLeftButtonDown="MenuDeleteOlder14_Click">
                                     <TextBlock Text="14 days" FontSize="13" Foreground="{DynamicResource c-text-primary}"/>
                                 </Border>
                                 <Border Padding="8,5" Cursor="Hand" Background="Transparent"
-                                        MouseEnter="MenuItem_MouseEnter" MouseLeave="MenuItem_MouseLeave"
+                                        MouseEnter="SubmenuItem_MouseEnter" MouseLeave="MenuItem_MouseLeave"
                                         MouseLeftButtonDown="MenuDeleteOlder30_Click">
                                     <TextBlock Text="30 days" FontSize="13" Foreground="{DynamicResource c-text-primary}"/>
                                 </Border>
                                 <Border Padding="8,5" Cursor="Hand" Background="Transparent"
-                                        MouseEnter="MenuItem_MouseEnter" MouseLeave="MenuItem_MouseLeave"
+                                        MouseEnter="SubmenuItem_MouseEnter" MouseLeave="MenuItem_MouseLeave"
                                         MouseLeftButtonDown="MenuDeleteOlder90_Click">
                                     <TextBlock Text="90 days" FontSize="13" Foreground="{DynamicResource c-text-primary}"/>
                                 </Border>
@@ -491,6 +464,40 @@
                                 Click="ConfirmDelete_Click"/>
                     </StackPanel>
                 </StackPanel>
+            </Border>
+        </Grid>
+        <!-- Recovery modal overlay (Phase 8: ORPH-02, ORPH-03) -->
+        <Grid x:Name="RecoveryPanel" Visibility="Collapsed" Panel.ZIndex="90"
+              Grid.ColumnSpan="3">
+            <!-- Semi-transparent backdrop -->
+            <Border Background="#80000000" MouseLeftButtonDown="RecoveryBackdrop_Click"/>
+
+            <!-- Centered recovery card -->
+            <Border HorizontalAlignment="Center" VerticalAlignment="Center"
+                    Background="{DynamicResource c-sidebar-bg}"
+                    BorderBrush="{DynamicResource c-border}" BorderThickness="1"
+                    CornerRadius="8" Padding="24,20" MinWidth="340" MaxWidth="460">
+                <Border.Effect>
+                    <DropShadowEffect BlurRadius="20" Opacity="0.3" ShadowDepth="6" Direction="270"/>
+                </Border.Effect>
+                <DockPanel>
+                    <!-- Header -->
+                    <Grid DockPanel.Dock="Top" Margin="0,0,0,12">
+                        <TextBlock Text="Recover Sessions" FontSize="15" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource c-text-primary}" VerticalAlignment="Center"/>
+                        <Button x:Name="RecoveryCloseButton" Content="&#xE711;"
+                                FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                FontSize="12" HorizontalAlignment="Right"
+                                Style="{StaticResource ToolbarButtonStyle}"
+                                Click="RecoveryClose_Click"/>
+                    </Grid>
+
+                    <!-- Session list (scrollable, max height) -->
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                                  MaxHeight="400">
+                        <StackPanel x:Name="RecoverySessionList"/>
+                    </ScrollViewer>
+                </DockPanel>
             </Border>
         </Grid>
     </Grid>

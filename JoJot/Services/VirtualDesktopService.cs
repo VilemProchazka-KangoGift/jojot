@@ -160,6 +160,17 @@ namespace JoJot.Services
             {
                 LogService.Info("Session matching skipped (fallback mode)");
                 await DatabaseService.CreateSessionAsync("default", null, null);
+
+                // Fallback orphan detection: any session that isn't "default" is orphaned
+                var fallbackSessions = await DatabaseService.GetAllSessionsAsync();
+                var fallbackOrphans = fallbackSessions
+                    .Where(s => !s.DesktopGuid.Equals("default", StringComparison.OrdinalIgnoreCase))
+                    .Select(s => s.DesktopGuid)
+                    .ToList();
+                OrphanedSessionGuids = fallbackOrphans;
+                if (fallbackOrphans.Count > 0)
+                    LogService.Info($"Fallback orphan detection: {fallbackOrphans.Count} orphaned session(s)");
+
                 return;
             }
 
