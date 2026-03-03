@@ -20,6 +20,8 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 6: Editor & Undo** - Plain-text editor, autosave with debounce, custom two-tier undo/redo stack, save as TXT, copy behavior (completed 2026-03-03)
 - [x] **Phase 7: Theming & Toolbar** - Light/Dark/System themes via ResourceDictionary, all 10 color tokens, toolbar with all actions (completed 2026-03-03)
 - [x] **Phase 8: Menus, Context Actions & Orphaned Sessions** - Window menu, tab context menu, bulk delete operations, orphaned session recovery panel (completed 2026-03-03)
+- [ ] **Phase 8.1: Gap Closure — Code Fixes** (INSERTED) - ORPH-03 Open button, EDIT-03 autosave frequency cap fix
+- [ ] **Phase 8.2: Gap Closure — Verification** (INSERTED) - Missing VERIFICATION.md for Phases 6 and 7
 - [ ] **Phase 9: File Drop, Preferences, Hotkeys & Keyboard** - File drop with content inspection, preferences dialog, global hotkey, all keyboard shortcuts
 - [ ] **Phase 10: Window Drag & Crash Recovery** - Inter-desktop drag detection, lock overlay, reparent/merge/cancel flow, pending_moves crash recovery
 
@@ -156,6 +158,32 @@ Plans:
 - [x] 08-02-PLAN.md — Bulk delete confirmation overlay: wire ConfirmAndDeleteOlderThanAsync/ExceptPinned/All with confirmation dialog and toast
 - [x] 08-03-PLAN.md — Orphaned session recovery panel: ShowRecoveryPanel, session cards, Adopt/Open/Delete actions, orphan badge
 
+### Phase 8.1: Gap Closure — Code Fixes (INSERTED)
+**Goal**: Fix the ORPH-03 missing Open button in the orphan recovery panel and wire EDIT-03 autosave FlushAsync into the tab-switch path.
+**Depends on**: Phase 8
+**Requirements**: ORPH-03, EDIT-03
+**Gap Closure**: Closes gaps from v1.0 audit
+**Success Criteria** (what must be TRUE):
+  1. The orphan recovery panel shows Adopt, Open, and Delete buttons; clicking Open calls App.OpenWindowForOrphanAsync and creates a new window for the orphaned session
+  2. Tab switching calls AutosaveService.FlushAsync instead of bypassing the service, keeping frequency cap state accurate
+**Plans**: TBD
+
+Plans:
+- [ ] 8.1-01: TBD
+
+### Phase 8.2: Gap Closure — Verification (INSERTED)
+**Goal**: Create missing VERIFICATION.md files for Phases 6 and 7, formally verifying all 22 requirements that SUMMARY files already confirm as complete.
+**Depends on**: Phase 8.1
+**Requirements**: Documentation gap closure
+**Gap Closure**: Closes verification gaps from v1.0 audit
+**Success Criteria** (what must be TRUE):
+  1. Phase 6 has a VERIFICATION.md that verifies EDIT-01 to EDIT-07 and UNDO-01 to UNDO-08 against the codebase
+  2. Phase 7 has a VERIFICATION.md that verifies THME-01 to THME-04 and TOOL-01 to TOOL-03 against the codebase
+**Plans**: TBD
+
+Plans:
+- [ ] 8.2-01: TBD
+
 ### Phase 9: File Drop, Preferences, Hotkeys & Keyboard
 **Goal**: Users can drag text files into JoJot to open them as tabs, configure all preferences live, activate JoJot from anywhere with a global hotkey, and operate the app entirely from the keyboard.
 **Depends on**: Phase 8
@@ -192,7 +220,7 @@ Plans:
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
+Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 8.1 -> 8.2 -> 9 -> 10
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -204,5 +232,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 6. Editor & Undo | 3/3 | Complete | 2026-03-03 |
 | 7. Theming & Toolbar | 2/2 | Complete | 2026-03-03 |
 | 8. Menus, Context Actions & Orphaned Sessions | 3/3 | Complete | 2026-03-03 |
+| 8.1. Gap Closure — Code Fixes | 0/TBD | Not started | - |
+| 8.2. Gap Closure — Verification | 0/TBD | Not started | - |
 | 9. File Drop, Preferences, Hotkeys & Keyboard | 0/TBD | Not started | - |
 | 10. Window Drag & Crash Recovery | 0/TBD | Not started | - |

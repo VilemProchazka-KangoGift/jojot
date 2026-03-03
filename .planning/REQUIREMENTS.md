@@ -9,34 +9,34 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Data & Persistence
 
-- [ ] **DATA-01**: SQLite database at AppData\Local\JoJot\jojot.db with WAL mode and NORMAL synchronous
-- [ ] **DATA-02**: Single SQLite connection per process, all writes serialized
-- [ ] **DATA-03**: Notes table with id, desktop_guid, name, content, pinned, created_at, updated_at, sort_order, editor_scroll_offset, cursor_position
-- [ ] **DATA-04**: App_state table storing per-desktop window geometry, active tab, scroll offset, desktop name/index
-- [ ] **DATA-05**: Pending_moves table tracking unresolved window drags for crash recovery
-- [ ] **DATA-06**: Preferences table (key/value) storing theme, font_size, autosave_debounce_ms, global_hotkey
-- [ ] **DATA-07**: Schema created synchronously on first launch; migrations run in background thread after window shown
+- [x] **DATA-01**: SQLite database at AppData\Local\JoJot\jojot.db with WAL mode and NORMAL synchronous
+- [x] **DATA-02**: Single SQLite connection per process, all writes serialized
+- [x] **DATA-03**: Notes table with id, desktop_guid, name, content, pinned, created_at, updated_at, sort_order, editor_scroll_offset, cursor_position
+- [x] **DATA-04**: App_state table storing per-desktop window geometry, active tab, scroll offset, desktop name/index
+- [x] **DATA-05**: Pending_moves table tracking unresolved window drags for crash recovery
+- [x] **DATA-06**: Preferences table (key/value) storing theme, font_size, autosave_debounce_ms, global_hotkey
+- [x] **DATA-07**: Schema created synchronously on first launch; migrations run in background thread after window shown
 
 ### Process Lifecycle & IPC
 
-- [ ] **PROC-01**: Single-instance background process via named mutex (Global\JoJot_SingleInstance)
-- [ ] **PROC-02**: Named pipe IPC (\\.\pipe\JoJot_IPC) for second-instance communication
-- [ ] **PROC-03**: Second instance resolves current desktop GUID, sends JSON action via pipe, then exits
-- [ ] **PROC-04**: Pipe timeout (> 500ms) or failure triggers force-kill of hung process and fresh start
-- [ ] **PROC-05**: Background process stays alive when all windows are closed
-- [ ] **PROC-06**: Exit via menu flushes all content across all windows, deletes empty tabs, terminates process
+- [x] **PROC-01**: Single-instance background process via named mutex (Global\JoJot_SingleInstance)
+- [x] **PROC-02**: Named pipe IPC (\\.\pipe\JoJot_IPC) for second-instance communication
+- [x] **PROC-03**: Second instance resolves current desktop GUID, sends JSON action via pipe, then exits
+- [x] **PROC-04**: Pipe timeout (> 500ms) or failure triggers force-kill of hung process and fresh start
+- [x] **PROC-05**: Background process stays alive when all windows are closed
+- [x] **PROC-06**: Exit via menu flushes all content across all windows, deletes empty tabs, terminates process
 
 ### Virtual Desktop Integration
 
-- [ ] **VDSK-01**: Detect current virtual desktop via IVirtualDesktopManager COM API
-- [ ] **VDSK-02**: One independent JoJot window per virtual desktop with its own tabs and state
-- [ ] **VDSK-03**: Three-tier session matching on startup: GUID (exact), desktop name, desktop index
-- [ ] **VDSK-04**: Update stored GUID to current live GUID after successful match
-- [ ] **VDSK-05**: Index matching only when exactly one unmatched session and one unmatched desktop at that index
-- [ ] **VDSK-06**: Window title shows "JoJot — {desktop name}" or "JoJot — Desktop N" or "JoJot"
-- [ ] **VDSK-07**: Window title updates live via IVirtualDesktopNotification when desktop is renamed
-- [ ] **VDSK-08**: Fallback to "default" GUID if virtual desktop API fails (single-instance notepad mode)
-- [ ] **VDSK-09**: Virtual desktop service abstraction layer isolating all COM interop from business logic
+- [x] **VDSK-01**: Detect current virtual desktop via IVirtualDesktopManager COM API
+- [x] **VDSK-02**: One independent JoJot window per virtual desktop with its own tabs and state
+- [x] **VDSK-03**: Three-tier session matching on startup: GUID (exact), desktop name, desktop index
+- [x] **VDSK-04**: Update stored GUID to current live GUID after successful match
+- [x] **VDSK-05**: Index matching only when exactly one unmatched session and one unmatched desktop at that index
+- [x] **VDSK-06**: Window title shows "JoJot — {desktop name}" or "JoJot — Desktop N" or "JoJot"
+- [x] **VDSK-07**: Window title updates live via IVirtualDesktopNotification when desktop is renamed
+- [x] **VDSK-08**: Fallback to "default" GUID if virtual desktop API fails (single-instance notepad mode)
+- [x] **VDSK-09**: Virtual desktop service abstraction layer isolating all COM interop from business logic
 
 ### Taskbar & Window Management
 
@@ -48,19 +48,19 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Tab Management
 
-- [ ] **TABS-01**: Tab list panel, 180px fixed width, vertically scrollable
-- [ ] **TABS-02**: Tab label with 3-tier fallback: custom name → first ~30 chars of content → "New note" (muted/italic)
-- [ ] **TABS-03**: Tab entry shows pin icon (if pinned), label, created date (left), updated time (right)
-- [ ] **TABS-04**: Active tab highlighted with 2px left accent border
-- [ ] **TABS-05**: Drag-to-reorder within zones (pinned zone / unpinned zone separately)
-- [ ] **TABS-06**: Tab rename via double-click, F2, or context menu; inline editable field; Enter commits, Escape cancels
-- [ ] **TABS-07**: Empty/whitespace rename submission clears custom name, reverts to content fallback
-- [ ] **TABS-08**: New tab (Ctrl+T / + button): creates notes row, focuses editor immediately, label "New note"
-- [ ] **TABS-09**: Clone tab (Ctrl+K / toolbar / context menu): duplicate content into new tab below
-- [ ] **TABS-10**: Pin/unpin toggle (Ctrl+P / toolbar / context menu): pinned tabs always sorted to top
-- [ ] **TABS-11**: Tab search box (Ctrl+F): filters tabs by label and full content within current desktop
-- [ ] **TABS-12**: Search box takes all available width minus + button; Escape clears and returns focus to editor
-- [ ] **TABS-13**: Ctrl+Tab / Ctrl+Shift+Tab: next/previous tab navigation
+- [x] **TABS-01**: Tab list panel, 180px fixed width, vertically scrollable
+- [x] **TABS-02**: Tab label with 3-tier fallback: custom name → first ~30 chars of content → "New note" (muted/italic)
+- [x] **TABS-03**: Tab entry shows pin icon (if pinned), label, created date (left), updated time (right)
+- [x] **TABS-04**: Active tab highlighted with 2px left accent border
+- [x] **TABS-05**: Drag-to-reorder within zones (pinned zone / unpinned zone separately)
+- [x] **TABS-06**: Tab rename via double-click, F2, or context menu; inline editable field; Enter commits, Escape cancels
+- [x] **TABS-07**: Empty/whitespace rename submission clears custom name, reverts to content fallback
+- [x] **TABS-08**: New tab (Ctrl+T / + button): creates notes row, focuses editor immediately, label "New note"
+- [x] **TABS-09**: Clone tab (Ctrl+K / toolbar / context menu): duplicate content into new tab below
+- [x] **TABS-10**: Pin/unpin toggle (Ctrl+P / toolbar / context menu): pinned tabs always sorted to top
+- [x] **TABS-11**: Tab search box (Ctrl+F): filters tabs by label and full content within current desktop
+- [x] **TABS-12**: Search box takes all available width minus + button; Escape clears and returns focus to editor
+- [x] **TABS-13**: Ctrl+Tab / Ctrl+Shift+Tab: next/previous tab navigation
 
 ### Tab Deletion
 
@@ -82,24 +82,24 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Editor
 
-- [ ] **EDIT-01**: Plain-text editor with monospace font (Consolas, default 13pt), word-wrap on, no horizontal scrollbar
-- [ ] **EDIT-02**: Autosave with configurable debounce (default 500ms) to SQLite; updated_at set on every write
+- [x] **EDIT-01**: Plain-text editor with monospace font (Consolas, default 13pt), word-wrap on, no horizontal scrollbar
+- [x] **EDIT-02**: Autosave with configurable debounce (default 500ms) to SQLite; updated_at set on every write
 - [ ] **EDIT-03**: Write frequency cap: new write cannot be scheduled sooner than debounce interval after previous write completed
-- [ ] **EDIT-04**: On app close: flush immediately, no data loss
-- [ ] **EDIT-05**: On tab restore: reload content, cursor position, and scroll offset from database
-- [ ] **EDIT-06**: Copy behavior: selection copied normally; no selection copies entire note content silently
-- [ ] **EDIT-07**: Save as TXT (Ctrl+S): OS save dialog, UTF-8 with BOM, default filename from tab name or content
+- [x] **EDIT-04**: On app close: flush immediately, no data loss
+- [x] **EDIT-05**: On tab restore: reload content, cursor position, and scroll offset from database
+- [x] **EDIT-06**: Copy behavior: selection copied normally; no selection copies entire note content silently
+- [x] **EDIT-07**: Save as TXT (Ctrl+S): OS save dialog, UTF-8 with BOM, default filename from tab name or content
 
 ### Undo/Redo
 
-- [ ] **UNDO-01**: Custom per-tab in-memory UndoStack (WPF native TextBox undo disabled via IsUndoEnabled=False)
-- [ ] **UNDO-02**: Tier-1: up to 50 full content snapshots, pushed on every debounced autosave if content differs
-- [ ] **UNDO-03**: Tier-2: up to 20 coarse checkpoints, saved every 5 minutes of active editing
-- [ ] **UNDO-04**: Undo/redo pointer moves across both tiers seamlessly via Ctrl+Z / Ctrl+Y / Ctrl+Shift+Z
-- [ ] **UNDO-05**: Global 50MB budget across all UndoStacks; collapse at 80%, target 60%
-- [ ] **UNDO-06**: Collapse: oldest tabs first, tier-1 into tier-2, then evict oldest tier-2; active tab never collapsed
-- [ ] **UNDO-07**: Tab switch saves content/cursor to in-memory model; arriving tab binds its UndoStack
-- [ ] **UNDO-08**: UndoStacks are in-memory only — not persisted, discarded on window close
+- [x] **UNDO-01**: Custom per-tab in-memory UndoStack (WPF native TextBox undo disabled via IsUndoEnabled=False)
+- [x] **UNDO-02**: Tier-1: up to 50 full content snapshots, pushed on every debounced autosave if content differs
+- [x] **UNDO-03**: Tier-2: up to 20 coarse checkpoints, saved every 5 minutes of active editing
+- [x] **UNDO-04**: Undo/redo pointer moves across both tiers seamlessly via Ctrl+Z / Ctrl+Y / Ctrl+Shift+Z
+- [x] **UNDO-05**: Global 50MB budget across all UndoStacks; collapse at 80%, target 60%
+- [x] **UNDO-06**: Collapse: oldest tabs first, tier-1 into tier-2, then evict oldest tier-2; active tab never collapsed
+- [x] **UNDO-07**: Tab switch saves content/cursor to in-memory model; arriving tab binds its UndoStack
+- [x] **UNDO-08**: UndoStacks are in-memory only — not persisted, discarded on window close
 
 ### File Drop
 
@@ -128,7 +128,7 @@ Requirements for initial release. Each maps to roadmap phases.
 
 - [x] **ORPH-01**: Sessions with no desktop match become orphaned (stay in DB until user acts)
 - [x] **ORPH-02**: Recovery panel lists orphaned sessions with desktop name, tab count, last updated date
-- [x] **ORPH-03**: Actions per session: Adopt into current desktop (merge tabs), Open as new window, Delete
+- [ ] **ORPH-03**: Actions per session: Adopt into current desktop (merge tabs), Open as new window, Delete
 - [x] **ORPH-04**: Non-blocking badge on menu button when orphaned sessions exist (no dialog on startup)
 
 ### Window Drag (Desktop Transfer)
@@ -146,10 +146,10 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Theming
 
-- [ ] **THME-01**: Three themes: Light, Dark, System (follows Windows app mode)
+- [x] **THME-01**: Three themes: Light, Dark, System (follows Windows app mode)
 - [ ] **THME-02**: Instant theme switching via WPF ResourceDictionary swap
-- [ ] **THME-03**: System theme re-evaluates on SystemEvents.UserPreferenceChanged
-- [ ] **THME-04**: 10 color tokens defined for both light and dark themes (c-win-bg through c-toolbar-icon-hover)
+- [x] **THME-03**: System theme re-evaluates on SystemEvents.UserPreferenceChanged
+- [x] **THME-04**: 10 color tokens defined for both light and dark themes (c-win-bg through c-toolbar-icon-hover)
 
 ### Preferences
 
@@ -168,16 +168,16 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Toolbar
 
-- [ ] **TOOL-01**: Toolbar above editor: Undo, Redo | Pin, Clone | Copy, Paste | Save as TXT | spacer | Delete
-- [ ] **TOOL-02**: Delete button right-aligned via flex spacer; default opacity 0.7, color #e74c3c, hover opacity 1.0
-- [ ] **TOOL-03**: Tooltip delay 600ms; tooltips include shortcut key info
+- [x] **TOOL-01**: Toolbar above editor: Undo, Redo | Pin, Clone | Copy, Paste | Save as TXT | spacer | Delete
+- [x] **TOOL-02**: Delete button right-aligned via flex spacer; default opacity 0.7, color #e74c3c, hover opacity 1.0
+- [x] **TOOL-03**: Tooltip delay 600ms; tooltips include shortcut key info
 
 ### Startup & Publishing
 
-- [ ] **STRT-01**: Startup sequence: mutex → pending_moves check → open DB → session match → load tabs → restore geometry → apply theme → focus tab → show window
-- [ ] **STRT-02**: PublishReadyToRun=true (not Native AOT) for fast startup; best-effort sub-200ms
-- [ ] **STRT-03**: Background migrations after window shown; never block cold-start path
-- [ ] **STRT-04**: First launch: create schema synchronously (fast, one-time), then show window
+- [x] **STRT-01**: Startup sequence: mutex → pending_moves check → open DB → session match → load tabs → restore geometry → apply theme → focus tab → show window
+- [x] **STRT-02**: PublishReadyToRun=true (not Native AOT) for fast startup; best-effort sub-200ms
+- [x] **STRT-03**: Background migrations after window shown; never block cold-start path
+- [x] **STRT-04**: First launch: create schema synchronously (fast, one-time), then show window
 
 ## v2 Requirements
 
@@ -212,50 +212,50 @@ Deferred to future release. Tracked but not in current roadmap.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| DATA-01 | Phase 1 | Pending |
-| DATA-02 | Phase 1 | Pending |
-| DATA-03 | Phase 1 | Pending |
-| DATA-04 | Phase 1 | Pending |
-| DATA-05 | Phase 1 | Pending |
-| DATA-06 | Phase 1 | Pending |
-| DATA-07 | Phase 1 | Pending |
-| PROC-01 | Phase 1 | Pending |
-| PROC-02 | Phase 1 | Pending |
-| PROC-03 | Phase 1 | Pending |
-| PROC-04 | Phase 1 | Pending |
-| PROC-05 | Phase 1 | Pending |
-| PROC-06 | Phase 1 | Pending |
-| STRT-01 | Phase 1 | Pending |
-| STRT-02 | Phase 1 | Pending |
-| STRT-03 | Phase 1 | Pending |
-| STRT-04 | Phase 1 | Pending |
-| VDSK-01 | Phase 2 | Pending |
-| VDSK-02 | Phase 2 | Pending |
-| VDSK-03 | Phase 2 | Pending |
-| VDSK-04 | Phase 2 | Pending |
-| VDSK-05 | Phase 2 | Pending |
-| VDSK-06 | Phase 2 | Pending |
-| VDSK-07 | Phase 2 | Pending |
-| VDSK-08 | Phase 2 | Pending |
-| VDSK-09 | Phase 2 | Pending |
+| DATA-01 | Phase 1 | Complete |
+| DATA-02 | Phase 1 | Complete |
+| DATA-03 | Phase 1 | Complete |
+| DATA-04 | Phase 1 | Complete |
+| DATA-05 | Phase 1 | Complete |
+| DATA-06 | Phase 1 | Complete |
+| DATA-07 | Phase 1 | Complete |
+| PROC-01 | Phase 1 | Complete |
+| PROC-02 | Phase 1 | Complete |
+| PROC-03 | Phase 1 | Complete |
+| PROC-04 | Phase 1 | Complete |
+| PROC-05 | Phase 1 | Complete |
+| PROC-06 | Phase 1 | Complete |
+| STRT-01 | Phase 1 | Complete |
+| STRT-02 | Phase 1 | Complete |
+| STRT-03 | Phase 1 | Complete |
+| STRT-04 | Phase 1 | Complete |
+| VDSK-01 | Phase 2 | Complete |
+| VDSK-02 | Phase 2 | Complete |
+| VDSK-03 | Phase 2 | Complete |
+| VDSK-04 | Phase 2 | Complete |
+| VDSK-05 | Phase 2 | Complete |
+| VDSK-06 | Phase 2 | Complete |
+| VDSK-07 | Phase 2 | Complete |
+| VDSK-08 | Phase 2 | Complete |
+| VDSK-09 | Phase 2 | Complete |
 | TASK-01 | Phase 3 | Complete |
 | TASK-02 | Phase 3 | Complete |
 | TASK-03 | Phase 3 | Complete |
 | TASK-04 | Phase 3 | Complete |
 | TASK-05 | Phase 3 | Complete |
-| TABS-01 | Phase 4 | Pending |
-| TABS-02 | Phase 4 | Pending |
-| TABS-03 | Phase 4 | Pending |
-| TABS-04 | Phase 4 | Pending |
-| TABS-05 | Phase 4 | Pending |
-| TABS-06 | Phase 4 | Pending |
-| TABS-07 | Phase 4 | Pending |
-| TABS-08 | Phase 4 | Pending |
-| TABS-09 | Phase 4 | Pending |
-| TABS-10 | Phase 4 | Pending |
-| TABS-11 | Phase 4 | Pending |
-| TABS-12 | Phase 4 | Pending |
-| TABS-13 | Phase 4 | Pending |
+| TABS-01 | Phase 4 | Complete |
+| TABS-02 | Phase 4 | Complete |
+| TABS-03 | Phase 4 | Complete |
+| TABS-04 | Phase 4 | Complete |
+| TABS-05 | Phase 4 | Complete |
+| TABS-06 | Phase 4 | Complete |
+| TABS-07 | Phase 4 | Complete |
+| TABS-08 | Phase 4 | Complete |
+| TABS-09 | Phase 4 | Complete |
+| TABS-10 | Phase 4 | Complete |
+| TABS-11 | Phase 4 | Complete |
+| TABS-12 | Phase 4 | Complete |
+| TABS-13 | Phase 4 | Complete |
 | TDEL-01 | Phase 5 | Complete |
 | TDEL-02 | Phase 5 | Complete |
 | TDEL-03 | Phase 5 | Complete |
@@ -268,28 +268,28 @@ Deferred to future release. Tracked but not in current roadmap.
 | TOST-04 | Phase 5 | Complete |
 | TOST-05 | Phase 5 | Complete |
 | TOST-06 | Phase 5 | Complete |
-| EDIT-01 | Phase 6 | Pending |
-| EDIT-02 | Phase 6 | Pending |
-| EDIT-03 | Phase 6 | Pending |
-| EDIT-04 | Phase 6 | Pending |
-| EDIT-05 | Phase 6 | Pending |
-| EDIT-06 | Phase 6 | Pending |
-| EDIT-07 | Phase 6 | Pending |
-| UNDO-01 | Phase 6 | Pending |
-| UNDO-02 | Phase 6 | Pending |
-| UNDO-03 | Phase 6 | Pending |
-| UNDO-04 | Phase 6 | Pending |
-| UNDO-05 | Phase 6 | Pending |
-| UNDO-06 | Phase 6 | Pending |
-| UNDO-07 | Phase 6 | Pending |
-| UNDO-08 | Phase 6 | Pending |
-| THME-01 | Phase 7 | Pending |
+| EDIT-01 | Phase 6 | Complete |
+| EDIT-02 | Phase 6 | Complete |
+| EDIT-03 | Phase 8.1 | Pending |
+| EDIT-04 | Phase 6 | Complete |
+| EDIT-05 | Phase 6 | Complete |
+| EDIT-06 | Phase 6 | Complete |
+| EDIT-07 | Phase 6 | Complete |
+| UNDO-01 | Phase 6 | Complete |
+| UNDO-02 | Phase 6 | Complete |
+| UNDO-03 | Phase 6 | Complete |
+| UNDO-04 | Phase 6 | Complete |
+| UNDO-05 | Phase 6 | Complete |
+| UNDO-06 | Phase 6 | Complete |
+| UNDO-07 | Phase 6 | Complete |
+| UNDO-08 | Phase 6 | Complete |
+| THME-01 | Phase 7 | Complete |
 | THME-02 | Phase 7 | Pending |
-| THME-03 | Phase 7 | Pending |
-| THME-04 | Phase 7 | Pending |
-| TOOL-01 | Phase 7 | Pending |
-| TOOL-02 | Phase 7 | Pending |
-| TOOL-03 | Phase 7 | Pending |
+| THME-03 | Phase 7 | Complete |
+| THME-04 | Phase 7 | Complete |
+| TOOL-01 | Phase 7 | Complete |
+| TOOL-02 | Phase 7 | Complete |
+| TOOL-03 | Phase 7 | Complete |
 | MENU-01 | Phase 8 Plan 01 | Complete |
 | MENU-02 | Phase 8 Plan 03 | Complete |
 | MENU-03 | Phase 8 Plan 02 | Complete |
@@ -299,7 +299,7 @@ Deferred to future release. Tracked but not in current roadmap.
 | CTXM-02 | Phase 8 Plan 01 | Complete |
 | ORPH-01 | Phase 8 Plan 03 | Complete |
 | ORPH-02 | Phase 8 Plan 03 | Complete |
-| ORPH-03 | Phase 8 Plan 03 | Complete |
+| ORPH-03 | Phase 8.1 | Pending |
 | ORPH-04 | Phase 8 Plan 03 | Complete |
 | DROP-01 | Phase 9 | Pending |
 | DROP-02 | Phase 9 | Pending |
@@ -329,10 +329,11 @@ Deferred to future release. Tracked but not in current roadmap.
 | DRAG-10 | Phase 10 | Pending |
 
 **Coverage:**
-- v1 requirements: 120 total (note: initial estimate was 95; actual count after enumeration is 120)
+- v1 requirements: 120 total
 - Mapped to phases: 120
+- Satisfied: 86 of 89 (Phases 1-8); 2 partial reassigned to Phase 8.1; 1 deferred to Phase 9
 - Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-02*
-*Last updated: 2026-03-02 after roadmap creation — all requirements mapped to phases*
+*Last updated: 2026-03-03 after gap closure phase creation — 59 checkboxes updated, ORPH-03 reset, EDIT-03/ORPH-03 assigned to Phase 8.1*
