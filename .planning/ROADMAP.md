@@ -22,7 +22,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 8: Menus, Context Actions & Orphaned Sessions** - Window menu, tab context menu, bulk delete operations, orphaned session recovery panel (completed 2026-03-03)
 - [x] **Phase 8.1: Gap Closure — Code Fixes** (INSERTED) - ORPH-03 Open button, EDIT-03 autosave frequency cap fix (completed 2026-03-03)
 - [x] **Phase 8.2: Gap Closure — Verification** (INSERTED) - Missing VERIFICATION.md for Phases 6 and 7 (completed 2026-03-03)
-- [ ] **Phase 9: File Drop, Preferences, Hotkeys & Keyboard** - File drop with content inspection, preferences dialog, global hotkey, all keyboard shortcuts
+- [x] **Phase 9: File Drop, Preferences, Hotkeys & Keyboard** - File drop with content inspection, preferences dialog, global hotkey, all keyboard shortcuts (completed 2026-03-03)
 - [ ] **Phase 10: Window Drag & Crash Recovery** - Inter-desktop drag detection, lock overlay, reparent/merge/cancel flow, pending_moves crash recovery
 
 ## Phase Details
@@ -194,12 +194,12 @@ Plans:
   3. Pressing Win+Shift+N from any application focuses or creates the JoJot window for the current desktop
   4. The Preferences dialog applies all changes live (theme, font size, debounce interval, hotkey) with no restart required
   5. All documented keyboard shortcuts work: Ctrl+T, Ctrl+W, Ctrl+K, Ctrl+P, Ctrl+Tab, Ctrl+Shift+Tab, F2, Ctrl+Z, Ctrl+Y, Ctrl+S, Ctrl+F, Ctrl+=, Ctrl+-, Ctrl+0, and Ctrl+Scroll over editor
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 09-01: TBD
-- [ ] 09-02: TBD
-- [ ] 09-03: TBD
+- [x] 09-01-PLAN.md — File drop: FileDropService with content inspection (binary detection, 500KB limit), drop overlay XAML, multi-file processing
+- [x] 09-02-PLAN.md — Preferences panel + global hotkey: HotkeyService with RegisterHotKey P/Invoke, slide-in preferences (theme, font, debounce, hotkey picker)
+- [x] 09-03-PLAN.md — Keyboard shortcuts: Ctrl+=/-/0 font size, Ctrl+Scroll zoom, context-routed Ctrl+F with find bar, Ctrl+? help overlay
 
 ### Phase 10: Window Drag & Crash Recovery
 **Goal**: When the user drags a JoJot window to another virtual desktop, the lock overlay appears, the user resolves the conflict (reparent, merge, or cancel), and the pending_moves table ensures correct recovery if the process crashes mid-drag.
@@ -234,5 +234,5 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 8.1 -> 
 | 8. Menus, Context Actions & Orphaned Sessions | 3/3 | Complete | 2026-03-03 |
 | 8.1. Gap Closure — Code Fixes | 1/1 | Complete   | 2026-03-03 |
 | 8.2. Gap Closure — Verification | 2/2 | Complete    | 2026-03-03 |
-| 9. File Drop, Preferences, Hotkeys & Keyboard | 0/TBD | Not started | - |
+| 9. File Drop, Preferences, Hotkeys & Keyboard | 3/3 | Complete | 2026-03-03 |
 | 10. Window Drag & Crash Recovery | 0/TBD | Not started | - |

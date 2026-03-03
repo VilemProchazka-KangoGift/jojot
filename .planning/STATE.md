@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: in-progress
-last_updated: "2026-03-03T14:56:14.816Z"
+last_updated: "2026-03-03T18:00:00.000Z"
 progress:
   total_phases: 12
-  completed_phases: 10
-  total_plans: 24
-  completed_plans: 24
+  completed_phases: 11
+  total_plans: 27
+  completed_plans: 27
 ---
 
 # Project State
@@ -18,23 +18,23 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-03)
 
 **Core value:** Instant note capture tied to your virtual desktop context — switch desktops, switch notes, zero friction.
-**Current focus:** Phase 9 — File Drop, Preferences, Hotkeys & Keyboard
+**Current focus:** Phase 10 — Window Drag & Crash Recovery
 
 ## Current Position
 
-Phase: 9 of 10 (File Drop, Preferences, Hotkeys & Keyboard)
+Phase: 10 of 10 (Window Drag & Crash Recovery)
 Plan: Not started
 Status: Ready to plan
-Last activity: 2026-03-03 — Phase 8.2 complete: verification docs for Phases 6 & 7 (2 plans)
+Last activity: 2026-03-03 — Phase 9 complete: file drop, preferences, hotkeys & keyboard (3 plans)
 
-Progress: [████████████████] 83%
+Progress: [██████████████████] 92%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 18
-- Average duration: ~3.8 min
-- Total execution time: ~67 min
+- Total plans completed: 21
+- Average duration: ~4.5 min
+- Total execution time: ~122 min
 
 **By Phase:**
 
@@ -48,13 +48,13 @@ Progress: [████████████████] 83%
 | 6. Editor & Undo | 3 | ~11 min | ~3.7 min |
 | 7. Theming & Toolbar | 2 | ~10 min | ~5.0 min |
 | 8. Menus & Context Actions | 3 | ~27 min | ~9.0 min |
-
 | 8.1. Gap Closure — Code Fixes | 1 | ~1 min | ~1.0 min |
 | 8.2. Gap Closure — Verification | 2 | ~2 min | ~1.0 min |
+| 9. File Drop, Preferences, Hotkeys & Keyboard | 3 | ~55 min | ~18.3 min |
 
 **Recent Trend:**
-- Last 5 plans: 08-03 (~15 min), 8.1-01 (~1 min), 8.2-01 (~1 min), 8.2-02 (~1 min)
-- Trend: Gap closure phases 8.1–8.2 very fast — targeted fixes and verification docs
+- Last 5 plans: 8.2-01 (~1 min), 8.2-02 (~1 min), 09-01 (~15 min), 09-02 (~25 min), 09-03 (~15 min)
+- Trend: Phase 9 largest phase by code volume — 2 new services, 1000+ lines across XAML/code-behind/App wiring
 
 *Updated after each plan completion*
 
@@ -157,6 +157,20 @@ Recent decisions affecting current work:
 - [Phase 08.1-01]: TabList_SelectionChanged made async void — WPF event handler pattern, FlushAsync stops timer internally removing need for explicit Stop()
 - [Phase 08.1-01]: Open button in orphan recovery uses same action/cleanup pattern as Adopt/Delete: await action -> RemoveOrphanGuid -> RefreshAfterOrphanAction
 
+- [09-01]: Binary detection checks null bytes + non-printable chars (excluding tab/LF/CR/ESC) in first 8KB — content inspection, not extension-based
+- [09-01]: Drop overlay covers full content area at ZIndex=50, uses AllowDrop with separate drag event handlers
+- [09-01]: ShowInfoToast for info-only messages (no undo button) — reuses toast infrastructure from Phase 5
+- [09-02]: HotkeyService uses Win32 RegisterHotKey P/Invoke with HwndSource WM_HOTKEY message hook
+- [09-02]: Default hotkey Win+Shift+N with MOD_NOREPEAT; toggle behavior: active+not minimized -> minimize, otherwise -> restore+activate
+- [09-02]: Hotkey initialized in CreateWindowForDesktop (first window only) since HWND required post-Show
+- [09-02]: Preferences panel 300px slide-in with TranslateTransform DoubleAnimation (250ms CubicEase)
+- [09-02]: Hotkey recording mode in Window_PreviewKeyDown — requires modifier+non-modifier key; falls back to previous on failure
+- [09-02]: System.Windows.Media.FontFamily fully qualified to resolve ambiguity with System.Drawing (UseWindowsForms=true)
+- [09-03]: Ctrl+F context routing: ContentEditor.IsFocused -> find bar, otherwise -> tab search (SearchBox)
+- [09-03]: Find bar uses case-insensitive IndexOf for search; Enter/Shift+Enter for next/previous match
+- [09-03]: Help overlay content built programmatically (BuildHelpContent) to avoid massive XAML
+- [09-03]: Ctrl+Scroll uses GetPosition hit-test against ContentEditor bounds — only editor area triggers font size change
+
 ### Pending Todos
 
 None yet.
@@ -164,11 +178,11 @@ None yet.
 ### Blockers/Concerns
 
 - [RESOLVED Phase 2 risk]: Virtual desktop COM GUIDs differ between Windows 11 23H2 and 24H2 — resolved with build-specific GUID dictionary in ComGuids.cs
-- [Phase 9 risk]: RegisterHotKey and SetForegroundWindow have STA thread and focus-stealing gotchas — worth a focused research pass before Phase 9 implementation
+- [RESOLVED Phase 9 risk]: RegisterHotKey and SetForegroundWindow — resolved with HwndSource message hook and WindowActivationHelper.ActivateWindow
 - [Phase 1 action]: Measure actual startup time against ReadyToRun binary on a clean machine; baseline must be established in Phase 1 before feature work begins
 
 ## Session Continuity
 
 Last session: 2026-03-03
-Stopped at: Phase 8.2 complete, ready to plan Phase 9
+Stopped at: Phase 9 complete, ready to plan Phase 10
 Resume file: None
