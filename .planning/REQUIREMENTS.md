@@ -147,7 +147,7 @@ Requirements for initial release. Each maps to roadmap phases.
 ### Theming
 
 - [x] **THME-01**: Three themes: Light, Dark, System (follows Windows app mode)
-- [ ] **THME-02**: Instant theme switching via WPF ResourceDictionary swap
+- [x] **THME-02**: Instant theme switching via WPF ResourceDictionary swap
 - [x] **THME-03**: System theme re-evaluates on SystemEvents.UserPreferenceChanged
 - [x] **THME-04**: 10 color tokens defined for both light and dark themes (c-win-bg through c-toolbar-icon-hover)
 
@@ -284,7 +284,7 @@ Deferred to future release. Tracked but not in current roadmap.
 | UNDO-07 | Phase 6 | Complete |
 | UNDO-08 | Phase 6 | Complete |
 | THME-01 | Phase 7 | Complete |
-| THME-02 | Phase 7 | Pending |
+| THME-02 | Phase 7 | Complete |
 | THME-03 | Phase 7 | Complete |
 | THME-04 | Phase 7 | Complete |
 | TOOL-01 | Phase 7 | Complete |
