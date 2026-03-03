@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: in-progress
-last_updated: "2026-03-03T09:12:38Z"
+last_updated: "2026-03-03T09:50:58Z"
 progress:
   total_phases: 10
   completed_phases: 7
-  total_plans: 18
-  completed_plans: 18
+  total_plans: 21
+  completed_plans: 19
 ---
 
 # Project State
@@ -23,11 +23,11 @@ See: .planning/PROJECT.md (updated 2026-03-02)
 ## Current Position
 
 Phase: 8 of 10 (Menus, Context Actions & Orphaned Sessions)
-Plan: 0 of TBD in current phase — NOT STARTED
-Status: Phase 7 complete — ready for Phase 8
-Last activity: 2026-03-03 — Phase 7 Theming & Toolbar complete (2 plans)
+Plan: 1 of 3 complete
+Status: Phase 8 in progress — Plan 01 complete
+Last activity: 2026-03-03 — Phase 8 Plan 01: hamburger menu + tab context menu complete (4 min)
 
-Progress: [██████████████] 70%
+Progress: [███████████████] 73%
 
 ## Performance Metrics
 
@@ -47,10 +47,11 @@ Progress: [██████████████] 70%
 | 5. Deletion & Toast | 2 | ~10 min | ~5.0 min |
 | 6. Editor & Undo | 3 | ~11 min | ~3.7 min |
 | 7. Theming & Toolbar | 2 | ~10 min | ~5.0 min |
+| 8. Menus & Context Actions | 1/3 | ~4 min | ~4.0 min |
 
 **Recent Trend:**
-- Last 5 plans: 06-01 (~4 min), 06-02 (~5 min), 06-03 (~2 min), 07-01 (~5 min), 07-02 (~5 min)
-- Trend: Phase 7 plans moderate complexity (theme infrastructure + toolbar UI)
+- Last 5 plans: 06-03 (~2 min), 07-01 (~5 min), 07-02 (~5 min), 08-01 (~4 min)
+- Trend: Phase 8 Plan 01 on pace (~4 min, XAML-heavy UI work)
 
 *Updated after each plan completion*
 
@@ -134,6 +135,12 @@ Recent decisions affecting current work:
 - [07-02]: Toolbar copy handler duplicates EDIT-06 behavior (selection or full content) rather than depending on keyboard shortcut path
 - [07-02]: ApplicationCommands.Paste used for toolbar paste — focuses editor first to ensure correct paste target
 
+- [08-01]: Custom Popup used for menus (not WPF ContextMenu) — WPF ContextMenu cannot use DynamicResource for background without complex template override
+- [08-01]: "Delete older than" submenu shown on MouseEnter (not click) — more discoverable, matches Windows 11 flyout patterns
+- [08-01]: HamburgerMenu.Closed event closes DeleteOlderSubmenu — prevents dangling submenu on parent StaysOpen=false dismiss
+- [08-01]: Context menu delegates to existing ToolbarPin/Clone/Save handlers by setting _activeTab first — no behavior duplication
+- [08-01]: ExitApplication uses App.GetAllWindows() — keeps _windows field private while enabling cross-window access for Exit
+
 ### Pending Todos
 
 None yet.
@@ -147,5 +154,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-03
-Stopped at: Phase 7 complete — theme infrastructure + toolbar executed, verified, roadmap updated
-Resume file: .planning/phases/07-theming-toolbar/07-02-SUMMARY.md
+Stopped at: Phase 8 Plan 01 complete — hamburger menu + tab context menu executed, verified, SUMMARY created
+Resume file: .planning/phases/08-menus-context-actions-orphaned-sessions/08-01-SUMMARY.md

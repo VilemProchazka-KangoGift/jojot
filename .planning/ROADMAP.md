@@ -152,9 +152,9 @@ Plans:
 **Plans**: TBD
 
 Plans:
-- [ ] 08-01: TBD
-- [ ] 08-02: TBD
-- [ ] 08-03: TBD
+- [x] 08-01-PLAN.md — Hamburger menu button + popup (7 items, submenu), tab right-click context menu (7 items), Exit handler, bulk delete stubs, recovery panel XAML pre-wired
+- [ ] 08-02-PLAN.md — Bulk delete confirmation overlay: wire ConfirmAndDeleteOlderThanAsync/ExceptPinned/All with confirmation dialog and toast
+- [ ] 08-03-PLAN.md — Orphaned session recovery panel: ShowRecoveryPanel, session cards, Adopt/Open/Delete actions, orphan badge
 
 ### Phase 9: File Drop, Preferences, Hotkeys & Keyboard
 **Goal**: Users can drag text files into JoJot to open them as tabs, configure all preferences live, activate JoJot from anywhere with a global hotkey, and operate the app entirely from the keyboard.
@@ -203,6 +203,6 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 5. Deletion & Toast | 2/2 | Complete    | 2026-03-02 |
 | 6. Editor & Undo | 3/3 | Complete | 2026-03-03 |
 | 7. Theming & Toolbar | 2/2 | Complete | 2026-03-03 |
-| 8. Menus, Context Actions & Orphaned Sessions | 0/TBD | Not started | - |
+| 8. Menus, Context Actions & Orphaned Sessions | 1/3 | In progress | - |
 | 9. File Drop, Preferences, Hotkeys & Keyboard | 0/TBD | Not started | - |
 | 10. Window Drag & Crash Recovery | 0/TBD | Not started | - |

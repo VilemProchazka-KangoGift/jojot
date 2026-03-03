@@ -137,7 +137,10 @@ namespace JoJot
 
             // ── Step 9: Create and show window for current desktop ────────────
             string currentDesktopGuid = VirtualDesktopService.CurrentDesktopGuid;
-            await CreateWindowForDesktop(currentDesktopGuid);
+            var mainWindow = await CreateWindowForDesktop(currentDesktopGuid);
+
+            // ── Step 9.1: Set orphan badge after session matching (Phase 8: ORPH-04) ──
+            mainWindow.UpdateOrphanBadge();
 
             // ── Step 9.5: Wire desktop event handlers ──────────────────────────
             // Live title updates when desktop is renamed in Windows Settings
