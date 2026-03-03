@@ -103,13 +103,13 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### File Drop
 
-- [ ] **DROP-01**: Dragging a file onto JoJot window opens it as a new tab
-- [ ] **DROP-02**: Acceptance by content inspection (valid UTF-8/UTF-16, no null bytes/non-printable chars), not extension
-- [ ] **DROP-03**: Size limit 500KB checked before content inspection
-- [ ] **DROP-04**: Tab name set to filename including extension; content loaded; original file unmodified
-- [ ] **DROP-05**: Drop visual feedback: highlight border while dragging over window
-- [ ] **DROP-06**: Error messages (inline alert, auto-dismiss 4s): too large, binary content, read error
-- [ ] **DROP-07**: Multiple files dropped simultaneously: each valid file gets its own tab; errors don't block valid files
+- [x] **DROP-01**: Dragging a file onto JoJot window opens it as a new tab
+- [x] **DROP-02**: Acceptance by content inspection (valid UTF-8/UTF-16, no null bytes/non-printable chars), not extension
+- [x] **DROP-03**: Size limit 500KB checked before content inspection
+- [x] **DROP-04**: Tab name set to filename including extension; content loaded; original file unmodified
+- [x] **DROP-05**: Drop visual feedback: highlight border while dragging over window
+- [x] **DROP-06**: Error messages (inline alert, auto-dismiss 4s): too large, binary content, read error
+- [x] **DROP-07**: Multiple files dropped simultaneously: each valid file gets its own tab; errors don't block valid files
 
 ### Window Menu
 
@@ -153,18 +153,18 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Preferences
 
-- [ ] **PREF-01**: Preferences dialog opened via menu; all changes apply live, no restart
-- [ ] **PREF-02**: Theme toggle: Light | System | Dark
-- [ ] **PREF-03**: Font size control: +/- buttons, 8-32pt range, 1pt step, reset link to 13pt
-- [ ] **PREF-04**: Autosave debounce interval: numeric input, 200-2000ms range, default 500
-- [ ] **PREF-05**: Global hotkey picker: key combination, default Win+Shift+N
+- [x] **PREF-01**: Preferences dialog opened via menu; all changes apply live, no restart
+- [x] **PREF-02**: Theme toggle: Light | System | Dark
+- [x] **PREF-03**: Font size control: +/- buttons, 8-32pt range, 1pt step, reset link to 13pt
+- [x] **PREF-04**: Autosave debounce interval: numeric input, 200-2000ms range, default 500
+- [x] **PREF-05**: Global hotkey picker: key combination, default Win+Shift+N
 
 ### Keyboard & Hotkeys
 
-- [ ] **KEYS-01**: Global hotkey (Win+Shift+N default) via RegisterHotKey: focus/minimize JoJot window
-- [ ] **KEYS-02**: Font size: Ctrl+= increase, Ctrl+- decrease, Ctrl+0 reset to 13pt
-- [ ] **KEYS-03**: Ctrl+Scroll over editor area changes font size; over tab list scrolls normally
-- [ ] **KEYS-04**: All keyboard shortcuts per spec: Ctrl+T, Ctrl+W, Ctrl+K, Ctrl+P, Ctrl+Tab, Ctrl+Shift+Tab, F2, Ctrl+Z, Ctrl+Y, Ctrl+Shift+Z, Ctrl+C, Ctrl+V, Ctrl+X, Ctrl+A, Ctrl+S, Ctrl+F
+- [x] **KEYS-01**: Global hotkey (Win+Shift+N default) via RegisterHotKey: focus/minimize JoJot window
+- [x] **KEYS-02**: Font size: Ctrl+= increase, Ctrl+- decrease, Ctrl+0 reset to 13pt
+- [x] **KEYS-03**: Ctrl+Scroll over editor area changes font size; over tab list scrolls normally
+- [x] **KEYS-04**: All keyboard shortcuts per spec: Ctrl+T, Ctrl+W, Ctrl+K, Ctrl+P, Ctrl+Tab, Ctrl+Shift+Tab, F2, Ctrl+Z, Ctrl+Y, Ctrl+Shift+Z, Ctrl+C, Ctrl+V, Ctrl+X, Ctrl+A, Ctrl+S, Ctrl+F
 
 ### Toolbar
 
@@ -301,39 +301,39 @@ Deferred to future release. Tracked but not in current roadmap.
 | ORPH-02 | Phase 8 Plan 03 | Complete |
 | ORPH-03 | Phase 8.1 | Complete |
 | ORPH-04 | Phase 8 Plan 03 | Complete |
-| DROP-01 | Phase 9 | Pending |
-| DROP-02 | Phase 9 | Pending |
-| DROP-03 | Phase 9 | Pending |
-| DROP-04 | Phase 9 | Pending |
-| DROP-05 | Phase 9 | Pending |
-| DROP-06 | Phase 9 | Pending |
-| DROP-07 | Phase 9 | Pending |
-| PREF-01 | Phase 9 | Pending |
-| PREF-02 | Phase 9 | Pending |
-| PREF-03 | Phase 9 | Pending |
-| PREF-04 | Phase 9 | Pending |
-| PREF-05 | Phase 9 | Pending |
-| KEYS-01 | Phase 9 | Pending |
-| KEYS-02 | Phase 9 | Pending |
-| KEYS-03 | Phase 9 | Pending |
-| KEYS-04 | Phase 9 | Pending |
-| DRAG-01 | Phase 10 | Done |
-| DRAG-02 | Phase 10 | Done |
-| DRAG-03 | Phase 10 | Done |
-| DRAG-04 | Phase 10 | Done |
-| DRAG-05 | Phase 10 | Done |
-| DRAG-06 | Phase 10 | Done |
-| DRAG-07 | Phase 10 | Done |
-| DRAG-08 | Phase 10 | Done |
-| DRAG-09 | Phase 10 | Done |
-| DRAG-10 | Phase 10 | Done |
+| DROP-01 | Phase 9 | Complete |
+| DROP-02 | Phase 9 | Complete |
+| DROP-03 | Phase 9 | Complete |
+| DROP-04 | Phase 9 | Complete |
+| DROP-05 | Phase 9 | Complete |
+| DROP-06 | Phase 9 | Complete |
+| DROP-07 | Phase 9 | Complete |
+| PREF-01 | Phase 9 | Complete |
+| PREF-02 | Phase 9 | Complete |
+| PREF-03 | Phase 9 | Complete |
+| PREF-04 | Phase 9 | Complete |
+| PREF-05 | Phase 9 | Complete |
+| KEYS-01 | Phase 9 | Complete |
+| KEYS-02 | Phase 9 | Complete |
+| KEYS-03 | Phase 9 | Complete |
+| KEYS-04 | Phase 9 | Complete |
+| DRAG-01 | Phase 10 | Complete |
+| DRAG-02 | Phase 10 | Complete |
+| DRAG-03 | Phase 10 | Complete |
+| DRAG-04 | Phase 10 | Complete |
+| DRAG-05 | Phase 10 | Complete |
+| DRAG-06 | Phase 10 | Complete |
+| DRAG-07 | Phase 10 | Complete |
+| DRAG-08 | Phase 10 | Complete |
+| DRAG-09 | Phase 10 | Complete |
+| DRAG-10 | Phase 10 | Complete |
 
 **Coverage:**
 - v1 requirements: 120 total
 - Mapped to phases: 120
-- Satisfied: 86 of 89 (Phases 1-8); 2 partial reassigned to Phase 8.1; 1 deferred to Phase 9
+- Satisfied: 120 of 120 (Phases 1-10)
 - Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-02*
-*Last updated: 2026-03-03 after gap closure phase creation — 59 checkboxes updated, ORPH-03 reset, EDIT-03/ORPH-03 assigned to Phase 8.1*
+*Last updated: 2026-03-03 after Phase 10.2 gap closure — all 120 v1 requirements verified and marked complete*
