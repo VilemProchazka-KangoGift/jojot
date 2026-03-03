@@ -233,10 +233,16 @@ namespace JoJot
                         string desktopGuid = VirtualDesktopService.CurrentDesktopGuid;
                         if (_windows.TryGetValue(desktopGuid, out var w))
                         {
-                            if (w.IsActive)
+                            // Toggle: if foreground and not minimized → minimize; otherwise → activate
+                            if (w.IsActive && w.WindowState != WindowState.Minimized)
+                            {
                                 w.WindowState = WindowState.Minimized;
+                            }
                             else
+                            {
+                                w.WindowState = WindowState.Normal;
                                 WindowActivationHelper.ActivateWindow(w);
+                            }
                         }
                         else
                         {
