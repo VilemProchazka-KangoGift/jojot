@@ -53,7 +53,16 @@ Instant note capture tied to your virtual desktop context — switch desktops, s
 
 ### Active
 
-(None — v1.0 complete. Define new requirements with `/gsd:new-milestone`)
+## Current Milestone: v1.1 Polish & Stability
+
+**Goal:** Fix critical bugs (crashes/freezes), improve UI polish, and add installer support based on first round of manual review.
+
+**Target features:**
+- Fix stack overflow on pin/unpin and delete
+- Fix tab rename freeze
+- Fix dark mode tab legibility, tab highlight style, tab panel sizing
+- Add pin icon to tabs, resize percentages, menu dismiss behavior
+- Windows installer support
 
 ### Out of Scope
 
