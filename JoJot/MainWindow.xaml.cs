@@ -1855,14 +1855,228 @@ namespace JoJot
             ShowRecoveryPanel();
         }
 
-        private void ShowRecoveryPanel() { /* Wired in Plan 03 */ }
+        // ─── Recovery Flyout Panel (Phase 8: ORPH-02, ORPH-03, ORPH-04) ────────────
 
         /// <summary>
-        /// Closes the recovery flyout panel (ORPH-03 — wired in Plan 03).
+        /// Opens the recovery flyout panel and populates it with orphaned session cards.
+        /// Toggles closed if already open.
         /// </summary>
+        private async void ShowRecoveryPanel()
+        {
+            if (_recoveryPanelOpen)
+            {
+                HideRecoveryPanel();
+                return;
+            }
+
+            var orphanGuids = VirtualDesktopService.OrphanedSessionGuids;
+            if (orphanGuids.Count == 0)
+                return;
+
+            var orphanInfos = await DatabaseService.GetOrphanedSessionInfoAsync(orphanGuids);
+            RecoverySessionList.Children.Clear();
+
+            foreach (var (guid, desktopName, tabCount, lastUpdated) in orphanInfos)
+            {
+                RecoverySessionList.Children.Add(CreateRecoveryCard(guid, desktopName, tabCount, lastUpdated));
+            }
+
+            if (RecoverySessionList.Children.Count == 0) return;
+
+            RecoveryPanel.Visibility = Visibility.Visible;
+            _recoveryPanelOpen = true;
+
+            var slideIn = new DoubleAnimation
+            {
+                From = -180, To = 0,
+                Duration = TimeSpan.FromMilliseconds(150),
+                EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
+            };
+            RecoveryPanelTranslate.BeginAnimation(TranslateTransform.XProperty, slideIn);
+        }
+
+        private void HideRecoveryPanel()
+        {
+            var slideOut = new DoubleAnimation
+            {
+                From = 0, To = -180,
+                Duration = TimeSpan.FromMilliseconds(150),
+                EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseIn }
+            };
+            slideOut.Completed += (s, e) =>
+            {
+                RecoveryPanel.Visibility = Visibility.Collapsed;
+                _recoveryPanelOpen = false;
+            };
+            RecoveryPanelTranslate.BeginAnimation(TranslateTransform.XProperty, slideOut);
+        }
+
         private void RecoveryClose_Click(object sender, RoutedEventArgs e)
         {
-            RecoveryPanel.Visibility = Visibility.Collapsed;
+            HideRecoveryPanel();
+        }
+
+        /// <summary>
+        /// Creates a card for an orphaned session in the recovery panel (ORPH-02).
+        /// Shows desktop name, tab count, last updated, and Adopt/Open/Delete buttons.
+        /// </summary>
+        private Border CreateRecoveryCard(string guid, string? desktopName, int tabCount, DateTime lastUpdated)
+        {
+            var card = new Border
+            {
+                Margin = new Thickness(0, 4, 0, 4),
+                Padding = new Thickness(10, 8, 10, 8),
+                CornerRadius = new CornerRadius(6),
+                BorderThickness = new Thickness(1)
+            };
+            card.SetResourceReference(Border.BorderBrushProperty, "c-border");
+            card.SetResourceReference(Border.BackgroundProperty, "c-win-bg");
+
+            var stack = new StackPanel();
+
+            // Desktop name
+            var nameBlock = new TextBlock
+            {
+                Text = desktopName ?? "Unknown desktop",
+                FontSize = 13,
+                FontWeight = FontWeights.SemiBold,
+                TextTrimming = TextTrimming.CharacterEllipsis
+            };
+            nameBlock.SetResourceReference(TextBlock.ForegroundProperty, "c-text-primary");
+            stack.Children.Add(nameBlock);
+
+            // Tab count and last-updated row
+            var infoPanel = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                Margin = new Thickness(0, 2, 0, 6)
+            };
+            var tabCountBlock = new TextBlock { Text = $"{tabCount} tab{(tabCount == 1 ? "" : "s")}", FontSize = 11 };
+            tabCountBlock.SetResourceReference(TextBlock.ForegroundProperty, "c-text-muted");
+            infoPanel.Children.Add(tabCountBlock);
+            var dotSep = new TextBlock { Text = " \u00B7 ", FontSize = 11 };
+            dotSep.SetResourceReference(TextBlock.ForegroundProperty, "c-text-muted");
+            infoPanel.Children.Add(dotSep);
+            var dateBlock = new TextBlock { Text = lastUpdated.ToString("MMM d, yyyy"), FontSize = 11 };
+            dateBlock.SetResourceReference(TextBlock.ForegroundProperty, "c-text-muted");
+            infoPanel.Children.Add(dateBlock);
+            stack.Children.Add(infoPanel);
+
+            // Action buttons
+            var buttonPanel = new StackPanel { Orientation = Orientation.Horizontal };
+
+            Button CreateCardButton(string text, bool isDestructive = false)
+            {
+                var btn = new Button
+                {
+                    Content = text,
+                    FontSize = 11,
+                    MinWidth = 45,
+                    Height = 24,
+                    Margin = new Thickness(0, 0, 6, 0),
+                    Cursor = Cursors.Hand,
+                    Padding = new Thickness(8, 2, 8, 2),
+                    BorderThickness = new Thickness(1)
+                };
+                btn.SetResourceReference(Button.BorderBrushProperty, "c-border");
+                if (isDestructive)
+                {
+                    btn.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(0xe7, 0x4c, 0x3c));
+                    btn.Foreground = System.Windows.Media.Brushes.White;
+                    btn.BorderThickness = new Thickness(0);
+                }
+                else
+                {
+                    btn.Background = System.Windows.Media.Brushes.Transparent;
+                    btn.SetResourceReference(Button.ForegroundProperty, "c-text-primary");
+                }
+                return btn;
+            }
+
+            // Adopt — merge tabs into current desktop
+            var adoptBtn = CreateCardButton("Adopt");
+            adoptBtn.Click += async (s, e) =>
+            {
+                await DatabaseService.MigrateTabsAsync(guid, _desktopGuid);
+                // Notes already migrated — DeleteSessionAndNotesAsync finds 0 notes, deletes session row only
+                await DatabaseService.DeleteSessionAndNotesAsync(guid);
+                RemoveOrphanGuid(guid);
+                await RefreshAfterOrphanAction();
+            };
+            buttonPanel.Children.Add(adoptBtn);
+
+            // Open — open as new window using the orphan's stored GUID
+            var openBtn = CreateCardButton("Open");
+            openBtn.Click += async (s, e) =>
+            {
+                if (Application.Current is App app)
+                    await app.OpenWindowForOrphanAsync(guid);
+                RemoveOrphanGuid(guid);
+                await RefreshAfterOrphanAction();
+            };
+            buttonPanel.Children.Add(openBtn);
+
+            // Delete — permanently delete session and all its notes
+            var deleteBtn = CreateCardButton("Delete", isDestructive: true);
+            deleteBtn.Click += async (s, e) =>
+            {
+                await DatabaseService.DeleteSessionAndNotesAsync(guid);
+                RemoveOrphanGuid(guid);
+                await RefreshAfterOrphanAction();
+            };
+            buttonPanel.Children.Add(deleteBtn);
+
+            stack.Children.Add(buttonPanel);
+            card.Child = stack;
+            return card;
+        }
+
+        /// <summary>
+        /// Removes a GUID from the orphaned session list after a recovery action.
+        /// </summary>
+        private void RemoveOrphanGuid(string guid)
+        {
+            var list = VirtualDesktopService.OrphanedSessionGuids.ToList();
+            list.Remove(guid);
+            VirtualDesktopService.SetOrphanedSessionGuids(list);
+        }
+
+        /// <summary>
+        /// Refreshes recovery panel and badge after an orphan action.
+        /// Closes the panel if no orphans remain. Always reloads tabs.
+        /// </summary>
+        private async Task RefreshAfterOrphanAction()
+        {
+            UpdateOrphanBadge();
+
+            if (VirtualDesktopService.OrphanedSessionGuids.Count == 0)
+            {
+                HideRecoveryPanel();
+                await LoadTabsAsync();
+                return;
+            }
+
+            // Refresh cards for remaining orphans
+            var orphanInfos = await DatabaseService.GetOrphanedSessionInfoAsync(
+                VirtualDesktopService.OrphanedSessionGuids);
+            RecoverySessionList.Children.Clear();
+            foreach (var (guid, name, tabCount, lastUpdated) in orphanInfos)
+                RecoverySessionList.Children.Add(CreateRecoveryCard(guid, name, tabCount, lastUpdated));
+
+            // Reload tabs in case Adopt added new tabs to this desktop
+            await LoadTabsAsync();
+        }
+
+        /// <summary>
+        /// Updates the hamburger badge dot and "Recover sessions" color based on orphan count (ORPH-04).
+        /// Badge dot (7px, accent-colored) appears when orphans exist; disappears when all resolved.
+        /// </summary>
+        public void UpdateOrphanBadge()
+        {
+            bool hasOrphans = VirtualDesktopService.OrphanedSessionGuids.Count > 0;
+            OrphanBadge.Visibility = hasOrphans ? Visibility.Visible : Visibility.Collapsed;
+            MenuRecoverText.SetResourceReference(TextBlock.ForegroundProperty,
+                hasOrphans ? "c-accent" : "c-text-primary");
         }
 
         /// <summary>

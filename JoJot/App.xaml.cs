@@ -277,6 +277,20 @@ namespace JoJot
         public List<MainWindow> GetAllWindows() => _windows.Values.ToList();
 
         /// <summary>
+        /// Opens a new window for an orphaned session GUID (Phase 8: ORPH-03).
+        /// The orphan already has a desktop_guid — we open a window bound to it.
+        /// </summary>
+        public async Task OpenWindowForOrphanAsync(string orphanGuid)
+        {
+            if (_windows.TryGetValue(orphanGuid, out var existing))
+            {
+                WindowActivationHelper.ActivateWindow(existing);
+                return;
+            }
+            await CreateWindowForDesktop(orphanGuid);
+        }
+
+        /// <summary>
         /// Called when the application exits. Cancels the IPC server, flushes the database,
         /// and releases the single-instance mutex.
         /// </summary>
