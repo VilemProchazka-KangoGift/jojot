@@ -75,40 +75,42 @@
         <!-- Separator (Column 1) -->
         <Border Grid.Column="1" Background="#E0E0E0"/>
 
-        <!-- Content Area (Column 2) -->
-        <TextBox x:Name="ContentEditor" Grid.Column="2"
-                 AcceptsReturn="True" AcceptsTab="True"
-                 TextWrapping="Wrap" FontFamily="Consolas" FontSize="13"
-                 VerticalScrollBarVisibility="Auto"
-                 HorizontalScrollBarVisibility="Disabled"
-                 BorderThickness="0" Padding="12,8"
-                 IsUndoEnabled="False"
-                 IsEnabled="False"/>
+        <!-- Content Area (Column 2) — Grid overlay for editor + toast -->
+        <Grid Grid.Column="2" ClipToBounds="True">
+            <TextBox x:Name="ContentEditor"
+                     AcceptsReturn="True" AcceptsTab="True"
+                     TextWrapping="Wrap" FontFamily="Consolas" FontSize="13"
+                     VerticalScrollBarVisibility="Auto"
+                     HorizontalScrollBarVisibility="Disabled"
+                     BorderThickness="0" Padding="12,8"
+                     IsUndoEnabled="False"
+                     IsEnabled="False"/>
 
-        <!-- Toast notification overlay (Phase 5: soft-delete undo) -->
-        <Border x:Name="ToastBorder" Grid.Column="2"
-                VerticalAlignment="Bottom" Height="36"
-                Background="#333333" Visibility="Collapsed"
-                Panel.ZIndex="10">
-            <Border.RenderTransform>
-                <TranslateTransform x:Name="ToastTranslate" Y="36"/>
-            </Border.RenderTransform>
-            <Grid Margin="12,0">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
-                <TextBlock x:Name="ToastMessageBlock" Grid.Column="0"
-                           VerticalAlignment="Center" Foreground="White" FontSize="13"
-                           TextTrimming="CharacterEllipsis"/>
-                <TextBlock Grid.Column="1" VerticalAlignment="Center"
-                           Foreground="#2196F3" FontSize="13"
-                           TextDecorations="Underline" Cursor="Hand"
-                           Margin="12,0,0,0"
-                           MouseLeftButtonDown="UndoToast_Click">
-                    Undo
-                </TextBlock>
-            </Grid>
-        </Border>
+            <!-- Toast notification overlay (Phase 5: soft-delete undo) -->
+            <Border x:Name="ToastBorder"
+                    VerticalAlignment="Bottom" Height="36"
+                    Background="#333333" Visibility="Collapsed"
+                    Panel.ZIndex="10">
+                <Border.RenderTransform>
+                    <TranslateTransform x:Name="ToastTranslate" Y="36"/>
+                </Border.RenderTransform>
+                <Grid Margin="12,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock x:Name="ToastMessageBlock" Grid.Column="0"
+                               VerticalAlignment="Center" Foreground="White" FontSize="13"
+                               TextTrimming="CharacterEllipsis"/>
+                    <TextBlock Grid.Column="1" VerticalAlignment="Center"
+                               Foreground="#2196F3" FontSize="13"
+                               TextDecorations="Underline" Cursor="Hand"
+                               Margin="12,0,0,0"
+                               MouseLeftButtonDown="UndoToast_Click">
+                        Undo
+                    </TextBlock>
+                </Grid>
+            </Border>
+        </Grid>
     </Grid>
 </Window>

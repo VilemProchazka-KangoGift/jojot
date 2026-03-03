@@ -1213,10 +1213,10 @@ namespace JoJot
                 return;
 
             // Slide up from bottom: Y from 36 to 0 over 150ms with cubic ease-out
+            ToastTranslate.BeginAnimation(TranslateTransform.YProperty, null);
             ToastTranslate.Y = 36;
             ToastBorder.Visibility = Visibility.Visible;
 
-            var sb = new Storyboard();
             var anim = new DoubleAnimation
             {
                 From = 36,
@@ -1224,10 +1224,7 @@ namespace JoJot
                 Duration = TimeSpan.FromMilliseconds(150),
                 EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
             };
-            Storyboard.SetTarget(anim, ToastTranslate);
-            Storyboard.SetTargetProperty(anim, new PropertyPath(TranslateTransform.YProperty));
-            sb.Children.Add(anim);
-            sb.Begin();
+            ToastTranslate.BeginAnimation(TranslateTransform.YProperty, anim);
         }
 
         /// <summary>
@@ -1238,7 +1235,6 @@ namespace JoJot
         {
             if (ToastBorder.Visibility != Visibility.Visible) return;
 
-            var sb = new Storyboard();
             var anim = new DoubleAnimation
             {
                 From = 0,
@@ -1246,15 +1242,13 @@ namespace JoJot
                 Duration = TimeSpan.FromMilliseconds(150),
                 EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
             };
-            Storyboard.SetTarget(anim, ToastTranslate);
-            Storyboard.SetTargetProperty(anim, new PropertyPath(TranslateTransform.YProperty));
-            sb.Children.Add(anim);
-            sb.Completed += (_, _) =>
+            anim.Completed += (_, _) =>
             {
                 ToastBorder.Visibility = Visibility.Collapsed;
+                ToastTranslate.BeginAnimation(TranslateTransform.YProperty, null);
                 ToastTranslate.Y = 36;
             };
-            sb.Begin();
+            ToastTranslate.BeginAnimation(TranslateTransform.YProperty, anim);
         }
 
         /// <summary>

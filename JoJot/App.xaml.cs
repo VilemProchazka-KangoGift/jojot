@@ -127,6 +127,11 @@ namespace JoJot
             // ── Step 8: Start IPC server (PROC-02) ────────────────────────────
             IpcService.StartServer(HandleIpcCommand, _appShutdownCts.Token);
 
+            // ── Step 8.5: Run pending migrations before window restore ────────
+            // Migrations must complete before GetWindowGeometryAsync (which reads
+            // columns added by migrations like window_state).
+            await StartupService.RunBackgroundMigrationsAsync();
+
             // ── Step 9: Create and show window for current desktop ────────────
             string currentDesktopGuid = VirtualDesktopService.CurrentDesktopGuid;
             await CreateWindowForDesktop(currentDesktopGuid);
@@ -161,7 +166,7 @@ namespace JoJot
             Debug.WriteLine($"[JoJot] Startup: {sw.ElapsedMilliseconds}ms");
 
             // ── Step 11: Background migrations (STRT-03) ─────────────────────
-            _ = Task.Run(() => StartupService.RunBackgroundMigrationsAsync());
+            // Migrations now run synchronously in Step 8.5 (before window restore).
         }
 
         // ─── Window Factory ─────────────────────────────────────────────────────
