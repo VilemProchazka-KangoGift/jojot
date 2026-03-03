@@ -693,6 +693,134 @@ namespace JoJot.Services
             }
         }
 
+        // ─── Orphaned Session Queries (Phase 8: ORPH-02, ORPH-03) ──────────────────
+
+        /// <summary>
+        /// Returns info for each orphaned session: desktop GUID, desktop name, tab count, and last updated date.
+        /// Used by the recovery panel to display session cards.
+        /// </summary>
+        public static async Task<List<(string DesktopGuid, string? DesktopName, int TabCount, DateTime LastUpdated)>> GetOrphanedSessionInfoAsync(
+            IReadOnlyList<string> orphanGuids)
+        {
+            var results = new List<(string, string?, int, DateTime)>();
+            if (orphanGuids.Count == 0) return results;
+
+            await _writeLock.WaitAsync();
+            try
+            {
+                foreach (var guid in orphanGuids)
+                {
+                    // Get session name
+                    string? desktopName = null;
+                    var nameCmd = _connection!.CreateCommand();
+                    nameCmd.CommandText = "SELECT desktop_name FROM app_state WHERE desktop_guid = @guid;";
+                    nameCmd.Parameters.AddWithValue("@guid", guid);
+                    var nameResult = await nameCmd.ExecuteScalarAsync();
+                    if (nameResult != null && nameResult != DBNull.Value)
+                        desktopName = (string)nameResult;
+
+                    // Get tab count and last updated
+                    var countCmd = _connection.CreateCommand();
+                    countCmd.CommandText = "SELECT COUNT(*), COALESCE(MAX(updated_at), '2000-01-01') FROM notes WHERE desktop_guid = @guid;";
+                    countCmd.Parameters.AddWithValue("@guid", guid);
+                    using var reader = await countCmd.ExecuteReaderAsync();
+                    if (reader.Read())
+                    {
+                        int tabCount = reader.GetInt32(0);
+                        DateTime lastUpdated = DateTime.Parse(reader.GetString(1));
+                        results.Add((guid, desktopName, tabCount, lastUpdated));
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                LogService.Error("GetOrphanedSessionInfoAsync failed", ex);
+                throw;
+            }
+            finally
+            {
+                _writeLock.Release();
+            }
+
+            return results;
+        }
+
+        /// <summary>
+        /// Migrates all notes from sourceGuid to targetGuid (ORPH-03: Adopt).
+        /// Reassigns sort_order starting after the max existing sort_order on the target desktop.
+        /// Pinned tabs from the source are un-pinned during migration (they'll be at the bottom of target).
+        /// </summary>
+        public static async Task MigrateTabsAsync(string sourceGuid, string targetGuid)
+        {
+            await _writeLock.WaitAsync();
+            try
+            {
+                // Get max sort_order on target
+                var maxCmd = _connection!.CreateCommand();
+                maxCmd.CommandText = "SELECT COALESCE(MAX(sort_order), 0) FROM notes WHERE desktop_guid = @guid;";
+                maxCmd.Parameters.AddWithValue("@guid", targetGuid);
+                var maxResult = await maxCmd.ExecuteScalarAsync();
+                int maxSortOrder = Convert.ToInt32(maxResult);
+
+                // Move notes: update desktop_guid, unpin, reassign sort_order
+                var migrateCmd = _connection.CreateCommand();
+                migrateCmd.CommandText = @"
+                    UPDATE notes
+                    SET desktop_guid = @target,
+                        pinned = 0,
+                        sort_order = @base + sort_order
+                    WHERE desktop_guid = @source;";
+                migrateCmd.Parameters.AddWithValue("@target", targetGuid);
+                migrateCmd.Parameters.AddWithValue("@source", sourceGuid);
+                migrateCmd.Parameters.AddWithValue("@base", maxSortOrder + 1);
+                await migrateCmd.ExecuteNonQueryAsync();
+
+                LogService.Info($"Migrated tabs from {sourceGuid} to {targetGuid} (base sort_order: {maxSortOrder + 1})");
+            }
+            catch (Exception ex)
+            {
+                LogService.Error($"MigrateTabsAsync failed (source={sourceGuid}, target={targetGuid})", ex);
+                throw;
+            }
+            finally
+            {
+                _writeLock.Release();
+            }
+        }
+
+        /// <summary>
+        /// Permanently deletes an orphaned session and all its notes (ORPH-03: Delete).
+        /// </summary>
+        public static async Task DeleteSessionAndNotesAsync(string desktopGuid)
+        {
+            await _writeLock.WaitAsync();
+            try
+            {
+                // Delete all notes first
+                var notesCmd = _connection!.CreateCommand();
+                notesCmd.CommandText = "DELETE FROM notes WHERE desktop_guid = @guid;";
+                notesCmd.Parameters.AddWithValue("@guid", desktopGuid);
+                await notesCmd.ExecuteNonQueryAsync();
+
+                // Delete the session
+                var sessionCmd = _connection.CreateCommand();
+                sessionCmd.CommandText = "DELETE FROM app_state WHERE desktop_guid = @guid;";
+                sessionCmd.Parameters.AddWithValue("@guid", desktopGuid);
+                await sessionCmd.ExecuteNonQueryAsync();
+
+                LogService.Info($"Deleted orphaned session and notes for {desktopGuid}");
+            }
+            catch (Exception ex)
+            {
+                LogService.Error($"DeleteSessionAndNotesAsync failed (guid={desktopGuid})", ex);
+                throw;
+            }
+            finally
+            {
+                _writeLock.Release();
+            }
+        }
+
         // ─── Private helpers ────────────────────────────────────────────────────
 
         /// <summary>

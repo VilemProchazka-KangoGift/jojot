@@ -128,6 +128,22 @@ namespace JoJot.Services
             }
         }
 
+        // ─── Orphaned Session State (Phase 8: ORPH-01) ──────────────────────
+
+        /// <summary>
+        /// GUIDs of sessions that failed all three matching tiers.
+        /// Populated during MatchSessionsAsync, consumed by recovery panel (Phase 8: ORPH-01).
+        /// </summary>
+        public static IReadOnlyList<string> OrphanedSessionGuids { get; private set; } = Array.Empty<string>();
+
+        /// <summary>
+        /// Updates the orphaned session list (called after recovery actions).
+        /// </summary>
+        public static void SetOrphanedSessionGuids(List<string> guids)
+        {
+            OrphanedSessionGuids = guids;
+        }
+
         // ─── Session Matching (VDSK-03, VDSK-04, VDSK-05) ────────────────────
 
         /// <summary>
@@ -269,8 +285,13 @@ namespace JoJot.Services
                 newCount++;
             }
 
-            // ── Count orphaned sessions ─────────────────────────────────────
-            int orphanedCount = storedSessions.Count - matchedSessionGuids.Count;
+            // ── Expose orphaned sessions for Phase 8 recovery ────────────────
+            var orphanedGuids = storedSessions
+                .Where(s => !matchedSessionGuids.Contains(s.DesktopGuid))
+                .Select(s => s.DesktopGuid)
+                .ToList();
+            OrphanedSessionGuids = orphanedGuids;
+            int orphanedCount = orphanedGuids.Count;
 
             LogService.Info(
                 $"Session matching complete: Tier 1 (GUID): {tier1Count}, " +
