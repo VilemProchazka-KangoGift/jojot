@@ -17,7 +17,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 3: Window & Session Management** - One window per desktop lifecycle, taskbar click handling, geometry persistence, window close behavior
 - [x] **Phase 4: Tab Management** - Tab panel, labels, reorder, rename, search, pin, clone, new/delete with focus rules (completed 2026-03-02)
 - [x] **Phase 5: Deletion & Toast** - Tab deletion triggers, deletion toast with 4-second undo, bulk delete support (completed 2026-03-02)
-- [ ] **Phase 6: Editor & Undo** - Plain-text editor, autosave with debounce, custom two-tier undo/redo stack, save as TXT, copy behavior
+- [x] **Phase 6: Editor & Undo** - Plain-text editor, autosave with debounce, custom two-tier undo/redo stack, save as TXT, copy behavior (completed 2026-03-03)
 - [ ] **Phase 7: Theming & Toolbar** - Light/Dark/System themes via ResourceDictionary, all 10 color tokens, toolbar with all actions
 - [ ] **Phase 8: Menus, Context Actions & Orphaned Sessions** - Window menu, tab context menu, bulk delete operations, orphaned session recovery panel
 - [ ] **Phase 9: File Drop, Preferences, Hotkeys & Keyboard** - File drop with content inspection, preferences dialog, global hotkey, all keyboard shortcuts
@@ -105,7 +105,7 @@ Plans:
 
 Plans:
 - [x] 05-01-PLAN.md — Toast overlay, deletion engine (soft-delete + commit lifecycle), undo restoration, bulk delete infrastructure, focus cascade
-- [ ] 05-02-PLAN.md — Delete triggers: Ctrl+W, hover x icon on tabs, middle-click on tab
+- [x] 05-02-PLAN.md — Delete triggers: Ctrl+W, hover x icon on tabs, middle-click on tab
 
 ### Phase 6: Editor & Undo
 **Goal**: Users can write plain text that autosaves reliably, undo/redo across tab switches using a custom two-tier stack, copy full notes silently, and export to UTF-8 TXT files.
@@ -117,12 +117,12 @@ Plans:
   3. Undo history spans up to 50 fine-grained snapshots and 20 coarse 5-minute checkpoints seamlessly via Ctrl+Z and Ctrl+Y
   4. When global undo memory exceeds 50MB, the oldest inactive tabs are collapsed first; the active tab's history is never collapsed
   5. Pressing Ctrl+C with nothing selected copies the entire note content to the clipboard silently; Ctrl+S opens an OS save dialog and saves UTF-8 with BOM
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 06-01: TBD
-- [ ] 06-02: TBD
-- [ ] 06-03: TBD
+- [x] 06-01-PLAN.md — UndoStack two-tier undo data structure, UndoManager singleton with 50MB memory budget, AutosaveService with debounce
+- [x] 06-02-PLAN.md — Autosave wiring, Ctrl+Z/Y/Shift+Z undo/redo shortcuts, tab switch undo binding, scroll offset, synchronous flush on close
+- [x] 06-03-PLAN.md — Enhanced Ctrl+C (copies entire note when no selection), Ctrl+S Save As TXT with UTF-8 BOM
 
 ### Phase 7: Theming & Toolbar
 **Goal**: The app renders with Light, Dark, and System themes using a complete set of 10 color tokens, switches instantly without restart, and provides a fully functional toolbar above the editor.
@@ -201,7 +201,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 3. Window & Session Management | 2/2 | Complete | 2026-03-02 |
 | 4. Tab Management | 3/3 | Complete | 2026-03-02 |
 | 5. Deletion & Toast | 2/2 | Complete    | 2026-03-02 |
-| 6. Editor & Undo | 0/TBD | Not started | - |
+| 6. Editor & Undo | 3/3 | Complete | 2026-03-03 |
 | 7. Theming & Toolbar | 0/TBD | Not started | - |
 | 8. Menus, Context Actions & Orphaned Sessions | 0/TBD | Not started | - |
 | 9. File Drop, Preferences, Hotkeys & Keyboard | 0/TBD | Not started | - |

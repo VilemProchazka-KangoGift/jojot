@@ -31,23 +31,23 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-02)
 
 **Core value:** Instant note capture tied to your virtual desktop context — switch desktops, switch notes, zero friction.
-**Current focus:** Phase 6 — Editor & Undo
+**Current focus:** Phase 7 — Theming & Toolbar
 
 ## Current Position
 
-Phase: 6 of 10 (Editor & Undo)
-Plan: 0 of 3 in current phase — CONTEXT GATHERED
-Status: Phase 6 context gathered — ready for planning
-Last activity: 2026-03-03 — Phase 6 context discussion complete
+Phase: 7 of 10 (Theming & Toolbar)
+Plan: 0 of TBD in current phase — NOT STARTED
+Status: Phase 6 complete — ready for Phase 7
+Last activity: 2026-03-03 — Phase 6 Editor & Undo complete (3 plans)
 
-Progress: [█████████░] 50%
+Progress: [██████████] 60%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 11
-- Average duration: ~4.2 min
-- Total execution time: ~46 min
+- Total plans completed: 16
+- Average duration: ~4.0 min
+- Total execution time: ~57 min
 
 **By Phase:**
 
@@ -58,20 +58,13 @@ Progress: [█████████░] 50%
 | 3. Window & Session Management | 2 | ~6 min | ~3.0 min |
 | 4. Tab Management | 3 | ~13 min | ~4.3 min |
 | 5. Deletion & Toast | 2 | ~10 min | ~5.0 min |
+| 6. Editor & Undo | 3 | ~11 min | ~3.7 min |
 
 **Recent Trend:**
-- Last 5 plans: 04-01 (~3 min), 04-02 (~5 min), 04-03 (~5 min), 05-01 (~4 min), 05-02 (~6 min)
-- Trend: Phase 5 plans moderate complexity (WPF animation, event wiring)
+- Last 5 plans: 05-01 (~4 min), 05-02 (~6 min), 06-01 (~4 min), 06-02 (~5 min), 06-03 (~2 min)
+- Trend: Phase 6 plans efficient (service classes + UI wiring)
 
 *Updated after each plan completion*
-
-| Phase | Plans | Total | Avg/Plan |
-|-------|-------|-------|----------|
-| 1. Foundation | 3 | ~11 min | ~3.7 min |
-| 2. Virtual Desktop Integration | 3 | ~16 min | ~5.3 min |
-| 3. Window & Session Management | 2 | ~6 min | ~3.0 min |
-| 4. Tab Management | 3 | ~13 min | ~4.3 min |
-| 5. Deletion & Toast | 2 | ~10 min | ~5.0 min |
 
 ## Accumulated Context
 
@@ -132,6 +125,18 @@ Recent decisions affecting current work:
 - [Phase 05-02]: PreviewMouseDown used instead of PreviewMouseButtonDown — correct WPF event name for UIElement mouse button tunneling
 - [Phase 05-02]: Original outerBorder hover handlers merged with delete icon opacity animation to avoid double-subscription
 
+- [06-01]: UndoStack uses combined index across tier-2 (coarse) and tier-1 (fine) lists — tier-2 occupies lower indices, tier-1 upper
+- [06-01]: Memory estimation: string.Length * 2 for .NET UTF-16 strings; 50MB budget hardcoded constant
+- [06-01]: Collapse strategy: phase 1 samples every 5th tier-1 entry into tier-2, phase 2 evicts oldest tier-2 entries
+- [06-01]: AutosaveService.OnTimerTick is async void — acceptable as DispatcherTimer event handler
+- [06-02]: _suppressTextChanged flag guards all programmatic ContentEditor.Text assignments (tab switch, undo, redo)
+- [06-02]: OnClosing uses .GetAwaiter().GetResult() for synchronous DB flush — acceptable only in shutdown path
+- [06-02]: Scroll offset restored via Dispatcher.BeginInvoke at DispatcherPriority.Loaded for correct layout timing
+- [06-02]: Initial content pushed to UndoStack on first tab selection (not on load) via TabList_SelectionChanged
+- [06-03]: Clipboard.SetText wrapped in try/catch for ExternalException — clipboard locked by other apps
+- [06-03]: SaveFileDialog.InitialDirectory tracked per-session in _lastSaveDirectory field (resets on launch)
+- [06-03]: SanitizeFilename replaces Path.GetInvalidFileNameChars() with underscore, trims trailing dots/spaces
+
 ### Pending Todos
 
 None yet.
@@ -144,6 +149,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-02
-Stopped at: Phase 5 Plan 02 complete — Ctrl+W, middle-click, hover x icon delete triggers all wired to DeleteTabAsync
+Last session: 2026-03-03
+Stopped at: Phase 6 complete — autosave debounce, two-tier undo/redo, enhanced copy, Save As TXT all implemented
 Resume file: .planning/ROADMAP.md
