@@ -405,7 +405,7 @@ namespace JoJot
         /// Handles tab selection changes: saves current content, loads new tab content.
         /// Applies 2px left accent border to active tab (TABS-04).
         /// </summary>
-        private void TabList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        private async void TabList_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             // Remove accent from deselected items
             foreach (var removed in e.RemovedItems)
@@ -417,8 +417,9 @@ namespace JoJot
                 }
             }
 
-            // Phase 6: Stop autosave timer and checkpoint timer before switching
-            _autosaveService.Stop();
+            // Phase 8.1 (EDIT-03): Flush autosave service — stops timer, saves content,
+            // and updates _lastWriteCompleted to keep write frequency cap accurate
+            await _autosaveService.FlushAsync();
             _checkpointTimer.Stop();
 
             // Phase 6: Save scroll offset for outgoing tab
@@ -428,9 +429,6 @@ namespace JoJot
                 if (scrollViewer != null)
                     _activeTab.EditorScrollOffset = (int)scrollViewer.VerticalOffset;
             }
-
-            // Save current tab content before switching
-            SaveCurrentTabContent();
 
             // Apply new selection
             if (TabList.SelectedItem is ListBoxItem newItem && newItem.Tag is NoteTab tab)
