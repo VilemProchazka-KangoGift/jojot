@@ -1635,9 +1635,8 @@ namespace JoJot
             _autosaveService.Stop();
             _checkpointTimer.Stop();
 
-            // Commit pending deletion before closing (fire-and-forget: DB write is fast,
-            // process stays alive long enough for it to complete).
-            _ = CommitPendingDeletionAsync();
+            // Phase 10.1: Commit pending deletion synchronously before close (audit finding #3)
+            CommitPendingDeletionAsync().GetAwaiter().GetResult();
             SaveCurrentTabContent();
             Close();
         }
@@ -1668,6 +1667,9 @@ namespace JoJot
                         .GetAwaiter().GetResult(); // Sync flush on close — no data loss
                 }
             }
+
+            // Phase 10.1: Commit pending deletions before close (audit finding #1)
+            CommitPendingDeletionAsync().GetAwaiter().GetResult();
 
             // Capture geometry while the HWND is still valid
             var geo = WindowPlacementHelper.CaptureGeometry(this);
@@ -3192,6 +3194,9 @@ namespace JoJot
             _dragFromDesktopGuid = fromGuid;
             _dragToDesktopGuid = toGuid;
             _dragToDesktopName = toName;
+
+            // Phase 10.1: Flush unsaved content before entering drag state (audit finding #2)
+            await _autosaveService.FlushAsync();
 
             // DRAG-02: Write pending_moves row immediately
             await DatabaseService.InsertPendingMoveAsync(_desktopGuid, fromGuid, toGuid);
