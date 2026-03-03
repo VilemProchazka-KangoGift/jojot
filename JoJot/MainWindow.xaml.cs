@@ -624,6 +624,27 @@ namespace JoJot
         /// </summary>
         private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
         {
+            // Phase 8: Confirmation dialog keyboard handling — intercept before all other shortcuts
+            if (ConfirmationOverlay.Visibility == Visibility.Visible)
+            {
+                if (e.Key == Key.Escape)
+                {
+                    HideConfirmation();
+                    e.Handled = true;
+                }
+                else if (e.Key == Key.Enter)
+                {
+                    HideConfirmation();
+                    _confirmAction?.Invoke();
+                    e.Handled = true;
+                }
+                else
+                {
+                    e.Handled = true; // Block all other keyboard shortcuts while dialog is open
+                }
+                return;
+            }
+
             // Phase 6 — Ctrl+Z: Undo (UNDO-04) — MUST be first to prevent WPF native undo
             if (e.Key == Key.Z && Keyboard.Modifiers == ModifierKeys.Control)
             {
@@ -1879,32 +1900,64 @@ namespace JoJot
             Environment.Exit(0);
         }
 
-        // ─── Bulk Delete Stubs (Phase 8: Plan 02 wires confirmation) ────────────
+        // ─── Bulk Delete Confirmation (Phase 8: Plan 02 — MENU-03, MENU-04, MENU-05) ──
 
         /// <summary>
-        /// Stub for "Delete older than N days" — confirmation dialog wired in Plan 02.
+        /// Shows confirmation for "Delete older than N days" (MENU-03).
+        /// Counts non-pinned tabs with updated_at older than N days from now.
         /// </summary>
         private Task ConfirmAndDeleteOlderThanAsync(int days)
         {
-            // Plan 02: wire confirmation dialog + filter tabs by age
+            var cutoff = DateTime.Now.AddDays(-days);
+            var candidates = _tabs.Where(t => !t.Pinned && t.UpdatedAt < cutoff).ToList();
+
+            if (candidates.Count == 0) return Task.CompletedTask;
+
+            ShowConfirmation(
+                $"Delete notes older than {days} days",
+                $"This will delete {candidates.Count} note{(candidates.Count == 1 ? "" : "s")} that haven't been updated in the last {days} days. Pinned notes are never deleted.",
+                () => _ = DeleteMultipleAsync(candidates)
+            );
             return Task.CompletedTask;
         }
 
         /// <summary>
-        /// Stub for "Delete all except pinned" — confirmation dialog wired in Plan 02.
+        /// Shows confirmation for "Delete all except pinned" (MENU-04).
         /// </summary>
         private Task ConfirmAndDeleteExceptPinnedAsync()
         {
-            // Plan 02: wire confirmation dialog
+            var candidates = _tabs.Where(t => !t.Pinned).ToList();
+
+            if (candidates.Count == 0) return Task.CompletedTask;
+
+            ShowConfirmation(
+                "Delete all except pinned",
+                $"This will delete {candidates.Count} unpinned note{(candidates.Count == 1 ? "" : "s")}. Pinned notes will be preserved.",
+                () => _ = DeleteMultipleAsync(candidates)
+            );
             return Task.CompletedTask;
         }
 
         /// <summary>
-        /// Stub for "Delete all" — confirmation dialog wired in Plan 02.
+        /// Shows confirmation for "Delete all" (MENU-05).
+        /// Note: pinned tabs are still skipped by DeleteMultipleAsync (TDEL-06).
         /// </summary>
         private Task ConfirmAndDeleteAllAsync()
         {
-            // Plan 02: wire confirmation dialog
+            var candidates = _tabs.Where(t => !t.Pinned).ToList();
+
+            if (candidates.Count == 0) return Task.CompletedTask;
+
+            int pinnedCount = _tabs.Count(t => t.Pinned);
+            string pinnedNote = pinnedCount > 0
+                ? $" ({pinnedCount} pinned note{(pinnedCount == 1 ? "" : "s")} will be preserved)"
+                : "";
+
+            ShowConfirmation(
+                "Delete all notes",
+                $"This will delete {candidates.Count} note{(candidates.Count == 1 ? "" : "s")}{pinnedNote}.",
+                () => _ = DeleteMultipleAsync(candidates)
+            );
             return Task.CompletedTask;
         }
 
