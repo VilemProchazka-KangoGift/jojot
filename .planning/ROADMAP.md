@@ -21,7 +21,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 7: Theming & Toolbar** - Light/Dark/System themes via ResourceDictionary, all 10 color tokens, toolbar with all actions (completed 2026-03-03)
 - [x] **Phase 8: Menus, Context Actions & Orphaned Sessions** - Window menu, tab context menu, bulk delete operations, orphaned session recovery panel (completed 2026-03-03)
 - [x] **Phase 8.1: Gap Closure — Code Fixes** (INSERTED) - ORPH-03 Open button, EDIT-03 autosave frequency cap fix (completed 2026-03-03)
-- [ ] **Phase 8.2: Gap Closure — Verification** (INSERTED) - Missing VERIFICATION.md for Phases 6 and 7
+- [x] **Phase 8.2: Gap Closure — Verification** (INSERTED) - Missing VERIFICATION.md for Phases 6 and 7 (completed 2026-03-03)
 - [ ] **Phase 9: File Drop, Preferences, Hotkeys & Keyboard** - File drop with content inspection, preferences dialog, global hotkey, all keyboard shortcuts
 - [ ] **Phase 10: Window Drag & Crash Recovery** - Inter-desktop drag detection, lock overlay, reparent/merge/cancel flow, pending_moves crash recovery
 
@@ -233,6 +233,6 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 8.1 -> 
 | 7. Theming & Toolbar | 2/2 | Complete | 2026-03-03 |
 | 8. Menus, Context Actions & Orphaned Sessions | 3/3 | Complete | 2026-03-03 |
 | 8.1. Gap Closure — Code Fixes | 1/1 | Complete   | 2026-03-03 |
-| 8.2. Gap Closure — Verification | 0/TBD | Not started | - |
+| 8.2. Gap Closure — Verification | 2/2 | Complete    | 2026-03-03 |
 | 9. File Drop, Preferences, Hotkeys & Keyboard | 0/TBD | Not started | - |
 | 10. Window Drag & Crash Recovery | 0/TBD | Not started | - |
