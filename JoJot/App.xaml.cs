@@ -221,6 +221,35 @@ namespace JoJot
             // Phase 4: Load tabs from database after window is shown
             await window.LoadTabsAsync();
 
+            // Phase 9 (KEYS-01): Initialize global hotkey after window has HWND
+            // Only register for the first window (hotkey is system-wide, one registration suffices)
+            if (_windows.Count <= 1)
+            {
+                await HotkeyService.InitializeAsync(window, () =>
+                {
+                    Dispatcher.InvokeAsync(() =>
+                    {
+                        // Global hotkey action: toggle focus/minimize (KEYS-01)
+                        string desktopGuid = VirtualDesktopService.CurrentDesktopGuid;
+                        if (_windows.TryGetValue(desktopGuid, out var w))
+                        {
+                            if (w.IsActive)
+                                w.WindowState = WindowState.Minimized;
+                            else
+                                WindowActivationHelper.ActivateWindow(w);
+                        }
+                        else
+                        {
+                            // No window for this desktop — create one
+                            _ = CreateWindowForDesktop(desktopGuid);
+                        }
+                    });
+                });
+            }
+
+            // Phase 9 (PREF-01): Initialize preferences panel data
+            await window.InitializePreferencesAsync();
+
             WindowActivationHelper.ActivateWindow(window);
             return window;
         }
@@ -303,6 +332,7 @@ namespace JoJot
 
             _appShutdownCts.Cancel();
             IpcService.StopServer();
+            HotkeyService.Shutdown();
             VirtualDesktopService.Shutdown();
             ThemeService.Shutdown();
 

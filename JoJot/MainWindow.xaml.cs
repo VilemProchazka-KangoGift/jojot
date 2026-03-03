@@ -46,6 +46,16 @@ namespace JoJot
         // ─── Recovery panel state (Phase 8: ORPH-02) ──────────────────────
         private bool _recoveryPanelOpen;
 
+        // ─── Phase 9 state: Preferences, File Drop, Find Bar, Font Size ─────
+        private bool _preferencesOpen;
+        private bool _recordingHotkey;
+        private int _currentFontSize = 13;
+        private System.Windows.Threading.DispatcherTimer? _fontSizeTooltipTimer;
+        private System.Windows.Threading.DispatcherTimer? _debounceInputTimer;
+        private List<int> _findMatches = new();
+        private int _currentFindIndex = -1;
+        private bool _helpBuilt;
+
         // ─── Soft-delete / toast state (Phase 5) ────────────────────────────────
         private record PendingDeletion(
             List<NoteTab> Tabs,
@@ -651,6 +661,74 @@ namespace JoJot
                 return;
             }
 
+            // Phase 9: Escape closes help overlay if visible
+            if (e.Key == Key.Escape && HelpOverlay.Visibility == Visibility.Visible)
+            {
+                HideHelpOverlay();
+                e.Handled = true;
+                return;
+            }
+
+            // Phase 9: Escape closes editor find bar if visible
+            if (e.Key == Key.Escape && EditorFindBar.Visibility == Visibility.Visible)
+            {
+                HideEditorFindBar();
+                e.Handled = true;
+                return;
+            }
+
+            // Phase 9: Escape closes preferences panel if visible
+            if (e.Key == Key.Escape && _preferencesOpen)
+            {
+                HidePreferencesPanel();
+                e.Handled = true;
+                return;
+            }
+
+            // Phase 9: Hotkey recording — capture key combination in preferences panel
+            if (_recordingHotkey)
+            {
+                var mods = Keyboard.Modifiers;
+                var key = e.Key == Key.System ? e.SystemKey : e.Key;
+
+                // Ignore lone modifier presses
+                if (key == Key.LeftCtrl || key == Key.RightCtrl || key == Key.LeftShift ||
+                    key == Key.RightShift || key == Key.LeftAlt || key == Key.RightAlt ||
+                    key == Key.LWin || key == Key.RWin)
+                {
+                    e.Handled = true;
+                    return;
+                }
+
+                // Require at least one modifier
+                if (mods == ModifierKeys.None)
+                {
+                    e.Handled = true;
+                    return;
+                }
+
+                uint win32Mods = HotkeyService.ModifierKeysToWin32(mods);
+                uint vk = (uint)KeyInterop.VirtualKeyFromKey(key);
+
+                _ = Task.Run(async () =>
+                {
+                    bool success = await HotkeyService.UpdateHotkeyAsync(win32Mods, vk);
+                    await Dispatcher.InvokeAsync(() =>
+                    {
+                        _recordingHotkey = false;
+                        HotkeyRecordText.Text = "Record";
+                        HotkeyDisplay.Text = HotkeyService.GetHotkeyDisplayString();
+                        if (!success)
+                        {
+                            ShowInfoToast("Hotkey already in use by another app");
+                        }
+                    });
+                });
+
+                e.Handled = true;
+                return;
+            }
+
             // Phase 6 — Ctrl+Z: Undo (UNDO-04) — MUST be first to prevent WPF native undo
             if (e.Key == Key.Z && Keyboard.Modifiers == ModifierKeys.Control)
             {
@@ -705,6 +783,41 @@ namespace JoJot
                 return;
             }
 
+            // Phase 9 — Ctrl+= or Ctrl+NumAdd: Increase font size (KEYS-02)
+            if ((e.Key == Key.OemPlus || e.Key == Key.Add) && Keyboard.Modifiers == ModifierKeys.Control)
+            {
+                _ = ChangeFontSizeAsync(1);
+                e.Handled = true;
+                return;
+            }
+
+            // Phase 9 — Ctrl+- or Ctrl+NumSubtract: Decrease font size (KEYS-02)
+            if ((e.Key == Key.OemMinus || e.Key == Key.Subtract) && Keyboard.Modifiers == ModifierKeys.Control)
+            {
+                _ = ChangeFontSizeAsync(-1);
+                e.Handled = true;
+                return;
+            }
+
+            // Phase 9 — Ctrl+0 or Ctrl+Numpad0: Reset font size to 13pt (KEYS-02)
+            if ((e.Key == Key.D0 || e.Key == Key.NumPad0) && Keyboard.Modifiers == ModifierKeys.Control)
+            {
+                _ = SetFontSizeAsync(13);
+                e.Handled = true;
+                return;
+            }
+
+            // Phase 9 — Ctrl+Shift+/ (Ctrl+?): Show help overlay (KEYS-04)
+            if (e.Key == Key.OemQuestion && Keyboard.Modifiers == (ModifierKeys.Control | ModifierKeys.Shift))
+            {
+                if (HelpOverlay.Visibility == Visibility.Visible)
+                    HideHelpOverlay();
+                else
+                    ShowHelpOverlay();
+                e.Handled = true;
+                return;
+            }
+
             // Ctrl+W: Delete active tab (TDEL-01)
             if (e.Key == Key.W && Keyboard.Modifiers == ModifierKeys.Control)
             {
@@ -754,11 +867,19 @@ namespace JoJot
                 return;
             }
 
-            // Ctrl+F: Focus search (TABS-11)
+            // Ctrl+F: Context-dependent (TABS-11, KEYS-04)
+            // If editor is focused → show in-editor find bar; otherwise → focus tab search
             if (e.Key == Key.F && Keyboard.Modifiers == ModifierKeys.Control)
             {
-                SearchBox.Focus();
-                SearchBox.SelectAll();
+                if (ContentEditor.IsFocused)
+                {
+                    ShowEditorFindBar();
+                }
+                else
+                {
+                    SearchBox.Focus();
+                    SearchBox.SelectAll();
+                }
                 e.Handled = true;
                 return;
             }
@@ -2120,15 +2241,6 @@ namespace JoJot
         }
 
         /// <summary>
-        /// Preferences — stub until Phase 9 (PREF-01).
-        /// </summary>
-        private void MenuPreferences_Click(object sender, MouseButtonEventArgs e)
-        {
-            HamburgerMenu.IsOpen = false;
-            /* Phase 9: PREF-01 */
-        }
-
-        /// <summary>
         /// Exit — flush all windows and terminate (PROC-06).
         /// Uses Dispatcher.BeginInvoke so the menu closes before shutdown begins.
         /// </summary>
@@ -2437,5 +2549,597 @@ namespace JoJot
         {
             BeginRename(item, tab);
         }
+
+        // ─── Phase 9: File Drop (DROP-01 through DROP-07) ───────────────────────
+
+        /// <summary>
+        /// DragEnter handler — shows drop overlay when files are dragged over the content area (DROP-05).
+        /// </summary>
+        private void OnFileDragEnter(object sender, DragEventArgs e)
+        {
+            if (e.Data.GetDataPresent(DataFormats.FileDrop))
+            {
+                e.Effects = DragDropEffects.Copy;
+                FileDropOverlay.Visibility = Visibility.Visible;
+            }
+            else
+            {
+                e.Effects = DragDropEffects.None;
+            }
+            e.Handled = true;
+        }
+
+        /// <summary>
+        /// DragOver handler — maintains copy cursor while dragging over content area.
+        /// </summary>
+        private void OnFileDragOver(object sender, DragEventArgs e)
+        {
+            if (e.Data.GetDataPresent(DataFormats.FileDrop))
+                e.Effects = DragDropEffects.Copy;
+            else
+                e.Effects = DragDropEffects.None;
+            e.Handled = true;
+        }
+
+        /// <summary>
+        /// DragLeave handler — hides drop overlay when drag leaves the content area (DROP-05).
+        /// Only hides when the mouse truly leaves the content area bounds.
+        /// </summary>
+        private void OnFileDragLeave(object sender, DragEventArgs e)
+        {
+            // Check if mouse is outside the content area grid
+            var pos = e.GetPosition(FileDropOverlay);
+            if (pos.X < 0 || pos.Y < 0 || pos.X > FileDropOverlay.ActualWidth || pos.Y > FileDropOverlay.ActualHeight)
+            {
+                FileDropOverlay.Visibility = Visibility.Collapsed;
+            }
+            e.Handled = true;
+        }
+
+        /// <summary>
+        /// Drop handler — processes dropped files and creates tabs for valid text files (DROP-01).
+        /// </summary>
+        private void OnFileDrop(object sender, DragEventArgs e)
+        {
+            FileDropOverlay.Visibility = Visibility.Collapsed;
+            if (e.Data.GetDataPresent(DataFormats.FileDrop))
+            {
+                var files = (string[])e.Data.GetData(DataFormats.FileDrop);
+                _ = ProcessDroppedFilesAsync(files);
+            }
+            e.Handled = true;
+        }
+
+        /// <summary>
+        /// Processes dropped files: validates, creates tabs, shows errors via toast (DROP-01 to DROP-07).
+        /// </summary>
+        private async Task ProcessDroppedFilesAsync(string[] filePaths)
+        {
+            var summary = await FileDropService.ProcessDroppedFilesAsync(filePaths);
+
+            ListBoxItem? lastItem = null;
+            foreach (var result in summary.ValidFiles)
+            {
+                int maxSort = await DatabaseService.GetMaxSortOrderAsync(_desktopGuid);
+                long newId = await DatabaseService.InsertNoteAsync(
+                    _desktopGuid, result.FileName, result.Content!, false, maxSort + 1);
+
+                var newTab = new NoteTab
+                {
+                    Id = newId,
+                    DesktopGuid = _desktopGuid,
+                    Name = result.FileName,
+                    Content = result.Content!,
+                    Pinned = false,
+                    SortOrder = maxSort + 1,
+                    CreatedAt = DateTime.Now,
+                    UpdatedAt = DateTime.Now
+                };
+
+                _tabs.Add(newTab);
+                var item = CreateTabListItem(newTab);
+                TabList.Items.Add(item);
+                lastItem = item;
+            }
+
+            // Select last valid tab (per CONTEXT.md decision)
+            if (lastItem != null)
+            {
+                TabList.SelectedItem = lastItem;
+                TabList.ScrollIntoView(lastItem);
+            }
+
+            // Show error toast for invalid files (DROP-06)
+            if (summary.ErrorCount > 0 && summary.CombinedErrorMessage != null)
+            {
+                ShowInfoToast(summary.CombinedErrorMessage);
+            }
+        }
+
+        /// <summary>
+        /// Shows an info-only toast (no undo button) that auto-dismisses after 4 seconds.
+        /// Used for file drop errors and hotkey conflict notifications.
+        /// </summary>
+        public void ShowInfoToast(string message)
+        {
+            ToastMessageBlock.Text = message;
+            UndoButton.Visibility = Visibility.Collapsed;
+
+            // If toast already visible, just update content
+            if (ToastBorder.Visibility == Visibility.Visible)
+                return;
+
+            ToastTranslate.BeginAnimation(TranslateTransform.YProperty, null);
+            ToastTranslate.Y = 36;
+            ToastBorder.Visibility = Visibility.Visible;
+
+            var anim = new DoubleAnimation
+            {
+                From = 36, To = 0,
+                Duration = TimeSpan.FromMilliseconds(150),
+                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+            };
+            ToastTranslate.BeginAnimation(TranslateTransform.YProperty, anim);
+
+            // Auto-dismiss after 4 seconds
+            _ = Task.Delay(4000).ContinueWith(_ =>
+            {
+                Dispatcher.Invoke(() =>
+                {
+                    HideToast();
+                    UndoButton.Visibility = Visibility.Visible;
+                });
+            });
+        }
+
+        /// <summary>
+        /// Shows a toast for hotkey registration failure on startup.
+        /// </summary>
+        public void ShowHotkeyConflictToast()
+        {
+            var combo = HotkeyService.GetHotkeyDisplayString();
+            ShowInfoToast($"Global hotkey ({combo}) is in use by another app. Change it in Preferences.");
+        }
+
+        // ─── Phase 9: Preferences Panel (PREF-01 through PREF-05) ──────────────
+
+        /// <summary>
+        /// Initializes preferences values from database. Called during tab loading.
+        /// Loads font size, debounce interval, and updates UI elements.
+        /// </summary>
+        public async Task InitializePreferencesAsync()
+        {
+            // Load font size
+            var savedFontSize = await DatabaseService.GetPreferenceAsync("font_size");
+            _currentFontSize = int.TryParse(savedFontSize, out var fs) ? Math.Clamp(fs, 8, 32) : 13;
+            ContentEditor.FontSize = _currentFontSize;
+            FontSizeDisplay.Text = $"{_currentFontSize}pt";
+
+            // Load debounce interval
+            var savedDebounce = await DatabaseService.GetPreferenceAsync("autosave_debounce_ms");
+            int debMs = int.TryParse(savedDebounce, out var d) ? Math.Clamp(d, 200, 2000) : 500;
+            _autosaveService.DebounceMs = debMs;
+            DebounceInput.Text = debMs.ToString();
+
+            // Update theme toggle highlight
+            UpdateThemeToggleHighlight(ThemeService.CurrentSetting);
+
+            // Update hotkey display
+            HotkeyDisplay.Text = HotkeyService.GetHotkeyDisplayString();
+        }
+
+        /// <summary>
+        /// Preferences menu click — toggle the slide-in panel (PREF-01).
+        /// Replaces the Phase 8 stub.
+        /// </summary>
+        private void MenuPreferences_Click(object sender, MouseButtonEventArgs e)
+        {
+            HamburgerMenu.IsOpen = false;
+            if (_preferencesOpen)
+                HidePreferencesPanel();
+            else
+                ShowPreferencesPanel();
+        }
+
+        private void ShowPreferencesPanel()
+        {
+            _preferencesOpen = true;
+            PreferencesPanel.Visibility = Visibility.Visible;
+
+            // Refresh values
+            FontSizeDisplay.Text = $"{_currentFontSize}pt";
+            DebounceInput.Text = _autosaveService.DebounceMs.ToString();
+            UpdateThemeToggleHighlight(ThemeService.CurrentSetting);
+            HotkeyDisplay.Text = HotkeyService.GetHotkeyDisplayString();
+
+            // Slide in from right
+            var anim = new DoubleAnimation
+            {
+                From = 300, To = 0,
+                Duration = TimeSpan.FromMilliseconds(250),
+                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+            };
+            PrefPanelTransform.BeginAnimation(TranslateTransform.XProperty, anim);
+        }
+
+        private void HidePreferencesPanel()
+        {
+            _preferencesOpen = false;
+            _recordingHotkey = false;
+            HotkeyRecordText.Text = "Record";
+
+            var anim = new DoubleAnimation
+            {
+                From = 0, To = 300,
+                Duration = TimeSpan.FromMilliseconds(200),
+                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn }
+            };
+            anim.Completed += (_, _) =>
+            {
+                PreferencesPanel.Visibility = Visibility.Collapsed;
+                PrefPanelTransform.BeginAnimation(TranslateTransform.XProperty, null);
+                PrefPanelTransform.X = 300;
+            };
+            PrefPanelTransform.BeginAnimation(TranslateTransform.XProperty, anim);
+        }
+
+        private void ClosePreferences_Click(object sender, MouseButtonEventArgs e)
+        {
+            HidePreferencesPanel();
+        }
+
+        // ── Theme toggle handlers (PREF-02) ──
+
+        private void ThemeLight_Click(object sender, MouseButtonEventArgs e)
+        {
+            _ = ThemeService.SetThemeAsync(ThemeService.AppTheme.Light);
+            UpdateThemeToggleHighlight(ThemeService.AppTheme.Light);
+        }
+
+        private void ThemeSystem_Click(object sender, MouseButtonEventArgs e)
+        {
+            _ = ThemeService.SetThemeAsync(ThemeService.AppTheme.System);
+            UpdateThemeToggleHighlight(ThemeService.AppTheme.System);
+        }
+
+        private void ThemeDark_Click(object sender, MouseButtonEventArgs e)
+        {
+            _ = ThemeService.SetThemeAsync(ThemeService.AppTheme.Dark);
+            UpdateThemeToggleHighlight(ThemeService.AppTheme.Dark);
+        }
+
+        private void UpdateThemeToggleHighlight(ThemeService.AppTheme active)
+        {
+            var accentBrush = GetBrush("c-accent");
+            var defaultBrush = new SolidColorBrush(Colors.Transparent);
+
+            ThemeLightBtn.Background = active == ThemeService.AppTheme.Light ? accentBrush : defaultBrush;
+            ThemeSystemBtn.Background = active == ThemeService.AppTheme.System ? accentBrush : defaultBrush;
+            ThemeDarkBtn.Background = active == ThemeService.AppTheme.Dark ? accentBrush : defaultBrush;
+        }
+
+        // ── Font size handlers (PREF-03, KEYS-02) ──
+
+        private void FontSizeIncrease_Click(object sender, MouseButtonEventArgs e) => _ = ChangeFontSizeAsync(1);
+        private void FontSizeDecrease_Click(object sender, MouseButtonEventArgs e) => _ = ChangeFontSizeAsync(-1);
+        private void FontSizeReset_Click(object sender, MouseButtonEventArgs e) => _ = SetFontSizeAsync(13);
+
+        private async Task ChangeFontSizeAsync(int delta)
+        {
+            int newSize = Math.Clamp(_currentFontSize + delta, 8, 32);
+            await SetFontSizeAsync(newSize);
+        }
+
+        private async Task SetFontSizeAsync(int size)
+        {
+            _currentFontSize = size;
+            ContentEditor.FontSize = size;
+            FontSizeDisplay.Text = $"{size}pt";
+            await DatabaseService.SetPreferenceAsync("font_size", size.ToString());
+            ShowFontSizeTooltip(size);
+        }
+
+        private void ShowFontSizeTooltip(int size)
+        {
+            FontSizeTooltipText.Text = $"{size}pt";
+            FontSizeTooltip.Visibility = Visibility.Visible;
+
+            _fontSizeTooltipTimer?.Stop();
+            _fontSizeTooltipTimer = new System.Windows.Threading.DispatcherTimer
+            {
+                Interval = TimeSpan.FromSeconds(1)
+            };
+            _fontSizeTooltipTimer.Tick += (_, _) =>
+            {
+                FontSizeTooltip.Visibility = Visibility.Collapsed;
+                _fontSizeTooltipTimer.Stop();
+            };
+            _fontSizeTooltipTimer.Start();
+        }
+
+        // ── Debounce handler (PREF-04) ──
+
+        private void DebounceInput_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (!int.TryParse(DebounceInput.Text, out int value)) return;
+            value = Math.Clamp(value, 200, 2000);
+            _autosaveService.DebounceMs = value;
+
+            // Debounce the persistence to avoid rapid DB writes while user types
+            _debounceInputTimer?.Stop();
+            _debounceInputTimer = new System.Windows.Threading.DispatcherTimer
+            {
+                Interval = TimeSpan.FromMilliseconds(500)
+            };
+            _debounceInputTimer.Tick += async (_, _) =>
+            {
+                _debounceInputTimer!.Stop();
+                await DatabaseService.SetPreferenceAsync("autosave_debounce_ms", value.ToString());
+            };
+            _debounceInputTimer.Start();
+        }
+
+        // ── Hotkey picker (PREF-05) ──
+
+        private void HotkeyRecord_Click(object sender, MouseButtonEventArgs e)
+        {
+            if (_recordingHotkey)
+            {
+                // Cancel recording
+                _recordingHotkey = false;
+                HotkeyRecordText.Text = "Record";
+            }
+            else
+            {
+                // Start recording
+                _recordingHotkey = true;
+                HotkeyRecordText.Text = "Press keys...";
+            }
+        }
+
+        // ─── Phase 9: Keyboard Shortcuts (KEYS-02, KEYS-03, KEYS-04) ───────────
+
+        /// <summary>
+        /// Ctrl+Scroll over editor changes font size; over tab list scrolls normally (KEYS-03).
+        /// </summary>
+        private void Window_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
+        {
+            if (Keyboard.Modifiers != ModifierKeys.Control) return;
+
+            // Hit-test: only change font size if mouse is over the editor area
+            var mousePos = e.GetPosition(ContentEditor);
+            if (mousePos.X >= 0 && mousePos.X <= ContentEditor.ActualWidth &&
+                mousePos.Y >= 0 && mousePos.Y <= ContentEditor.ActualHeight)
+            {
+                int delta = e.Delta > 0 ? 1 : -1;
+                _ = ChangeFontSizeAsync(delta);
+                e.Handled = true; // Prevent scroll
+            }
+            // If not over editor, don't handle — let tab list scroll normally
+        }
+
+        // ─── Phase 9: In-Editor Find Bar ────────────────────────────────────────
+
+        private void ShowEditorFindBar()
+        {
+            EditorFindBar.Visibility = Visibility.Visible;
+            EditorFindInput.Focus();
+            EditorFindInput.SelectAll();
+        }
+
+        private void HideEditorFindBar()
+        {
+            EditorFindBar.Visibility = Visibility.Collapsed;
+            _findMatches.Clear();
+            _currentFindIndex = -1;
+            EditorFindCount.Text = "";
+            ContentEditor.Focus();
+        }
+
+        private void EditorFindInput_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            string query = EditorFindInput.Text;
+            _findMatches.Clear();
+            _currentFindIndex = -1;
+
+            if (string.IsNullOrEmpty(query) || _activeTab == null)
+            {
+                EditorFindCount.Text = "";
+                return;
+            }
+
+            // Case-insensitive search within current note
+            string content = ContentEditor.Text;
+            int index = 0;
+            while ((index = content.IndexOf(query, index, StringComparison.OrdinalIgnoreCase)) != -1)
+            {
+                _findMatches.Add(index);
+                index += query.Length;
+            }
+
+            if (_findMatches.Count > 0)
+            {
+                _currentFindIndex = 0;
+                HighlightFindMatch();
+            }
+
+            EditorFindCount.Text = _findMatches.Count > 0
+                ? $"{_currentFindIndex + 1}/{_findMatches.Count}"
+                : "No matches";
+        }
+
+        private void HighlightFindMatch()
+        {
+            if (_currentFindIndex < 0 || _currentFindIndex >= _findMatches.Count) return;
+
+            int pos = _findMatches[_currentFindIndex];
+            ContentEditor.Select(pos, EditorFindInput.Text.Length);
+            var lineIndex = ContentEditor.GetLineIndexFromCharacterIndex(pos);
+            if (lineIndex >= 0) ContentEditor.ScrollToLine(lineIndex);
+
+            EditorFindCount.Text = $"{_currentFindIndex + 1}/{_findMatches.Count}";
+        }
+
+        private void EditorFindNext_Click(object sender, MouseButtonEventArgs e)
+        {
+            if (_findMatches.Count == 0) return;
+            _currentFindIndex = (_currentFindIndex + 1) % _findMatches.Count;
+            HighlightFindMatch();
+        }
+
+        private void EditorFindPrevious_Click(object sender, MouseButtonEventArgs e)
+        {
+            if (_findMatches.Count == 0) return;
+            _currentFindIndex = (_currentFindIndex - 1 + _findMatches.Count) % _findMatches.Count;
+            HighlightFindMatch();
+        }
+
+        private void EditorFindClose_Click(object sender, MouseButtonEventArgs e) => HideEditorFindBar();
+
+        private void EditorFindInput_PreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Escape)
+            {
+                HideEditorFindBar();
+                e.Handled = true;
+            }
+            else if (e.Key == Key.Enter)
+            {
+                if (Keyboard.Modifiers == ModifierKeys.Shift)
+                {
+                    if (_findMatches.Count > 0)
+                    {
+                        _currentFindIndex = (_currentFindIndex - 1 + _findMatches.Count) % _findMatches.Count;
+                        HighlightFindMatch();
+                    }
+                }
+                else
+                {
+                    if (_findMatches.Count > 0)
+                    {
+                        _currentFindIndex = (_currentFindIndex + 1) % _findMatches.Count;
+                        HighlightFindMatch();
+                    }
+                }
+                e.Handled = true;
+            }
+        }
+
+        // ─── Phase 9: Help Overlay (Ctrl+?) ─────────────────────────────────────
+
+        private void ShowHelpOverlay()
+        {
+            if (!_helpBuilt)
+            {
+                BuildHelpContent();
+                _helpBuilt = true;
+            }
+            HelpOverlay.Visibility = Visibility.Visible;
+        }
+
+        private void HideHelpOverlay()
+        {
+            HelpOverlay.Visibility = Visibility.Collapsed;
+        }
+
+        private void BuildHelpContent()
+        {
+            var shortcuts = new (string section, (string key, string desc)[] items)[]
+            {
+                ("TABS", new[]
+                {
+                    ("Ctrl+T", "New tab"),
+                    ("Ctrl+W", "Delete tab"),
+                    ("Ctrl+Tab", "Next tab"),
+                    ("Ctrl+Shift+Tab", "Previous tab"),
+                    ("F2", "Rename tab"),
+                    ("Ctrl+P", "Pin / Unpin"),
+                    ("Ctrl+K", "Clone tab"),
+                }),
+                ("EDITOR", new[]
+                {
+                    ("Ctrl+Z", "Undo"),
+                    ("Ctrl+Y", "Redo"),
+                    ("Ctrl+Shift+Z", "Redo (alt)"),
+                    ("Ctrl+C", "Copy (all if no selection)"),
+                    ("Ctrl+V", "Paste"),
+                    ("Ctrl+X", "Cut"),
+                    ("Ctrl+A", "Select all"),
+                    ("Ctrl+S", "Save as TXT"),
+                    ("Ctrl+F", "Find in editor / Search tabs"),
+                }),
+                ("VIEW", new[]
+                {
+                    ("Ctrl+=", "Increase font size"),
+                    ("Ctrl+-", "Decrease font size"),
+                    ("Ctrl+0", "Reset font size (13pt)"),
+                    ("Ctrl+Scroll", "Zoom (over editor)"),
+                }),
+                ("GLOBAL", new[]
+                {
+                    (HotkeyService.GetHotkeyDisplayString(), "Focus / minimize JoJot"),
+                    ("Ctrl+Shift+/", "Show this help"),
+                }),
+            };
+
+            foreach (var (section, items) in shortcuts)
+            {
+                var sectionHeader = new TextBlock
+                {
+                    Text = section,
+                    FontSize = 11,
+                    FontWeight = FontWeights.SemiBold,
+                    Margin = new Thickness(0, 12, 0, 6)
+                };
+                sectionHeader.SetResourceReference(TextBlock.ForegroundProperty, "c-text-muted");
+                HelpContent.Children.Add(sectionHeader);
+
+                foreach (var (key, desc) in items)
+                {
+                    var row = new Grid();
+                    row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(140) });
+                    row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+                    row.Margin = new Thickness(0, 2, 0, 2);
+
+                    var keyBlock = new TextBlock
+                    {
+                        Text = key,
+                        FontSize = 12,
+                        FontFamily = new System.Windows.Media.FontFamily("Consolas"),
+                        FontWeight = FontWeights.SemiBold
+                    };
+                    keyBlock.SetResourceReference(TextBlock.ForegroundProperty, "c-accent");
+                    Grid.SetColumn(keyBlock, 0);
+                    row.Children.Add(keyBlock);
+
+                    var descBlock = new TextBlock
+                    {
+                        Text = desc,
+                        FontSize = 12
+                    };
+                    descBlock.SetResourceReference(TextBlock.ForegroundProperty, "c-text-primary");
+                    Grid.SetColumn(descBlock, 1);
+                    row.Children.Add(descBlock);
+
+                    HelpContent.Children.Add(row);
+                }
+            }
+        }
+
+        private void HelpOverlay_Click(object sender, MouseButtonEventArgs e)
+        {
+            HideHelpOverlay();
+        }
+
+        private void HelpCard_Click(object sender, MouseButtonEventArgs e)
+        {
+            e.Handled = true; // Prevent click-through to overlay background
+        }
+
+        private void HelpClose_Click(object sender, MouseButtonEventArgs e)
+        {
+            HideHelpOverlay();
+        }
     }
 }
+

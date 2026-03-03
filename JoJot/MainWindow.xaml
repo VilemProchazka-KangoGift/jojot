@@ -8,7 +8,8 @@
         Title="JoJot"
         Width="500" Height="600"
         MinWidth="320" MinHeight="420"
-        PreviewKeyDown="Window_PreviewKeyDown">
+        PreviewKeyDown="Window_PreviewKeyDown"
+        PreviewMouseWheel="Window_PreviewMouseWheel">
     <Window.Resources>
         <!-- ListBoxItem style: no default selection highlight, stretch content -->
         <Style TargetType="ListBoxItem">
@@ -129,7 +130,9 @@
         <Border Grid.Column="1" Background="{DynamicResource c-border}"/>
 
         <!-- Content Area (Column 2) — toolbar + editor + toast -->
-        <Grid Grid.Column="2" ClipToBounds="True">
+        <Grid Grid.Column="2" ClipToBounds="True"
+              AllowDrop="True" DragEnter="OnFileDragEnter" DragOver="OnFileDragOver"
+              DragLeave="OnFileDragLeave" Drop="OnFileDrop">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
@@ -230,9 +233,14 @@
                 </DockPanel>
             </Border>
 
-            <!-- Editor + Toast (Row 1) -->
+            <!-- Editor + Find Bar + Toast (Row 1) -->
             <Grid Grid.Row="1">
-                <TextBox x:Name="ContentEditor"
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <TextBox x:Name="ContentEditor" Grid.Row="0"
                          AcceptsReturn="True" AcceptsTab="True"
                          TextWrapping="Wrap" FontFamily="Consolas" FontSize="13"
                          VerticalScrollBarVisibility="Auto"
@@ -244,8 +252,49 @@
                          IsUndoEnabled="False"
                          IsEnabled="False"/>
 
+                <!-- Phase 9: Font size tooltip (KEYS-02) — auto-dismissing overlay -->
+                <Border x:Name="FontSizeTooltip" Visibility="Collapsed" Background="#CC333333"
+                        CornerRadius="4" Padding="8,4" HorizontalAlignment="Right" VerticalAlignment="Top"
+                        Margin="0,8,8,0" Panel.ZIndex="60" IsHitTestVisible="False">
+                    <TextBlock x:Name="FontSizeTooltipText" FontSize="12" Foreground="White"/>
+                </Border>
+
+                <!-- Phase 9: In-editor find bar (Ctrl+F when editor focused) -->
+                <Grid x:Name="EditorFindBar" Grid.Row="1" Visibility="Collapsed"
+                      Background="{DynamicResource c-tab-bg}">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBox x:Name="EditorFindInput" Grid.Column="0" FontSize="13" Padding="6,4"
+                             Background="{DynamicResource c-win-bg}" Foreground="{DynamicResource c-text-primary}"
+                             BorderBrush="{DynamicResource c-text-muted}" BorderThickness="1" Margin="8,4"
+                             TextChanged="EditorFindInput_TextChanged"
+                             PreviewKeyDown="EditorFindInput_PreviewKeyDown"/>
+                    <TextBlock x:Name="EditorFindCount" Grid.Column="1" FontSize="11" VerticalAlignment="Center"
+                               Foreground="{DynamicResource c-text-muted}" Margin="0,0,8,0"/>
+                    <Border Grid.Column="2" Cursor="Hand" Padding="4,2" Margin="2" CornerRadius="3"
+                            MouseLeftButtonDown="EditorFindPrevious_Click">
+                        <TextBlock Text="&#xE70E;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="12"
+                                   Foreground="{DynamicResource c-text-primary}"/>
+                    </Border>
+                    <Border Grid.Column="3" Cursor="Hand" Padding="4,2" Margin="2" CornerRadius="3"
+                            MouseLeftButtonDown="EditorFindNext_Click">
+                        <TextBlock Text="&#xE70D;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="12"
+                                   Foreground="{DynamicResource c-text-primary}"/>
+                    </Border>
+                    <Border Grid.Column="4" Cursor="Hand" Padding="4,2" Margin="2,0,8,0" CornerRadius="3"
+                            MouseLeftButtonDown="EditorFindClose_Click">
+                        <TextBlock Text="&#xE711;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="12"
+                                   Foreground="{DynamicResource c-text-muted}"/>
+                    </Border>
+                </Grid>
+
                 <!-- Toast notification overlay (Phase 5: soft-delete undo) -->
-                <Border x:Name="ToastBorder"
+                <Border x:Name="ToastBorder" Grid.Row="0"
                         VerticalAlignment="Bottom" Height="36"
                         Background="{DynamicResource c-toast-bg}" Visibility="Collapsed"
                         Panel.ZIndex="10">
@@ -260,7 +309,7 @@
                         <TextBlock x:Name="ToastMessageBlock" Grid.Column="0"
                                    VerticalAlignment="Center" Foreground="{DynamicResource c-toast-fg}" FontSize="13"
                                    TextTrimming="CharacterEllipsis"/>
-                        <TextBlock Grid.Column="1" VerticalAlignment="Center"
+                        <TextBlock x:Name="UndoButton" Grid.Column="1" VerticalAlignment="Center"
                                    Foreground="{DynamicResource c-accent}" FontSize="13"
                                    TextDecorations="Underline" Cursor="Hand"
                                    Margin="12,0,0,0"
@@ -269,6 +318,22 @@
                         </TextBlock>
                     </Grid>
                 </Border>
+
+                <!-- Phase 9: File drop overlay (DROP-05) -->
+                <Grid x:Name="FileDropOverlay" Grid.Row="0" Visibility="Collapsed"
+                      Background="#80000000" Panel.ZIndex="50"
+                      AllowDrop="True" DragOver="OnFileDragOver" Drop="OnFileDrop">
+                    <Border BorderBrush="{DynamicResource c-accent}" BorderThickness="3" CornerRadius="8" Margin="16">
+                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <TextBlock Text="&#xE896;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="48"
+                                       Foreground="{DynamicResource c-accent}" HorizontalAlignment="Center"/>
+                            <TextBlock Text="Drop file here" FontSize="18" FontWeight="SemiBold"
+                                       Foreground="White" HorizontalAlignment="Center" Margin="0,12,0,0"/>
+                            <TextBlock Text="Text files only, max 500KB" FontSize="12"
+                                       Foreground="#AAAAAA" HorizontalAlignment="Center" Margin="0,4,0,0"/>
+                        </StackPanel>
+                    </Border>
+                </Grid>
             </Grid>
         </Grid>
         <!-- Hamburger menu popup (MENU-01) -->
@@ -466,6 +531,176 @@
                 </StackPanel>
             </Border>
         </Grid>
+        <!-- Phase 9: Preferences slide-in panel (PREF-01 through PREF-05) -->
+        <Border x:Name="PreferencesPanel" Width="300" HorizontalAlignment="Right"
+                Background="{DynamicResource c-win-bg}" BorderBrush="{DynamicResource c-border}"
+                BorderThickness="1,0,0,0" Visibility="Collapsed" Panel.ZIndex="80"
+                Grid.ColumnSpan="3">
+            <Border.RenderTransform>
+                <TranslateTransform x:Name="PrefPanelTransform" X="300"/>
+            </Border.RenderTransform>
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <!-- Header with close button -->
+                <Grid Grid.Row="0" Margin="16,16,16,8">
+                    <TextBlock Text="Preferences" FontSize="18" FontWeight="SemiBold"
+                               Foreground="{DynamicResource c-text-primary}"/>
+                    <TextBlock Text="&#xE711;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="14"
+                               HorizontalAlignment="Right" Cursor="Hand"
+                               Foreground="{DynamicResource c-text-muted}"
+                               MouseLeftButtonDown="ClosePreferences_Click"/>
+                </Grid>
+
+                <!-- Scrollable content -->
+                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Margin="16,0,16,16">
+                    <StackPanel>
+                        <!-- APPEARANCE SECTION -->
+                        <TextBlock Text="APPEARANCE" FontSize="11" FontWeight="SemiBold" Margin="0,8,0,8"
+                                   Foreground="{DynamicResource c-text-muted}"/>
+
+                        <!-- Theme toggle (PREF-02) -->
+                        <TextBlock Text="Theme" FontSize="13" Margin="0,0,0,6"
+                                   Foreground="{DynamicResource c-text-primary}"/>
+                        <Grid x:Name="ThemeToggle" Margin="0,0,0,16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Border x:Name="ThemeLightBtn" Grid.Column="0" CornerRadius="4,0,0,4"
+                                    BorderThickness="1" BorderBrush="{DynamicResource c-border}"
+                                    Cursor="Hand" Padding="8,6"
+                                    MouseLeftButtonDown="ThemeLight_Click">
+                                <TextBlock Text="Light" FontSize="12" HorizontalAlignment="Center"
+                                           Foreground="{DynamicResource c-text-primary}"/>
+                            </Border>
+                            <Border x:Name="ThemeSystemBtn" Grid.Column="1"
+                                    BorderThickness="0,1,0,1" BorderBrush="{DynamicResource c-border}"
+                                    Cursor="Hand" Padding="8,6"
+                                    MouseLeftButtonDown="ThemeSystem_Click">
+                                <TextBlock Text="System" FontSize="12" HorizontalAlignment="Center"
+                                           Foreground="{DynamicResource c-text-primary}"/>
+                            </Border>
+                            <Border x:Name="ThemeDarkBtn" Grid.Column="2" CornerRadius="0,4,4,0"
+                                    BorderThickness="1" BorderBrush="{DynamicResource c-border}"
+                                    Cursor="Hand" Padding="8,6"
+                                    MouseLeftButtonDown="ThemeDark_Click">
+                                <TextBlock Text="Dark" FontSize="12" HorizontalAlignment="Center"
+                                           Foreground="{DynamicResource c-text-primary}"/>
+                            </Border>
+                        </Grid>
+
+                        <!-- Font size (PREF-03) -->
+                        <TextBlock Text="Font Size" FontSize="13" Margin="0,0,0,6"
+                                   Foreground="{DynamicResource c-text-primary}"/>
+                        <Grid Margin="0,0,0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <Border Grid.Column="0" CornerRadius="4" BorderThickness="1"
+                                    BorderBrush="{DynamicResource c-text-muted}" Cursor="Hand"
+                                    Padding="10,4" MouseLeftButtonDown="FontSizeDecrease_Click">
+                                <TextBlock Text="-" FontSize="14" FontWeight="Bold"
+                                           Foreground="{DynamicResource c-text-primary}" HorizontalAlignment="Center"/>
+                            </Border>
+                            <TextBlock x:Name="FontSizeDisplay" Grid.Column="1" FontSize="13"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"
+                                       Foreground="{DynamicResource c-text-primary}"/>
+                            <Border Grid.Column="2" CornerRadius="4" BorderThickness="1"
+                                    BorderBrush="{DynamicResource c-text-muted}" Cursor="Hand"
+                                    Padding="10,4" MouseLeftButtonDown="FontSizeIncrease_Click">
+                                <TextBlock Text="+" FontSize="14" FontWeight="Bold"
+                                           Foreground="{DynamicResource c-text-primary}" HorizontalAlignment="Center"/>
+                            </Border>
+                        </Grid>
+                        <TextBlock Text="Reset to 13pt" FontSize="11" Foreground="{DynamicResource c-accent}"
+                                   Cursor="Hand" Margin="0,2,0,16" HorizontalAlignment="Center"
+                                   MouseLeftButtonDown="FontSizeReset_Click"
+                                   TextDecorations="Underline"/>
+
+                        <!-- EDITOR SECTION -->
+                        <TextBlock Text="EDITOR" FontSize="11" FontWeight="SemiBold" Margin="0,8,0,8"
+                                   Foreground="{DynamicResource c-text-muted}"/>
+
+                        <!-- Autosave debounce (PREF-04) -->
+                        <TextBlock Text="Autosave Delay" FontSize="13" Margin="0,0,0,6"
+                                   Foreground="{DynamicResource c-text-primary}"/>
+                        <Grid Margin="0,0,0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBox x:Name="DebounceInput" Grid.Column="0" FontSize="13" Padding="6,4"
+                                     Background="{DynamicResource c-tab-bg}" Foreground="{DynamicResource c-text-primary}"
+                                     BorderBrush="{DynamicResource c-text-muted}" BorderThickness="1"
+                                     TextChanged="DebounceInput_TextChanged"/>
+                            <TextBlock Grid.Column="1" Text="ms" FontSize="12" VerticalAlignment="Center"
+                                       Foreground="{DynamicResource c-text-muted}" Margin="6,0,0,0"/>
+                        </Grid>
+                        <TextBlock Text="200 - 2000 ms (default: 500)" FontSize="11" Margin="0,2,0,16"
+                                   Foreground="{DynamicResource c-text-muted}"/>
+
+                        <!-- SHORTCUTS SECTION -->
+                        <TextBlock Text="SHORTCUTS" FontSize="11" FontWeight="SemiBold" Margin="0,8,0,8"
+                                   Foreground="{DynamicResource c-text-muted}"/>
+
+                        <!-- Global hotkey picker (PREF-05) -->
+                        <TextBlock Text="Global Hotkey" FontSize="13" Margin="0,0,0,6"
+                                   Foreground="{DynamicResource c-text-primary}"/>
+                        <Grid Margin="0,0,0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <Border Grid.Column="0" CornerRadius="4" BorderThickness="1"
+                                    BorderBrush="{DynamicResource c-text-muted}" Padding="8,4"
+                                    Background="{DynamicResource c-tab-bg}">
+                                <TextBlock x:Name="HotkeyDisplay" FontSize="13"
+                                           Foreground="{DynamicResource c-text-primary}"/>
+                            </Border>
+                            <Border x:Name="HotkeyRecordBtn" Grid.Column="1" CornerRadius="4" Cursor="Hand"
+                                    Background="{DynamicResource c-accent}" Padding="12,4" Margin="8,0,0,0"
+                                    MouseLeftButtonDown="HotkeyRecord_Click">
+                                <TextBlock x:Name="HotkeyRecordText" Text="Record" FontSize="12"
+                                           Foreground="White" HorizontalAlignment="Center"/>
+                            </Border>
+                        </Grid>
+                        <TextBlock Text="Focus JoJot from any app" FontSize="11" Margin="0,2,0,16"
+                                   Foreground="{DynamicResource c-text-muted}"/>
+                    </StackPanel>
+                </ScrollViewer>
+            </Grid>
+        </Border>
+
+        <!-- Phase 9: Help overlay — keyboard shortcuts reference (Ctrl+?) -->
+        <Grid x:Name="HelpOverlay" Visibility="Collapsed" Background="#CC000000" Panel.ZIndex="200"
+              Grid.ColumnSpan="3" MouseLeftButtonDown="HelpOverlay_Click">
+            <Border Background="{DynamicResource c-win-bg}" CornerRadius="8" Padding="24"
+                    MaxWidth="500" MaxHeight="600" HorizontalAlignment="Center" VerticalAlignment="Center"
+                    MouseLeftButtonDown="HelpCard_Click">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel x:Name="HelpContent">
+                        <Grid>
+                            <TextBlock Text="Keyboard Shortcuts" FontSize="18" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource c-text-primary}"/>
+                            <TextBlock Text="&#xE711;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="14"
+                                       HorizontalAlignment="Right" Cursor="Hand"
+                                       Foreground="{DynamicResource c-text-muted}"
+                                       MouseLeftButtonDown="HelpClose_Click"/>
+                        </Grid>
+                        <TextBlock Text="Press Escape or click outside to close" FontSize="11"
+                                   Foreground="{DynamicResource c-text-muted}" Margin="0,4,0,16"/>
+                    </StackPanel>
+                </ScrollViewer>
+            </Border>
+        </Grid>
+
         <!-- Recovery modal overlay (Phase 8: ORPH-02, ORPH-03) -->
         <Grid x:Name="RecoveryPanel" Visibility="Collapsed" Panel.ZIndex="90"
               Grid.ColumnSpan="3">
