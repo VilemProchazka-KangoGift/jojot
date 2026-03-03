@@ -178,5 +178,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-03
-Stopped at: Phase 8 complete — Plans 01 (hamburger menu + context menu), 02 (bulk delete confirmation), 03 (orphan recovery flyout) all executed and verified
-Resume file: .planning/phases/08-menus-context-actions-orphaned-sessions/08-03-SUMMARY.md
+Stopped at: Phase 8.1 context gathered
+Resume file: .planning/phases/08.1-gap-closure-code-fixes/08.1-CONTEXT.md
