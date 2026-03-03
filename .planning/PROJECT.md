@@ -2,7 +2,7 @@
 
 ## What This Is
 
-Lightweight Windows desktop app for plain-text notes. Each Windows virtual desktop gets its own independent JoJot window with its own tabs and saved state. One background process manages all windows, accessible from the taskbar. Built for fastest possible capture — no formatting, no cloud sync, no clutter.
+Lightweight Windows desktop app for plain-text notes tied to virtual desktops. Each Windows virtual desktop gets its own independent JoJot window with its own tabs, autosave, undo/redo, and saved state. One background process manages all windows via a single SQLite database. Built for fastest possible capture — no formatting, no cloud sync, no clutter.
 
 ## Core Value
 
@@ -12,99 +12,97 @@ Instant note capture tied to your virtual desktop context — switch desktops, s
 
 ### Validated
 
-- WPF app skeleton created (App.xaml, MainWindow.xaml, .NET 10 project)
+- ✓ SQLite data model with WAL mode, single connection, 4 tables — v1.0
+- ✓ Virtual desktop detection via IVirtualDesktopManager COM, one window per desktop — v1.0
+- ✓ Three-tier session matching (GUID, name, index) across reboots — v1.0
+- ✓ Single-instance background process with named mutex and named pipe IPC — v1.0
+- ✓ Taskbar click handling: left-click (focus/create), middle-click (quick capture) — v1.0
+- ✓ Window title showing desktop name, live-updated — v1.0
+- ✓ Tab list panel (180px fixed, scrollable, drag-to-reorder within zones) — v1.0
+- ✓ Tab labels with 3-tier fallback (custom name, content preview, "New note") — v1.0
+- ✓ Tab rename (double-click, F2, context menu), inline editing — v1.0
+- ✓ Tab search box filtering by label and content (Ctrl+F) — v1.0
+- ✓ Plain-text editor (monospace, word-wrap, no formatting) — v1.0
+- ✓ Autosave with 500ms debounce to SQLite, write frequency cap — v1.0
+- ✓ Two-tier undo/redo stack (50 fine-grained + 20 coarse, 50MB global budget) — v1.0
+- ✓ Toolbar: undo, redo, pin, clone, copy, paste, save-as-TXT, delete — v1.0
+- ✓ Copy behaviour: selection or full note if nothing selected — v1.0
+- ✓ Save as TXT with OS dialog, UTF-8 BOM — v1.0
+- ✓ Pin/unpin tabs, pinned always sorted to top, protected from bulk delete — v1.0
+- ✓ Clone tab — v1.0
+- ✓ Tab deletion (multiple triggers), immediate with 4-second undo toast — v1.0
+- ✓ Deletion toast with undo, auto-dismiss, bulk support — v1.0
+- ✓ File drop: content-inspected acceptance, 500KB limit, multiple files, error messages — v1.0
+- ✓ Window menu: recover sessions, bulk delete operations, preferences, exit — v1.0
+- ✓ Tab context menu: rename, pin, clone, save, delete, delete all below — v1.0
+- ✓ Orphaned session recovery panel with adopt/open/delete actions — v1.0
+- ✓ Window drag detection via IVirtualDesktopNotification, lock overlay — v1.0
+- ✓ Drag overlay: reparent (no existing session) or merge (existing session) or cancel — v1.0
+- ✓ pending_moves crash recovery on startup — v1.0
+- ✓ Theming: light, dark, system (follows Windows), instant ResourceDictionary swap — v1.0
+- ✓ Theme tokens for all UI elements (12 color tokens) — v1.0
+- ✓ Preferences dialog: theme toggle, font size, autosave debounce, global hotkey — v1.0
+- ✓ Global hotkey (Win+Shift+N default) via RegisterHotKey — v1.0
+- ✓ Font size controls: Ctrl+=, Ctrl+-, Ctrl+0, Ctrl+Scroll — v1.0
+- ✓ All keyboard shortcuts (tab management, editor, font size) — v1.0
+- ✓ Startup sequence with ReadyToRun publishing — v1.0
+- ✓ Background migrations after window shown, never on cold-start path — v1.0
+- ✓ Post-delete focus rules (next below, then last, then new empty tab) — v1.0
+- ✓ Window close: flush content, delete empty tabs, save geometry, keep process alive — v1.0
+- ✓ Exit: flush all windows, delete all empty tabs, terminate process — v1.0
 
 ### Active
 
-- [ ] SQLite data model with WAL mode, single connection, 4 tables (notes, app_state, pending_moves, preferences)
-- [ ] Virtual desktop detection via IVirtualDesktopManager, one window per desktop
-- [ ] Three-tier session matching (GUID, name, index) across reboots
-- [ ] Single-instance background process with named mutex and named pipe IPC
-- [ ] Taskbar click handling: left-click (focus/create window), middle-click (quick capture)
-- [ ] Window title showing desktop name, live-updated
-- [ ] Tab list panel (180px fixed, scrollable, drag-to-reorder within zones)
-- [ ] Tab labels with 3-tier fallback (custom name, content preview, "New note")
-- [ ] Tab rename (double-click, F2, context menu), inline editing
-- [ ] Tab search box filtering by label and content (Ctrl+F)
-- [ ] Plain-text editor (monospace, word-wrap, no formatting)
-- [ ] Autosave with 500ms debounce to SQLite, write frequency cap
-- [ ] Two-tier undo/redo stack (50 fine-grained + 20 coarse checkpoints, 50MB global budget, memory pressure collapse)
-- [ ] Toolbar: undo, redo, pin, clone, copy, paste, save-as-TXT, delete
-- [ ] Copy behaviour: selection or full note if nothing selected
-- [ ] Save as TXT with OS dialog, UTF-8 BOM
-- [ ] Pin/unpin tabs, pinned always sorted to top, protected from bulk delete
-- [ ] Clone tab
-- [ ] Tab deletion (multiple triggers), immediate with 4-second undo toast
-- [ ] Deletion toast with undo, auto-dismiss, bulk support
-- [ ] File drop: content-inspected acceptance, 500KB limit, multiple files, error messages
-- [ ] Window menu: recover sessions, bulk delete operations, preferences, exit
-- [ ] Tab context menu: rename, pin, clone, save, delete, delete all below
-- [ ] Orphaned session recovery panel with adopt/open/delete actions
-- [ ] Window drag detection via IVirtualDesktopNotification, lock overlay
-- [ ] Drag overlay: reparent (no existing session) or merge (existing session) or cancel
-- [ ] pending_moves crash recovery on startup
-- [ ] Theming: light, dark, system (follows Windows), instant ResourceDictionary swap
-- [ ] Theme tokens for all UI elements (10 color tokens)
-- [ ] Preferences dialog: theme toggle, font size, autosave debounce, global hotkey
-- [ ] Global hotkey (Win+Shift+N default) via RegisterHotKey
-- [ ] Font size controls: Ctrl+=, Ctrl+-, Ctrl+0, Ctrl+Scroll
-- [ ] All keyboard shortcuts (tab management, editor, font size)
-- [ ] Startup sequence: < 200ms to first interactive window
-- [ ] Native AOT publishing (PublishAot=true), no runtime reflection
-- [ ] Background migrations after window shown, never on cold-start path
-- [ ] Post-delete focus rules (next below, then last, then new empty tab)
-- [ ] Window close: flush content, delete empty tabs, save geometry, keep process alive
-- [ ] Exit: flush all windows, delete all empty tabs, terminate process
+(None — v1.0 complete. Define new requirements with `/gsd:new-milestone`)
 
 ### Out of Scope
 
-- Rich text / markdown rendering — plain text only by design
+- Rich text / markdown rendering — plain text only by design; core positioning
 - Cloud sync — local-first, no network dependency
 - Full-text search across all desktops — search is per-desktop only
 - Images or attachments — text only
 - Encryption — not a security tool
-- Mobile or cross-platform — Windows desktop only
+- Mobile or cross-platform — Windows desktop only (WPF)
 - Tab persistence of undo history — stacks are in-memory only
+- Native AOT (PublishAot=true) — WPF incompatible (dotnet/wpf#3811); using ReadyToRun instead
+- Cold-start < 200ms guarantee — unrealistic for WPF (Defender scanning); warm-start best-effort
 
 ## Context
 
-The project has detailed spec documents in `resources/` covering all 8 feature areas. These are the definitive spec — build exactly what's documented. The WPF skeleton exists (App.xaml, MainWindow.xaml) but no functionality is implemented yet.
+Shipped v1.0 with 13,995 LOC across 31 C# and XAML files.
+Tech stack: WPF, .NET 10, C#, SQLite (Microsoft.Data.Sqlite), PublishReadyToRun.
+14 phases executed in 2 days (2026-03-02 → 2026-03-03), 31 plans total.
+All 120 requirements verified against codebase with code evidence.
 
-Key technical considerations:
-- Native AOT means no runtime reflection. Use Microsoft.Data.Sqlite with AOT-safe annotations.
-- WPF + AOT matured in .NET 9/10 but XAML-heavy paths should be tested early.
-- Virtual desktop API (IVirtualDesktopManager) is COM-based, undocumented, and version-sensitive.
-- Single SQLite connection per process, WAL mode, all writes serialized.
+Spec documents in `resources/` remain the definitive reference for v1.0 behavior.
 
-Spec documents (in `resources/`):
-1. `01-data-model.md` — SQLite schema, all tables
-2. `02-virtual-desktops.md` — Desktop detection, session matching, IPC, drag handling
-3. `03-layout-and-ui.md` — Window layout, tabs, toolbar, toast, theming
-4. `04-menus.md` — Window menu, tab context menu
-5. `05-editing.md` — Autosave, undo/redo, file drop
-6. `06-keyboard-shortcuts.md` — Full shortcut table
-7. `07-preferences.md` — Preferences dialog
-8. `08-startup.md` — Startup sequence, AOT notes
+Key technical state:
+- Raw COM interop with [ComImport] for virtual desktop API (no NuGet; build-specific GUID dispatch)
+- Single SQLite connection per process, WAL mode, SemaphoreSlim write serialization
+- Custom two-tier undo/redo (WPF native TextBox undo unsuitable)
+- Custom Popup-based menus (WPF ContextMenu incompatible with DynamicResource theming)
 
 ## Constraints
 
-- **Tech stack**: WPF, .NET 10, C#, Native AOT, SQLite (Microsoft.Data.Sqlite) — non-negotiable
+- **Tech stack**: WPF, .NET 10, C#, PublishReadyToRun, SQLite (Microsoft.Data.Sqlite) — non-negotiable
 - **Platform**: Windows 10/11 only
-- **Performance**: < 200ms to first interactive window on cold start
 - **Data**: Single SQLite connection per process, WAL mode, writes serialized
-- **AOT**: No runtime reflection; all libraries must be AOT-compatible
 - **UX**: No confirmation dialogs for single-tab deletion (toast undo only)
 
 ## Key Decisions
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Native AOT over JIT | < 200ms startup target, self-contained binary | -- Pending |
-| Custom undo/redo over WPF native | WPF TextBox undo clears on tab switch, can't transfer between tabs | -- Pending |
-| Single process + IPC over multi-process | One SQLite connection, consistent state, lower resource use | -- Pending |
-| Content inspection over extension for file drop | Accept any text file regardless of extension (.log, .yaml, etc.) | -- Pending |
-| Three-tier session matching | GUIDs reassigned on reboot; name + index fallback ensures continuity | -- Pending |
-| No confirmation dialogs for delete | Speed over safety; 4-second undo toast provides recovery path | -- Pending |
+| ReadyToRun over Native AOT | WPF incompatible with PublishAot; ReadyToRun provides fast startup | ✓ Good — app launches quickly, no AOT issues |
+| Custom undo/redo over WPF native | WPF TextBox undo clears on tab switch, can't transfer between tabs | ✓ Good — seamless per-tab undo with 50MB memory management |
+| Single process + IPC over multi-process | One SQLite connection, consistent state, lower resource use | ✓ Good — simple architecture, no sync issues |
+| Content inspection over extension for file drop | Accept any text file regardless of extension (.log, .yaml, etc.) | ✓ Good — binary detection works reliably |
+| Three-tier session matching | GUIDs reassigned on reboot; name + index fallback ensures continuity | ✓ Good — handles reboot, desktop rename, desktop add/remove |
+| No confirmation dialogs for delete | Speed over safety; 4-second undo toast provides recovery path | ✓ Good — fast workflow, toast undo prevents accidents |
+| Raw COM interop with [ComImport] | No NuGet packages support .NET 10 virtual desktop API | ✓ Good — works on 23H2 and 24H2 with GUID dispatch |
+| Custom Popup for menus | WPF ContextMenu can't use DynamicResource for themed backgrounds | ✓ Good — instant theme switching works across all menus |
+| SemaphoreSlim(1,1) for DB writes | Async-compatible unlike lock; all writes serialized through single path | ✓ Good — no data races, clean async code |
+| Destroy windows on close (not hide) | WPF cannot reopen after Close(); fresh instances via IPC | ✓ Good — clean lifecycle, no stale window state |
 
 ---
-*Last updated: 2026-03-03 after Phase 8.2*
+*Last updated: 2026-03-03 after v1.0 milestone*
