@@ -133,16 +133,16 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Window Drag (Desktop Transfer)
 
-- [ ] **DRAG-01**: Detect window drag to another desktop via IVirtualDesktopNotification::OnWindowMovedToDesktop
-- [ ] **DRAG-02**: Write pending_moves row immediately on detection; apply lock overlay
-- [ ] **DRAG-03**: Lock overlay: semi-transparent dark (rgba 0,0,0,0.65), content visible but non-interactive
-- [ ] **DRAG-04**: Reparent button (no existing session on target): re-scope window and all notes to new desktop
-- [ ] **DRAG-05**: Merge button (existing session on target): append tabs to existing window, close dragged window
-- [ ] **DRAG-06**: Cancel button: move window back to original desktop via MoveWindowToDesktop
-- [ ] **DRAG-07**: Cancel failure: replace Cancel with Retry + manual instruction message
-- [ ] **DRAG-08**: Second drag while overlay active is ignored
-- [ ] **DRAG-09**: Crash recovery: pending_moves rows on startup restore window to origin desktop
-- [ ] **DRAG-10**: Persistent warning badge in title bar when window GUID doesn't match current desktop GUID
+- [x] **DRAG-01**: Detect window drag to another desktop via IVirtualDesktopNotification::OnWindowMovedToDesktop
+- [x] **DRAG-02**: Write pending_moves row immediately on detection; apply lock overlay
+- [x] **DRAG-03**: Lock overlay: semi-transparent dark (rgba 0,0,0,0.65), content visible but non-interactive
+- [x] **DRAG-04**: Reparent button (no existing session on target): re-scope window and all notes to new desktop
+- [x] **DRAG-05**: Merge button (existing session on target): append tabs to existing window, close dragged window
+- [x] **DRAG-06**: Cancel button: move window back to original desktop via MoveWindowToDesktop
+- [x] **DRAG-07**: Cancel failure: replace Cancel with Retry + manual instruction message
+- [x] **DRAG-08**: Second drag while overlay active is ignored
+- [x] **DRAG-09**: Crash recovery: pending_moves rows on startup restore window to origin desktop
+- [x] **DRAG-10**: Persistent warning badge in title bar when window GUID doesn't match current desktop GUID
 
 ### Theming
 
@@ -317,16 +317,16 @@ Deferred to future release. Tracked but not in current roadmap.
 | KEYS-02 | Phase 9 | Pending |
 | KEYS-03 | Phase 9 | Pending |
 | KEYS-04 | Phase 9 | Pending |
-| DRAG-01 | Phase 10 | Pending |
-| DRAG-02 | Phase 10 | Pending |
-| DRAG-03 | Phase 10 | Pending |
-| DRAG-04 | Phase 10 | Pending |
-| DRAG-05 | Phase 10 | Pending |
-| DRAG-06 | Phase 10 | Pending |
-| DRAG-07 | Phase 10 | Pending |
-| DRAG-08 | Phase 10 | Pending |
-| DRAG-09 | Phase 10 | Pending |
-| DRAG-10 | Phase 10 | Pending |
+| DRAG-01 | Phase 10 | Done |
+| DRAG-02 | Phase 10 | Done |
+| DRAG-03 | Phase 10 | Done |
+| DRAG-04 | Phase 10 | Done |
+| DRAG-05 | Phase 10 | Done |
+| DRAG-06 | Phase 10 | Done |
+| DRAG-07 | Phase 10 | Done |
+| DRAG-08 | Phase 10 | Done |
+| DRAG-09 | Phase 10 | Done |
+| DRAG-10 | Phase 10 | Done |
 
 **Coverage:**
 - v1 requirements: 120 total

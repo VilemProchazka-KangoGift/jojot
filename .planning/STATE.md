@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: in-progress
-last_updated: "2026-03-03T18:00:00.000Z"
+last_updated: "2026-03-03T20:00:00.000Z"
 progress:
   total_phases: 12
-  completed_phases: 11
-  total_plans: 27
-  completed_plans: 27
+  completed_phases: 12
+  total_plans: 29
+  completed_plans: 29
 ---
 
 # Project State
@@ -18,23 +18,23 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-03)
 
 **Core value:** Instant note capture tied to your virtual desktop context — switch desktops, switch notes, zero friction.
-**Current focus:** Phase 10 — Window Drag & Crash Recovery
+**Current focus:** All v1.0 phases complete
 
 ## Current Position
 
-Phase: 10 of 10 (Window Drag & Crash Recovery)
-Plan: Not started
-Status: Ready to plan
-Last activity: 2026-03-03 — Phase 9 complete: file drop, preferences, hotkeys & keyboard (3 plans)
+Phase: 10 of 10 (Window Drag & Crash Recovery) — COMPLETE
+Plan: 2/2
+Status: Phase complete
+Last activity: 2026-03-03 — Phase 10 complete: window drag detection, lock overlay, resolution flows, crash recovery (2 plans)
 
-Progress: [██████████████████] 92%
+Progress: [████████████████████] 100%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 21
-- Average duration: ~4.5 min
-- Total execution time: ~122 min
+- Total plans completed: 23
+- Average duration: ~4.7 min
+- Total execution time: ~130 min
 
 **By Phase:**
 
@@ -51,10 +51,11 @@ Progress: [██████████████████] 92%
 | 8.1. Gap Closure — Code Fixes | 1 | ~1 min | ~1.0 min |
 | 8.2. Gap Closure — Verification | 2 | ~2 min | ~1.0 min |
 | 9. File Drop, Preferences, Hotkeys & Keyboard | 3 | ~55 min | ~18.3 min |
+| 10. Window Drag & Crash Recovery | 2 | ~8 min | ~4.0 min |
 
 **Recent Trend:**
-- Last 5 plans: 8.2-01 (~1 min), 8.2-02 (~1 min), 09-01 (~15 min), 09-02 (~25 min), 09-03 (~15 min)
-- Trend: Phase 9 largest phase by code volume — 2 new services, 1000+ lines across XAML/code-behind/App wiring
+- Last 5 plans: 09-01 (~15 min), 09-02 (~25 min), 09-03 (~15 min), 10-01 (~3 min), 10-02 (~5 min)
+- Trend: Phase 10 fast execution — infrastructure from earlier phases (COM interop, event chain, overlay patterns) made implementation straightforward
 
 *Updated after each plan completion*
 
@@ -171,6 +172,15 @@ Recent decisions affecting current work:
 - [09-03]: Help overlay content built programmatically (BuildHelpContent) to avoid massive XAML
 - [09-03]: Ctrl+Scroll uses GetPosition hit-test against ContentEditor bounds — only editor area triggers font size change
 
+- [10-01]: _desktopGuid changed from readonly to mutable — needed by Plan 02 reparent flow which reassigns window to new desktop
+- [10-01]: DetectMovedWindow iterates all windows checking GetWindowDesktopId against expected GUID — more reliable than trying to map the IntPtr view parameter from ViewVirtualDesktopChanged
+- [10-01]: Dispatcher.BeginInvoke at Normal priority for detection — lets COM state settle before querying GetWindowDesktopId
+- [10-02]: MigrateTabsPreservePinsAsync preserves pin state (unlike MigrateTabsAsync which unpins) — merge flow keeps pinned tabs pinned per CONTEXT.md
+- [10-02]: MigrateNotesDesktopGuidAsync is a simple desktop_guid UPDATE — no sort_order or pin changes needed for reparent
+- [10-02]: Crash recovery migrates tabs back to origin desktop using MigrateTabsPreservePinsAsync, then shows toast
+- [10-02]: DragOverlay at Panel.ZIndex=200 — above FileDropOverlay(100) and ConfirmationOverlay
+- [10-02]: Keyboard shortcuts blocked while _isDragOverlayActive — follows ConfirmationOverlay pattern
+
 ### Pending Todos
 
 None yet.
@@ -184,5 +194,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-03
-Stopped at: Phase 10 context gathered
-Resume file: .planning/phases/10-window-drag-crash-recovery/10-CONTEXT.md
+Stopped at: All v1.0 phases complete (Phase 10 done)
+Resume file: .planning/STATE.md

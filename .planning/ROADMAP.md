@@ -23,7 +23,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 8.1: Gap Closure — Code Fixes** (INSERTED) - ORPH-03 Open button, EDIT-03 autosave frequency cap fix (completed 2026-03-03)
 - [x] **Phase 8.2: Gap Closure — Verification** (INSERTED) - Missing VERIFICATION.md for Phases 6 and 7 (completed 2026-03-03)
 - [x] **Phase 9: File Drop, Preferences, Hotkeys & Keyboard** - File drop with content inspection, preferences dialog, global hotkey, all keyboard shortcuts (completed 2026-03-03)
-- [ ] **Phase 10: Window Drag & Crash Recovery** - Inter-desktop drag detection, lock overlay, reparent/merge/cancel flow, pending_moves crash recovery
+- [x] **Phase 10: Window Drag & Crash Recovery** - Inter-desktop drag detection, lock overlay, reparent/merge/cancel flow, pending_moves crash recovery (completed 2026-03-03)
 
 ## Phase Details
 
@@ -211,11 +211,11 @@ Plans:
   3. Clicking Cancel moves the window back to the original desktop; if that fails, Cancel is replaced by Retry plus a manual instruction message
   4. A second drag while the overlay is active is silently ignored
   5. If JoJot crashes during a drag, the next startup reads pending_moves and restores the window to its origin desktop before showing it
-**Plans**: TBD
+**Plans**: 2
 
 Plans:
-- [ ] 10-01: TBD
-- [ ] 10-02: TBD
+- [x] 10-01: Infrastructure — PendingMove model, DB CRUD, MoveWindowToDesktop COM wrapper, detection event chain
+- [x] 10-02: Lock overlay UI, resolution flows (reparent/merge/cancel), crash recovery, misplaced detection
 
 ## Progress
 
@@ -235,4 +235,4 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 8.1 -> 
 | 8.1. Gap Closure — Code Fixes | 1/1 | Complete   | 2026-03-03 |
 | 8.2. Gap Closure — Verification | 2/2 | Complete    | 2026-03-03 |
 | 9. File Drop, Preferences, Hotkeys & Keyboard | 3/3 | Complete | 2026-03-03 |
-| 10. Window Drag & Crash Recovery | 0/TBD | Not started | - |
+| 10. Window Drag & Crash Recovery | 2/2 | Complete | 2026-03-03 |
