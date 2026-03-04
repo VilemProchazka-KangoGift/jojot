@@ -34,7 +34,7 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
 **Milestone Goal:** Fix critical crashes and freezes, polish the tab panel and UI, and ship a Windows installer — based on first-round manual review of v1.0.
 
 - [x] **Phase 11: Critical Bug Fixes** — Eliminate stack overflow crashes on pin/unpin and delete, and fix tab rename freeze (completed 2026-03-03)
-- [ ] **Phase 12: Tab Panel UX** — Replace border highlight with background highlight, add pin icon, improve title sizing, make panel user-resizable, and verify drag-to-reorder
+- [x] **Phase 12: Tab Panel UX** — Replace border highlight with background highlight, add pin icon, improve title sizing, make panel user-resizable, and verify drag-to-reorder (completed 2026-03-04)
 - [ ] **Phase 13: Theme, Display & Menu Polish** — Fix dark mode tab legibility, change font size display to percentages, verify window title shows desktop name, and fix hamburger menu dismiss behavior
 - [ ] **Phase 14: Installer** — Produce a Windows MSI or MSIX installer for distribution
 
@@ -62,8 +62,8 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
   4. User can drag the divider between the tab panel and editor to resize the panel width to their preference
   5. User can drag a tab to a new position in the list and it stays in that order after release
 **Plans**: 2 plans
-- [ ] 12-01-PLAN.md — Tab visual overhaul (background highlight, Fluent pin icon, adaptive title width, drag-reorder verification)
-- [ ] 12-02-PLAN.md — Resizable tab panel (GridSplitter, width persistence, human verification)
+- [x] 12-01-PLAN.md — Tab visual overhaul (background highlight, Fluent pin icon, adaptive title width, drag-reorder verification)
+- [x] 12-02-PLAN.md — Resizable tab panel (GridSplitter, width persistence, human verification)
 
 ### Phase 13: Theme, Display & Menu Polish
 **Goal**: Dark mode is legible, font size feedback is clear, and menus dismiss predictably
@@ -105,6 +105,6 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
 | 10.1. Gap Closure — Integration | v1.0 | 1/1 | Complete | 2026-03-03 |
 | 10.2. Gap Closure — Verification | v1.0 | 1/1 | Complete | 2026-03-03 |
 | 11. Critical Bug Fixes | v1.1 | Complete    | 2026-03-03 | 2026-03-03 |
-| 12. Tab Panel UX | v1.1 | 0/2 | Not started | - |
+| 12. Tab Panel UX | v1.1 | 2/2 | Complete | 2026-03-04 |
 | 13. Theme, Display & Menu Polish | v1.1 | 0/? | Not started | - |
 | 14. Installer | v1.1 | 0/? | Not started | - |

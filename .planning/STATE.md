@@ -2,26 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Polish & Stability
-status: unknown
-last_updated: "2026-03-03T22:28:31.975Z"
-progress:
-  total_phases: 1
-  completed_phases: 1
-  total_plans: 1
-  completed_plans: 1
----
-
----
-gsd_state_version: 1.0
-milestone: v1.1
-milestone_name: Polish & Stability
 status: in_progress
-last_updated: "2026-03-03T23:00:00.000Z"
+last_updated: "2026-03-04T00:00:00.000Z"
 progress:
   total_phases: 4
-  completed_phases: 0
-  total_plans: 1
-  completed_plans: 1
+  completed_phases: 2
+  total_plans: 3
+  completed_plans: 3
 ---
 
 # Project State
@@ -31,16 +18,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-03)
 
 **Core value:** Instant note capture tied to your virtual desktop context — switch desktops, switch notes, zero friction.
-**Current focus:** v1.1 Polish & Stability — Phase 11 ready to plan
+**Current focus:** v1.1 Polish & Stability — Phase 12 complete, ready for Phase 13
 
 ## Current Position
 
-Phase: 11 of 14 (Critical Bug Fixes)
-Plan: 1 of 1 (11-01-PLAN.md — COMPLETE)
-Status: Phase 11 complete — ready to plan Phase 12
-Last activity: 2026-03-03 — Completed 11-01-PLAN.md (BUG-01, BUG-02, BUG-03 fixed and human-verified)
+Phase: 12 of 14 (Tab Panel UX)
+Plan: 2 of 2 (12-02-PLAN.md — COMPLETE)
+Status: Phase 12 complete — ready to plan Phase 13
+Last activity: 2026-03-04 — Completed Phase 12 (TABUX-01 through TABUX-05 implemented and verified)
 
-Progress: [█░░░░░░░░░] 25% (1 plan complete of 4 phases)
+Progress: [█████░░░░░] 50% (3 plans complete across 2 phases)
 
 ## Performance Metrics
 
@@ -49,7 +36,7 @@ Progress: [█░░░░░░░░░] 25% (1 plan complete of 4 phases)
 - Average duration: ~15 min
 - Total execution time: ~7.5 hours
 
-**v1.1 plans:** 0 completed so far
+**v1.1 plans:** 3 completed (1 in Phase 11, 2 in Phase 12)
 
 *Updated after each plan completion*
 
@@ -68,18 +55,29 @@ Phase 11-01 decisions:
 - Removed duplicate `SelectTabByNote(tab)` from `TogglePinAsync` — `RebuildTabList` already calls it internally
 - `UpdateTabItemDisplay` SelectedItem assignment moved inside unhook/rehook brackets to prevent async handler firing mid-rename (BUG-03)
 
+Phase 12-01 decisions:
+- Used #E3F2FD (light blue tint) for light mode and #1A3A4A (dark teal) for dark mode selected-tab background
+- Replaced StackPanel row0 with Grid for column-based adaptive sizing instead of fixed MaxWidth
+- Delete icon toggles Visibility to drive Auto column collapse rather than using fixed column widths
+- DispatcherTimer delays Visibility.Collapsed until opacity animation completes for smooth transition
+
+Phase 12-02 decisions:
+- GridSplitter Width=4 for comfortable drag target while staying subtle
+- Width persisted on DragCompleted (not continuously) to minimize DB writes
+- CultureInfo.InvariantCulture for width formatting/parsing to avoid locale issues
+
 ### Pending Todos
 
 None.
 
 ### Blockers/Concerns
 
-- TABUX-04 (resizable panel) may require replacing fixed-width Grid column with GridSplitter — scope TBD at planning time
+- TABUX-04 (resizable panel) — RESOLVED: GridSplitter replaces fixed-width Grid column, width persisted via preferences
 - DIST-01 (installer) requires deciding MSI vs MSIX and whether to bundle .NET 10 runtime
 
 ## Session Continuity
 
-Last session: 2026-03-03
-Stopped at: Completed 11-01-PLAN.md (BUG-01, BUG-02, BUG-03 — all verified)
+Last session: 2026-03-04
+Stopped at: Completed Phase 12 (Tab Panel UX) — all 5 TABUX requirements verified
 Resume file: .planning/STATE.md
-Next: Plan Phase 12 (Tab Panel UX) — TABUX-01 through TABUX-05
+Next: Plan Phase 13 (Theme, Display & Menu Polish) — THEME-01, THEME-02, WIN-01, WIN-02

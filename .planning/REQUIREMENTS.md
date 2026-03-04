@@ -15,11 +15,11 @@ Requirements for v1.1 Polish & Stability release. Each maps to roadmap phases.
 
 ### Tab Panel UX
 
-- [ ] **TABUX-01**: Tab highlight uses background-color instead of left border
-- [ ] **TABUX-02**: Pin icon visible on pinned tabs
-- [ ] **TABUX-03**: Tab title shortens when delete icon is shown, spans full width otherwise
-- [ ] **TABUX-04**: Tab panel is user-resizable
-- [ ] **TABUX-05**: Drag-and-drop reorder works in the tab panel
+- [x] **TABUX-01**: Tab highlight uses background-color instead of left border
+- [x] **TABUX-02**: Pin icon visible on pinned tabs
+- [x] **TABUX-03**: Tab title shortens when delete icon is shown, spans full width otherwise
+- [x] **TABUX-04**: Tab panel is user-resizable
+- [x] **TABUX-05**: Drag-and-drop reorder works in the tab panel
 
 ### Theme & Display
 
@@ -57,11 +57,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | BUG-01 | Phase 11 | Complete — human-verified 2026-03-03 |
 | BUG-02 | Phase 11 | Complete — human-verified 2026-03-03 |
 | BUG-03 | Phase 11 | Complete — human-verified 2026-03-03 |
-| TABUX-01 | Phase 12 | Pending |
-| TABUX-02 | Phase 12 | Pending |
-| TABUX-03 | Phase 12 | Pending |
-| TABUX-04 | Phase 12 | Pending |
-| TABUX-05 | Phase 12 | Pending |
+| TABUX-01 | Phase 12 | Complete — verified 2026-03-04 |
+| TABUX-02 | Phase 12 | Complete — verified 2026-03-04 |
+| TABUX-03 | Phase 12 | Complete — verified 2026-03-04 |
+| TABUX-04 | Phase 12 | Complete — verified 2026-03-04 |
+| TABUX-05 | Phase 12 | Complete — verified 2026-03-04 |
 | THEME-01 | Phase 13 | Pending |
 | THEME-02 | Phase 13 | Pending |
 | WIN-01 | Phase 13 | Pending |
@@ -75,4 +75,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-03-03*
-*Last updated: 2026-03-03 — BUG-01/02/03 complete and human-verified in 11-01*
+*Last updated: 2026-03-04 — TABUX-01/02/03/04/05 complete and verified in Phase 12*
