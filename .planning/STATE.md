@@ -3,10 +3,10 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Polish & Stability
 status: in_progress
-last_updated: "2026-03-04T00:00:00.000Z"
+last_updated: "2026-03-04T00:12:00.000Z"
 progress:
   total_phases: 4
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 3
   completed_plans: 3
 ---
@@ -18,16 +18,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-03)
 
 **Core value:** Instant note capture tied to your virtual desktop context — switch desktops, switch notes, zero friction.
-**Current focus:** v1.1 Polish & Stability — Phase 13 in progress (13-02 complete)
+**Current focus:** v1.1 Polish & Stability — Phase 13 complete (13-01 + 13-02 done)
 
 ## Current Position
 
 Phase: 13 of 14 (Theme, Display & Menu Polish)
-Plan: 2 of 3 (13-02 complete — window title verification + hamburger menu dismiss fix)
-Status: Phase 13 in progress — 13-02 complete, ready for 13-03
-Last activity: 2026-03-04 — Completed 13-02 (WIN-01, WIN-02)
+Plan: 2 of 2 (Phase 13 complete — all plans executed)
+Status: Phase 13 complete — all requirements resolved (THEME-01, THEME-02, WIN-01, WIN-02)
+Last activity: 2026-03-04 — Completed 13-01 (THEME-01, THEME-02)
 
-Progress: [█████░░░░░] 50% (5 plans complete across 3 phases)
+Progress: [████████░░] 75% (6 plans complete across 3 phases)
 
 ## Performance Metrics
 
@@ -36,7 +36,7 @@ Progress: [█████░░░░░] 50% (5 plans complete across 3 phases
 - Average duration: ~15 min
 - Total execution time: ~7.5 hours
 
-**v1.1 plans:** 5 completed (1 in Phase 11, 2 in Phase 12, 2 in Phase 13)
+**v1.1 plans:** 6 completed (1 in Phase 11, 2 in Phase 12, 3 in Phase 13)
 
 *Updated after each plan completion*
 
@@ -66,6 +66,11 @@ Phase 12-02 decisions:
 - Width persisted on DragCompleted (not continuously) to minimize DB writes
 - CultureInfo.InvariantCulture for width formatting/parsing to avoid locale issues
 
+Phase 13-01 decisions:
+- Used existing c-text-primary token for tab label foreground (no new c-tab-text token needed — sufficient contrast)
+- 13pt = 100% baseline for FontSizeToPercent — clean percentage values at all supported sizes
+- RebuildTabList() called in SetFontSizeAsync to propagate font size to tab labels
+
 Phase 13-02 decisions:
 - Added DeleteOlderSubmenu.Closed handler as unconditional safety net — StaysOpen resets regardless of how submenu closes
 - PreviewMouseDown on main Window catches all outside clicks before routing, avoiding race between timer and click
@@ -83,6 +88,6 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-04
-Stopped at: Completed 13-02-PLAN.md (WIN-01 + WIN-02)
-Resume file: .planning/phases/13-theme-display-menu-polish/13-02-SUMMARY.md
-Next: Execute 13-03 (if exists) or verify phase 13 completion
+Stopped at: Completed 13-01-PLAN.md (THEME-01 + THEME-02) — Phase 13 now fully complete
+Resume file: .planning/phases/13-theme-display-menu-polish/13-01-SUMMARY.md
+Next: Phase 14 (Distribution & Packaging) or review phase 13 outcomes
