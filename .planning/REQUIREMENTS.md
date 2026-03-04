@@ -28,8 +28,8 @@ Requirements for v1.1 Polish & Stability release. Each maps to roadmap phases.
 
 ### Window & Menu
 
-- [ ] **WIN-01**: Virtual desktop name appears in window title
-- [ ] **WIN-02**: Hamburger menu closes when user clicks anywhere outside of it
+- [x] **WIN-01**: Virtual desktop name appears in window title
+- [x] **WIN-02**: Hamburger menu closes when user clicks anywhere outside of it
 
 ### Distribution
 
@@ -64,8 +64,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | TABUX-05 | Phase 12 | Complete — verified 2026-03-04 |
 | THEME-01 | Phase 13 | Pending |
 | THEME-02 | Phase 13 | Pending |
-| WIN-01 | Phase 13 | Pending |
-| WIN-02 | Phase 13 | Pending |
+| WIN-01 | Phase 13 | Complete |
+| WIN-02 | Phase 13 | Complete |
 | DIST-01 | Phase 14 | Pending |
 
 **Coverage:**

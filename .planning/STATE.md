@@ -18,16 +18,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-03)
 
 **Core value:** Instant note capture tied to your virtual desktop context — switch desktops, switch notes, zero friction.
-**Current focus:** v1.1 Polish & Stability — Phase 12 complete, ready for Phase 13
+**Current focus:** v1.1 Polish & Stability — Phase 13 in progress (13-02 complete)
 
 ## Current Position
 
 Phase: 13 of 14 (Theme, Display & Menu Polish)
-Plan: 0 of ? (context gathered, ready to plan)
-Status: Phase 13 context gathered — ready for /gsd:plan-phase 13
-Last activity: 2026-03-04 — Captured Phase 13 context (THEME-01, THEME-02, WIN-01, WIN-02)
+Plan: 2 of 3 (13-02 complete — window title verification + hamburger menu dismiss fix)
+Status: Phase 13 in progress — 13-02 complete, ready for 13-03
+Last activity: 2026-03-04 — Completed 13-02 (WIN-01, WIN-02)
 
-Progress: [█████░░░░░] 50% (3 plans complete across 2 phases)
+Progress: [█████░░░░░] 50% (5 plans complete across 3 phases)
 
 ## Performance Metrics
 
@@ -36,7 +36,7 @@ Progress: [█████░░░░░] 50% (3 plans complete across 2 phases
 - Average duration: ~15 min
 - Total execution time: ~7.5 hours
 
-**v1.1 plans:** 3 completed (1 in Phase 11, 2 in Phase 12)
+**v1.1 plans:** 5 completed (1 in Phase 11, 2 in Phase 12, 2 in Phase 13)
 
 *Updated after each plan completion*
 
@@ -66,6 +66,11 @@ Phase 12-02 decisions:
 - Width persisted on DragCompleted (not continuously) to minimize DB writes
 - CultureInfo.InvariantCulture for width formatting/parsing to avoid locale issues
 
+Phase 13-02 decisions:
+- Added DeleteOlderSubmenu.Closed handler as unconditional safety net — StaysOpen resets regardless of how submenu closes
+- PreviewMouseDown on main Window catches all outside clicks before routing, avoiding race between timer and click
+- IsMouseOverPopup checks popup.Child.IsMouseOver (not popup.IsMouseOver) since Popup is not a visual tree element
+
 ### Pending Todos
 
 None.
@@ -78,6 +83,6 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-04
-Stopped at: Phase 13 context gathered
-Resume file: .planning/phases/13-theme-display-menu-polish/13-CONTEXT.md
-Next: /gsd:plan-phase 13 — create execution plans for theme, display & menu polish
+Stopped at: Completed 13-02-PLAN.md (WIN-01 + WIN-02)
+Resume file: .planning/phases/13-theme-display-menu-polish/13-02-SUMMARY.md
+Next: Execute 13-03 (if exists) or verify phase 13 completion
