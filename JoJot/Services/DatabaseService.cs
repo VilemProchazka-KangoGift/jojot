@@ -726,6 +726,67 @@ namespace JoJot.Services
             }
         }
 
+        /// <summary>
+        /// R2-RECOVER-01: Returns the first N note names for a desktop, ordered by sort_order.
+        /// Used by recovery sidebar to show tab title previews.
+        /// </summary>
+        public static async Task<List<string>> GetNoteNamesForDesktopAsync(string desktopGuid, int limit = 5)
+        {
+            var names = new List<string>();
+            await _writeLock.WaitAsync();
+            try
+            {
+                var cmd = _connection!.CreateCommand();
+                cmd.CommandText = @"SELECT COALESCE(NULLIF(name, ''), SUBSTR(content, 1, 30))
+                                   FROM notes
+                                   WHERE desktop_guid = @guid
+                                   ORDER BY sort_order ASC
+                                   LIMIT @limit";
+                cmd.Parameters.AddWithValue("@guid", desktopGuid);
+                cmd.Parameters.AddWithValue("@limit", limit);
+                using var reader = await cmd.ExecuteReaderAsync();
+                while (reader.Read())
+                {
+                    var name = reader.IsDBNull(0) ? "Empty note" : reader.GetString(0);
+                    names.Add(name);
+                }
+            }
+            catch (Exception ex)
+            {
+                LogService.Error($"GetNoteNamesForDesktopAsync failed (guid={desktopGuid})", ex);
+            }
+            finally
+            {
+                _writeLock.Release();
+            }
+            return names;
+        }
+
+        /// <summary>
+        /// R2-MOVE-01: Returns the desktop name for a given GUID from the app_state table.
+        /// </summary>
+        public static async Task<string?> GetDesktopNameAsync(string desktopGuid)
+        {
+            await _writeLock.WaitAsync();
+            try
+            {
+                var cmd = _connection!.CreateCommand();
+                cmd.CommandText = "SELECT desktop_name FROM app_state WHERE desktop_guid = @guid;";
+                cmd.Parameters.AddWithValue("@guid", desktopGuid);
+                var result = await cmd.ExecuteScalarAsync();
+                return result is string name ? name : null;
+            }
+            catch (Exception ex)
+            {
+                LogService.Error($"GetDesktopNameAsync failed (guid={desktopGuid})", ex);
+                return null;
+            }
+            finally
+            {
+                _writeLock.Release();
+            }
+        }
+
         // ─── Orphaned Session Queries (Phase 8: ORPH-02, ORPH-03) ──────────────────
 
         /// <summary>

@@ -901,6 +901,14 @@ namespace JoJot
                 return;
             }
 
+            // R2-RECOVER-01: Escape closes recovery sidebar if visible
+            if (e.Key == Key.Escape && _recoveryPanelOpen)
+            {
+                HideRecoveryPanel();
+                e.Handled = true;
+                return;
+            }
+
             // Phase 9: Escape closes preferences panel if visible
             if (e.Key == Key.Escape && _preferencesOpen)
             {
@@ -2362,6 +2370,9 @@ namespace JoJot
                 return;
             }
 
+            // R2-RECOVER-01: One-panel-at-a-time — close preferences if open
+            if (_preferencesOpen) HidePreferencesPanel();
+
             var orphanGuids = VirtualDesktopService.OrphanedSessionGuids;
             if (orphanGuids.Count == 0)
                 return;
@@ -2371,27 +2382,47 @@ namespace JoJot
 
             foreach (var (guid, desktopName, tabCount, lastUpdated) in orphanInfos)
             {
-                RecoverySessionList.Children.Add(CreateRecoveryCard(guid, desktopName, tabCount, lastUpdated));
+                // R2-RECOVER-01: Get tab name previews
+                var tabNames = await DatabaseService.GetNoteNamesForDesktopAsync(guid, 5);
+                RecoverySessionList.Children.Add(CreateRecoveryCard(guid, desktopName, tabCount, lastUpdated, tabNames));
             }
 
             if (RecoverySessionList.Children.Count == 0) return;
 
-            RecoveryPanel.Visibility = Visibility.Visible;
             _recoveryPanelOpen = true;
+            RecoveryPanel.Visibility = Visibility.Visible;
+
+            // R2-RECOVER-01: Slide in from right (matching preferences animation)
+            var anim = new DoubleAnimation
+            {
+                From = 320, To = 0,
+                Duration = TimeSpan.FromMilliseconds(250),
+                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+            };
+            RecoveryPanelTransform.BeginAnimation(TranslateTransform.XProperty, anim);
         }
 
         private void HideRecoveryPanel()
         {
-            RecoveryPanel.Visibility = Visibility.Collapsed;
+            if (!_recoveryPanelOpen) return;
             _recoveryPanelOpen = false;
+
+            var anim = new DoubleAnimation
+            {
+                From = 0, To = 320,
+                Duration = TimeSpan.FromMilliseconds(200),
+                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn }
+            };
+            anim.Completed += (_, _) =>
+            {
+                RecoveryPanel.Visibility = Visibility.Collapsed;
+                RecoveryPanelTransform.BeginAnimation(TranslateTransform.XProperty, null);
+                RecoveryPanelTransform.X = 320;
+            };
+            RecoveryPanelTransform.BeginAnimation(TranslateTransform.XProperty, anim);
         }
 
-        private void RecoveryClose_Click(object sender, RoutedEventArgs e)
-        {
-            HideRecoveryPanel();
-        }
-
-        private void RecoveryBackdrop_Click(object sender, MouseButtonEventArgs e)
+        private void RecoveryClose_Click(object sender, MouseButtonEventArgs e)
         {
             HideRecoveryPanel();
         }
@@ -2400,7 +2431,7 @@ namespace JoJot
         /// Creates a card for an orphaned session in the recovery panel (ORPH-02).
         /// Shows desktop name, tab count, last updated, and Adopt/Open/Delete buttons.
         /// </summary>
-        private Border CreateRecoveryCard(string guid, string? desktopName, int tabCount, DateTime lastUpdated)
+        private Border CreateRecoveryCard(string guid, string? desktopName, int tabCount, DateTime lastUpdated, List<string> tabNames)
         {
             var card = new Border
             {
@@ -2429,7 +2460,7 @@ namespace JoJot
             var infoPanel = new StackPanel
             {
                 Orientation = Orientation.Horizontal,
-                Margin = new Thickness(0, 2, 0, 6)
+                Margin = new Thickness(0, 2, 0, 4)
             };
             var tabCountBlock = new TextBlock { Text = $"{tabCount} tab{(tabCount == 1 ? "" : "s")}", FontSize = 11 };
             tabCountBlock.SetResourceReference(TextBlock.ForegroundProperty, "c-text-muted");
@@ -2441,6 +2472,21 @@ namespace JoJot
             dateBlock.SetResourceReference(TextBlock.ForegroundProperty, "c-text-muted");
             infoPanel.Children.Add(dateBlock);
             stack.Children.Add(infoPanel);
+
+            // R2-RECOVER-01: Tab name previews
+            if (tabNames.Count > 0)
+            {
+                var previewBlock = new TextBlock
+                {
+                    Text = string.Join(", ", tabNames),
+                    FontSize = 11,
+                    FontStyle = FontStyles.Italic,
+                    TextTrimming = TextTrimming.CharacterEllipsis,
+                    Margin = new Thickness(0, 0, 0, 6)
+                };
+                previewBlock.SetResourceReference(TextBlock.ForegroundProperty, "c-text-muted");
+                stack.Children.Add(previewBlock);
+            }
 
             // Action buttons
             var buttonPanel = new StackPanel { Orientation = Orientation.Horizontal };
@@ -2478,22 +2524,13 @@ namespace JoJot
             adoptBtn.Click += async (s, e) =>
             {
                 await DatabaseService.MigrateTabsAsync(guid, _desktopGuid);
-                // Notes already migrated — DeleteSessionAndNotesAsync finds 0 notes, deletes session row only
                 await DatabaseService.DeleteSessionAndNotesAsync(guid);
                 RemoveOrphanGuid(guid);
                 await RefreshAfterOrphanAction();
             };
             buttonPanel.Children.Add(adoptBtn);
 
-            // Open — create a new window for the orphaned session
-            var openBtn = CreateCardButton("Open");
-            openBtn.Click += async (s, e) =>
-            {
-                await ((App)Application.Current).OpenWindowForOrphanAsync(guid);
-                RemoveOrphanGuid(guid);
-                await RefreshAfterOrphanAction();
-            };
-            buttonPanel.Children.Add(openBtn);
+            // R2-RECOVER-01: Open button removed — only Adopt and Delete
 
             // Delete — permanently delete session and all its notes
             var deleteBtn = CreateCardButton("Delete", isDestructive: true);
@@ -2540,7 +2577,10 @@ namespace JoJot
                 VirtualDesktopService.OrphanedSessionGuids);
             RecoverySessionList.Children.Clear();
             foreach (var (guid, name, tabCount, lastUpdated) in orphanInfos)
-                RecoverySessionList.Children.Add(CreateRecoveryCard(guid, name, tabCount, lastUpdated));
+            {
+                var tabNames = await DatabaseService.GetNoteNamesForDesktopAsync(guid, 5);
+                RecoverySessionList.Children.Add(CreateRecoveryCard(guid, name, tabCount, lastUpdated, tabNames));
+            }
 
             // Reload tabs in case Adopt added new tabs to this desktop
             await LoadTabsAsync();
@@ -3070,6 +3110,9 @@ namespace JoJot
 
         private void ShowPreferencesPanel()
         {
+            // R2-RECOVER-01: One-panel-at-a-time — close recovery if open
+            if (_recoveryPanelOpen) HideRecoveryPanel();
+
             _preferencesOpen = true;
             PreferencesPanel.Visibility = Visibility.Visible;
 
@@ -3497,6 +3540,17 @@ namespace JoJot
             var app = System.Windows.Application.Current as App;
             bool targetHasSession = app?.HasWindowForDesktop(toGuid) ?? false;
 
+            // R2-MOVE-01: Show source desktop name
+            string? sourceName = null;
+            try
+            {
+                sourceName = await DatabaseService.GetDesktopNameAsync(_desktopGuid);
+            }
+            catch { /* best-effort */ }
+            DragOverlaySourceName.Text = string.IsNullOrEmpty(sourceName)
+                ? "From: Unknown desktop"
+                : $"From: {sourceName}";
+
             // Configure overlay content
             string displayName = string.IsNullOrEmpty(toName) ? "another desktop" : toName;
             DragOverlayTitle.Text = $"Moved to {displayName}";
@@ -3505,11 +3559,13 @@ namespace JoJot
             {
                 DragOverlayMessage.Text = "This desktop already has a JoJot window. What would you like to do?";
                 DragMergeBtn.Visibility = Visibility.Visible;
+                DragKeepHereBtn.Visibility = Visibility.Collapsed; // R2-MOVE-02: Hide "keep here" — target already has window
             }
             else
             {
                 DragOverlayMessage.Text = "Keep your notes on this desktop, or go back?";
                 DragMergeBtn.Visibility = Visibility.Collapsed;
+                DragKeepHereBtn.Visibility = Visibility.Visible; // R2-MOVE-02: Show "keep here" — no conflict
             }
 
             // Reset cancel failure state

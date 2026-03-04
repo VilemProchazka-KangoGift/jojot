@@ -551,6 +551,14 @@
                     <DropShadowEffect BlurRadius="20" Opacity="0.3" ShadowDepth="6" Direction="270"/>
                 </Border.Effect>
                 <StackPanel>
+                    <!-- R2-MOVE-01: Source desktop name -->
+                    <TextBlock x:Name="DragOverlaySourceName"
+                               FontSize="11"
+                               Foreground="{DynamicResource c-text-muted}"
+                               TextWrapping="Wrap"
+                               HorizontalAlignment="Center"
+                               Margin="0,0,0,4" />
+
                     <!-- Context message -->
                     <TextBlock x:Name="DragOverlayTitle"
                                FontSize="18" FontWeight="SemiBold"
@@ -759,39 +767,35 @@
             </Border>
         </Grid>
 
-        <!-- Recovery modal overlay (Phase 8: ORPH-02, ORPH-03) -->
-        <Grid x:Name="RecoveryPanel" Visibility="Collapsed" Panel.ZIndex="90"
-              Grid.ColumnSpan="3">
-            <!-- Semi-transparent backdrop -->
-            <Border Background="#80000000" MouseLeftButtonDown="RecoveryBackdrop_Click"/>
+        <!-- Recovery sidebar (R2-RECOVER-01) — slide-in from right, same pattern as PreferencesPanel -->
+        <Border x:Name="RecoveryPanel" Width="320" HorizontalAlignment="Right"
+                Background="{DynamicResource c-win-bg}" BorderBrush="{DynamicResource c-border}"
+                BorderThickness="1,0,0,0" Visibility="Collapsed" Panel.ZIndex="85"
+                Grid.ColumnSpan="3">
+            <Border.RenderTransform>
+                <TranslateTransform x:Name="RecoveryPanelTransform" X="320"/>
+            </Border.RenderTransform>
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
 
-            <!-- Centered recovery card -->
-            <Border HorizontalAlignment="Center" VerticalAlignment="Center"
-                    Background="{DynamicResource c-sidebar-bg}"
-                    BorderBrush="{DynamicResource c-border}" BorderThickness="1"
-                    CornerRadius="8" Padding="24,20" MinWidth="340" MaxWidth="460">
-                <Border.Effect>
-                    <DropShadowEffect BlurRadius="20" Opacity="0.3" ShadowDepth="6" Direction="270"/>
-                </Border.Effect>
-                <DockPanel>
-                    <!-- Header -->
-                    <Grid DockPanel.Dock="Top" Margin="0,0,0,12">
-                        <TextBlock Text="Recover Sessions" FontSize="15" FontWeight="SemiBold"
-                                   Foreground="{DynamicResource c-text-primary}" VerticalAlignment="Center"/>
-                        <Button x:Name="RecoveryCloseButton" Content="&#xE711;"
-                                FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
-                                FontSize="12" HorizontalAlignment="Right"
-                                Style="{StaticResource ToolbarButtonStyle}"
-                                Click="RecoveryClose_Click"/>
-                    </Grid>
+                <!-- Header with close button -->
+                <Grid Grid.Row="0" Margin="16,16,16,8">
+                    <TextBlock Text="Recover Sessions" FontSize="18" FontWeight="SemiBold"
+                               Foreground="{DynamicResource c-text-primary}"/>
+                    <TextBlock Text="&#xE711;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="14"
+                               HorizontalAlignment="Right" Cursor="Hand"
+                               Foreground="{DynamicResource c-text-muted}"
+                               MouseLeftButtonDown="RecoveryClose_Click"/>
+                </Grid>
 
-                    <!-- Session list (scrollable, max height) -->
-                    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
-                                  MaxHeight="400">
-                        <StackPanel x:Name="RecoverySessionList"/>
-                    </ScrollViewer>
-                </DockPanel>
-            </Border>
-        </Grid>
+                <!-- Scrollable session list -->
+                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Margin="16,0,16,16">
+                    <StackPanel x:Name="RecoverySessionList"/>
+                </ScrollViewer>
+            </Grid>
+        </Border>
     </Grid>
 </Window>
