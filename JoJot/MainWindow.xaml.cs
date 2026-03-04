@@ -311,7 +311,7 @@ namespace JoJot
             var labelBlock = new TextBlock
             {
                 Text = tab.DisplayLabel,
-                FontSize = 13,
+                FontSize = _currentFontSize,
                 TextTrimming = TextTrimming.CharacterEllipsis,
                 VerticalAlignment = VerticalAlignment.Center
             };
@@ -329,7 +329,7 @@ namespace JoJot
             // Hidden rename TextBox (shown on F2 / double-click) — shares Column 1
             var renameBox = new TextBox
             {
-                FontSize = 13,
+                FontSize = _currentFontSize,
                 MinWidth = 80,
                 Visibility = Visibility.Collapsed,
                 Padding = new Thickness(2, 0, 2, 0),
@@ -2965,18 +2965,21 @@ namespace JoJot
             await SetFontSizeAsync(newSize);
         }
 
+        private static string FontSizeToPercent(int size) => $"{Math.Round(size * 100.0 / 13)}%";
+
         private async Task SetFontSizeAsync(int size)
         {
             _currentFontSize = size;
             ContentEditor.FontSize = size;
-            FontSizeDisplay.Text = $"{size}pt";
+            FontSizeDisplay.Text = FontSizeToPercent(size);
             await DatabaseService.SetPreferenceAsync("font_size", size.ToString());
             ShowFontSizeTooltip(size);
+            RebuildTabList();  // Propagate font size to tab labels
         }
 
         private void ShowFontSizeTooltip(int size)
         {
-            FontSizeTooltipText.Text = $"{size}pt";
+            FontSizeTooltipText.Text = FontSizeToPercent(size);
             FontSizeTooltip.Visibility = Visibility.Visible;
 
             _fontSizeTooltipTimer?.Stop();
@@ -3207,7 +3210,7 @@ namespace JoJot
                 {
                     ("Ctrl+=", "Increase font size"),
                     ("Ctrl+-", "Decrease font size"),
-                    ("Ctrl+0", "Reset font size (13pt)"),
+                    ("Ctrl+0", "Reset font size (100%)"),
                     ("Ctrl+Scroll", "Zoom (over editor)"),
                 }),
                 ("GLOBAL", new[]
