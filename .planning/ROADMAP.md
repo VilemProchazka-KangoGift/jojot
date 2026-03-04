@@ -3,7 +3,7 @@
 ## Milestones
 
 - ✅ **v1.0 MVP** — Phases 1-10 (shipped 2026-03-03)
-- 🚧 **v1.1 Polish & Stability** — Phases 11-14 (in progress)
+- 🚧 **v1.1 Polish & Stability** — Phases 11-15 (in progress)
 
 ## Phases
 
@@ -37,6 +37,7 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
 - [x] **Phase 12: Tab Panel UX** — Replace border highlight with background highlight, add pin icon, improve title sizing, make panel user-resizable, and verify drag-to-reorder (completed 2026-03-04)
 - [x] **Phase 13: Theme, Display & Menu Polish** — Fix dark mode tab legibility, change font size display to percentages, verify window title shows desktop name, and fix hamburger menu dismiss behavior (completed 2026-03-04)
 - [ ] **Phase 14: Installer** — Produce a Windows MSI or MSIX installer for distribution
+- [x] **Phase 15: Review Round 2 — UI/UX Bug Fixes & Polish** — Fix note persistence bug, improve tab interactions, enhance drag-and-drop, refine preferences panel, redesign session recovery, and polish startup/move-to-desktop flows (completed 2026-03-04)
 
 ## Phase Details
 
@@ -78,6 +79,46 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
 - [x] 13-01-PLAN.md — Dark mode tab contrast fix and font size percentage display with tab label scaling (THEME-01, THEME-02)
 - [x] 13-02-PLAN.md — Hamburger menu dismiss fix and window title verification (WIN-01, WIN-02)
 
+### Phase 15: Review Round 2 — UI/UX Bug Fixes & Polish
+**Goal**: Address all issues from the second manual review — fix the critical note persistence bug, polish tab interactions, improve drag-and-drop visuals, refine preferences, redesign session recovery, and clean up startup and move-to-desktop flows
+**Depends on**: Phase 13 (builds on existing v1.1 fixes)
+**Requirements**:
+  - **R2-BUG-01** (Critical): Only the first note retains text; all other notes lose content on any action (tab navigation, font size change)
+  - **R2-MENU-01**: Do not show "Recover Sessions" menu item if there are no sessions to recover
+  - **R2-FONT-01**: Reset button label should say "100%" instead of "Reset to 13pt"
+  - **R2-FONT-02**: Tab titles are too large after font scaling — retain original relative size (tabs smaller than editor content)
+  - **R2-FONT-03**: Tab bottom dates should scale with the font size resize
+  - **R2-FONT-04**: Tab title font sizes randomly change between tabs (inconsistent sizing)
+  - **R2-PREF-01**: Remove autosave delay preference (not user-configurable)
+  - **R2-PREF-02**: Record global hotkey should temporarily disable the actual hotkey during recording (pressing same sequence minimizes window instead of recording)
+  - **R2-TAB-01**: Add leeway to pin button press target (too precise); on hover, show a cross over the pin icon
+  - **R2-TAB-02**: Increase the X (close) button size to match pin icon size
+  - **R2-TAB-03**: For unpinned tabs, add a pin button to the left of the X button
+  - **R2-DND-01**: Dragged tab should become invisible (blank space) with a "ghost" following the cursor
+  - **R2-DND-02**: Do not show placement indicator lines for positions that wouldn't change the order (above and below the dragged item)
+  - **R2-DROP-01**: File drag-and-drop from Explorer should work on the entire window (not just the toolbar); dropped file goes to first position (or first below pinned)
+  - **R2-RECOVER-01**: Recover Sessions should be a sidebar (like preferences), show last desktop name, and remove the open button
+  - **R2-STARTUP-01**: Automatically silently delete all empty notes on startup
+  - **R2-MOVE-01**: Move-to-desktop card should show the source (original) desktop name
+  - **R2-MOVE-02**: If there's already a window active on the target desktop, do not show the "keep here" button
+**Success Criteria** (what must be TRUE):
+  1. Switching between tabs preserves all note content — no text is lost
+  2. "Recover Sessions" is hidden when no orphaned sessions exist
+  3. Font size reset button shows "100%" and tab labels/dates scale proportionally without inconsistent sizing
+  4. Autosave delay is removed from preferences; hotkey recording disables the live hotkey
+  5. Pin/close buttons on tabs have adequate hit targets, unpinned tabs show both pin and close
+  6. Dragging a tab shows a ghost cursor and hides the original; indicator lines only appear at valid new positions
+  7. File drop works over the entire window and places the new tab at the top (below pinned)
+  8. Recover Sessions appears as a sidebar with desktop name context
+  9. Empty notes are silently cleaned up on startup
+  10. Move-to-desktop shows source name and hides "keep here" when target already has a window
+**Plans**: 5 plans (2 waves)
+- [x] 15-01-PLAN.md — Critical bug fix, font fixes, startup cleanup (R2-BUG-01, R2-FONT-01-04, R2-STARTUP-01)
+- [x] 15-02-PLAN.md — Menu visibility, hotkey pause, autosave delay removal (R2-MENU-01, R2-PREF-01, R2-PREF-02)
+- [x] 15-03-PLAN.md — Tab button layout redesign (R2-TAB-01, R2-TAB-02, R2-TAB-03)
+- [x] 15-04-PLAN.md — Drag ghost adorner, smart indicators, full-window file drop (R2-DND-01, R2-DND-02, R2-DROP-01)
+- [x] 15-05-PLAN.md — Recovery sidebar, tab previews, source name, keep-here visibility (R2-RECOVER-01, R2-MOVE-01, R2-MOVE-02)
+
 ### Phase 14: Installer
 **Goal**: JoJot can be installed on a clean Windows machine via a standard installer package
 **Depends on**: Phase 13 (all fixes applied before packaging)
@@ -110,3 +151,4 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
 | 12. Tab Panel UX | v1.1 | 2/2 | Complete | 2026-03-04 |
 | 13. Theme, Display & Menu Polish | v1.1 | 2/2 | Complete | 2026-03-04 |
 | 14. Installer | v1.1 | 0/? | Not started | - |
+| 15. Review Round 2 UI/UX | v1.1 | 5/5 | Complete | 2026-03-04 |
