@@ -184,6 +184,9 @@ namespace JoJot
             // Phase 12 (TABUX-04): Restore persisted tab panel width
             await RestoreTabPanelWidthAsync();
 
+            // R2-STARTUP-01: Silently delete empty unpinned notes before loading
+            await DatabaseService.DeleteEmptyNotesAsync(_desktopGuid);
+
             var notes = await DatabaseService.GetNotesForDesktopAsync(_desktopGuid);
             _tabs.Clear();
             foreach (var note in notes)
@@ -311,7 +314,7 @@ namespace JoJot
             var labelBlock = new TextBlock
             {
                 Text = tab.DisplayLabel,
-                FontSize = _currentFontSize,
+                FontSize = 13,  // R2-FONT-02: Fixed size — tabs do NOT scale with font control
                 TextTrimming = TextTrimming.CharacterEllipsis,
                 VerticalAlignment = VerticalAlignment.Center
             };
@@ -329,7 +332,7 @@ namespace JoJot
             // Hidden rename TextBox (shown on F2 / double-click) — shares Column 1
             var renameBox = new TextBox
             {
-                FontSize = _currentFontSize,
+                FontSize = 13,  // R2-FONT-02: Fixed size to match labelBlock
                 MinWidth = 80,
                 Visibility = Visibility.Collapsed,
                 Padding = new Thickness(2, 0, 2, 0),
@@ -490,6 +493,14 @@ namespace JoJot
         private async void TabList_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             if (_isRebuildingTabList) return;
+
+            // R2-BUG-01: Save current editor content to active tab BEFORE flushing or switching
+            if (_activeTab != null)
+            {
+                _activeTab.Content = ContentEditor.Text;
+                _activeTab.CursorPosition = ContentEditor.CaretIndex;
+                _activeTab.UpdatedAt = DateTime.Now;
+            }
 
             // Remove background highlight from deselected items
             foreach (var removed in e.RemovedItems)
@@ -2974,7 +2985,7 @@ namespace JoJot
             FontSizeDisplay.Text = FontSizeToPercent(size);
             await DatabaseService.SetPreferenceAsync("font_size", size.ToString());
             ShowFontSizeTooltip(size);
-            RebuildTabList();  // Propagate font size to tab labels
+            // R2-FONT-02: RebuildTabList removed — tab labels use fixed sizes, no rebuild needed
         }
 
         private void ShowFontSizeTooltip(int size)
@@ -3447,6 +3458,10 @@ namespace JoJot
                 // Clear pending move
                 await DatabaseService.DeletePendingMoveAsync(_desktopGuid);
                 _isMisplaced = false;
+
+                // Remove "(misplaced)" badge from title
+                if (Title.Contains(" (misplaced)"))
+                    Title = Title.Replace(" (misplaced)", "");
 
                 // Hide overlay with fade-out
                 await HideDragOverlayAsync();

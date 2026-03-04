@@ -668,6 +668,39 @@ namespace JoJot.Services
         }
 
         /// <summary>
+        /// Deletes all notes with empty or whitespace-only content for a given desktop.
+        /// Called on startup to silently clean up empty notes (R2-STARTUP-01).
+        /// Pinned notes are preserved regardless of content.
+        /// Returns the number of deleted notes.
+        /// </summary>
+        public static async Task<int> DeleteEmptyNotesAsync(string desktopGuid)
+        {
+            await _writeLock.WaitAsync();
+            try
+            {
+                var cmd = _connection!.CreateCommand();
+                cmd.CommandText = @"DELETE FROM notes
+                                   WHERE desktop_guid = @guid
+                                     AND (content IS NULL OR TRIM(content) = '')
+                                     AND pinned = 0";
+                cmd.Parameters.AddWithValue("@guid", desktopGuid);
+                int deleted = await cmd.ExecuteNonQueryAsync();
+                if (deleted > 0)
+                    LogService.Info($"Startup cleanup: deleted {deleted} empty note(s) for desktop {desktopGuid}");
+                return deleted;
+            }
+            catch (Exception ex)
+            {
+                LogService.Error($"DeleteEmptyNotesAsync failed (guid={desktopGuid})", ex);
+                return 0; // Non-fatal — don't crash on startup cleanup failure
+            }
+            finally
+            {
+                _writeLock.Release();
+            }
+        }
+
+        /// <summary>
         /// Returns the maximum sort_order for notes in a desktop, or -1 if no notes exist.
         /// Callers use maxSort + 1 for new note insertion.
         /// </summary>
@@ -1114,12 +1147,19 @@ namespace JoJot.Services
 
         /// <summary>
         /// Updates a session's desktop_guid in app_state (DRAG-04 reparent).
+        /// Deletes any existing session for newGuid first to avoid UNIQUE constraint violations.
         /// </summary>
         public static async Task UpdateSessionDesktopGuidAsync(string oldGuid, string newGuid)
         {
             await _writeLock.WaitAsync();
             try
             {
+                // Remove any existing session for the target desktop to avoid UNIQUE constraint
+                var delCmd = _connection!.CreateCommand();
+                delCmd.CommandText = "DELETE FROM app_state WHERE desktop_guid = @new;";
+                delCmd.Parameters.AddWithValue("@new", newGuid);
+                await delCmd.ExecuteNonQueryAsync();
+
                 var cmd = _connection!.CreateCommand();
                 cmd.CommandText = "UPDATE app_state SET desktop_guid = @new WHERE desktop_guid = @old;";
                 cmd.Parameters.AddWithValue("@new", newGuid);

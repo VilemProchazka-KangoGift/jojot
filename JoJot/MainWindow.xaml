@@ -697,7 +697,7 @@
                                            Foreground="{DynamicResource c-text-primary}" HorizontalAlignment="Center"/>
                             </Border>
                         </Grid>
-                        <TextBlock Text="Reset to 13pt" FontSize="11" Foreground="{DynamicResource c-accent}"
+                        <TextBlock Text="100%" FontSize="11" Foreground="{DynamicResource c-accent}"
                                    Cursor="Hand" Margin="0,2,0,16" HorizontalAlignment="Center"
                                    MouseLeftButtonDown="FontSizeReset_Click"
                                    TextDecorations="Underline"/>
