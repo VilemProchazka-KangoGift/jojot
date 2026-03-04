@@ -61,7 +61,9 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
   3. When the delete icon is visible on a tab, the title text shortens to fill the remaining space; when no delete icon is shown, the title spans the full tab width
   4. User can drag the divider between the tab panel and editor to resize the panel width to their preference
   5. User can drag a tab to a new position in the list and it stays in that order after release
-**Plans**: TBD
+**Plans**: 2 plans
+- [ ] 12-01-PLAN.md — Tab visual overhaul (background highlight, Fluent pin icon, adaptive title width, drag-reorder verification)
+- [ ] 12-02-PLAN.md — Resizable tab panel (GridSplitter, width persistence, human verification)
 
 ### Phase 13: Theme, Display & Menu Polish
 **Goal**: Dark mode is legible, font size feedback is clear, and menus dismiss predictably
@@ -103,6 +105,6 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
 | 10.1. Gap Closure — Integration | v1.0 | 1/1 | Complete | 2026-03-03 |
 | 10.2. Gap Closure — Verification | v1.0 | 1/1 | Complete | 2026-03-03 |
 | 11. Critical Bug Fixes | v1.1 | Complete    | 2026-03-03 | 2026-03-03 |
-| 12. Tab Panel UX | v1.1 | 0/? | Not started | - |
+| 12. Tab Panel UX | v1.1 | 0/2 | Not started | - |
 | 13. Theme, Display & Menu Polish | v1.1 | 0/? | Not started | - |
 | 14. Installer | v1.1 | 0/? | Not started | - |
