@@ -245,8 +245,8 @@ namespace JoJot
             var outerBorder = new Border
             {
                 Padding = new Thickness(8, 6, 8, 6),
-                BorderThickness = new Thickness(2, 0, 0, 0),
-                BorderBrush = System.Windows.Media.Brushes.Transparent,
+                BorderThickness = new Thickness(0),
+                CornerRadius = new CornerRadius(4),
                 Background = System.Windows.Media.Brushes.Transparent,
                 Name = "OuterBorder"
             };
@@ -255,18 +255,28 @@ namespace JoJot
             grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 
-            // Row 0: pin icon + label
-            var row0 = new StackPanel { Orientation = Orientation.Horizontal };
+            // Row 0: pin icon + label + delete icon (Grid-based for adaptive sizing)
+            var row0 = new Grid();
+            // Column 0: Auto (pin icon, if pinned)
+            row0.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            // Column 1: Star (title — fills remaining space)
+            row0.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            // Column 2: Auto (delete icon — collapses when hidden)
+            row0.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
             if (tab.Pinned)
             {
-                row0.Children.Add(new TextBlock
+                var pinIcon = new TextBlock
                 {
-                    Text = "\U0001F4CC",
-                    FontSize = 11,
+                    Text = "\uE718",
+                    FontFamily = new System.Windows.Media.FontFamily("Segoe Fluent Icons, Segoe MDL2 Assets"),
+                    FontSize = 12,
                     Margin = new Thickness(0, 0, 4, 0),
                     VerticalAlignment = VerticalAlignment.Center
-                });
+                };
+                pinIcon.SetResourceReference(TextBlock.ForegroundProperty, "c-text-muted");
+                Grid.SetColumn(pinIcon, 0);
+                row0.Children.Add(pinIcon);
             }
 
             var labelBlock = new TextBlock
@@ -274,7 +284,6 @@ namespace JoJot
                 Text = tab.DisplayLabel,
                 FontSize = 13,
                 TextTrimming = TextTrimming.CharacterEllipsis,
-                MaxWidth = tab.Pinned ? 120 : 140,
                 VerticalAlignment = VerticalAlignment.Center
             };
 
@@ -284,20 +293,37 @@ namespace JoJot
                 labelBlock.SetResourceReference(TextBlock.ForegroundProperty, "c-text-muted");
             }
 
+            Grid.SetColumn(labelBlock, 1);
             row0.Children.Add(labelBlock);
 
-            // Hidden rename TextBox (shown on F2 / double-click)
+            // Hidden rename TextBox (shown on F2 / double-click) — shares Column 1
             var renameBox = new TextBox
             {
                 FontSize = 13,
                 MinWidth = 80,
-                MaxWidth = 140,
                 Visibility = Visibility.Collapsed,
                 Padding = new Thickness(2, 0, 2, 0),
                 VerticalAlignment = VerticalAlignment.Center,
                 Tag = labelBlock // Store reference to label for show/hide toggling
             };
+            Grid.SetColumn(renameBox, 1);
             row0.Children.Add(renameBox);
+
+            // Delete icon in Column 2 — collapsed by default, shown on hover (TDEL-03)
+            var deleteIcon = new TextBlock
+            {
+                Text = "\u00D7",
+                FontSize = 12,
+                Opacity = 0,
+                Visibility = Visibility.Collapsed,
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(4, 0, 0, 0),
+                Cursor = Cursors.Hand,
+                IsHitTestVisible = true
+            };
+            deleteIcon.SetResourceReference(TextBlock.ForegroundProperty, "c-text-muted");
+            Grid.SetColumn(deleteIcon, 2);
+            row0.Children.Add(deleteIcon);
 
             Grid.SetRow(row0, 0);
             grid.Children.Add(row0);
@@ -323,27 +349,12 @@ namespace JoJot
             Grid.SetRow(row1, 1);
             grid.Children.Add(row1);
 
-            // Delete icon: × overlay, upper-right, hidden until hover (TDEL-03)
-            var deleteIcon = new TextBlock
-            {
-                Text = "\u00D7",
-                FontSize = 12,
-                Opacity = 0,
-                HorizontalAlignment = HorizontalAlignment.Right,
-                VerticalAlignment = VerticalAlignment.Top,
-                Margin = new Thickness(0, 2, 4, 0),
-                Cursor = Cursors.Hand,
-                IsHitTestVisible = true
-            };
-            deleteIcon.SetResourceReference(TextBlock.ForegroundProperty, "c-text-muted");
-            Grid.SetRowSpan(deleteIcon, 2);
-            grid.Children.Add(deleteIcon);
-
-            // Fade icon in/out on tab hover
+            // Fade icon in/out on tab hover with adaptive title sizing
             outerBorder.MouseEnter += (s, e) =>
             {
                 if (item != TabList.SelectedItem)
                     outerBorder.Background = GetBrush("c-hover-bg");
+                deleteIcon.Visibility = Visibility.Visible;
                 AnimateOpacity(deleteIcon, 0, 1, 100);
             };
             outerBorder.MouseLeave += (s, e) =>
@@ -351,6 +362,18 @@ namespace JoJot
                 if (item != TabList.SelectedItem)
                     outerBorder.Background = System.Windows.Media.Brushes.Transparent;
                 AnimateOpacity(deleteIcon, 1, 0, 100);
+                // After fade-out completes, collapse to reclaim space for title
+                var timer = new System.Windows.Threading.DispatcherTimer
+                {
+                    Interval = TimeSpan.FromMilliseconds(100)
+                };
+                timer.Tick += (_, _) =>
+                {
+                    timer.Stop();
+                    if (deleteIcon.Opacity == 0)
+                        deleteIcon.Visibility = Visibility.Collapsed;
+                };
+                timer.Start();
             };
 
             // Color change on x icon hover: gray → red → gray
@@ -432,18 +455,17 @@ namespace JoJot
 
         /// <summary>
         /// Handles tab selection changes: saves current content, loads new tab content.
-        /// Applies 2px left accent border to active tab (TABS-04).
+        /// Applies background highlight to active tab (TABS-04, TABUX-01).
         /// </summary>
         private async void TabList_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             if (_isRebuildingTabList) return;
 
-            // Remove accent from deselected items
+            // Remove background highlight from deselected items
             foreach (var removed in e.RemovedItems)
             {
                 if (removed is ListBoxItem oldItem && oldItem.Content is Border oldBorder)
                 {
-                    oldBorder.BorderBrush = System.Windows.Media.Brushes.Transparent;
                     oldBorder.Background = System.Windows.Media.Brushes.Transparent;
                 }
             }
@@ -509,14 +531,13 @@ namespace JoJot
         }
 
         /// <summary>
-        /// Applies the 2px left accent border to a selected tab item.
+        /// Applies the background highlight to a selected tab item.
         /// </summary>
         private void ApplyActiveHighlight(ListBoxItem item)
         {
             if (item.Content is Border border)
             {
-                border.BorderBrush = GetBrush("c-accent");
-                border.Background = System.Windows.Media.Brushes.Transparent; // Clear hover if active
+                border.Background = GetBrush("c-selected-bg");
             }
         }
 

@@ -15,6 +15,7 @@
     <!-- Interactive -->
     <SolidColorBrush x:Key="c-accent" Color="#2196F3"/>
     <SolidColorBrush x:Key="c-hover-bg" Color="#2D2D2D"/>
+    <SolidColorBrush x:Key="c-selected-bg" Color="#1A3A4A"/>
 
     <!-- Toolbar -->
     <SolidColorBrush x:Key="c-toolbar-icon" Color="#AAAAAA"/>
