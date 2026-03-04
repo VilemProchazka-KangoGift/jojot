@@ -54,7 +54,7 @@ namespace JoJot
         private bool _recordingHotkey;
         private int _currentFontSize = 13;
         private System.Windows.Threading.DispatcherTimer? _fontSizeTooltipTimer;
-        private System.Windows.Threading.DispatcherTimer? _debounceInputTimer;
+        // R2-PREF-01: _debounceInputTimer removed (autosave delay no longer user-configurable)
         private List<int> _findMatches = new();
         private int _currentFindIndex = -1;
         private bool _helpBuilt;
@@ -2382,6 +2382,7 @@ namespace JoJot
         {
             bool hasOrphans = VirtualDesktopService.OrphanedSessionGuids.Count > 0;
             OrphanBadge.Visibility = hasOrphans ? Visibility.Visible : Visibility.Collapsed;
+            MenuRecover.Visibility = hasOrphans ? Visibility.Visible : Visibility.Collapsed; // R2-MENU-01: Hide entire menu item
             MenuRecoverText.SetResourceReference(TextBlock.ForegroundProperty,
                 hasOrphans ? "c-accent" : "c-text-primary");
         }
@@ -2861,12 +2862,6 @@ namespace JoJot
             ContentEditor.FontSize = _currentFontSize;
             FontSizeDisplay.Text = FontSizeToPercent(_currentFontSize);
 
-            // Load debounce interval
-            var savedDebounce = await DatabaseService.GetPreferenceAsync("autosave_debounce_ms");
-            int debMs = int.TryParse(savedDebounce, out var d) ? Math.Clamp(d, 200, 2000) : 500;
-            _autosaveService.DebounceMs = debMs;
-            DebounceInput.Text = debMs.ToString();
-
             // Update theme toggle highlight
             UpdateThemeToggleHighlight(ThemeService.CurrentSetting);
 
@@ -2894,7 +2889,6 @@ namespace JoJot
 
             // Refresh values
             FontSizeDisplay.Text = FontSizeToPercent(_currentFontSize);
-            DebounceInput.Text = _autosaveService.DebounceMs.ToString();
             UpdateThemeToggleHighlight(ThemeService.CurrentSetting);
             HotkeyDisplay.Text = HotkeyService.GetHotkeyDisplayString();
 
@@ -2911,8 +2905,12 @@ namespace JoJot
         private void HidePreferencesPanel()
         {
             _preferencesOpen = false;
-            _recordingHotkey = false;
-            HotkeyRecordText.Text = "Record";
+            if (_recordingHotkey)
+            {
+                _recordingHotkey = false;
+                HotkeyRecordText.Text = "Record";
+                HotkeyService.ResumeHotkey(); // R2-PREF-02: Re-register if closing during recording
+            }
 
             var anim = new DoubleAnimation
             {
@@ -3006,27 +3004,7 @@ namespace JoJot
             _fontSizeTooltipTimer.Start();
         }
 
-        // ── Debounce handler (PREF-04) ──
-
-        private void DebounceInput_TextChanged(object sender, TextChangedEventArgs e)
-        {
-            if (!int.TryParse(DebounceInput.Text, out int value)) return;
-            value = Math.Clamp(value, 200, 2000);
-            _autosaveService.DebounceMs = value;
-
-            // Debounce the persistence to avoid rapid DB writes while user types
-            _debounceInputTimer?.Stop();
-            _debounceInputTimer = new System.Windows.Threading.DispatcherTimer
-            {
-                Interval = TimeSpan.FromMilliseconds(500)
-            };
-            _debounceInputTimer.Tick += async (_, _) =>
-            {
-                _debounceInputTimer!.Stop();
-                await DatabaseService.SetPreferenceAsync("autosave_debounce_ms", value.ToString());
-            };
-            _debounceInputTimer.Start();
-        }
+        // R2-PREF-01: DebounceInput_TextChanged removed (autosave delay no longer user-configurable)
 
         // ── Hotkey picker (PREF-05) ──
 
@@ -3034,13 +3012,15 @@ namespace JoJot
         {
             if (_recordingHotkey)
             {
-                // Cancel recording
+                // Cancel recording — re-register the original hotkey
                 _recordingHotkey = false;
                 HotkeyRecordText.Text = "Record";
+                HotkeyService.ResumeHotkey(); // R2-PREF-02
             }
             else
             {
-                // Start recording
+                // Start recording — unregister so the key combo doesn't trigger the hotkey
+                HotkeyService.PauseHotkey(); // R2-PREF-02
                 _recordingHotkey = true;
                 HotkeyRecordText.Text = "Press keys...";
             }

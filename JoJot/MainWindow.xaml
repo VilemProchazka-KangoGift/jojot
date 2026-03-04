@@ -702,29 +702,7 @@
                                    MouseLeftButtonDown="FontSizeReset_Click"
                                    TextDecorations="Underline"/>
 
-                        <!-- EDITOR SECTION -->
-                        <TextBlock Text="EDITOR" FontSize="11" FontWeight="SemiBold" Margin="0,8,0,8"
-                                   Foreground="{DynamicResource c-text-muted}"/>
-
-                        <!-- Autosave debounce (PREF-04) -->
-                        <TextBlock Text="Autosave Delay" FontSize="13" Margin="0,0,0,6"
-                                   Foreground="{DynamicResource c-text-primary}"/>
-                        <Grid Margin="0,0,0,4">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-                            <TextBox x:Name="DebounceInput" Grid.Column="0" FontSize="13" Padding="6,4"
-                                     Background="{DynamicResource c-tab-bg}" Foreground="{DynamicResource c-text-primary}"
-                                     BorderBrush="{DynamicResource c-text-muted}" BorderThickness="1"
-                                     TextChanged="DebounceInput_TextChanged"/>
-                            <TextBlock Grid.Column="1" Text="ms" FontSize="12" VerticalAlignment="Center"
-                                       Foreground="{DynamicResource c-text-muted}" Margin="6,0,0,0"/>
-                        </Grid>
-                        <TextBlock Text="200 - 2000 ms (default: 500)" FontSize="11" Margin="0,2,0,16"
-                                   Foreground="{DynamicResource c-text-muted}"/>
-
-                        <!-- SHORTCUTS SECTION -->
+                        <!-- SHORTCUTS SECTION (R2-PREF-01: Editor/autosave section removed) -->
                         <TextBlock Text="SHORTCUTS" FontSize="11" FontWeight="SemiBold" Margin="0,8,0,8"
                                    Foreground="{DynamicResource c-text-muted}"/>
 

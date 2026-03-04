@@ -169,6 +169,37 @@ namespace JoJot.Services
         }
 
         /// <summary>
+        /// Temporarily unregisters the global hotkey so it can be re-recorded (R2-PREF-02).
+        /// Called when user starts hotkey recording in preferences.
+        /// </summary>
+        public static void PauseHotkey()
+        {
+            if (_isRegistered && _hwnd != IntPtr.Zero)
+            {
+                UnregisterHotKey(_hwnd, HOTKEY_ID);
+                _isRegistered = false;
+                LogService.Info("Global hotkey paused for recording");
+            }
+        }
+
+        /// <summary>
+        /// Re-registers the global hotkey after recording is cancelled (R2-PREF-02).
+        /// Called when user cancels hotkey recording or closes preferences.
+        /// </summary>
+        public static void ResumeHotkey()
+        {
+            if (!_isRegistered && _hwnd != IntPtr.Zero)
+            {
+                bool success = RegisterHotKey(_hwnd, HOTKEY_ID, _modifiers | MOD_NOREPEAT, _vk);
+                _isRegistered = success;
+                if (success)
+                    LogService.Info($"Global hotkey resumed: {GetHotkeyDisplayString()}");
+                else
+                    LogService.Warn("Failed to resume global hotkey after recording cancel");
+            }
+        }
+
+        /// <summary>
         /// Cleans up: unregisters the global hotkey and removes the message hook.
         /// Called from App.OnExit.
         /// </summary>
