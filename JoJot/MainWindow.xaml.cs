@@ -279,38 +279,77 @@ namespace JoJot
             grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 
-            // Row 0: pin icon + label + delete icon (Grid-based for adaptive sizing)
+            // Row 0: pin/unpin button (left) + label + close X button (right)
+            // R2-TAB-01: Both buttons use 22x22 Border for adequate hit targets
             var row0 = new Grid();
-            // Column 0: Auto (pin icon, if pinned)
-            row0.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            // Column 1: Star (title — fills remaining space)
-            row0.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            // Column 2: Auto (delete icon — collapses when hidden)
-            row0.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            row0.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });  // Col 0: pin/unpin button
+            row0.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }); // Col 1: title
+            row0.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });  // Col 2: close X (unpinned only)
+
+            // Column 0: Pin/Unpin action button
+            var pinBtn = new Border
+            {
+                Width = 22, Height = 22,
+                CornerRadius = new CornerRadius(3),
+                Background = System.Windows.Media.Brushes.Transparent,
+                Cursor = Cursors.Hand,
+                IsHitTestVisible = true,
+                Margin = new Thickness(0, 0, 4, 0),
+                VerticalAlignment = VerticalAlignment.Center,
+                Opacity = 0,
+                Visibility = Visibility.Collapsed
+            };
+
+            var pinBtnIcon = new TextBlock
+            {
+                FontFamily = new System.Windows.Media.FontFamily("Segoe Fluent Icons, Segoe MDL2 Assets"),
+                FontSize = 12,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            pinBtnIcon.SetResourceReference(TextBlock.ForegroundProperty, "c-text-muted");
 
             if (tab.Pinned)
             {
-                var pinIcon = new TextBlock
+                // Pinned tabs: show pin icon always, on hover swap to X (click to unpin)
+                pinBtnIcon.Text = "\uE718"; // Pin icon
+                pinBtn.ToolTip = "Unpin";
+                pinBtn.Opacity = 1;
+                pinBtn.Visibility = Visibility.Visible;
+
+                pinBtn.MouseEnter += (s, e) =>
                 {
-                    Text = "\uE718",
-                    FontFamily = new System.Windows.Media.FontFamily("Segoe Fluent Icons, Segoe MDL2 Assets"),
-                    FontSize = 12,
-                    Margin = new Thickness(0, 0, 4, 0),
-                    VerticalAlignment = VerticalAlignment.Center,
-                    Cursor = Cursors.Hand,
-                    IsHitTestVisible = true,
-                    ToolTip = "Unpin"
+                    pinBtnIcon.Text = "\u00D7"; // X icon on hover
+                    pinBtnIcon.FontFamily = new System.Windows.Media.FontFamily("Segoe UI");
+                    pinBtnIcon.FontSize = 14;
+                    pinBtnIcon.Foreground = new System.Windows.Media.SolidColorBrush(
+                        System.Windows.Media.Color.FromRgb(0xe7, 0x4c, 0x3c));
                 };
-                pinIcon.SetResourceReference(TextBlock.ForegroundProperty, "c-text-muted");
-                pinIcon.MouseLeftButtonDown += (s, e) =>
+                pinBtn.MouseLeave += (s, e) =>
                 {
-                    _ = TogglePinAsync(tab);
-                    e.Handled = true;
+                    pinBtnIcon.Text = "\uE718"; // Restore pin icon
+                    pinBtnIcon.FontFamily = new System.Windows.Media.FontFamily("Segoe Fluent Icons, Segoe MDL2 Assets");
+                    pinBtnIcon.FontSize = 12;
+                    pinBtnIcon.SetResourceReference(TextBlock.ForegroundProperty, "c-text-muted");
                 };
-                Grid.SetColumn(pinIcon, 0);
-                row0.Children.Add(pinIcon);
+            }
+            else
+            {
+                // Unpinned tabs: show pin icon on hover/selection (click to pin)
+                pinBtnIcon.Text = "\uE718"; // Pin icon
+                pinBtn.ToolTip = "Pin";
             }
 
+            pinBtn.MouseLeftButtonDown += (s, e) =>
+            {
+                _ = TogglePinAsync(tab);
+                e.Handled = true;
+            };
+            pinBtn.Child = pinBtnIcon;
+            Grid.SetColumn(pinBtn, 0);
+            row0.Children.Add(pinBtn);
+
+            // Column 1: Title label
             var labelBlock = new TextBlock
             {
                 Text = tab.DisplayLabel,
@@ -342,21 +381,48 @@ namespace JoJot
             Grid.SetColumn(renameBox, 1);
             row0.Children.Add(renameBox);
 
-            // Delete icon in Column 2 — collapsed by default, shown on hover (TDEL-03)
-            var deleteIcon = new TextBlock
+            // Column 2: Close X button — only for unpinned tabs (pinned tabs use pin→X hover swap)
+            Border? closeBtn = null;
+            if (!tab.Pinned)
             {
-                Text = "\u00D7",
-                FontSize = 12,
-                Opacity = 0,
-                Visibility = Visibility.Collapsed,
-                VerticalAlignment = VerticalAlignment.Center,
-                Margin = new Thickness(4, 0, 0, 0),
-                Cursor = Cursors.Hand,
-                IsHitTestVisible = true
-            };
-            deleteIcon.SetResourceReference(TextBlock.ForegroundProperty, "c-text-muted");
-            Grid.SetColumn(deleteIcon, 2);
-            row0.Children.Add(deleteIcon);
+                closeBtn = new Border
+                {
+                    Width = 22, Height = 22,
+                    CornerRadius = new CornerRadius(3),
+                    Background = System.Windows.Media.Brushes.Transparent,
+                    Cursor = Cursors.Hand,
+                    IsHitTestVisible = true,
+                    Margin = new Thickness(4, 0, 0, 0),
+                    VerticalAlignment = VerticalAlignment.Center,
+                    Opacity = 0,
+                    Visibility = Visibility.Collapsed
+                };
+
+                var closeIcon = new TextBlock
+                {
+                    Text = "\u00D7",
+                    FontSize = 14,
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center
+                };
+                closeIcon.SetResourceReference(TextBlock.ForegroundProperty, "c-text-muted");
+
+                closeBtn.MouseEnter += (s, e) =>
+                    closeIcon.Foreground = new System.Windows.Media.SolidColorBrush(
+                        System.Windows.Media.Color.FromRgb(0xe7, 0x4c, 0x3c));
+                closeBtn.MouseLeave += (s, e) =>
+                    closeIcon.SetResourceReference(TextBlock.ForegroundProperty, "c-text-muted");
+
+                closeBtn.MouseLeftButtonDown += (s, e) =>
+                {
+                    _ = DeleteTabAsync(tab);
+                    e.Handled = true;
+                };
+
+                closeBtn.Child = closeIcon;
+                Grid.SetColumn(closeBtn, 2);
+                row0.Children.Add(closeBtn);
+            }
 
             Grid.SetRow(row0, 0);
             grid.Children.Add(row0);
@@ -382,45 +448,44 @@ namespace JoJot
             Grid.SetRow(row1, 1);
             grid.Children.Add(row1);
 
-            // Fade icon in/out on tab hover with adaptive title sizing
+            // R2-TAB-01: Show/hide pin and close buttons on hover
             outerBorder.MouseEnter += (s, e) =>
             {
                 if (item != TabList.SelectedItem)
                     outerBorder.Background = GetBrush("c-hover-bg");
-                deleteIcon.Visibility = Visibility.Visible;
-                AnimateOpacity(deleteIcon, 0, 1, 100);
+
+                // Show pin button (for unpinned tabs — pinned tabs always show it)
+                if (!tab.Pinned)
+                {
+                    pinBtn.Visibility = Visibility.Visible;
+                    AnimateOpacity(pinBtn, 0, 1, 100);
+                }
+
+                // Show close button (unpinned only)
+                if (closeBtn != null)
+                {
+                    closeBtn.Visibility = Visibility.Visible;
+                    AnimateOpacity(closeBtn, 0, 1, 100);
+                }
             };
             outerBorder.MouseLeave += (s, e) =>
             {
                 if (item != TabList.SelectedItem)
                     outerBorder.Background = System.Windows.Media.Brushes.Transparent;
-                AnimateOpacity(deleteIcon, 1, 0, 100);
-                // After fade-out completes, collapse to reclaim space for title
-                var timer = new System.Windows.Threading.DispatcherTimer
-                {
-                    Interval = TimeSpan.FromMilliseconds(100)
-                };
-                timer.Tick += (_, _) =>
-                {
-                    timer.Stop();
-                    if (deleteIcon.Opacity == 0)
-                        deleteIcon.Visibility = Visibility.Collapsed;
-                };
-                timer.Start();
-            };
 
-            // Color change on x icon hover: gray → red → gray
-            deleteIcon.MouseEnter += (s, e) =>
-                deleteIcon.Foreground = new System.Windows.Media.SolidColorBrush(
-                    System.Windows.Media.Color.FromRgb(0xe7, 0x4c, 0x3c));
-            deleteIcon.MouseLeave += (s, e) =>
-                deleteIcon.SetResourceReference(TextBlock.ForegroundProperty, "c-text-muted");
+                // Hide pin button (for unpinned tabs — pinned tabs always show it)
+                if (!tab.Pinned)
+                {
+                    AnimateOpacity(pinBtn, 1, 0, 100);
+                    DelayedCollapse(pinBtn);
+                }
 
-            // Click x to delete tab
-            deleteIcon.MouseLeftButtonDown += (s, e) =>
-            {
-                _ = DeleteTabAsync(tab);
-                e.Handled = true; // Prevent bubbling to ListBoxItem selection
+                // Hide close button (unpinned only)
+                if (closeBtn != null)
+                {
+                    AnimateOpacity(closeBtn, 1, 0, 100);
+                    DelayedCollapse(closeBtn);
+                }
             };
 
             outerBorder.Child = grid;
@@ -502,12 +567,29 @@ namespace JoJot
                 _activeTab.UpdatedAt = DateTime.Now;
             }
 
-            // Remove background highlight from deselected items
+            // Remove background highlight from deselected items and hide buttons
             foreach (var removed in e.RemovedItems)
             {
                 if (removed is ListBoxItem oldItem && oldItem.Content is Border oldBorder)
                 {
                     oldBorder.Background = System.Windows.Media.Brushes.Transparent;
+
+                    // R2-TAB-01: Hide pin/close buttons when deselected
+                    if (oldBorder.Child is Grid oldGrid && oldGrid.Children.Count > 0 && oldGrid.Children[0] is Grid oldRow0)
+                    {
+                        foreach (var child in oldRow0.Children)
+                        {
+                            if (child is Border btn && btn.Width == 22 && btn.Height == 22)
+                            {
+                                // Don't hide pinned tab's always-visible pin icon
+                                if (oldItem.Tag is NoteTab oldTab && oldTab.Pinned && Grid.GetColumn(btn) == 0)
+                                    continue;
+
+                                btn.Opacity = 0;
+                                btn.Visibility = Visibility.Collapsed;
+                            }
+                        }
+                    }
                 }
             }
 
@@ -579,6 +661,19 @@ namespace JoJot
             if (item.Content is Border border)
             {
                 border.Background = GetBrush("c-selected-bg");
+
+                // R2-TAB-01: Show pin/close buttons on selected tab (no hover needed)
+                if (border.Child is Grid grid && grid.Children.Count > 0 && grid.Children[0] is Grid row0)
+                {
+                    foreach (var child in row0.Children)
+                    {
+                        if (child is Border btn && btn.Width == 22 && btn.Height == 22)
+                        {
+                            btn.Visibility = Visibility.Visible;
+                            btn.Opacity = 1;
+                        }
+                    }
+                }
             }
         }
 
@@ -1636,6 +1731,24 @@ namespace JoJot
         {
             var anim = new DoubleAnimation(from, to, TimeSpan.FromMilliseconds(durationMs));
             element.BeginAnimation(UIElement.OpacityProperty, anim);
+        }
+
+        /// <summary>
+        /// R2-TAB-01: Collapses an element after a short delay (allows fade-out animation to complete).
+        /// </summary>
+        private static void DelayedCollapse(UIElement element)
+        {
+            var timer = new System.Windows.Threading.DispatcherTimer
+            {
+                Interval = TimeSpan.FromMilliseconds(100)
+            };
+            timer.Tick += (_, _) =>
+            {
+                timer.Stop();
+                if (element.Opacity == 0)
+                    element.Visibility = Visibility.Collapsed;
+            };
+            timer.Start();
         }
 
         /// <summary>
