@@ -2066,6 +2066,20 @@ namespace JoJot
             }
         }
 
+        /// <summary>
+        /// Checks if the mouse is currently over any visual within a Popup.
+        /// Used for hamburger menu dismiss detection (WIN-02).
+        /// </summary>
+        private static bool IsMouseOverPopup(Popup popup)
+        {
+            return popup.Child is FrameworkElement child && child.IsMouseOver;
+        }
+
+        private static bool IsMouseOverElement(UIElement element)
+        {
+            return element.IsMouseOver;
+        }
+
         private void MenuItem_MouseLeave(object sender, MouseEventArgs e)
         {
             if (sender is Border b) b.Background = System.Windows.Media.Brushes.Transparent;
@@ -2834,7 +2848,7 @@ namespace JoJot
             var savedFontSize = await DatabaseService.GetPreferenceAsync("font_size");
             _currentFontSize = int.TryParse(savedFontSize, out var fs) ? Math.Clamp(fs, 8, 32) : 13;
             ContentEditor.FontSize = _currentFontSize;
-            FontSizeDisplay.Text = $"{_currentFontSize}pt";
+            FontSizeDisplay.Text = FontSizeToPercent(_currentFontSize);
 
             // Load debounce interval
             var savedDebounce = await DatabaseService.GetPreferenceAsync("autosave_debounce_ms");
@@ -2868,7 +2882,7 @@ namespace JoJot
             PreferencesPanel.Visibility = Visibility.Visible;
 
             // Refresh values
-            FontSizeDisplay.Text = $"{_currentFontSize}pt";
+            FontSizeDisplay.Text = FontSizeToPercent(_currentFontSize);
             DebounceInput.Text = _autosaveService.DebounceMs.ToString();
             UpdateThemeToggleHighlight(ThemeService.CurrentSetting);
             HotkeyDisplay.Text = HotkeyService.GetHotkeyDisplayString();
