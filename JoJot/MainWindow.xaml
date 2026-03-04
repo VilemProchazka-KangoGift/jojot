@@ -55,7 +55,9 @@
             </Setter>
         </Style>
     </Window.Resources>
-    <Grid Background="{DynamicResource c-win-bg}">
+    <Grid Background="{DynamicResource c-win-bg}"
+          AllowDrop="True" DragEnter="OnFileDragEnter" DragOver="OnFileDragOver"
+          DragLeave="OnFileDragLeave" Drop="OnFileDrop">
         <Grid.ColumnDefinitions>
             <ColumnDefinition x:Name="TabPanelColumn" Width="180" MinWidth="120" MaxWidth="400"/>
             <ColumnDefinition Width="Auto"/>
@@ -133,9 +135,7 @@
                       DragCompleted="TabPanelSplitter_DragCompleted"/>
 
         <!-- Content Area (Column 2) — toolbar + editor + toast -->
-        <Grid Grid.Column="2" ClipToBounds="True"
-              AllowDrop="True" DragEnter="OnFileDragEnter" DragOver="OnFileDragOver"
-              DragLeave="OnFileDragLeave" Drop="OnFileDrop">
+        <Grid Grid.Column="2" ClipToBounds="True">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
@@ -322,23 +322,25 @@
                     </Grid>
                 </Border>
 
-                <!-- Phase 9: File drop overlay (DROP-05) -->
-                <Grid x:Name="FileDropOverlay" Grid.Row="0" Visibility="Collapsed"
-                      Background="#80000000" Panel.ZIndex="50"
-                      AllowDrop="True" DragOver="OnFileDragOver" Drop="OnFileDrop">
-                    <Border BorderBrush="{DynamicResource c-accent}" BorderThickness="3" CornerRadius="8" Margin="16">
-                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                            <TextBlock Text="&#xE896;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="48"
-                                       Foreground="{DynamicResource c-accent}" HorizontalAlignment="Center"/>
-                            <TextBlock Text="Drop file here" FontSize="18" FontWeight="SemiBold"
-                                       Foreground="White" HorizontalAlignment="Center" Margin="0,12,0,0"/>
-                            <TextBlock Text="Text files only, max 500KB" FontSize="12"
-                                       Foreground="#AAAAAA" HorizontalAlignment="Center" Margin="0,4,0,0"/>
-                        </StackPanel>
-                    </Border>
-                </Grid>
             </Grid>
         </Grid>
+
+        <!-- R2-DROP-01: File drop overlay moved to root Grid level for full-window coverage -->
+        <Grid x:Name="FileDropOverlay" Grid.ColumnSpan="3" Visibility="Collapsed"
+              Background="#80000000" Panel.ZIndex="50"
+              AllowDrop="True" DragOver="OnFileDragOver" Drop="OnFileDrop">
+            <Border BorderBrush="{DynamicResource c-accent}" BorderThickness="3" CornerRadius="8" Margin="16">
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <TextBlock Text="&#xE896;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="48"
+                               Foreground="{DynamicResource c-accent}" HorizontalAlignment="Center"/>
+                    <TextBlock Text="Drop file here" FontSize="18" FontWeight="SemiBold"
+                               Foreground="White" HorizontalAlignment="Center" Margin="0,12,0,0"/>
+                    <TextBlock Text="Text files only, max 500KB" FontSize="12"
+                               Foreground="#AAAAAA" HorizontalAlignment="Center" Margin="0,4,0,0"/>
+                </StackPanel>
+            </Border>
+        </Grid>
+
         <!-- Hamburger menu popup (MENU-01) -->
         <Popup x:Name="HamburgerMenu" StaysOpen="False" AllowsTransparency="True"
                PlacementTarget="{Binding ElementName=HamburgerButton}"

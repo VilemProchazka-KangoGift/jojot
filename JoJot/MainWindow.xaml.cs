@@ -36,7 +36,9 @@ namespace JoJot
         private ListBoxItem? _dragItem;
         private NoteTab? _dragTab;
         private int _dragInsertIndex = -1;
+        private int _dragOriginalListIndex = -1; // R2-DND-02: Track original position for indicator suppression
         private Border? _dropIndicatorBorder;
+        private DragAdorner? _dragAdorner; // R2-DND-01: Ghost adorner during tab drag
 
         // ─── Context menu state (Phase 8) ─────────────────────────────────────────
         private Popup? _activeContextMenu;
@@ -124,7 +126,19 @@ namespace JoJot
             // Handle drag cancellation when mouse capture is lost
             TabList.LostMouseCapture += (s, e) =>
             {
-                if (_isDragging) CompleteDrag();
+                if (_isDragging)
+                {
+                    RemoveDropIndicator();
+                    // R2-DND-01: Clean up ghost adorner
+                    if (_dragAdorner != null)
+                    {
+                        var adornerLayer = System.Windows.Documents.AdornerLayer.GetAdornerLayer(TabList);
+                        adornerLayer?.Remove(_dragAdorner);
+                        _dragAdorner = null;
+                    }
+                    if (_dragItem != null) _dragItem.Opacity = 1.0;
+                    CompleteDrag();
+                }
             };
 
             // Phase 7: Delete button hover — opacity 0.7 → 1.0 (TOOL-02)
@@ -1339,10 +1353,28 @@ namespace JoJot
             if (!_isDragging)
             {
                 _isDragging = true;
-                _dragItem.Opacity = 0.3; // Ghost effect — faded at original position
+
+                // R2-DND-01: Track original index for indicator suppression
+                _dragOriginalListIndex = TabList.Items.IndexOf(_dragItem);
+
+                // R2-DND-01: Make original item invisible (preserve space)
+                _dragItem.Opacity = 0;
+
+                // R2-DND-01: Create ghost adorner
+                var adornerLayer = System.Windows.Documents.AdornerLayer.GetAdornerLayer(TabList);
+                if (adornerLayer != null)
+                {
+                    _dragAdorner = new DragAdorner(
+                        TabList, _dragItem,
+                        _dragItem.ActualWidth, _dragItem.ActualHeight);
+                    adornerLayer.Add(_dragAdorner);
+                }
+
                 Mouse.Capture(TabList);
             }
 
+            // R2-DND-01: Update adorner position during drag
+            _dragAdorner?.UpdatePosition(e.GetPosition(TabList));
             UpdateDropIndicator(current);
         }
 
@@ -1403,6 +1435,15 @@ namespace JoJot
 
             if (_dragInsertIndex < 0) return;
 
+            // R2-DND-02: Suppress indicator at positions that wouldn't change the order
+            // Inserting at the original index or the index after it leaves the item in place
+            if (_dragOriginalListIndex >= 0 &&
+                (_dragInsertIndex == _dragOriginalListIndex || _dragInsertIndex == _dragOriginalListIndex + 1))
+            {
+                _dragInsertIndex = -1;
+                return;
+            }
+
             // Show horizontal-only line at the drop target position
             if (_dragInsertIndex < TabList.Items.Count)
             {
@@ -1435,6 +1476,14 @@ namespace JoJot
 
             Mouse.Capture(null);
             RemoveDropIndicator();
+
+            // R2-DND-01: Remove ghost adorner
+            if (_dragAdorner != null)
+            {
+                var adornerLayer = System.Windows.Documents.AdornerLayer.GetAdornerLayer(TabList);
+                adornerLayer?.Remove(_dragAdorner);
+                _dragAdorner = null;
+            }
 
             if (_dragItem != null) _dragItem.Opacity = 1.0;
 
@@ -1494,10 +1543,20 @@ namespace JoJot
 
         private void ResetDragState()
         {
+            // R2-DND-01: Clean up adorner if still present
+            if (_dragAdorner != null)
+            {
+                var adornerLayer = System.Windows.Documents.AdornerLayer.GetAdornerLayer(TabList);
+                adornerLayer?.Remove(_dragAdorner);
+                _dragAdorner = null;
+            }
+
             _isDragging = false;
+            if (_dragItem != null) _dragItem.Opacity = 1.0;
             _dragItem = null;
             _dragTab = null;
             _dragInsertIndex = -1;
+            _dragOriginalListIndex = -1;
         }
 
         // ─── Visual Tree Helper ─────────────────────────────────────────────────
@@ -2847,9 +2906,9 @@ namespace JoJot
         /// </summary>
         private void OnFileDragLeave(object sender, DragEventArgs e)
         {
-            // Check if mouse is outside the content area grid
-            var pos = e.GetPosition(FileDropOverlay);
-            if (pos.X < 0 || pos.Y < 0 || pos.X > FileDropOverlay.ActualWidth || pos.Y > FileDropOverlay.ActualHeight)
+            // R2-DROP-01: Check if mouse is outside the window bounds (full-window drop zone)
+            var pos = e.GetPosition(this);
+            if (pos.X < 0 || pos.Y < 0 || pos.X > ActualWidth || pos.Y > ActualHeight)
             {
                 FileDropOverlay.Visibility = Visibility.Collapsed;
             }
@@ -2877,36 +2936,50 @@ namespace JoJot
         {
             var summary = await FileDropService.ProcessDroppedFilesAsync(filePaths);
 
-            ListBoxItem? lastItem = null;
-            foreach (var result in summary.ValidFiles)
+            if (summary.ValidFiles.Count > 0)
             {
-                int maxSort = await DatabaseService.GetMaxSortOrderAsync(_desktopGuid);
-                long newId = await DatabaseService.InsertNoteAsync(
-                    _desktopGuid, result.FileName, result.Content!, false, maxSort + 1);
+                // R2-DROP-01: Insert at first position below pinned tabs
+                int pinnedCount = _tabs.Count(t => t.Pinned);
 
-                var newTab = new NoteTab
+                // Shift all unpinned tabs' sort orders down to make room
+                for (int i = pinnedCount; i < _tabs.Count; i++)
+                    _tabs[i].SortOrder += summary.ValidFiles.Count;
+
+                if (_tabs.Count > pinnedCount)
                 {
-                    Id = newId,
-                    DesktopGuid = _desktopGuid,
-                    Name = result.FileName,
-                    Content = result.Content!,
-                    Pinned = false,
-                    SortOrder = maxSort + 1,
-                    CreatedAt = DateTime.Now,
-                    UpdatedAt = DateTime.Now
-                };
+                    _ = DatabaseService.UpdateNoteSortOrdersAsync(
+                        _tabs.Skip(pinnedCount).Select(t => (t.Id, t.SortOrder)));
+                }
 
-                _tabs.Add(newTab);
-                var item = CreateTabListItem(newTab);
-                TabList.Items.Add(item);
-                lastItem = item;
-            }
+                int insertOffset = 0;
+                foreach (var result in summary.ValidFiles)
+                {
+                    int sortOrder = pinnedCount + insertOffset;
+                    long newId = await DatabaseService.InsertNoteAsync(
+                        _desktopGuid, result.FileName, result.Content!, false, sortOrder);
 
-            // Select last valid tab (per CONTEXT.md decision)
-            if (lastItem != null)
-            {
-                TabList.SelectedItem = lastItem;
-                TabList.ScrollIntoView(lastItem);
+                    var newTab = new NoteTab
+                    {
+                        Id = newId,
+                        DesktopGuid = _desktopGuid,
+                        Name = result.FileName,
+                        Content = result.Content!,
+                        Pinned = false,
+                        SortOrder = sortOrder,
+                        CreatedAt = DateTime.Now,
+                        UpdatedAt = DateTime.Now
+                    };
+
+                    _tabs.Insert(pinnedCount + insertOffset, newTab);
+                    insertOffset++;
+                }
+
+                // Rebuild and select the first dropped tab
+                RebuildTabList();
+                var firstDropped = _tabs.FirstOrDefault(t =>
+                    t.Name == summary.ValidFiles[0].FileName && !t.Pinned);
+                if (firstDropped != null)
+                    SelectTabByNote(firstDropped);
             }
 
             // Show error toast for invalid files (DROP-06)
@@ -3650,6 +3723,40 @@ namespace JoJot
             catch (Exception ex)
             {
                 LogService.Warn($"Misplaced check failed: {ex.Message}");
+            }
+        }
+
+        // ─── R2-DND-01: Drag Ghost Adorner ───────────────────────────────────────
+
+        /// <summary>
+        /// Adorner that renders a semi-transparent snapshot of a tab item during drag.
+        /// Follows the cursor position with a small offset.
+        /// </summary>
+        private class DragAdorner : System.Windows.Documents.Adorner
+        {
+            private readonly VisualBrush _brush;
+            private readonly double _width;
+            private readonly double _height;
+            private System.Windows.Point _offset;
+
+            public DragAdorner(UIElement adornedElement, UIElement dragSource, double width, double height)
+                : base(adornedElement)
+            {
+                _brush = new VisualBrush(dragSource) { Opacity = 0.5 };
+                _width = width;
+                _height = height;
+                IsHitTestVisible = false;
+            }
+
+            public void UpdatePosition(System.Windows.Point position)
+            {
+                _offset = new System.Windows.Point(position.X + 8, position.Y - _height / 2);
+                InvalidateVisual();
+            }
+
+            protected override void OnRender(DrawingContext dc)
+            {
+                dc.DrawRectangle(_brush, null, new Rect(_offset, new System.Windows.Size(_width, _height)));
             }
         }
     }
