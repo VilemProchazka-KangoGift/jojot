@@ -5,7 +5,7 @@ milestone_name: Polish & Stability
 status: in_progress
 last_updated: "2026-03-04T00:12:00.000Z"
 progress:
-  total_phases: 4
+  total_phases: 5
   completed_phases: 3
   total_plans: 3
   completed_plans: 3
@@ -80,14 +80,19 @@ Phase 13-02 decisions:
 
 None.
 
+### Roadmap Evolution
+
+- Phase 15 added: Review Round 2 — UI/UX Bug Fixes & Polish (18 requirements from second manual review of v1.1)
+
 ### Blockers/Concerns
 
 - TABUX-04 (resizable panel) — RESOLVED: GridSplitter replaces fixed-width Grid column, width persisted via preferences
 - DIST-01 (installer) requires deciding MSI vs MSIX and whether to bundle .NET 10 runtime
+- R2-BUG-01 (note persistence) — Critical: only first note retains text, all others lose content on tab switch
 
 ## Session Continuity
 
 Last session: 2026-03-04
-Stopped at: Completed 13-01-PLAN.md (THEME-01 + THEME-02) — Phase 13 now fully complete
-Resume file: .planning/phases/13-theme-display-menu-polish/13-01-SUMMARY.md
-Next: Phase 14 (Distribution & Packaging) or review phase 13 outcomes
+Stopped at: Phase 15 context gathered
+Resume file: .planning/phases/15-review-round-2-ui-bug-fixes/15-CONTEXT.md
+Next: /gsd:plan-phase 15
