@@ -57,8 +57,8 @@
     </Window.Resources>
     <Grid Background="{DynamicResource c-win-bg}">
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="180"/>
-            <ColumnDefinition Width="1"/>
+            <ColumnDefinition x:Name="TabPanelColumn" Width="180" MinWidth="120" MaxWidth="400"/>
+            <ColumnDefinition Width="Auto"/>
             <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
 
@@ -126,8 +126,11 @@
         <!-- Recovery panel placeholder (modal is in the root Grid) -->
         </Grid>
 
-        <!-- Separator (Column 1) -->
-        <Border Grid.Column="1" Background="{DynamicResource c-border}"/>
+        <!-- Resizable separator (Column 1) — Phase 12: TABUX-04 -->
+        <GridSplitter Grid.Column="1" Width="4" HorizontalAlignment="Center"
+                      VerticalAlignment="Stretch" Background="{DynamicResource c-border}"
+                      Cursor="SizeWE" ResizeBehavior="PreviousAndNext"
+                      DragCompleted="TabPanelSplitter_DragCompleted"/>
 
         <!-- Content Area (Column 2) — toolbar + editor + toast -->
         <Grid Grid.Column="2" ClipToBounds="True"

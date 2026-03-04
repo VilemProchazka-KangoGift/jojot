@@ -162,6 +162,9 @@ namespace JoJot
         /// </summary>
         public async Task LoadTabsAsync()
         {
+            // Phase 12 (TABUX-04): Restore persisted tab panel width
+            await RestoreTabPanelWidthAsync();
+
             var notes = await DatabaseService.GetNotesForDesktopAsync(_desktopGuid);
             _tabs.Clear();
             foreach (var note in notes)
@@ -555,6 +558,31 @@ namespace JoJot
                     return;
                 }
             }
+        }
+
+        // ─── Tab Panel Resize (Phase 12: TABUX-04) ────────────────────────────
+
+        /// <summary>
+        /// Restores persisted tab panel width from preferences on startup.
+        /// </summary>
+        private async Task RestoreTabPanelWidthAsync()
+        {
+            var saved = await DatabaseService.GetPreferenceAsync("tab_panel_width");
+            if (saved != null && double.TryParse(saved, System.Globalization.CultureInfo.InvariantCulture, out double width))
+            {
+                width = Math.Clamp(width, 120, 400);
+                TabPanelColumn.Width = new GridLength(width);
+            }
+        }
+
+        /// <summary>
+        /// Saves the tab panel width to preferences after the user finishes dragging the splitter.
+        /// </summary>
+        private async void TabPanelSplitter_DragCompleted(object sender, System.Windows.Controls.Primitives.DragCompletedEventArgs e)
+        {
+            var width = TabPanelColumn.ActualWidth;
+            await DatabaseService.SetPreferenceAsync("tab_panel_width",
+                width.ToString(System.Globalization.CultureInfo.InvariantCulture));
         }
 
         // ─── Content Save ───────────────────────────────────────────────────────
