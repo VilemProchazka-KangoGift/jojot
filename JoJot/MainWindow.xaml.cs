@@ -139,6 +139,25 @@ namespace JoJot
                 HamburgerMenu.StaysOpen = false;
             };
 
+            // Phase 13: Ensure StaysOpen resets whenever submenu closes (WIN-02)
+            DeleteOlderSubmenu.Closed += (s, e) =>
+            {
+                HamburgerMenu.StaysOpen = false;
+            };
+
+            // Phase 13: Force-close hamburger menu on any click outside (WIN-02)
+            PreviewMouseDown += (s, e) =>
+            {
+                if (HamburgerMenu.IsOpen
+                    && !IsMouseOverPopup(HamburgerMenu)
+                    && !IsMouseOverPopup(DeleteOlderSubmenu)
+                    && !IsMouseOverElement(HamburgerButton))
+                {
+                    DeleteOlderSubmenu.IsOpen = false;
+                    HamburgerMenu.IsOpen = false;
+                }
+            };
+
             // Phase 7: Initial toolbar state — all buttons disabled until tab selected
             UpdateToolbarState();
 
@@ -249,7 +268,6 @@ namespace JoJot
             {
                 Padding = new Thickness(8, 6, 8, 6),
                 BorderThickness = new Thickness(0),
-                CornerRadius = new CornerRadius(4),
                 Background = System.Windows.Media.Brushes.Transparent,
                 Name = "OuterBorder"
             };
@@ -275,9 +293,17 @@ namespace JoJot
                     FontFamily = new System.Windows.Media.FontFamily("Segoe Fluent Icons, Segoe MDL2 Assets"),
                     FontSize = 12,
                     Margin = new Thickness(0, 0, 4, 0),
-                    VerticalAlignment = VerticalAlignment.Center
+                    VerticalAlignment = VerticalAlignment.Center,
+                    Cursor = Cursors.Hand,
+                    IsHitTestVisible = true,
+                    ToolTip = "Unpin"
                 };
                 pinIcon.SetResourceReference(TextBlock.ForegroundProperty, "c-text-muted");
+                pinIcon.MouseLeftButtonDown += (s, e) =>
+                {
+                    _ = TogglePinAsync(tab);
+                    e.Handled = true;
+                };
                 Grid.SetColumn(pinIcon, 0);
                 row0.Children.Add(pinIcon);
             }
@@ -289,6 +315,7 @@ namespace JoJot
                 TextTrimming = TextTrimming.CharacterEllipsis,
                 VerticalAlignment = VerticalAlignment.Center
             };
+            labelBlock.SetResourceReference(TextBlock.ForegroundProperty, "c-text-primary");
 
             if (tab.IsPlaceholder)
             {
@@ -1206,7 +1233,7 @@ namespace JoJot
             if (!_isDragging)
             {
                 _isDragging = true;
-                _dragItem.Opacity = 0.6;
+                _dragItem.Opacity = 0.3; // Ghost effect — faded at original position
                 Mouse.Capture(TabList);
             }
 
@@ -1221,6 +1248,7 @@ namespace JoJot
         /// <summary>
         /// Updates the drop indicator position during drag.
         /// Enforces zone boundaries: pinned tabs stay in pinned zone, unpinned in unpinned.
+        /// Shows a horizontal line at the drop target position.
         /// </summary>
         private void UpdateDropIndicator(System.Windows.Point mousePos)
         {
@@ -1228,6 +1256,7 @@ namespace JoJot
 
             _dragInsertIndex = -1;
             double bestDistance = double.MaxValue;
+            int lastSameZoneIndex = -1;
 
             for (int i = 0; i < TabList.Items.Count; i++)
             {
@@ -1236,6 +1265,8 @@ namespace JoJot
 
                 // Zone enforcement: only allow drop between same-zone items
                 if (candidateTab.Pinned != _dragTab!.Pinned) continue;
+
+                lastSameZoneIndex = i;
 
                 try
                 {
@@ -1264,12 +1295,25 @@ namespace JoJot
                 }
             }
 
-            // Show visual indicator on the border of the target item
-            if (_dragInsertIndex >= 0 && _dragInsertIndex < TabList.Items.Count)
+            if (_dragInsertIndex < 0) return;
+
+            // Show horizontal-only line at the drop target position
+            if (_dragInsertIndex < TabList.Items.Count)
             {
+                // Show top border on the target item
                 if (TabList.Items[_dragInsertIndex] is ListBoxItem targetItem && targetItem.Content is Border border)
                 {
-                    border.BorderThickness = new Thickness(border.BorderThickness.Left, 2, 0, 0);
+                    border.BorderThickness = new Thickness(0, 2, 0, 0);
+                    border.BorderBrush = GetBrush("c-accent");
+                    _dropIndicatorBorder = border;
+                }
+            }
+            else if (lastSameZoneIndex >= 0)
+            {
+                // Inserting after the last item — show bottom border on the last same-zone item
+                if (TabList.Items[lastSameZoneIndex] is ListBoxItem lastItem && lastItem.Content is Border border)
+                {
+                    border.BorderThickness = new Thickness(0, 0, 0, 2);
                     border.BorderBrush = GetBrush("c-accent");
                     _dropIndicatorBorder = border;
                 }
@@ -1336,12 +1380,8 @@ namespace JoJot
         {
             if (_dropIndicatorBorder != null)
             {
-                _dropIndicatorBorder.BorderThickness = new Thickness(2, 0, 0, 0);
-                // Restore border brush based on selection state
-                var parentItem = _dropIndicatorBorder.Parent as ListBoxItem;
-                _dropIndicatorBorder.BorderBrush = parentItem != null && TabList.SelectedItem == parentItem
-                    ? GetBrush("c-accent")
-                    : System.Windows.Media.Brushes.Transparent;
+                _dropIndicatorBorder.BorderThickness = new Thickness(0);
+                _dropIndicatorBorder.BorderBrush = System.Windows.Media.Brushes.Transparent;
                 _dropIndicatorBorder = null;
             }
         }
