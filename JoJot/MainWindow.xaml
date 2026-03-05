@@ -247,7 +247,7 @@
 
                 <TextBox x:Name="ContentEditor" Grid.Row="0"
                          AcceptsReturn="True" AcceptsTab="True"
-                         AllowDrop="False"
+                         AllowDrop="True"
                          TextWrapping="Wrap" FontFamily="Consolas" FontSize="13"
                          VerticalScrollBarVisibility="Auto"
                          HorizontalScrollBarVisibility="Disabled"
