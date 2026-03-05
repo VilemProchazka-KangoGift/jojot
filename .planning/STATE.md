@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Polish & Stability
 status: in_progress
-last_updated: "2026-03-05T11:04:39Z"
+last_updated: "2026-03-05T11:48:30Z"
 progress:
   total_phases: 5
   completed_phases: 4
-  total_plans: 15
-  completed_plans: 15
+  total_plans: 17
+  completed_plans: 16
 ---
 
 # Project State
@@ -18,16 +18,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-03)
 
 **Core value:** Instant note capture tied to your virtual desktop context -- switch desktops, switch notes, zero friction.
-**Current focus:** v1.1 Polish & Stability -- Phase 15 complete (all 9 plans executed)
+**Current focus:** v1.1 Polish & Stability -- Phase 15 gap closure plans 15-10/15-11
 
 ## Current Position
 
 Phase: 15 of 15 (Review Round 2 -- UI/UX Bug Fixes & Polish)
-Plan: 9 of 9 (Phase 15 complete -- all plans executed)
-Status: Phase 15 complete -- all gap closure plans executed including 15-09
-Last activity: 2026-03-05 -- Completed 15-09 (file drop overlay, move overlay refresh)
+Plan: 10 of 11 (15-10 complete, 15-11 remaining)
+Status: Executing Phase 15 gap closure plans
+Last activity: 2026-03-05 -- Completed 15-10 (tab hover height fix, drag ghost empty-space tracking)
 
-Progress: [██████████] 100% (15 plans complete across 5 phases; Phase 14 Installer remaining)
+Progress: [█████████░] 94% (16 of 17 plans complete across 5 phases; Phase 14 Installer remaining)
 
 ## Performance Metrics
 
@@ -36,7 +36,7 @@ Progress: [██████████] 100% (15 plans complete across 5 phas
 - Average duration: ~15 min
 - Total execution time: ~7.5 hours
 
-**v1.1 plans:** 15 completed (1 in Phase 11, 2 in Phase 12, 2 in Phase 13, 0 in Phase 14, 10 in Phase 15 including 15-06/07/08/09 gap closure)
+**v1.1 plans:** 16 completed (1 in Phase 11, 2 in Phase 12, 2 in Phase 13, 0 in Phase 14, 11 in Phase 15 including 15-06/07/08/09/10 gap closure)
 
 *Updated after each plan completion*
 
@@ -104,6 +104,8 @@ Phase 15 decisions:
 - Context-aware re-entry in ShowDragOverlayAsync: auto-dismiss on return, update for third desktop, no-op for same
 - DragKeepHere uses fresh COM targetInfo.Name for window title (not stale _dragToDesktopName)
 - AllowDrop=True on ContentEditor TextBox with PreviewDrag handlers to suppress text drops
+- MinHeight=22 on row0 Grid prevents vertical jitter when hover icons toggle Visible/Collapsed
+- TabList-level PreviewMouseMove fallback handler keeps drag ghost tracking in empty space (idempotent with TabItem handler)
 
 ### Pending Todos
 
@@ -115,7 +117,8 @@ None.
 - Phase 15 gap closure: 15-06 and 15-07 added for UAT test failures (tab hover, drag ghost, file drop, etc.)
 - Phase 15 gap closure: 15-08 added for UAT retest failures (tab hover layout, drag ghost visibility)
 - Phase 15 gap closure: 15-09 added for UAT retest failures (file drop overlay, move overlay refresh)
-- Phase 15 completed: All 9 plans (15-01 through 15-09) executed, all requirements resolved
+- Phase 15 gap closure: 15-10 added for UAT retest2 failures (tab hover height, drag ghost empty-space)
+- Phase 15 gap closure: 15-11 added for UAT retest2 failures (desktop name registry fallback, move overlay dismiss)
 
 ### Blockers/Concerns
 
@@ -125,5 +128,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-05
-Stopped at: Completed 15-09-PLAN.md (file drop overlay, move overlay refresh)
-Next: Phase 14 (Installer) or /gsd:verify-work 15
+Stopped at: Completed 15-10-PLAN.md (tab hover height fix, drag ghost empty-space tracking)
+Next: Execute 15-11-PLAN.md (desktop name registry fallback, move overlay dismiss)
