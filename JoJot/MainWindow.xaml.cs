@@ -333,17 +333,15 @@ namespace JoJot
 
                 pinBtn.MouseEnter += (s, e) =>
                 {
-                    pinBtnIcon.Text = "\u00D7"; // X icon on hover
-                    pinBtnIcon.FontFamily = new System.Windows.Media.FontFamily("Segoe UI");
-                    pinBtnIcon.FontSize = 14;
+                    // R2-TAB-01: Unpin glyph (crossed-out pin) instead of multiplication sign
+                    pinBtnIcon.Text = "\uE77A"; // Unpin glyph (Segoe Fluent Icons)
+                    // Keep existing FontFamily and FontSize — do NOT change
                     pinBtnIcon.Foreground = new System.Windows.Media.SolidColorBrush(
                         System.Windows.Media.Color.FromRgb(0xe7, 0x4c, 0x3c));
                 };
                 pinBtn.MouseLeave += (s, e) =>
                 {
                     pinBtnIcon.Text = "\uE718"; // Restore pin icon
-                    pinBtnIcon.FontFamily = new System.Windows.Media.FontFamily("Segoe Fluent Icons, Segoe MDL2 Assets");
-                    pinBtnIcon.FontSize = 12;
                     pinBtnIcon.SetResourceReference(TextBlock.ForegroundProperty, "c-text-muted");
                 };
             }
@@ -352,6 +350,16 @@ namespace JoJot
                 // Unpinned tabs: show pin icon on hover/selection (click to pin)
                 pinBtnIcon.Text = "\uE718"; // Pin icon
                 pinBtn.ToolTip = "Pin";
+
+                // R2-TAB-02: Hover color change for unpinned pin button
+                pinBtn.MouseEnter += (s, e) =>
+                {
+                    pinBtnIcon.Foreground = (System.Windows.Media.SolidColorBrush)FindResource("c-accent");
+                };
+                pinBtn.MouseLeave += (s, e) =>
+                {
+                    pinBtnIcon.SetResourceReference(TextBlock.ForegroundProperty, "c-text-muted");
+                };
             }
 
             pinBtn.MouseLeftButtonDown += (s, e) =>
@@ -414,8 +422,10 @@ namespace JoJot
 
                 var closeIcon = new TextBlock
                 {
-                    Text = "\u00D7",
-                    FontSize = 14,
+                    // R2-TAB-01: Fluent ChromeClose glyph at 10pt for proper visual weight
+                    Text = "\uE711",
+                    FontFamily = new System.Windows.Media.FontFamily("Segoe Fluent Icons, Segoe MDL2 Assets"),
+                    FontSize = 10,
                     HorizontalAlignment = HorizontalAlignment.Center,
                     VerticalAlignment = VerticalAlignment.Center
                 };
