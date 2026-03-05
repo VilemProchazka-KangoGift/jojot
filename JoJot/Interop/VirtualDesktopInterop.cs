@@ -118,7 +118,7 @@ namespace JoJot.Interop
         {
             EnsureInitialized();
 
-            int hr = _managerInternal!.GetCurrentDesktop(IntPtr.Zero, out IVirtualDesktop desktop);
+            int hr = _managerInternal!.GetCurrentDesktop(out IVirtualDesktop desktop);
             if (hr != 0)
                 throw new COMException($"GetCurrentDesktop failed (HRESULT: 0x{hr:X8})", hr);
 
@@ -131,6 +131,11 @@ namespace JoJot.Interop
             catch
             {
                 name = "";
+            }
+            // Fallback: read from registry when COM GetName() returns empty (e.g., Win11 25H2 build 26200+)
+            if (string.IsNullOrEmpty(name))
+            {
+                name = GetDesktopNameFromRegistry(id);
             }
 
             // Find index by enumerating all desktops
@@ -155,7 +160,7 @@ namespace JoJot.Interop
         {
             EnsureInitialized();
 
-            int hr = _managerInternal!.GetDesktops(IntPtr.Zero, out IObjectArray desktops);
+            int hr = _managerInternal!.GetDesktops(out IObjectArray desktops);
             if (hr != 0)
                 throw new COMException($"GetDesktops failed (HRESULT: 0x{hr:X8})", hr);
 
@@ -185,6 +190,11 @@ namespace JoJot.Interop
                 catch
                 {
                     name = "";
+                }
+                // Fallback: read from registry when COM GetName() returns empty (e.g., Win11 25H2 build 26200+)
+                if (string.IsNullOrEmpty(name))
+                {
+                    name = GetDesktopNameFromRegistry(id);
                 }
 
                 result.Add((id, name, (int)i));
@@ -228,6 +238,27 @@ namespace JoJot.Interop
 
             _guidSet = null;
             _initialized = false;
+        }
+
+        /// <summary>
+        /// Reads a virtual desktop's name from the registry as a fallback when COM GetName() fails.
+        /// Windows stores desktop names at:
+        /// HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\VirtualDesktops\Desktops\{GUID}\Name
+        /// Returns empty string if the key doesn't exist (unnamed desktop) or on any error.
+        /// </summary>
+        private static string GetDesktopNameFromRegistry(Guid desktopId)
+        {
+            try
+            {
+                string guidStr = desktopId.ToString("B"); // {xxxxxxxx-xxxx-...} format
+                string keyPath = $@"SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\VirtualDesktops\Desktops\{guidStr}";
+                using var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(keyPath);
+                return key?.GetValue("Name") as string ?? "";
+            }
+            catch
+            {
+                return "";
+            }
         }
 
         private static void EnsureInitialized()
