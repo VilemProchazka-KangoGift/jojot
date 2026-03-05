@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Polish & Stability
 status: in_progress
-last_updated: "2026-03-04T01:00:00.000Z"
+last_updated: "2026-03-05T09:16:34Z"
 progress:
   total_phases: 5
   completed_phases: 4
-  total_plans: 11
-  completed_plans: 11
+  total_plans: 13
+  completed_plans: 12
 ---
 
 # Project State
@@ -18,16 +18,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-03)
 
 **Core value:** Instant note capture tied to your virtual desktop context -- switch desktops, switch notes, zero friction.
-**Current focus:** v1.1 Polish & Stability -- Phase 15 complete (all 5 plans executed)
+**Current focus:** v1.1 Polish & Stability -- Phase 15 gap closure plans executing
 
 ## Current Position
 
 Phase: 15 of 15 (Review Round 2 -- UI/UX Bug Fixes & Polish)
-Plan: 5 of 5 (Phase 15 complete -- all plans executed)
-Status: Phase 15 complete -- all 18 requirements resolved
-Last activity: 2026-03-04 -- Completed all 5 plans (15-01 through 15-05)
+Plan: 6 of 7 (15-06 complete, 15-07 in progress)
+Status: Gap closure in progress -- 15-06 complete, 15-07 pending
+Last activity: 2026-03-05 -- Completed 15-06 (tab hover glyphs, close icon, drag ghost)
 
-Progress: [█████████░] 90% (11 plans complete across 4 phases; Phase 14 Installer remaining)
+Progress: [█████████░] 92% (12 plans complete across 4 phases; Phase 14 Installer + 15-07 remaining)
 
 ## Performance Metrics
 
@@ -36,7 +36,7 @@ Progress: [█████████░] 90% (11 plans complete across 4 phase
 - Average duration: ~15 min
 - Total execution time: ~7.5 hours
 
-**v1.1 plans:** 11 completed (1 in Phase 11, 2 in Phase 12, 2 in Phase 13, 0 in Phase 14, 5 in Phase 15)
+**v1.1 plans:** 12 completed (1 in Phase 11, 2 in Phase 12, 2 in Phase 13, 0 in Phase 14, 7 in Phase 15)
 
 *Updated after each plan completion*
 
@@ -81,7 +81,7 @@ Phase 15 decisions:
 - PauseHotkey/ResumeHotkey methods for recording workflow
 - Autosave delay removed entirely (not just hidden)
 - 22x22 Border with CornerRadius(3) used as button hit targets for tab pin/close
-- DragAdorner uses VisualBrush at 0.5 opacity for ghost rendering
+- DragAdorner uses RenderTargetBitmap snapshot at 0.5 opacity for ghost rendering (replaces live VisualBrush)
 - Indicator suppressed at original slot and adjacent positions
 - FileDropOverlay moved to root Grid for full-window coverage
 - Dropped files insert at first position below pinned tabs
@@ -90,6 +90,9 @@ Phase 15 decisions:
 - Open button removed from recovery cards (Adopt + Delete only)
 - GetDesktopNameAsync for source name lookup in move overlay
 - "Keep here" hidden when target desktop already has active window
+- Pinned tab hover uses E77A unpin glyph (not multiplication sign), stays in Segoe Fluent Icons font
+- Close icon uses E711 ChromeClose at 10pt (not multiplication sign at 14pt)
+- Forward-then-backward scan in UpdateDropIndicator for separator ListBoxItems
 
 ### Pending Todos
 
@@ -98,7 +101,7 @@ None.
 ### Roadmap Evolution
 
 - Phase 15 added: Review Round 2 -- UI/UX Bug Fixes & Polish (18 requirements from second manual review)
-- Phase 15 completed: All 18 requirements resolved across 5 plans
+- Phase 15 gap closure: 15-06 and 15-07 added for UAT test failures (tab hover, drag ghost, file drop, etc.)
 
 ### Blockers/Concerns
 
@@ -107,6 +110,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-04
-Stopped at: Phase 15 complete -- all 5 plans executed and committed
-Next: Phase 14 (Installer) or /gsd:verify-work 15
+Last session: 2026-03-05
+Stopped at: Completed 15-06-PLAN.md (tab hover glyphs, close icon, drag ghost fix)
+Next: 15-07-PLAN.md (file drop overlay, desktop name fallback) or Phase 14 (Installer)
