@@ -120,7 +120,7 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
 - [x] 15-05-PLAN.md — Recovery sidebar, tab previews, source name, keep-here visibility (R2-RECOVER-01, R2-MOVE-01, R2-MOVE-02)
 - [x] 15-06-PLAN.md — Gap closure: tab hover glyphs, close icon, drag ghost snapshot, separator indicators (R2-TAB-01, R2-TAB-02, R2-DND-01)
 - [x] 15-07-PLAN.md — Gap closure: file drop overlay tunneling, desktop name fallback, session reparent metadata (R2-DROP-01, R2-MOVE-01, R2-MENU-01)
-- [ ] 15-08-PLAN.md — Gap closure: tab hover layout redesign per user spec, drag ghost CaptureMode fix (R2-TAB-01, R2-TAB-02, R2-TAB-03, R2-DND-01)
+- [x] 15-08-PLAN.md — Gap closure: tab hover layout redesign per user spec, drag ghost CaptureMode fix (R2-TAB-01, R2-TAB-02, R2-TAB-03, R2-DND-01)
 - [ ] 15-09-PLAN.md — Gap closure: file drop over editor TextBox, move overlay live COM names and refresh (R2-DROP-01, R2-MOVE-01)
 
 ### Phase 14: Installer
@@ -155,4 +155,4 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
 | 12. Tab Panel UX | v1.1 | 2/2 | Complete | 2026-03-04 |
 | 13. Theme, Display & Menu Polish | v1.1 | 2/2 | Complete | 2026-03-04 |
 | 14. Installer | v1.1 | 0/? | Not started | - |
-| 15. Review Round 2 UI/UX | v1.1 | 7/9 | In progress | - |
+| 15. Review Round 2 UI/UX | v1.1 | 8/9 | In progress | - |
