@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Polish & Stability
 status: in_progress
-last_updated: "2026-03-05T11:02:34Z"
+last_updated: "2026-03-05T11:04:39Z"
 progress:
   total_phases: 5
   completed_phases: 4
   total_plans: 15
-  completed_plans: 14
+  completed_plans: 15
 ---
 
 # Project State
@@ -18,16 +18,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-03)
 
 **Core value:** Instant note capture tied to your virtual desktop context -- switch desktops, switch notes, zero friction.
-**Current focus:** v1.1 Polish & Stability -- Phase 15 gap closure plans executing
+**Current focus:** v1.1 Polish & Stability -- Phase 15 complete (all 9 plans executed)
 
 ## Current Position
 
 Phase: 15 of 15 (Review Round 2 -- UI/UX Bug Fixes & Polish)
-Plan: 8 of 9 (15-08 complete, 15-09 remaining)
-Status: Gap closure 15-08 complete -- tab hover layout and drag ghost fixed
-Last activity: 2026-03-05 -- Completed 15-08 (tab hover layout redesign, drag ghost fix)
+Plan: 9 of 9 (Phase 15 complete -- all plans executed)
+Status: Phase 15 complete -- all gap closure plans executed including 15-09
+Last activity: 2026-03-05 -- Completed 15-09 (file drop overlay, move overlay refresh)
 
-Progress: [█████████░] 93% (14 plans complete across 4 phases; 15-09 + Phase 14 remaining)
+Progress: [██████████] 100% (15 plans complete across 5 phases; Phase 14 Installer remaining)
 
 ## Performance Metrics
 
@@ -36,7 +36,7 @@ Progress: [█████████░] 93% (14 plans complete across 4 phase
 - Average duration: ~15 min
 - Total execution time: ~7.5 hours
 
-**v1.1 plans:** 14 completed (1 in Phase 11, 2 in Phase 12, 2 in Phase 13, 0 in Phase 14, 9 in Phase 15 including 15-06/07/08 gap closure)
+**v1.1 plans:** 15 completed (1 in Phase 11, 2 in Phase 12, 2 in Phase 13, 0 in Phase 14, 10 in Phase 15 including 15-06/07/08/09 gap closure)
 
 *Updated after each plan completion*
 
@@ -88,7 +88,7 @@ Phase 15 decisions:
 - Recovery panel converted from modal to sidebar (Width=320)
 - One-panel-at-a-time: recovery and preferences mutually exclusive
 - Open button removed from recovery cards (Adopt + Delete only)
-- GetDesktopNameAsync for source name lookup in move overlay
+- Live COM via GetAllDesktops for source name lookup in move overlay (replaced stale DB lookup)
 - "Keep here" hidden when target desktop already has active window
 - Pinned tab hover uses E77A unpin glyph (not multiplication sign), stays in Segoe Fluent Icons font
 - Close icon uses E711 ChromeClose at 12pt (upgraded from 10pt per user feedback for bigger delete icon)
@@ -101,6 +101,9 @@ Phase 15 decisions:
 - Unpinned tab column layout: Col 0=title(Star), Col 1=pin(Auto), Col 2=delete(Auto)
 - CaptureMode.SubTree for drag Mouse.Capture so child events still route during capture
 - _isCompletingDrag re-entrancy guard prevents LostMouseCapture double-fire from Mouse.Capture(null)
+- Context-aware re-entry in ShowDragOverlayAsync: auto-dismiss on return, update for third desktop, no-op for same
+- DragKeepHere uses fresh COM targetInfo.Name for window title (not stale _dragToDesktopName)
+- AllowDrop=True on ContentEditor TextBox with PreviewDrag handlers to suppress text drops
 
 ### Pending Todos
 
@@ -111,7 +114,8 @@ None.
 - Phase 15 added: Review Round 2 -- UI/UX Bug Fixes & Polish (18 requirements from second manual review)
 - Phase 15 gap closure: 15-06 and 15-07 added for UAT test failures (tab hover, drag ghost, file drop, etc.)
 - Phase 15 gap closure: 15-08 added for UAT retest failures (tab hover layout, drag ghost visibility)
-- Phase 15 progress: 15-01 through 15-08 executed, 15-09 remaining
+- Phase 15 gap closure: 15-09 added for UAT retest failures (file drop overlay, move overlay refresh)
+- Phase 15 completed: All 9 plans (15-01 through 15-09) executed, all requirements resolved
 
 ### Blockers/Concerns
 
@@ -121,5 +125,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-05
-Stopped at: Completed 15-08-PLAN.md (tab hover layout redesign, drag ghost fix)
-Next: Execute 15-09 or Phase 14 (Installer)
+Stopped at: Completed 15-09-PLAN.md (file drop overlay, move overlay refresh)
+Next: Phase 14 (Installer) or /gsd:verify-work 15
