@@ -124,6 +124,24 @@ namespace JoJot
             // Phase 6: Wire TextChanged for autosave debounce
             ContentEditor.TextChanged += ContentEditor_TextChanged;
 
+            // Phase 15 R2-DROP-01: Allow file drops to propagate to Window handler; suppress text drops
+            ContentEditor.PreviewDragEnter += (s, e) =>
+            {
+                if (!e.Data.GetDataPresent(DataFormats.FileDrop))
+                {
+                    e.Effects = DragDropEffects.None;
+                    e.Handled = true;
+                }
+            };
+            ContentEditor.PreviewDragOver += (s, e) =>
+            {
+                if (!e.Data.GetDataPresent(DataFormats.FileDrop))
+                {
+                    e.Effects = DragDropEffects.None;
+                    e.Handled = true;
+                }
+            };
+
             // Handle drag cancellation when mouse capture is lost
             TabList.LostMouseCapture += (s, e) =>
             {
@@ -294,14 +312,16 @@ namespace JoJot
             grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 
-            // Row 0: pin/unpin button (left) + label + close X button (right)
+            // Row 0: adaptive column layout based on pinned state
             // R2-TAB-01: Both buttons use 22x22 Border for adequate hit targets
+            // UNPINNED: Col 0 = title (Star), Col 1 = pin icon (Auto, hidden), Col 2 = delete icon (Auto, hidden)
+            // PINNED:   Col 0 = pin icon (Auto, always visible), Col 1 = title (Star), Col 2 = delete icon (Auto, hidden)
             var row0 = new Grid();
-            row0.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });  // Col 0: pin/unpin button
-            row0.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }); // Col 1: title
-            row0.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });  // Col 2: close X (unpinned only)
+            row0.ColumnDefinitions.Add(new ColumnDefinition { Width = tab.Pinned ? GridLength.Auto : new GridLength(1, GridUnitType.Star) });
+            row0.ColumnDefinitions.Add(new ColumnDefinition { Width = tab.Pinned ? new GridLength(1, GridUnitType.Star) : GridLength.Auto });
+            row0.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
-            // Column 0: Pin/Unpin action button
+            // Pin/Unpin action button
             var pinBtn = new Border
             {
                 Width = 22, Height = 22,
@@ -369,10 +389,11 @@ namespace JoJot
                 e.Handled = true;
             };
             pinBtn.Child = pinBtnIcon;
-            Grid.SetColumn(pinBtn, 0);
+            // PINNED: pin in Col 0 (always visible), UNPINNED: pin in Col 1 (hidden by default)
+            Grid.SetColumn(pinBtn, tab.Pinned ? 0 : 1);
             row0.Children.Add(pinBtn);
 
-            // Column 1: Title label
+            // Title label
             var labelBlock = new TextBlock
             {
                 Text = tab.DisplayLabel,
@@ -388,10 +409,11 @@ namespace JoJot
                 labelBlock.SetResourceReference(TextBlock.ForegroundProperty, "c-text-muted");
             }
 
-            Grid.SetColumn(labelBlock, 1);
+            // PINNED: title in Col 1, UNPINNED: title in Col 0
+            Grid.SetColumn(labelBlock, tab.Pinned ? 1 : 0);
             row0.Children.Add(labelBlock);
 
-            // Hidden rename TextBox (shown on F2 / double-click) — shares Column 1
+            // Hidden rename TextBox (shown on F2 / double-click) — shares title column
             var renameBox = new TextBox
             {
                 FontSize = 13,  // R2-FONT-02: Fixed size to match labelBlock
@@ -401,53 +423,50 @@ namespace JoJot
                 VerticalAlignment = VerticalAlignment.Center,
                 Tag = labelBlock // Store reference to label for show/hide toggling
             };
-            Grid.SetColumn(renameBox, 1);
+            Grid.SetColumn(renameBox, tab.Pinned ? 1 : 0);
             row0.Children.Add(renameBox);
 
-            // Column 2: Close X button — only for unpinned tabs (pinned tabs use pin→X hover swap)
-            Border? closeBtn = null;
-            if (!tab.Pinned)
+            // Column 2: Close/delete button — created for ALL tabs, hidden by default, shown on hover
+            var closeBtn = new Border
             {
-                closeBtn = new Border
-                {
-                    Width = 22, Height = 22,
-                    CornerRadius = new CornerRadius(3),
-                    Background = System.Windows.Media.Brushes.Transparent,
-                    Cursor = Cursors.Hand,
-                    IsHitTestVisible = true,
-                    Margin = new Thickness(4, 0, 0, 0),
-                    VerticalAlignment = VerticalAlignment.Center,
-                    Opacity = 0,
-                    Visibility = Visibility.Collapsed
-                };
+                Width = 22, Height = 22,
+                CornerRadius = new CornerRadius(3),
+                Background = System.Windows.Media.Brushes.Transparent,
+                Cursor = Cursors.Hand,
+                IsHitTestVisible = true,
+                Margin = new Thickness(4, 0, 0, 0),
+                VerticalAlignment = VerticalAlignment.Center,
+                Opacity = 0,
+                Visibility = Visibility.Collapsed
+            };
 
-                var closeIcon = new TextBlock
-                {
-                    // R2-TAB-01: Fluent ChromeClose glyph at 10pt for proper visual weight
-                    Text = "\uE711",
-                    FontFamily = new System.Windows.Media.FontFamily("Segoe Fluent Icons, Segoe MDL2 Assets"),
-                    FontSize = 10,
-                    HorizontalAlignment = HorizontalAlignment.Center,
-                    VerticalAlignment = VerticalAlignment.Center
-                };
+            var closeIcon = new TextBlock
+            {
+                // R2-TAB-01: Fluent ChromeClose glyph at 12pt (bigger than previous 10pt per user request)
+                Text = "\uE711",
+                FontFamily = new System.Windows.Media.FontFamily("Segoe Fluent Icons, Segoe MDL2 Assets"),
+                FontSize = 12,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            closeIcon.SetResourceReference(TextBlock.ForegroundProperty, "c-text-muted");
+
+            // R2-TAB-03: Close button hover color (red) for both pinned and unpinned
+            closeBtn.MouseEnter += (s, e) =>
+                closeIcon.Foreground = new System.Windows.Media.SolidColorBrush(
+                    System.Windows.Media.Color.FromRgb(0xe7, 0x4c, 0x3c));
+            closeBtn.MouseLeave += (s, e) =>
                 closeIcon.SetResourceReference(TextBlock.ForegroundProperty, "c-text-muted");
 
-                closeBtn.MouseEnter += (s, e) =>
-                    closeIcon.Foreground = new System.Windows.Media.SolidColorBrush(
-                        System.Windows.Media.Color.FromRgb(0xe7, 0x4c, 0x3c));
-                closeBtn.MouseLeave += (s, e) =>
-                    closeIcon.SetResourceReference(TextBlock.ForegroundProperty, "c-text-muted");
+            closeBtn.MouseLeftButtonDown += (s, e) =>
+            {
+                _ = DeleteTabAsync(tab);
+                e.Handled = true;
+            };
 
-                closeBtn.MouseLeftButtonDown += (s, e) =>
-                {
-                    _ = DeleteTabAsync(tab);
-                    e.Handled = true;
-                };
-
-                closeBtn.Child = closeIcon;
-                Grid.SetColumn(closeBtn, 2);
-                row0.Children.Add(closeBtn);
-            }
+            closeBtn.Child = closeIcon;
+            Grid.SetColumn(closeBtn, 2);
+            row0.Children.Add(closeBtn);
 
             Grid.SetRow(row0, 0);
             grid.Children.Add(row0);
@@ -473,44 +492,39 @@ namespace JoJot
             Grid.SetRow(row1, 1);
             grid.Children.Add(row1);
 
-            // R2-TAB-01: Show/hide pin and close buttons on hover
+            // R2-TAB-01/R2-TAB-02: Show/hide pin and close buttons on hover
             outerBorder.MouseEnter += (s, e) =>
             {
                 if (item != TabList.SelectedItem)
                     outerBorder.Background = GetBrush("c-hover-bg");
 
-                // Show pin button (for unpinned tabs — pinned tabs always show it)
+                // UNPINNED: show both pin and close on hover
+                // PINNED: pin already visible, show close only
                 if (!tab.Pinned)
                 {
                     pinBtn.Visibility = Visibility.Visible;
                     AnimateOpacity(pinBtn, 0, 1, 100);
                 }
 
-                // Show close button (unpinned only)
-                if (closeBtn != null)
-                {
-                    closeBtn.Visibility = Visibility.Visible;
-                    AnimateOpacity(closeBtn, 0, 1, 100);
-                }
+                // Show close button for ALL tabs on hover
+                closeBtn.Visibility = Visibility.Visible;
+                AnimateOpacity(closeBtn, 0, 1, 100);
             };
             outerBorder.MouseLeave += (s, e) =>
             {
                 if (item != TabList.SelectedItem)
                     outerBorder.Background = System.Windows.Media.Brushes.Transparent;
 
-                // Hide pin button (for unpinned tabs — pinned tabs always show it)
+                // UNPINNED: hide pin on leave (pinned tabs keep pin visible always)
                 if (!tab.Pinned)
                 {
                     AnimateOpacity(pinBtn, 1, 0, 100);
                     DelayedCollapse(pinBtn);
                 }
 
-                // Hide close button (unpinned only)
-                if (closeBtn != null)
-                {
-                    AnimateOpacity(closeBtn, 1, 0, 100);
-                    DelayedCollapse(closeBtn);
-                }
+                // Hide close button for ALL tabs on leave
+                AnimateOpacity(closeBtn, 1, 0, 100);
+                DelayedCollapse(closeBtn);
             };
 
             outerBorder.Child = grid;
