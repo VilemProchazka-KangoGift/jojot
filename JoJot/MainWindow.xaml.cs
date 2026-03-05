@@ -67,6 +67,7 @@ namespace JoJot
         private string? _dragToDesktopGuid;    // Target desktop GUID
         private string? _dragToDesktopName;    // Target desktop name for display
         private bool _isMisplaced;            // DRAG-10: window GUID doesn't match desktop
+        private int _fileDragEnterCount;       // R2-DROP-01: Enter/leave counter for reliable overlay dismiss
 
         // ─── Soft-delete / toast state (Phase 5) ────────────────────────────────
         private record PendingDeletion(
@@ -1375,10 +1376,7 @@ namespace JoJot
                 // R2-DND-01: Track original index for indicator suppression
                 _dragOriginalListIndex = TabList.Items.IndexOf(_dragItem);
 
-                // R2-DND-01: Make original item invisible (preserve space)
-                _dragItem.Opacity = 0;
-
-                // R2-DND-01: Create ghost adorner
+                // R2-DND-01: Create ghost adorner FIRST (while item is still visible for bitmap snapshot)
                 var adornerLayer = System.Windows.Documents.AdornerLayer.GetAdornerLayer(TabList);
                 if (adornerLayer != null)
                 {
@@ -1387,6 +1385,9 @@ namespace JoJot
                         _dragItem.ActualWidth, _dragItem.ActualHeight);
                     adornerLayer.Add(_dragAdorner);
                 }
+
+                // R2-DND-01: Make original item invisible AFTER snapshot (preserve space)
+                _dragItem.Opacity = 0;
 
                 Mouse.Capture(TabList);
             }
@@ -1465,22 +1466,51 @@ namespace JoJot
             // Show horizontal-only line at the drop target position
             if (_dragInsertIndex < TabList.Items.Count)
             {
-                // Show top border on the target item
-                if (TabList.Items[_dragInsertIndex] is ListBoxItem targetItem && targetItem.Content is Border border)
+                // R2-DND-01: Handle separator items by scanning to nearest Border item
+                if (TabList.Items[_dragInsertIndex] is ListBoxItem targetItem && targetItem.Content is Border targetBorder)
                 {
-                    border.BorderThickness = new Thickness(0, 2, 0, 0);
-                    border.BorderBrush = GetBrush("c-accent");
-                    _dropIndicatorBorder = border;
+                    targetBorder.BorderThickness = new Thickness(0, 2, 0, 0);
+                    targetBorder.BorderBrush = GetBrush("c-accent");
+                    _dropIndicatorBorder = targetBorder;
+                }
+                else
+                {
+                    // Separator or non-Border: look forward for next real tab item
+                    for (int j = _dragInsertIndex + 1; j < TabList.Items.Count; j++)
+                    {
+                        if (TabList.Items[j] is ListBoxItem nextItem && nextItem.Content is Border nextBorder)
+                        {
+                            nextBorder.BorderThickness = new Thickness(0, 2, 0, 0);
+                            nextBorder.BorderBrush = GetBrush("c-accent");
+                            _dropIndicatorBorder = nextBorder;
+                            break;
+                        }
+                    }
+
+                    // If no forward item found, look backward
+                    if (_dropIndicatorBorder == null)
+                    {
+                        for (int j = _dragInsertIndex - 1; j >= 0; j--)
+                        {
+                            if (TabList.Items[j] is ListBoxItem prevItem && prevItem.Content is Border prevBorder)
+                            {
+                                prevBorder.BorderThickness = new Thickness(0, 0, 0, 2);
+                                prevBorder.BorderBrush = GetBrush("c-accent");
+                                _dropIndicatorBorder = prevBorder;
+                                break;
+                            }
+                        }
+                    }
                 }
             }
             else if (lastSameZoneIndex >= 0)
             {
-                // Inserting after the last item — show bottom border on the last same-zone item
-                if (TabList.Items[lastSameZoneIndex] is ListBoxItem lastItem && lastItem.Content is Border border)
+                // Inserting after the last item -- show bottom border on the last same-zone item
+                if (TabList.Items[lastSameZoneIndex] is ListBoxItem lastItem && lastItem.Content is Border lastBorder)
                 {
-                    border.BorderThickness = new Thickness(0, 0, 0, 2);
-                    border.BorderBrush = GetBrush("c-accent");
-                    _dropIndicatorBorder = border;
+                    lastBorder.BorderThickness = new Thickness(0, 0, 0, 2);
+                    lastBorder.BorderBrush = GetBrush("c-accent");
+                    _dropIndicatorBorder = lastBorder;
                 }
             }
         }
@@ -2928,6 +2958,7 @@ namespace JoJot
         {
             if (e.Data.GetDataPresent(DataFormats.FileDrop))
             {
+                _fileDragEnterCount++;
                 e.Effects = DragDropEffects.Copy;
                 FileDropOverlay.Visibility = Visibility.Visible;
             }
@@ -2956,10 +2987,11 @@ namespace JoJot
         /// </summary>
         private void OnFileDragLeave(object sender, DragEventArgs e)
         {
-            // R2-DROP-01: Check if mouse is outside the window bounds (full-window drop zone)
-            var pos = e.GetPosition(this);
-            if (pos.X < 0 || pos.Y < 0 || pos.X > ActualWidth || pos.Y > ActualHeight)
+            // R2-DROP-01: Enter/leave counter for reliable overlay dismiss across child boundaries
+            _fileDragEnterCount--;
+            if (_fileDragEnterCount <= 0)
             {
+                _fileDragEnterCount = 0;
                 FileDropOverlay.Visibility = Visibility.Collapsed;
             }
             e.Handled = true;
@@ -2970,6 +3002,7 @@ namespace JoJot
         /// </summary>
         private void OnFileDrop(object sender, DragEventArgs e)
         {
+            _fileDragEnterCount = 0;
             FileDropOverlay.Visibility = Visibility.Collapsed;
             if (e.Data.GetDataPresent(DataFormats.FileDrop))
             {
@@ -3800,7 +3833,7 @@ namespace JoJot
         /// </summary>
         private class DragAdorner : System.Windows.Documents.Adorner
         {
-            private readonly VisualBrush _brush;
+            private readonly ImageBrush _brush;
             private readonly double _width;
             private readonly double _height;
             private System.Windows.Point _offset;
@@ -3808,7 +3841,18 @@ namespace JoJot
             public DragAdorner(UIElement adornedElement, UIElement dragSource, double width, double height)
                 : base(adornedElement)
             {
-                _brush = new VisualBrush(dragSource) { Opacity = 0.5 };
+                // R2-DND-01: Snapshot the element as a bitmap before it becomes invisible
+                int pixelWidth = Math.Max(1, (int)Math.Ceiling(width));
+                int pixelHeight = Math.Max(1, (int)Math.Ceiling(height));
+                var dpi = System.Windows.Media.VisualTreeHelper.GetDpi(dragSource);
+                var rtb = new System.Windows.Media.Imaging.RenderTargetBitmap(
+                    (int)(pixelWidth * dpi.DpiScaleX),
+                    (int)(pixelHeight * dpi.DpiScaleY),
+                    dpi.PixelsPerInchX, dpi.PixelsPerInchY,
+                    System.Windows.Media.PixelFormats.Pbgra32);
+                rtb.Render(dragSource);
+                rtb.Freeze();
+                _brush = new ImageBrush(rtb) { Opacity = 0.5 };
                 _width = width;
                 _height = height;
                 IsHitTestVisible = false;

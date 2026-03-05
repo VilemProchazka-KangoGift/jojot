@@ -9,7 +9,10 @@
         Width="500" Height="600"
         MinWidth="320" MinHeight="420"
         PreviewKeyDown="Window_PreviewKeyDown"
-        PreviewMouseWheel="Window_PreviewMouseWheel">
+        PreviewMouseWheel="Window_PreviewMouseWheel"
+        AllowDrop="True"
+        PreviewDragEnter="OnFileDragEnter" PreviewDragOver="OnFileDragOver"
+        PreviewDragLeave="OnFileDragLeave" Drop="OnFileDrop">
     <Window.Resources>
         <!-- ListBoxItem style: no default selection highlight, stretch content -->
         <Style TargetType="ListBoxItem">
@@ -56,8 +59,7 @@
         </Style>
     </Window.Resources>
     <Grid Background="{DynamicResource c-win-bg}"
-          AllowDrop="True" DragEnter="OnFileDragEnter" DragOver="OnFileDragOver"
-          DragLeave="OnFileDragLeave" Drop="OnFileDrop">
+          AllowDrop="True">
         <Grid.ColumnDefinitions>
             <ColumnDefinition x:Name="TabPanelColumn" Width="180" MinWidth="120" MaxWidth="400"/>
             <ColumnDefinition Width="Auto"/>
@@ -245,6 +247,7 @@
 
                 <TextBox x:Name="ContentEditor" Grid.Row="0"
                          AcceptsReturn="True" AcceptsTab="True"
+                         AllowDrop="False"
                          TextWrapping="Wrap" FontFamily="Consolas" FontSize="13"
                          VerticalScrollBarVisibility="Auto"
                          HorizontalScrollBarVisibility="Disabled"
