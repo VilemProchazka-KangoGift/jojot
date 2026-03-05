@@ -3922,6 +3922,13 @@ namespace JoJot
                     {
                         Title = currentTitle.Replace(" (misplaced)", "");
                     }
+
+                    // Dismiss the move overlay if it's still showing
+                    if (_isDragOverlayActive)
+                    {
+                        await DatabaseService.DeletePendingMoveAsync(_desktopGuid);
+                        await HideDragOverlayAsync();
+                    }
                 }
             }
             catch (Exception ex)
