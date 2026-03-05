@@ -3583,19 +3583,47 @@ namespace JoJot
             var app = System.Windows.Application.Current as App;
             bool targetHasSession = app?.HasWindowForDesktop(toGuid) ?? false;
 
-            // R2-MOVE-01: Show source desktop name
-            string? sourceName = null;
+            // R2-MOVE-01: Show source desktop name with index fallback
+            string sourceLabel;
             try
             {
-                sourceName = await DatabaseService.GetDesktopNameAsync(_desktopGuid);
+                var sourceName = await DatabaseService.GetDesktopNameAsync(_desktopGuid);
+                if (!string.IsNullOrEmpty(sourceName))
+                {
+                    sourceLabel = sourceName;
+                }
+                else
+                {
+                    // COM returns empty for un-renamed desktops; generate "Desktop N" like Windows does
+                    var sourceDesktops = VirtualDesktopService.GetAllDesktops();
+                    var sourceDesktop = sourceDesktops.FirstOrDefault(d =>
+                        d.Id.ToString().Equals(_desktopGuid, StringComparison.OrdinalIgnoreCase));
+                    sourceLabel = sourceDesktop != null
+                        ? $"Desktop {sourceDesktop.Index + 1}"
+                        : "Unknown desktop";
+                }
             }
-            catch { /* best-effort */ }
-            DragOverlaySourceName.Text = string.IsNullOrEmpty(sourceName)
-                ? "From: Unknown desktop"
-                : $"From: {sourceName}";
+            catch
+            {
+                sourceLabel = "Unknown desktop"; // best-effort
+            }
+            DragOverlaySourceName.Text = $"From: {sourceLabel}";
 
-            // Configure overlay content
-            string displayName = string.IsNullOrEmpty(toName) ? "another desktop" : toName;
+            // Configure overlay content with name fallback
+            string displayName;
+            if (!string.IsNullOrEmpty(toName))
+            {
+                displayName = toName;
+            }
+            else
+            {
+                var targetDesktops = VirtualDesktopService.GetAllDesktops();
+                var targetDesktop = targetDesktops.FirstOrDefault(d =>
+                    d.Id.ToString().Equals(toGuid, StringComparison.OrdinalIgnoreCase));
+                displayName = targetDesktop != null
+                    ? $"Desktop {targetDesktop.Index + 1}"
+                    : "another desktop";
+            }
             DragOverlayTitle.Text = $"Moved to {displayName}";
 
             if (targetHasSession)
@@ -3655,8 +3683,10 @@ namespace JoJot
                 d.Id.ToString().Equals(newGuid, StringComparison.OrdinalIgnoreCase));
             UpdateDesktopTitle(name, targetInfo?.Index);
 
-            // Update app_state session to new desktop
-            await DatabaseService.UpdateSessionDesktopGuidAsync(oldGuid, newGuid);
+            // R2-MOVE-01: Update app_state session with full metadata (guid + name + index)
+            string targetName = targetInfo?.Name ?? name;
+            int? targetIndex = targetInfo?.Index;
+            await DatabaseService.UpdateSessionDesktopAsync(oldGuid, newGuid, targetName, targetIndex);
 
             // Clear pending move
             await DatabaseService.DeletePendingMoveAsync(oldGuid);

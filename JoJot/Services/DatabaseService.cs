@@ -1207,10 +1207,11 @@ namespace JoJot.Services
         }
 
         /// <summary>
-        /// Updates a session's desktop_guid in app_state (DRAG-04 reparent).
+        /// Updates a session's desktop identity in app_state (DRAG-04 reparent).
+        /// Updates guid, name, and index so Tier 3 matching works correctly on restart.
         /// Deletes any existing session for newGuid first to avoid UNIQUE constraint violations.
         /// </summary>
-        public static async Task UpdateSessionDesktopGuidAsync(string oldGuid, string newGuid)
+        public static async Task UpdateSessionDesktopAsync(string oldGuid, string newGuid, string? name, int? index)
         {
             await _writeLock.WaitAsync();
             try
@@ -1221,16 +1222,19 @@ namespace JoJot.Services
                 delCmd.Parameters.AddWithValue("@new", newGuid);
                 await delCmd.ExecuteNonQueryAsync();
 
+                // R2-MOVE-01: Update guid + name + index (not just guid) so orphan detection works
                 var cmd = _connection!.CreateCommand();
-                cmd.CommandText = "UPDATE app_state SET desktop_guid = @new WHERE desktop_guid = @old;";
+                cmd.CommandText = "UPDATE app_state SET desktop_guid = @new, desktop_name = @name, desktop_index = @index WHERE desktop_guid = @old;";
                 cmd.Parameters.AddWithValue("@new", newGuid);
+                cmd.Parameters.AddWithValue("@name", (object?)name ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@index", (object?)index ?? DBNull.Value);
                 cmd.Parameters.AddWithValue("@old", oldGuid);
                 await cmd.ExecuteNonQueryAsync();
-                LogService.Info($"Updated session GUID: {oldGuid} -> {newGuid}");
+                LogService.Info($"Updated session desktop: {oldGuid} -> {newGuid} (name={name}, index={index})");
             }
             catch (Exception ex)
             {
-                LogService.Error($"UpdateSessionDesktopGuidAsync failed (old={oldGuid}, new={newGuid})", ex);
+                LogService.Error($"UpdateSessionDesktopAsync failed (old={oldGuid}, new={newGuid})", ex);
                 throw;
             }
             finally
