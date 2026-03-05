@@ -29,6 +29,7 @@ namespace JoJot
 
         // ─── Drag-to-reorder state ──────────────────────────────────────────────
         private bool _isDragging;
+        private bool _isCompletingDrag; // R2-DND-01: Re-entrancy guard for CompleteDrag/LostMouseCapture
 
         // ─── Tab list rebuild guard (BUG-01, BUG-02) ────────────────────────────
         private bool _isRebuildingTabList;
@@ -145,6 +146,9 @@ namespace JoJot
             // Handle drag cancellation when mouse capture is lost
             TabList.LostMouseCapture += (s, e) =>
             {
+                // R2-DND-01: Prevent re-entrant cleanup (Mouse.Capture(null) in CompleteDrag can re-fire)
+                if (_isCompletingDrag) return;
+
                 if (_isDragging)
                 {
                     RemoveDropIndicator();
@@ -495,6 +499,9 @@ namespace JoJot
             // R2-TAB-01/R2-TAB-02: Show/hide pin and close buttons on hover
             outerBorder.MouseEnter += (s, e) =>
             {
+                // R2-DND-01: Suppress hover effects during drag to prevent visual artifacts
+                if (_isDragging) return;
+
                 if (item != TabList.SelectedItem)
                     outerBorder.Background = GetBrush("c-hover-bg");
 
@@ -512,6 +519,9 @@ namespace JoJot
             };
             outerBorder.MouseLeave += (s, e) =>
             {
+                // R2-DND-01: Suppress hover effects during drag to prevent visual artifacts
+                if (_isDragging) return;
+
                 if (item != TabList.SelectedItem)
                     outerBorder.Background = System.Windows.Media.Brushes.Transparent;
 
@@ -1403,7 +1413,9 @@ namespace JoJot
                 // R2-DND-01: Make original item invisible AFTER snapshot (preserve space)
                 _dragItem.Opacity = 0;
 
-                Mouse.Capture(TabList);
+                // R2-DND-01: SubTree mode keeps events routing to children within TabList
+                // so TabItem_PreviewMouseMove and TabItem_PreviewMouseLeftButtonUp still fire
+                Mouse.Capture(TabList, CaptureMode.SubTree);
             }
 
             // R2-DND-01: Update adorner position during drag
@@ -1536,44 +1548,53 @@ namespace JoJot
         {
             if (!_isDragging) { ResetDragState(); return; }
 
-            Mouse.Capture(null);
-            RemoveDropIndicator();
-
-            // R2-DND-01: Remove ghost adorner
-            if (_dragAdorner != null)
+            // R2-DND-01: Re-entrancy guard — Mouse.Capture(null) can re-fire LostMouseCapture
+            _isCompletingDrag = true;
+            try
             {
-                var adornerLayer = System.Windows.Documents.AdornerLayer.GetAdornerLayer(TabList);
-                adornerLayer?.Remove(_dragAdorner);
-                _dragAdorner = null;
-            }
+                Mouse.Capture(null);
+                RemoveDropIndicator();
 
-            if (_dragItem != null) _dragItem.Opacity = 1.0;
-
-            if (_dragInsertIndex >= 0 && _dragTab != null)
-            {
-                int oldIndex = _tabs.IndexOf(_dragTab);
-                int newIndex = CalculateCollectionIndex(_dragInsertIndex);
-
-                if (oldIndex >= 0 && newIndex >= 0 && oldIndex != newIndex)
+                // R2-DND-01: Remove ghost adorner
+                if (_dragAdorner != null)
                 {
-                    // Adjust for removal shifting indexes
-                    if (newIndex > oldIndex) newIndex--;
-
-                    _tabs.Move(oldIndex, newIndex);
-
-                    // Reassign sort_order to match new collection order
-                    for (int i = 0; i < _tabs.Count; i++)
-                        _tabs[i].SortOrder = i;
-
-                    _ = DatabaseService.UpdateNoteSortOrdersAsync(
-                        _tabs.Select(t => (t.Id, t.SortOrder)));
-
-                    RebuildTabList();
-                    SelectTabByNote(_dragTab);
+                    var adornerLayer = System.Windows.Documents.AdornerLayer.GetAdornerLayer(TabList);
+                    adornerLayer?.Remove(_dragAdorner);
+                    _dragAdorner = null;
                 }
-            }
 
-            ResetDragState();
+                if (_dragItem != null) _dragItem.Opacity = 1.0;
+
+                if (_dragInsertIndex >= 0 && _dragTab != null)
+                {
+                    int oldIndex = _tabs.IndexOf(_dragTab);
+                    int newIndex = CalculateCollectionIndex(_dragInsertIndex);
+
+                    if (oldIndex >= 0 && newIndex >= 0 && oldIndex != newIndex)
+                    {
+                        // Adjust for removal shifting indexes
+                        if (newIndex > oldIndex) newIndex--;
+
+                        _tabs.Move(oldIndex, newIndex);
+
+                        // Reassign sort_order to match new collection order
+                        for (int i = 0; i < _tabs.Count; i++)
+                            _tabs[i].SortOrder = i;
+
+                        _ = DatabaseService.UpdateNoteSortOrdersAsync(
+                            _tabs.Select(t => (t.Id, t.SortOrder)));
+
+                        RebuildTabList();
+                        SelectTabByNote(_dragTab);
+                    }
+                }
+
+                ResetDragState();
+            }
+            finally
+            {
+                _isCompletingDrag = false;
+            }
         }
 
         /// <summary>
@@ -3597,24 +3618,25 @@ namespace JoJot
             var app = System.Windows.Application.Current as App;
             bool targetHasSession = app?.HasWindowForDesktop(toGuid) ?? false;
 
-            // R2-MOVE-01: Show source desktop name with index fallback
+            // R2-MOVE-01: Show source desktop name from live COM (not stale DB)
             string sourceLabel;
             try
             {
-                var sourceName = await DatabaseService.GetDesktopNameAsync(_desktopGuid);
-                if (!string.IsNullOrEmpty(sourceName))
+                // Use live COM data, not stale DB
+                var sourceDesktops = VirtualDesktopService.GetAllDesktops();
+                var sourceDesktop = sourceDesktops.FirstOrDefault(d =>
+                    d.Id.ToString().Equals(_desktopGuid, StringComparison.OrdinalIgnoreCase));
+                if (sourceDesktop != null && !string.IsNullOrEmpty(sourceDesktop.Name))
                 {
-                    sourceLabel = sourceName;
+                    sourceLabel = sourceDesktop.Name;
+                }
+                else if (sourceDesktop != null)
+                {
+                    sourceLabel = $"Desktop {sourceDesktop.Index + 1}";
                 }
                 else
                 {
-                    // COM returns empty for un-renamed desktops; generate "Desktop N" like Windows does
-                    var sourceDesktops = VirtualDesktopService.GetAllDesktops();
-                    var sourceDesktop = sourceDesktops.FirstOrDefault(d =>
-                        d.Id.ToString().Equals(_desktopGuid, StringComparison.OrdinalIgnoreCase));
-                    sourceLabel = sourceDesktop != null
-                        ? $"Desktop {sourceDesktop.Index + 1}"
-                        : "Unknown desktop";
+                    sourceLabel = "Unknown desktop";
                 }
             }
             catch
