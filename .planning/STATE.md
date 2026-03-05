@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Polish & Stability
 status: in_progress
-last_updated: "2026-03-05T11:48:30Z"
+last_updated: "2026-03-05T11:49:31Z"
 progress:
   total_phases: 5
   completed_phases: 4
   total_plans: 17
-  completed_plans: 16
+  completed_plans: 17
 ---
 
 # Project State
@@ -18,16 +18,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-03)
 
 **Core value:** Instant note capture tied to your virtual desktop context -- switch desktops, switch notes, zero friction.
-**Current focus:** v1.1 Polish & Stability -- Phase 15 gap closure plans 15-10/15-11
+**Current focus:** v1.1 Polish & Stability -- Phase 15 complete (all 11 plans executed)
 
 ## Current Position
 
 Phase: 15 of 15 (Review Round 2 -- UI/UX Bug Fixes & Polish)
-Plan: 10 of 11 (15-10 complete, 15-11 remaining)
-Status: Executing Phase 15 gap closure plans
-Last activity: 2026-03-05 -- Completed 15-10 (tab hover height fix, drag ghost empty-space tracking)
+Plan: 11 of 11 (Phase 15 complete -- all plans executed)
+Status: Phase 15 complete -- all gap closure plans executed including 15-11
+Last activity: 2026-03-05 -- Completed 15-11 (desktop name registry fallback, move overlay dismiss)
 
-Progress: [█████████░] 94% (16 of 17 plans complete across 5 phases; Phase 14 Installer remaining)
+Progress: [██████████] 100% (17 plans complete across 5 phases; Phase 14 Installer remaining)
 
 ## Performance Metrics
 
@@ -36,7 +36,7 @@ Progress: [█████████░] 94% (16 of 17 plans complete across 5
 - Average duration: ~15 min
 - Total execution time: ~7.5 hours
 
-**v1.1 plans:** 16 completed (1 in Phase 11, 2 in Phase 12, 2 in Phase 13, 0 in Phase 14, 11 in Phase 15 including 15-06/07/08/09/10 gap closure)
+**v1.1 plans:** 17 completed (1 in Phase 11, 2 in Phase 12, 2 in Phase 13, 0 in Phase 14, 12 in Phase 15 including 15-06/07/08/09/10/11 gap closure)
 
 *Updated after each plan completion*
 
@@ -106,6 +106,8 @@ Phase 15 decisions:
 - AllowDrop=True on ContentEditor TextBox with PreviewDrag handlers to suppress text drops
 - MinHeight=22 on row0 Grid prevents vertical jitter when hover icons toggle Visible/Collapsed
 - TabList-level PreviewMouseMove fallback handler keeps drag ghost tracking in empty space (idempotent with TabItem handler)
+- Registry fallback for desktop names via HKCU VirtualDesktops\Desktops\{GUID}\Name when COM GetName() returns empty
+- Move overlay auto-dismisses with HideDragOverlayAsync + DeletePendingMoveAsync when window returns to correct desktop
 
 ### Pending Todos
 
@@ -119,6 +121,7 @@ None.
 - Phase 15 gap closure: 15-09 added for UAT retest failures (file drop overlay, move overlay refresh)
 - Phase 15 gap closure: 15-10 added for UAT retest2 failures (tab hover height, drag ghost empty-space)
 - Phase 15 gap closure: 15-11 added for UAT retest2 failures (desktop name registry fallback, move overlay dismiss)
+- Phase 15 completed: All 11 plans (15-01 through 15-11) executed, all requirements resolved
 
 ### Blockers/Concerns
 
@@ -128,5 +131,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-05
-Stopped at: Completed 15-10-PLAN.md (tab hover height fix, drag ghost empty-space tracking)
-Next: Execute 15-11-PLAN.md (desktop name registry fallback, move overlay dismiss)
+Stopped at: Completed 15-11-PLAN.md (desktop name registry fallback, move overlay dismiss)
+Next: Phase 14 (Installer) or /gsd:verify-work 15

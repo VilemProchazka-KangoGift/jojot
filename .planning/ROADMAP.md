@@ -123,7 +123,7 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
 - [x] 15-08-PLAN.md — Gap closure: tab hover layout redesign per user spec, drag ghost CaptureMode fix (R2-TAB-01, R2-TAB-02, R2-TAB-03, R2-DND-01)
 - [x] 15-09-PLAN.md — Gap closure: file drop over editor TextBox, move overlay live COM names and refresh (R2-DROP-01, R2-MOVE-01)
 - [x] 15-10-PLAN.md — Gap closure: tab hover height fix, drag ghost empty-space tracking (R2-TAB-01, R2-DND-01)
-- [ ] 15-11-PLAN.md — Gap closure: desktop name registry fallback for 25H2, move overlay dismiss on return (R2-MOVE-01, R2-MOVE-02)
+- [x] 15-11-PLAN.md — Gap closure: desktop name registry fallback for 25H2, move overlay dismiss on return (R2-MOVE-01, R2-MOVE-02)
 
 ### Phase 14: Installer
 **Goal**: JoJot can be installed on a clean Windows machine via a standard installer package
@@ -157,4 +157,4 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
 | 12. Tab Panel UX | v1.1 | 2/2 | Complete | 2026-03-04 |
 | 13. Theme, Display & Menu Polish | v1.1 | 2/2 | Complete | 2026-03-04 |
 | 14. Installer | v1.1 | 0/? | Not started | - |
-| 15. Review Round 2 UI/UX | v1.1 | 10/11 | In progress | - |
+| 15. Review Round 2 UI/UX | v1.1 | 11/11 | Complete | 2026-03-05 |
