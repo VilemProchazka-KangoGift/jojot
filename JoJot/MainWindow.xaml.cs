@@ -3600,19 +3600,43 @@ namespace JoJot
         /// </summary>
         private async Task ShowDragOverlayAsync(string fromGuid, string toGuid, string toName)
         {
-            // DRAG-08: Ignore if overlay already active
-            if (_isDragOverlayActive) return;
-            _isDragOverlayActive = true;
+            // DRAG-08 / R2-MOVE-01: Context-aware re-entry handling
+            if (_isDragOverlayActive)
+            {
+                // Moved back to original desktop -- auto-dismiss
+                if (toGuid.Equals(_dragFromDesktopGuid, StringComparison.OrdinalIgnoreCase))
+                {
+                    await DatabaseService.DeletePendingMoveAsync(_desktopGuid);
+                    _isMisplaced = false;
+                    if (Title.Contains(" (misplaced)"))
+                        Title = Title.Replace(" (misplaced)", "");
+                    await HideDragOverlayAsync();
+                    return;
+                }
+                // Same target desktop -- no-op
+                if (toGuid.Equals(_dragToDesktopGuid, StringComparison.OrdinalIgnoreCase))
+                    return;
+                // Different target desktop -- update overlay in-place (fall through)
+                _dragToDesktopGuid = toGuid;
+                _dragToDesktopName = toName;
+                // Update pending_moves to new target
+                await DatabaseService.DeletePendingMoveAsync(_desktopGuid);
+                await DatabaseService.InsertPendingMoveAsync(_desktopGuid, _dragFromDesktopGuid!, toGuid);
+                // Fall through to update UI below
+            }
+            else
+            {
+                _isDragOverlayActive = true;
+                _dragFromDesktopGuid = fromGuid;
+                _dragToDesktopGuid = toGuid;
+                _dragToDesktopName = toName;
 
-            _dragFromDesktopGuid = fromGuid;
-            _dragToDesktopGuid = toGuid;
-            _dragToDesktopName = toName;
+                // Phase 10.1: Flush unsaved content before entering drag state (audit finding #2)
+                await _autosaveService.FlushAsync();
 
-            // Phase 10.1: Flush unsaved content before entering drag state (audit finding #2)
-            await _autosaveService.FlushAsync();
-
-            // DRAG-02: Write pending_moves row immediately
-            await DatabaseService.InsertPendingMoveAsync(_desktopGuid, fromGuid, toGuid);
+                // DRAG-02: Write pending_moves row immediately
+                await DatabaseService.InsertPendingMoveAsync(_desktopGuid, fromGuid, toGuid);
+            }
 
             // Determine if target desktop has an existing JoJot session
             var app = System.Windows.Application.Current as App;
@@ -3712,11 +3736,11 @@ namespace JoJot
             var app = System.Windows.Application.Current as App;
             app?.ReparentWindow(oldGuid, newGuid);
 
-            // Update window title to new desktop name
-            string name = _dragToDesktopName ?? "";
+            // Update window title to new desktop name (use fresh COM name, not stale _dragToDesktopName)
             var desktops = VirtualDesktopService.GetAllDesktops();
             var targetInfo = desktops.FirstOrDefault(d =>
                 d.Id.ToString().Equals(newGuid, StringComparison.OrdinalIgnoreCase));
+            string name = targetInfo?.Name ?? _dragToDesktopName ?? "";
             UpdateDesktopTitle(name, targetInfo?.Index);
 
             // R2-MOVE-01: Update app_state session with full metadata (guid + name + index)
@@ -3841,7 +3865,8 @@ namespace JoJot
         /// </summary>
         private async void OnWindowActivated_CheckMisplaced(object? sender, EventArgs e)
         {
-            if (_isDragOverlayActive) return; // Already showing overlay
+            // Don't skip when overlay active -- ShowDragOverlayAsync handles re-entry
+            // (auto-dismiss on return, update on third desktop, no-op on same)
             if (!VirtualDesktopService.IsAvailable) return;
 
             try
