@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Polish & Stability
 status: in_progress
-last_updated: "2026-03-05T09:16:34Z"
+last_updated: "2026-03-05T09:17:41Z"
 progress:
   total_phases: 5
   completed_phases: 4
   total_plans: 13
-  completed_plans: 12
+  completed_plans: 13
 ---
 
 # Project State
@@ -18,16 +18,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-03)
 
 **Core value:** Instant note capture tied to your virtual desktop context -- switch desktops, switch notes, zero friction.
-**Current focus:** v1.1 Polish & Stability -- Phase 15 gap closure plans executing
+**Current focus:** v1.1 Polish & Stability -- Phase 15 complete (all 7 plans executed)
 
 ## Current Position
 
 Phase: 15 of 15 (Review Round 2 -- UI/UX Bug Fixes & Polish)
-Plan: 6 of 7 (15-06 complete, 15-07 in progress)
-Status: Gap closure in progress -- 15-06 complete, 15-07 pending
-Last activity: 2026-03-05 -- Completed 15-06 (tab hover glyphs, close icon, drag ghost)
+Plan: 7 of 7 (Phase 15 complete -- all plans executed)
+Status: Phase 15 complete -- all 18 requirements resolved across 7 plans
+Last activity: 2026-03-05 -- Completed 15-07 (file drop overlay, desktop name fallback, session reparent)
 
-Progress: [█████████░] 92% (12 plans complete across 4 phases; Phase 14 Installer + 15-07 remaining)
+Progress: [█████████░] 93% (13 plans complete across 4 phases; Phase 14 Installer remaining)
 
 ## Performance Metrics
 
@@ -36,7 +36,7 @@ Progress: [█████████░] 92% (12 plans complete across 4 phase
 - Average duration: ~15 min
 - Total execution time: ~7.5 hours
 
-**v1.1 plans:** 12 completed (1 in Phase 11, 2 in Phase 12, 2 in Phase 13, 0 in Phase 14, 7 in Phase 15)
+**v1.1 plans:** 13 completed (1 in Phase 11, 2 in Phase 12, 2 in Phase 13, 0 in Phase 14, 7 in Phase 15 + 15-06 + 15-07 gap closure)
 
 *Updated after each plan completion*
 
@@ -93,6 +93,10 @@ Phase 15 decisions:
 - Pinned tab hover uses E77A unpin glyph (not multiplication sign), stays in Segoe Fluent Icons font
 - Close icon uses E711 ChromeClose at 10pt (not multiplication sign at 14pt)
 - Forward-then-backward scan in UpdateDropIndicator for separator ListBoxItems
+- Window Preview (tunneling) drag events for full-window file drop coverage over TextBox
+- Enter/leave counter pattern for reliable DragLeave (replaces position-based boundary check)
+- UpdateSessionDesktopAsync updates guid + name + index with safety DELETE for UNIQUE constraint
+- VirtualDesktopService.GetAllDesktops index lookup for "Desktop N" fallback names
 
 ### Pending Todos
 
@@ -102,6 +106,7 @@ None.
 
 - Phase 15 added: Review Round 2 -- UI/UX Bug Fixes & Polish (18 requirements from second manual review)
 - Phase 15 gap closure: 15-06 and 15-07 added for UAT test failures (tab hover, drag ghost, file drop, etc.)
+- Phase 15 completed: All 7 plans (15-01 through 15-07) executed, all 18 R2 requirements resolved
 
 ### Blockers/Concerns
 
@@ -111,5 +116,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-05
-Stopped at: Completed 15-06-PLAN.md (tab hover glyphs, close icon, drag ghost fix)
-Next: 15-07-PLAN.md (file drop overlay, desktop name fallback) or Phase 14 (Installer)
+Stopped at: Completed 15-07-PLAN.md (file drop overlay, desktop name fallback, session reparent)
+Next: Phase 14 (Installer) or /gsd:verify-work 15
