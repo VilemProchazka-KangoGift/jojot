@@ -112,7 +112,7 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
   8. Recover Sessions appears as a sidebar with desktop name context
   9. Empty notes are silently cleaned up on startup
   10. Move-to-desktop shows source name and hides "keep here" when target already has a window
-**Plans**: 9 plans (2 waves + gap closure)
+**Plans**: 11 plans (2 waves + gap closure)
 - [x] 15-01-PLAN.md — Critical bug fix, font fixes, startup cleanup (R2-BUG-01, R2-FONT-01-04, R2-STARTUP-01)
 - [x] 15-02-PLAN.md — Menu visibility, hotkey pause, autosave delay removal (R2-MENU-01, R2-PREF-01, R2-PREF-02)
 - [x] 15-03-PLAN.md — Tab button layout redesign (R2-TAB-01, R2-TAB-02, R2-TAB-03)
@@ -122,6 +122,8 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
 - [x] 15-07-PLAN.md — Gap closure: file drop overlay tunneling, desktop name fallback, session reparent metadata (R2-DROP-01, R2-MOVE-01, R2-MENU-01)
 - [x] 15-08-PLAN.md — Gap closure: tab hover layout redesign per user spec, drag ghost CaptureMode fix (R2-TAB-01, R2-TAB-02, R2-TAB-03, R2-DND-01)
 - [x] 15-09-PLAN.md — Gap closure: file drop over editor TextBox, move overlay live COM names and refresh (R2-DROP-01, R2-MOVE-01)
+- [ ] 15-10-PLAN.md — Gap closure: tab hover height fix, drag ghost empty-space tracking (R2-TAB-01, R2-DND-01)
+- [ ] 15-11-PLAN.md — Gap closure: desktop name registry fallback for 25H2, move overlay dismiss on return (R2-MOVE-01, R2-MOVE-02)
 
 ### Phase 14: Installer
 **Goal**: JoJot can be installed on a clean Windows machine via a standard installer package
@@ -155,4 +157,4 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
 | 12. Tab Panel UX | v1.1 | 2/2 | Complete | 2026-03-04 |
 | 13. Theme, Display & Menu Polish | v1.1 | 2/2 | Complete | 2026-03-04 |
 | 14. Installer | v1.1 | 0/? | Not started | - |
-| 15. Review Round 2 UI/UX | v1.1 | 9/9 | Complete | 2026-03-05 |
+| 15. Review Round 2 UI/UX | v1.1 | 9/11 | In progress | - |
