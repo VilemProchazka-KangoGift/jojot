@@ -164,6 +164,9 @@ namespace JoJot
                 }
             };
 
+            // R2-DND-01: Fallback handler updates drag ghost when mouse is in empty space between ListBoxItems
+            TabList.PreviewMouseMove += TabList_PreviewMouseMove_DragFallback;
+
             // Phase 7: Delete button hover — opacity 0.7 → 1.0 (TOOL-02)
             ToolbarDelete.MouseEnter += (s, e) => DeleteIconText.Opacity = 1.0;
             ToolbarDelete.MouseLeave += (s, e) => DeleteIconText.Opacity = 0.7;
@@ -321,6 +324,7 @@ namespace JoJot
             // UNPINNED: Col 0 = title (Star), Col 1 = pin icon (Auto, hidden), Col 2 = delete icon (Auto, hidden)
             // PINNED:   Col 0 = pin icon (Auto, always visible), Col 1 = title (Star), Col 2 = delete icon (Auto, hidden)
             var row0 = new Grid();
+            row0.MinHeight = 22; // R2-TAB-01: Prevent vertical jitter when hover icons toggle Visible/Collapsed
             row0.ColumnDefinitions.Add(new ColumnDefinition { Width = tab.Pinned ? GridLength.Auto : new GridLength(1, GridUnitType.Star) });
             row0.ColumnDefinitions.Add(new ColumnDefinition { Width = tab.Pinned ? new GridLength(1, GridUnitType.Star) : GridLength.Auto });
             row0.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
@@ -1421,6 +1425,16 @@ namespace JoJot
             // R2-DND-01: Update adorner position during drag
             _dragAdorner?.UpdatePosition(e.GetPosition(TabList));
             UpdateDropIndicator(current);
+        }
+
+        /// <summary>
+        /// Fallback handler: updates drag ghost position when mouse is in empty space
+        /// between ListBoxItems (where TabItem_PreviewMouseMove doesn't fire).
+        /// </summary>
+        private void TabList_PreviewMouseMove_DragFallback(object sender, MouseEventArgs e)
+        {
+            if (!_isDragging || _dragAdorner == null) return;
+            _dragAdorner.UpdatePosition(e.GetPosition(TabList));
         }
 
         private void TabItem_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
