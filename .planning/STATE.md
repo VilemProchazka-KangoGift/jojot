@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Polish & Stability
 status: in_progress
-last_updated: "2026-03-06T13:47:00Z"
+last_updated: "2026-03-06T13:51:00Z"
 progress:
   total_phases: 6
-  completed_phases: 5
+  completed_phases: 6
   total_plans: 21
-  completed_plans: 20
+  completed_plans: 21
 ---
 
 # Project State
@@ -18,16 +18,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-03)
 
 **Core value:** Instant note capture tied to your virtual desktop context -- switch desktops, switch notes, zero friction.
-**Current focus:** v1.1 Polish & Stability -- Phase 15.1 gap closure in progress
+**Current focus:** v1.1 Polish & Stability -- Phase 15.1 complete, Phase 14 (Installer) remaining
 
 ## Current Position
 
-Phase: 15.1 of 15.1 (Recovery Panel, Rename & Reorder Fixes) -- Gap closure
-Plan: 3 of 4 (15.1-03 complete -- LostMouseCapture drag guard)
-Status: Phase 15.1 gap closure in progress, 15.1-04 remaining
-Last activity: 2026-03-06 -- Completed 15.1-03 (LostMouseCapture guard prevents drag abort on capture transfer)
+Phase: 15.1 of 15.1 (Recovery Panel, Rename & Reorder Fixes) -- Complete
+Plan: 4 of 4 (15.1-04 complete -- recovery row padding and desktop name prominence)
+Status: Phase 15.1 complete, Phase 14 (Installer) remaining
+Last activity: 2026-03-06 -- Completed 15.1-04 (recovery row padding alignment and desktop name bold 14pt)
 
-Progress: [█████████░] 95% (20 plans complete across 6 phases; 15.1-04 + Phase 14 remaining)
+Progress: [██████████] 100% (21 plans complete across 6 phases; Phase 14 remaining)
 
 ## Performance Metrics
 
@@ -36,7 +36,7 @@ Progress: [█████████░] 95% (20 plans complete across 6 phase
 - Average duration: ~15 min
 - Total execution time: ~7.5 hours
 
-**v1.1 plans:** 20 completed (1 in Phase 11, 2 in Phase 12, 2 in Phase 13, 0 in Phase 14, 12 in Phase 15, 3 in Phase 15.1)
+**v1.1 plans:** 21 completed (1 in Phase 11, 2 in Phase 12, 2 in Phase 13, 0 in Phase 14, 12 in Phase 15, 4 in Phase 15.1)
 
 *Updated after each plan completion*
 
@@ -127,6 +127,11 @@ Phase 15.1-03 decisions:
 - _isTransferringCapture guard mirrors existing _isCompletingDrag pattern for consistency
 - Fix is surgical: only three changes (field, handler guard, try/finally wrapper) to one file
 
+Phase 15.1-04 decisions:
+- Container horizontal margin zeroed (ScrollViewer already provides 16px)
+- Desktop name upgraded from SemiBold 13pt to Bold 14pt for visual hierarchy
+- Divider horizontal margin zeroed for full-width alignment within ScrollViewer padding
+
 ### Pending Todos
 
 None.
@@ -143,6 +148,7 @@ None.
 - Phase 15.1 inserted after Phase 15: Recovery panel, tab rename, and reorder fixes (URGENT)
 - Phase 15.1 original scope completed: All 2 plans (15.1-01 through 15.1-02) executed, verification passed 14/14
 - Phase 15.1 gap closure: 15.1-03 and 15.1-04 added for UAT failures (drag opacity, recovery row layout)
+- Phase 15.1 gap closure complete: All 4 plans (15.1-01 through 15.1-04) executed
 
 ### Blockers/Concerns
 
@@ -152,5 +158,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-06
-Stopped at: Completed 15.1-03-PLAN.md (LostMouseCapture guard prevents drag abort on capture transfer)
-Next: 15.1-04 (recovery row padding and desktop name prominence), then Phase 14 (Installer)
+Stopped at: Completed 15.1-04-PLAN.md (recovery row padding alignment and desktop name prominence)
+Next: Phase 14 (Installer)
