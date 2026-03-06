@@ -38,6 +38,7 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
 - [x] **Phase 13: Theme, Display & Menu Polish** — Fix dark mode tab legibility, change font size display to percentages, verify window title shows desktop name, and fix hamburger menu dismiss behavior (completed 2026-03-04)
 - [ ] **Phase 14: Installer** — Produce a Windows MSI or MSIX installer for distribution
 - [x] **Phase 15: Review Round 2 — UI/UX Bug Fixes & Polish** — Fix note persistence bug, improve tab interactions, enhance drag-and-drop, refine preferences panel, redesign session recovery, and polish startup/move-to-desktop flows (completed 2026-03-05)
+- [ ] **Phase 15.1: Recovery Panel, Tab Rename & Reorder Fixes** — Make recovery items full-width with tab info, fix escape-to-cancel rename, replace drag ghost with fade-out (INSERTED)
 
 ## Phase Details
 
@@ -125,6 +126,21 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
 - [x] 15-10-PLAN.md — Gap closure: tab hover height fix, drag ghost empty-space tracking (R2-TAB-01, R2-DND-01)
 - [x] 15-11-PLAN.md — Gap closure: desktop name registry fallback for 25H2, move overlay dismiss on return (R2-MOVE-01, R2-MOVE-02)
 
+### Phase 15.1: Recovery Panel, Tab Rename & Reorder Fixes (INSERTED)
+**Goal**: Polish recovery panel layout, fix tab rename cancel behavior, and simplify drag-to-reorder visuals
+**Depends on**: Phase 15 (builds on existing recovery panel and drag implementation)
+**Requirements**:
+  - **R3-RECOVER-01**: Recovery panel items should be full-width (not card-based), showing tab names and text excerpts
+  - **R3-RENAME-01**: Pressing Escape during tab rename should cancel and restore the previous title
+  - **R3-REORDER-01**: Remove the drag ghost concept; instead fade out the dragged item in place
+**Success Criteria** (what must be TRUE):
+  1. Recovery panel shows full-width items with tab names and content excerpts (not cards)
+  2. Pressing Escape while renaming a tab restores the original title without saving
+  3. Dragging a tab fades it out in the list instead of showing a ghost overlay following the cursor
+**Plans**: 2 plans
+- [ ] 15.1-01-PLAN.md — Escape-to-cancel rename fix and drag ghost replacement with in-place fade (R3-RENAME-01, R3-REORDER-01)
+- [ ] 15.1-02-PLAN.md — Recovery panel redesign from cards to flat rows with tab excerpts (R3-RECOVER-01)
+
 ### Phase 14: Installer
 **Goal**: JoJot can be installed on a clean Windows machine via a standard installer package
 **Depends on**: Phase 13 (all fixes applied before packaging)
@@ -156,5 +172,6 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
 | 11. Critical Bug Fixes | v1.1 | Complete    | 2026-03-03 | 2026-03-03 |
 | 12. Tab Panel UX | v1.1 | 2/2 | Complete | 2026-03-04 |
 | 13. Theme, Display & Menu Polish | v1.1 | 2/2 | Complete | 2026-03-04 |
+| 15.1. Recovery, Rename, Reorder | v1.1 | 0/2 | Not started | - |
 | 14. Installer | v1.1 | 0/? | Not started | - |
 | 15. Review Round 2 UI/UX | v1.1 | 11/11 | Complete | 2026-03-05 |
