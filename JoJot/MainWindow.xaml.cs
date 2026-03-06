@@ -39,7 +39,6 @@ namespace JoJot
         private int _dragInsertIndex = -1;
         private int _dragOriginalListIndex = -1; // R2-DND-02: Track original position for indicator suppression
         private Border? _dropIndicatorBorder;
-        private DragAdorner? _dragAdorner; // R2-DND-01: Ghost adorner during tab drag
 
         // ─── Context menu state (Phase 8) ─────────────────────────────────────────
         private Popup? _activeContextMenu;
@@ -152,20 +151,10 @@ namespace JoJot
                 if (_isDragging)
                 {
                     RemoveDropIndicator();
-                    // R2-DND-01: Clean up ghost adorner
-                    if (_dragAdorner != null)
-                    {
-                        var adornerLayer = System.Windows.Documents.AdornerLayer.GetAdornerLayer(TabList);
-                        adornerLayer?.Remove(_dragAdorner);
-                        _dragAdorner = null;
-                    }
                     if (_dragItem != null) _dragItem.Opacity = 1.0;
                     CompleteDrag();
                 }
             };
-
-            // R2-DND-01: Fallback handler updates drag ghost when mouse is in empty space between ListBoxItems
-            TabList.PreviewMouseMove += TabList_PreviewMouseMove_DragFallback;
 
             // Phase 7: Delete button hover — opacity 0.7 → 1.0 (TOOL-02)
             ToolbarDelete.MouseEnter += (s, e) => DeleteIconText.Opacity = 1.0;
@@ -1413,37 +1402,15 @@ namespace JoJot
                 // R2-DND-01: Track original index for indicator suppression
                 _dragOriginalListIndex = TabList.Items.IndexOf(_dragItem);
 
-                // R2-DND-01: Create ghost adorner FIRST (while item is still visible for bitmap snapshot)
-                var adornerLayer = System.Windows.Documents.AdornerLayer.GetAdornerLayer(TabList);
-                if (adornerLayer != null)
-                {
-                    _dragAdorner = new DragAdorner(
-                        TabList, _dragItem,
-                        _dragItem.ActualWidth, _dragItem.ActualHeight);
-                    adornerLayer.Add(_dragAdorner);
-                }
-
-                // R2-DND-01: Make original item invisible AFTER snapshot (preserve space)
-                _dragItem.Opacity = 0;
+                // R3-REORDER-01: Fade original item to 50% opacity in-place (no ghost adorner)
+                _dragItem.Opacity = 0.5;
 
                 // R2-DND-01: SubTree mode keeps events routing to children within TabList
                 // so TabItem_PreviewMouseMove and TabItem_PreviewMouseLeftButtonUp still fire
                 Mouse.Capture(TabList, CaptureMode.SubTree);
             }
 
-            // R2-DND-01: Update adorner position during drag
-            _dragAdorner?.UpdatePosition(e.GetPosition(TabList));
             UpdateDropIndicator(current);
-        }
-
-        /// <summary>
-        /// Fallback handler: updates drag ghost position when mouse is in empty space
-        /// between ListBoxItems (where TabItem_PreviewMouseMove doesn't fire).
-        /// </summary>
-        private void TabList_PreviewMouseMove_DragFallback(object sender, MouseEventArgs e)
-        {
-            if (!_isDragging || _dragAdorner == null) return;
-            _dragAdorner.UpdatePosition(e.GetPosition(TabList));
         }
 
         private void TabItem_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
@@ -1578,14 +1545,7 @@ namespace JoJot
                 Mouse.Capture(null);
                 RemoveDropIndicator();
 
-                // R2-DND-01: Remove ghost adorner
-                if (_dragAdorner != null)
-                {
-                    var adornerLayer = System.Windows.Documents.AdornerLayer.GetAdornerLayer(TabList);
-                    adornerLayer?.Remove(_dragAdorner);
-                    _dragAdorner = null;
-                }
-
+                // Restore old item opacity (no-move path)
                 if (_dragItem != null) _dragItem.Opacity = 1.0;
 
                 if (_dragInsertIndex >= 0 && _dragTab != null)
@@ -1609,6 +1569,27 @@ namespace JoJot
 
                         RebuildTabList();
                         SelectTabByNote(_dragTab);
+
+                        // R3-REORDER-01: Fade-in the moved tab at its new position (150ms)
+                        if (_dragTab != null)
+                        {
+                            foreach (var obj in TabList.Items)
+                            {
+                                if (obj is ListBoxItem item && item.Tag == _dragTab)
+                                {
+                                    item.Opacity = 0.5;
+                                    var fadeIn = new DoubleAnimation
+                                    {
+                                        From = 0.5, To = 1.0,
+                                        Duration = TimeSpan.FromMilliseconds(150),
+                                        EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+                                    };
+                                    fadeIn.Completed += (_, _) => item.BeginAnimation(UIElement.OpacityProperty, null);
+                                    item.BeginAnimation(UIElement.OpacityProperty, fadeIn);
+                                    break;
+                                }
+                            }
+                        }
                     }
                 }
 
@@ -1649,14 +1630,6 @@ namespace JoJot
 
         private void ResetDragState()
         {
-            // R2-DND-01: Clean up adorner if still present
-            if (_dragAdorner != null)
-            {
-                var adornerLayer = System.Windows.Documents.AdornerLayer.GetAdornerLayer(TabList);
-                adornerLayer?.Remove(_dragAdorner);
-                _dragAdorner = null;
-            }
-
             _isDragging = false;
             if (_dragItem != null) _dragItem.Opacity = 1.0;
             _dragItem = null;
@@ -3958,50 +3931,6 @@ namespace JoJot
             }
         }
 
-        // ─── R2-DND-01: Drag Ghost Adorner ───────────────────────────────────────
-
-        /// <summary>
-        /// Adorner that renders a semi-transparent snapshot of a tab item during drag.
-        /// Follows the cursor position with a small offset.
-        /// </summary>
-        private class DragAdorner : System.Windows.Documents.Adorner
-        {
-            private readonly ImageBrush _brush;
-            private readonly double _width;
-            private readonly double _height;
-            private System.Windows.Point _offset;
-
-            public DragAdorner(UIElement adornedElement, UIElement dragSource, double width, double height)
-                : base(adornedElement)
-            {
-                // R2-DND-01: Snapshot the element as a bitmap before it becomes invisible
-                int pixelWidth = Math.Max(1, (int)Math.Ceiling(width));
-                int pixelHeight = Math.Max(1, (int)Math.Ceiling(height));
-                var dpi = System.Windows.Media.VisualTreeHelper.GetDpi(dragSource);
-                var rtb = new System.Windows.Media.Imaging.RenderTargetBitmap(
-                    (int)(pixelWidth * dpi.DpiScaleX),
-                    (int)(pixelHeight * dpi.DpiScaleY),
-                    dpi.PixelsPerInchX, dpi.PixelsPerInchY,
-                    System.Windows.Media.PixelFormats.Pbgra32);
-                rtb.Render(dragSource);
-                rtb.Freeze();
-                _brush = new ImageBrush(rtb) { Opacity = 0.5 };
-                _width = width;
-                _height = height;
-                IsHitTestVisible = false;
-            }
-
-            public void UpdatePosition(System.Windows.Point position)
-            {
-                _offset = new System.Windows.Point(position.X + 8, position.Y - _height / 2);
-                InvalidateVisual();
-            }
-
-            protected override void OnRender(DrawingContext dc)
-            {
-                dc.DrawRectangle(_brush, null, new Rect(_offset, new System.Windows.Size(_width, _height)));
-            }
-        }
     }
 }
 
