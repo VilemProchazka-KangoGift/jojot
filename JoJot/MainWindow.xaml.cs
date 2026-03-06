@@ -30,6 +30,7 @@ namespace JoJot
         // ─── Drag-to-reorder state ──────────────────────────────────────────────
         private bool _isDragging;
         private bool _isCompletingDrag; // R2-DND-01: Re-entrancy guard for CompleteDrag/LostMouseCapture
+        private bool _isTransferringCapture; // R3-REORDER-01: Guard for Mouse.Capture transfer during drag start
 
         // ─── Tab list rebuild guard (BUG-01, BUG-02) ────────────────────────────
         private bool _isRebuildingTabList;
@@ -146,7 +147,8 @@ namespace JoJot
             TabList.LostMouseCapture += (s, e) =>
             {
                 // R2-DND-01: Prevent re-entrant cleanup (Mouse.Capture(null) in CompleteDrag can re-fire)
-                if (_isCompletingDrag) return;
+                // R3-REORDER-01: Skip when capture is being intentionally transferred to TabList
+                if (_isCompletingDrag || _isTransferringCapture) return;
 
                 if (_isDragging)
                 {
@@ -1407,7 +1409,16 @@ namespace JoJot
 
                 // R2-DND-01: SubTree mode keeps events routing to children within TabList
                 // so TabItem_PreviewMouseMove and TabItem_PreviewMouseLeftButtonUp still fire
-                Mouse.Capture(TabList, CaptureMode.SubTree);
+                // R3-REORDER-01: Guard prevents LostMouseCapture from aborting drag during transfer
+                _isTransferringCapture = true;
+                try
+                {
+                    Mouse.Capture(TabList, CaptureMode.SubTree);
+                }
+                finally
+                {
+                    _isTransferringCapture = false;
+                }
             }
 
             UpdateDropIndicator(current);
