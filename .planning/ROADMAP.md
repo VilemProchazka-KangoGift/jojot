@@ -176,6 +176,6 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
 | 11. Critical Bug Fixes | v1.1 | Complete    | 2026-03-03 | 2026-03-03 |
 | 12. Tab Panel UX | v1.1 | 2/2 | Complete | 2026-03-04 |
 | 13. Theme, Display & Menu Polish | v1.1 | 2/2 | Complete | 2026-03-04 |
-| 15.1. Recovery, Rename, Reorder | v1.1 | 6/6 | Complete | 2026-03-06 |
+| 15.1. Recovery, Rename, Reorder | v1.1 | Complete    | 2026-03-06 | 2026-03-06 |
 | 14. Installer | v1.1 | 0/? | Not started | - |
 | 15. Review Round 2 UI/UX | v1.1 | 11/11 | Complete | 2026-03-05 |
