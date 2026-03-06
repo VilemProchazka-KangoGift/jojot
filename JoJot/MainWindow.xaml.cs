@@ -2451,11 +2451,15 @@ namespace JoJot
             var orphanInfos = await DatabaseService.GetOrphanedSessionInfoAsync(orphanGuids);
             RecoverySessionList.Children.Clear();
 
-            foreach (var (guid, desktopName, tabCount, lastUpdated) in orphanInfos)
+            var orphanList = orphanInfos.ToList();
+            for (int i = 0; i < orphanList.Count; i++)
             {
-                // R2-RECOVER-01: Get tab name previews
-                var tabNames = await DatabaseService.GetNoteNamesForDesktopAsync(guid, 5);
-                RecoverySessionList.Children.Add(CreateRecoveryCard(guid, desktopName, tabCount, lastUpdated, tabNames));
+                var (guid, desktopName, tabCount, lastUpdated) = orphanList[i];
+                // R3-RECOVER-01: Get tab previews (name + content excerpt)
+                var tabPreviews = await DatabaseService.GetNotePreviewsForDesktopAsync(guid, 5);
+                var totalCount = await DatabaseService.GetNoteCountForDesktopAsync(guid);
+                bool isLast = (i == orphanList.Count - 1);
+                RecoverySessionList.Children.Add(CreateRecoveryRow(guid, desktopName, tabCount, lastUpdated, tabPreviews, totalCount, isLast));
             }
 
             if (RecoverySessionList.Children.Count == 0) return;
@@ -2499,24 +2503,19 @@ namespace JoJot
         }
 
         /// <summary>
-        /// Creates a card for an orphaned session in the recovery panel (ORPH-02).
-        /// Shows desktop name, tab count, last updated, and Adopt/Open/Delete buttons.
+        /// R3-RECOVER-01: Creates a flat row for an orphaned session in the recovery panel.
+        /// Shows desktop name (bold), tab count + date (muted), individual tab previews
+        /// (name + excerpt), "+N more" if excess, and Adopt/Delete buttons.
         /// </summary>
-        private Border CreateRecoveryCard(string guid, string? desktopName, int tabCount, DateTime lastUpdated, List<string> tabNames)
+        private FrameworkElement CreateRecoveryRow(string guid, string? desktopName, int tabCount,
+            DateTime lastUpdated, List<(string? Name, string Excerpt)> tabPreviews, int totalNoteCount, bool isLast)
         {
-            var card = new Border
+            var container = new StackPanel
             {
-                Margin = new Thickness(0, 4, 0, 4),
-                Padding = new Thickness(10, 8, 10, 8),
-                CornerRadius = new CornerRadius(6),
-                BorderThickness = new Thickness(1)
+                Margin = new Thickness(12, 10, 12, 10)
             };
-            card.SetResourceReference(Border.BorderBrushProperty, "c-border");
-            card.SetResourceReference(Border.BackgroundProperty, "c-win-bg");
 
-            var stack = new StackPanel();
-
-            // Desktop name
+            // Desktop name (bold, primary color)
             var nameBlock = new TextBlock
             {
                 Text = desktopName ?? "Unknown desktop",
@@ -2525,44 +2524,85 @@ namespace JoJot
                 TextTrimming = TextTrimming.CharacterEllipsis
             };
             nameBlock.SetResourceReference(TextBlock.ForegroundProperty, "c-text-primary");
-            stack.Children.Add(nameBlock);
+            container.Children.Add(nameBlock);
 
-            // Tab count and last-updated row
-            var infoPanel = new StackPanel
+            // Metadata row (tab count + date, muted)
+            var metaBlock = new TextBlock
             {
-                Orientation = Orientation.Horizontal,
-                Margin = new Thickness(0, 2, 0, 4)
+                Text = $"{tabCount} tab{(tabCount == 1 ? "" : "s")} \u00B7 {lastUpdated:MMM d, yyyy}",
+                FontSize = 11,
+                Margin = new Thickness(0, 2, 0, 6)
             };
-            var tabCountBlock = new TextBlock { Text = $"{tabCount} tab{(tabCount == 1 ? "" : "s")}", FontSize = 11 };
-            tabCountBlock.SetResourceReference(TextBlock.ForegroundProperty, "c-text-muted");
-            infoPanel.Children.Add(tabCountBlock);
-            var dotSep = new TextBlock { Text = " \u00B7 ", FontSize = 11 };
-            dotSep.SetResourceReference(TextBlock.ForegroundProperty, "c-text-muted");
-            infoPanel.Children.Add(dotSep);
-            var dateBlock = new TextBlock { Text = lastUpdated.ToString("MMM d, yyyy"), FontSize = 11 };
-            dateBlock.SetResourceReference(TextBlock.ForegroundProperty, "c-text-muted");
-            infoPanel.Children.Add(dateBlock);
-            stack.Children.Add(infoPanel);
+            metaBlock.SetResourceReference(TextBlock.ForegroundProperty, "c-text-muted");
+            container.Children.Add(metaBlock);
 
-            // R2-RECOVER-01: Tab name previews
-            if (tabNames.Count > 0)
+            // Tab preview lines (one per tab, indented)
+            foreach (var (name, excerpt) in tabPreviews)
             {
-                var previewBlock = new TextBlock
+                string displayExcerpt = excerpt.Length > 50 ? excerpt[..50] + "..." : excerpt;
+                // Replace newlines with spaces for single-line display
+                displayExcerpt = displayExcerpt.Replace('\n', ' ').Replace('\r', ' ');
+
+                var lineBlock = new TextBlock
                 {
-                    Text = string.Join(", ", tabNames),
                     FontSize = 11,
-                    FontStyle = FontStyles.Italic,
                     TextTrimming = TextTrimming.CharacterEllipsis,
-                    Margin = new Thickness(0, 0, 0, 6)
+                    Margin = new Thickness(8, 1, 0, 1)
                 };
-                previewBlock.SetResourceReference(TextBlock.ForegroundProperty, "c-text-muted");
-                stack.Children.Add(previewBlock);
+
+                if (name != null)
+                {
+                    lineBlock.Inlines.Add(new System.Windows.Documents.Run(name)
+                    {
+                        FontWeight = FontWeights.Normal
+                    });
+                    if (!string.IsNullOrEmpty(displayExcerpt))
+                    {
+                        var dashRun = new System.Windows.Documents.Run($" \u2014 {displayExcerpt}")
+                        {
+                            FontStyle = FontStyles.Italic
+                        };
+                        dashRun.SetResourceReference(System.Windows.Documents.Run.ForegroundProperty, "c-text-muted");
+                        lineBlock.Inlines.Add(dashRun);
+                    }
+                }
+                else if (!string.IsNullOrEmpty(displayExcerpt))
+                {
+                    lineBlock.Text = displayExcerpt;
+                }
+                else
+                {
+                    lineBlock.Text = "Empty note";
+                    lineBlock.FontStyle = FontStyles.Italic;
+                }
+
+                lineBlock.SetResourceReference(TextBlock.ForegroundProperty, "c-text-primary");
+                container.Children.Add(lineBlock);
             }
 
-            // Action buttons
-            var buttonPanel = new StackPanel { Orientation = Orientation.Horizontal };
+            // "+N more" line (if totalNoteCount > tabPreviews.Count)
+            int remaining = totalNoteCount - tabPreviews.Count;
+            if (remaining > 0)
+            {
+                var moreBlock = new TextBlock
+                {
+                    Text = $"+{remaining} more",
+                    FontSize = 11,
+                    FontStyle = FontStyles.Italic,
+                    Margin = new Thickness(8, 1, 0, 1)
+                };
+                moreBlock.SetResourceReference(TextBlock.ForegroundProperty, "c-text-muted");
+                container.Children.Add(moreBlock);
+            }
 
-            Button CreateCardButton(string text, bool isDestructive = false)
+            // Button row (Adopt left, Delete right)
+            var buttonPanel = new DockPanel
+            {
+                Margin = new Thickness(0, 8, 0, 0),
+                LastChildFill = false
+            };
+
+            Button CreateRowButton(string text, bool isDestructive = false)
             {
                 var btn = new Button
                 {
@@ -2570,7 +2610,6 @@ namespace JoJot
                     FontSize = 11,
                     MinWidth = 45,
                     Height = 24,
-                    Margin = new Thickness(0, 0, 6, 0),
                     Cursor = Cursors.Hand,
                     Padding = new Thickness(8, 2, 8, 2),
                     BorderThickness = new Thickness(1)
@@ -2591,7 +2630,8 @@ namespace JoJot
             }
 
             // Adopt — merge tabs into current desktop
-            var adoptBtn = CreateCardButton("Adopt");
+            var adoptBtn = CreateRowButton("Adopt");
+            DockPanel.SetDock(adoptBtn, Dock.Left);
             adoptBtn.Click += async (s, e) =>
             {
                 await DatabaseService.MigrateTabsAsync(guid, _desktopGuid);
@@ -2601,10 +2641,9 @@ namespace JoJot
             };
             buttonPanel.Children.Add(adoptBtn);
 
-            // R2-RECOVER-01: Open button removed — only Adopt and Delete
-
             // Delete — permanently delete session and all its notes
-            var deleteBtn = CreateCardButton("Delete", isDestructive: true);
+            var deleteBtn = CreateRowButton("Delete", isDestructive: true);
+            DockPanel.SetDock(deleteBtn, Dock.Right);
             deleteBtn.Click += async (s, e) =>
             {
                 await DatabaseService.DeleteSessionAndNotesAsync(guid);
@@ -2613,9 +2652,24 @@ namespace JoJot
             };
             buttonPanel.Children.Add(deleteBtn);
 
-            stack.Children.Add(buttonPanel);
-            card.Child = stack;
-            return card;
+            container.Children.Add(buttonPanel);
+
+            // Wrap row + optional divider in outer container
+            if (!isLast)
+            {
+                var wrapper = new StackPanel();
+                wrapper.Children.Add(container);
+                var divider = new Border
+                {
+                    Height = 1,
+                    Margin = new Thickness(12, 0, 12, 0)
+                };
+                divider.SetResourceReference(Border.BackgroundProperty, "c-border");
+                wrapper.Children.Add(divider);
+                return wrapper;
+            }
+
+            return container;
         }
 
         /// <summary>
@@ -2643,14 +2697,18 @@ namespace JoJot
                 return;
             }
 
-            // Refresh cards for remaining orphans
+            // Refresh rows for remaining orphans
             var orphanInfos = await DatabaseService.GetOrphanedSessionInfoAsync(
                 VirtualDesktopService.OrphanedSessionGuids);
             RecoverySessionList.Children.Clear();
-            foreach (var (guid, name, tabCount, lastUpdated) in orphanInfos)
+            var orphanList = orphanInfos.ToList();
+            for (int i = 0; i < orphanList.Count; i++)
             {
-                var tabNames = await DatabaseService.GetNoteNamesForDesktopAsync(guid, 5);
-                RecoverySessionList.Children.Add(CreateRecoveryCard(guid, name, tabCount, lastUpdated, tabNames));
+                var (guid, name, tabCount, lastUpdated) = orphanList[i];
+                var tabPreviews = await DatabaseService.GetNotePreviewsForDesktopAsync(guid, 5);
+                var totalCount = await DatabaseService.GetNoteCountForDesktopAsync(guid);
+                bool isLast = (i == orphanList.Count - 1);
+                RecoverySessionList.Children.Add(CreateRecoveryRow(guid, name, tabCount, lastUpdated, tabPreviews, totalCount, isLast));
             }
 
             // Reload tabs in case Adopt added new tabs to this desktop
