@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Polish & Stability
 status: in_progress
-last_updated: "2026-03-05T11:49:31Z"
+last_updated: "2026-03-06T11:57:34Z"
 progress:
-  total_phases: 5
+  total_phases: 6
   completed_phases: 4
-  total_plans: 17
-  completed_plans: 17
+  total_plans: 19
+  completed_plans: 18
 ---
 
 # Project State
@@ -18,16 +18,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-03)
 
 **Core value:** Instant note capture tied to your virtual desktop context -- switch desktops, switch notes, zero friction.
-**Current focus:** v1.1 Polish & Stability -- Phase 15 complete (all 11 plans executed)
+**Current focus:** v1.1 Polish & Stability -- Phase 15.1 in progress (recovery panel, rename, reorder fixes)
 
 ## Current Position
 
-Phase: 15 of 15 (Review Round 2 -- UI/UX Bug Fixes & Polish)
-Plan: 11 of 11 (Phase 15 complete -- all plans executed)
-Status: Phase 15 complete -- all gap closure plans executed including 15-11
-Last activity: 2026-03-05 -- Completed 15-11 (desktop name registry fallback, move overlay dismiss)
+Phase: 15.1 of 15.1 (Recovery Panel, Rename & Reorder Fixes)
+Plan: 1 of 2 (15.1-01 complete -- rename escape fix + in-place fade drag)
+Status: Plan 15.1-01 complete, 15.1-02 pending
+Last activity: 2026-03-06 -- Completed 15.1-01 (rename escape fix, drag ghost replaced with in-place fade)
 
-Progress: [██████████] 100% (17 plans complete across 5 phases; Phase 14 Installer remaining)
+Progress: [█████████░] 95% (18 plans complete across 6 phases; 15.1-02 + Phase 14 remaining)
 
 ## Performance Metrics
 
@@ -36,7 +36,7 @@ Progress: [██████████] 100% (17 plans complete across 5 phas
 - Average duration: ~15 min
 - Total execution time: ~7.5 hours
 
-**v1.1 plans:** 17 completed (1 in Phase 11, 2 in Phase 12, 2 in Phase 13, 0 in Phase 14, 12 in Phase 15 including 15-06/07/08/09/10/11 gap closure)
+**v1.1 plans:** 18 completed (1 in Phase 11, 2 in Phase 12, 2 in Phase 13, 0 in Phase 14, 12 in Phase 15, 1 in Phase 15.1)
 
 *Updated after each plan completion*
 
@@ -109,6 +109,13 @@ Phase 15 decisions:
 - Registry fallback for desktop names via HKCU VirtualDesktops\Desktops\{GUID}\Name when COM GetName() returns empty
 - Move overlay auto-dismisses with HideDragOverlayAsync + DeletePendingMoveAsync when window returns to correct desktop
 
+Phase 15.1-01 decisions:
+- Rename Escape check in Window_PreviewKeyDown placed after _isDragOverlayActive but before ConfirmationOverlay
+- DragAdorner class and TabList_PreviewMouseMove_DragFallback fully removed (in-place fade replaces ghost)
+- Drag start sets _dragItem.Opacity = 0.5 (was 0 + ghost adorner)
+- Drop fade-in animation clears binding on completion via BeginAnimation(null)
+- _isCompletingDrag re-entrancy guard retained (still needed for Mouse.Capture(null) re-fire)
+
 ### Pending Todos
 
 None.
@@ -122,6 +129,7 @@ None.
 - Phase 15 gap closure: 15-10 added for UAT retest2 failures (tab hover height, drag ghost empty-space)
 - Phase 15 gap closure: 15-11 added for UAT retest2 failures (desktop name registry fallback, move overlay dismiss)
 - Phase 15 completed: All 11 plans (15-01 through 15-11) executed, all requirements resolved
+- Phase 15.1 inserted after Phase 15: Recovery panel, tab rename, and reorder fixes (URGENT)
 
 ### Blockers/Concerns
 
@@ -130,6 +138,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-05
-Stopped at: Completed 15-11-PLAN.md (desktop name registry fallback, move overlay dismiss)
-Next: Phase 14 (Installer) or /gsd:verify-work 15
+Last session: 2026-03-06
+Stopped at: Completed 15.1-01-PLAN.md (rename escape fix, drag ghost replaced with in-place fade)
+Next: 15.1-02-PLAN.md (recovery panel fixes) then Phase 14 (Installer)
