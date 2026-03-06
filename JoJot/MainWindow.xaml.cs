@@ -353,6 +353,7 @@ namespace JoJot
 
                 pinBtn.MouseEnter += (s, e) =>
                 {
+                    if (_isDragging) return;
                     // R2-TAB-01: Unpin glyph (crossed-out pin) instead of multiplication sign
                     pinBtnIcon.Text = "\uE77A"; // Unpin glyph (Segoe Fluent Icons)
                     // Keep existing FontFamily and FontSize — do NOT change
@@ -361,6 +362,7 @@ namespace JoJot
                 };
                 pinBtn.MouseLeave += (s, e) =>
                 {
+                    if (_isDragging) return;
                     pinBtnIcon.Text = "\uE718"; // Restore pin icon
                     pinBtnIcon.SetResourceReference(TextBlock.ForegroundProperty, "c-text-muted");
                 };
@@ -374,10 +376,12 @@ namespace JoJot
                 // R2-TAB-02: Hover color change for unpinned pin button
                 pinBtn.MouseEnter += (s, e) =>
                 {
+                    if (_isDragging) return;
                     pinBtnIcon.Foreground = (System.Windows.Media.SolidColorBrush)FindResource("c-accent");
                 };
                 pinBtn.MouseLeave += (s, e) =>
                 {
+                    if (_isDragging) return;
                     pinBtnIcon.SetResourceReference(TextBlock.ForegroundProperty, "c-text-muted");
                 };
             }
@@ -452,10 +456,16 @@ namespace JoJot
 
             // R2-TAB-03: Close button hover color (red) for both pinned and unpinned
             closeBtn.MouseEnter += (s, e) =>
+            {
+                if (_isDragging) return;
                 closeIcon.Foreground = new System.Windows.Media.SolidColorBrush(
                     System.Windows.Media.Color.FromRgb(0xe7, 0x4c, 0x3c));
+            };
             closeBtn.MouseLeave += (s, e) =>
+            {
+                if (_isDragging) return;
                 closeIcon.SetResourceReference(TextBlock.ForegroundProperty, "c-text-muted");
+            };
 
             closeBtn.MouseLeftButtonDown += (s, e) =>
             {
@@ -1588,7 +1598,6 @@ namespace JoJot
                             {
                                 if (obj is ListBoxItem item && item.Tag == _dragTab)
                                 {
-                                    item.Opacity = 0.5;
                                     var fadeIn = new DoubleAnimation
                                     {
                                         From = 0.5, To = 1.0,
@@ -2525,6 +2534,14 @@ namespace JoJot
             {
                 Margin = new Thickness(0, 10, 0, 10)
             };
+
+            // Registry fallback for orphaned desktop names not stored in DB
+            if (string.IsNullOrEmpty(desktopName) && Guid.TryParse(guid, out var desktopGuid))
+            {
+                var regName = Interop.VirtualDesktopInterop.GetDesktopNameFromRegistry(desktopGuid);
+                if (!string.IsNullOrEmpty(regName))
+                    desktopName = regName;
+            }
 
             // Desktop name (bold, primary color)
             var nameBlock = new TextBlock
