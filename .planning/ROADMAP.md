@@ -38,7 +38,7 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
 - [x] **Phase 13: Theme, Display & Menu Polish** — Fix dark mode tab legibility, change font size display to percentages, verify window title shows desktop name, and fix hamburger menu dismiss behavior (completed 2026-03-04)
 - [ ] **Phase 14: Installer** — Produce a Windows MSI or MSIX installer for distribution
 - [x] **Phase 15: Review Round 2 — UI/UX Bug Fixes & Polish** — Fix note persistence bug, improve tab interactions, enhance drag-and-drop, refine preferences panel, redesign session recovery, and polish startup/move-to-desktop flows (completed 2026-03-05)
-- [ ] **Phase 15.1: Recovery Panel, Tab Rename & Reorder Fixes** — Make recovery items full-width with tab info, fix escape-to-cancel rename, replace drag ghost with fade-out (INSERTED)
+- [x] **Phase 15.1: Recovery Panel, Tab Rename & Reorder Fixes** — Make recovery items full-width with tab info, fix escape-to-cancel rename, replace drag ghost with fade-out (completed 2026-03-06)
 
 ## Phase Details
 

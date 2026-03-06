@@ -137,6 +137,7 @@ None.
 - Phase 15 gap closure: 15-11 added for UAT retest2 failures (desktop name registry fallback, move overlay dismiss)
 - Phase 15 completed: All 11 plans (15-01 through 15-11) executed, all requirements resolved
 - Phase 15.1 inserted after Phase 15: Recovery panel, tab rename, and reorder fixes (URGENT)
+- Phase 15.1 completed: All 2 plans (15.1-01 through 15.1-02) executed, verification passed 14/14
 
 ### Blockers/Concerns
 
