@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Polish & Stability
 status: in_progress
-last_updated: "2026-03-06T12:03:34Z"
+last_updated: "2026-03-06T13:47:00Z"
 progress:
   total_phases: 6
   completed_phases: 5
-  total_plans: 19
-  completed_plans: 19
+  total_plans: 21
+  completed_plans: 20
 ---
 
 # Project State
@@ -18,16 +18,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-03)
 
 **Core value:** Instant note capture tied to your virtual desktop context -- switch desktops, switch notes, zero friction.
-**Current focus:** v1.1 Polish & Stability -- Phase 15.1 complete, Phase 14 (Installer) remaining
+**Current focus:** v1.1 Polish & Stability -- Phase 15.1 gap closure in progress
 
 ## Current Position
 
-Phase: 15.1 of 15.1 (Recovery Panel, Rename & Reorder Fixes) -- COMPLETE
-Plan: 2 of 2 (15.1-02 complete -- recovery panel flat row redesign)
-Status: Phase 15.1 complete, Phase 14 (Installer) pending
-Last activity: 2026-03-06 -- Completed 15.1-02 (recovery panel redesigned from cards to flat rows with tab previews)
+Phase: 15.1 of 15.1 (Recovery Panel, Rename & Reorder Fixes) -- Gap closure
+Plan: 3 of 4 (15.1-03 complete -- LostMouseCapture drag guard)
+Status: Phase 15.1 gap closure in progress, 15.1-04 remaining
+Last activity: 2026-03-06 -- Completed 15.1-03 (LostMouseCapture guard prevents drag abort on capture transfer)
 
-Progress: [██████████] 100% (19 plans complete across 6 phases; Phase 14 remaining)
+Progress: [█████████░] 95% (20 plans complete across 6 phases; 15.1-04 + Phase 14 remaining)
 
 ## Performance Metrics
 
@@ -36,7 +36,7 @@ Progress: [██████████] 100% (19 plans complete across 6 phas
 - Average duration: ~15 min
 - Total execution time: ~7.5 hours
 
-**v1.1 plans:** 19 completed (1 in Phase 11, 2 in Phase 12, 2 in Phase 13, 0 in Phase 14, 12 in Phase 15, 2 in Phase 15.1)
+**v1.1 plans:** 20 completed (1 in Phase 11, 2 in Phase 12, 2 in Phase 13, 0 in Phase 14, 12 in Phase 15, 3 in Phase 15.1)
 
 *Updated after each plan completion*
 
@@ -123,6 +123,10 @@ Phase 15.1-02 decisions:
 - DockPanel with LastChildFill=false for Adopt (left) / Delete (right) button alignment
 - Tab name shown with normal weight, excerpt as italic em-dash suffix using Inline Runs
 
+Phase 15.1-03 decisions:
+- _isTransferringCapture guard mirrors existing _isCompletingDrag pattern for consistency
+- Fix is surgical: only three changes (field, handler guard, try/finally wrapper) to one file
+
 ### Pending Todos
 
 None.
@@ -137,7 +141,8 @@ None.
 - Phase 15 gap closure: 15-11 added for UAT retest2 failures (desktop name registry fallback, move overlay dismiss)
 - Phase 15 completed: All 11 plans (15-01 through 15-11) executed, all requirements resolved
 - Phase 15.1 inserted after Phase 15: Recovery panel, tab rename, and reorder fixes (URGENT)
-- Phase 15.1 completed: All 2 plans (15.1-01 through 15.1-02) executed, verification passed 14/14
+- Phase 15.1 original scope completed: All 2 plans (15.1-01 through 15.1-02) executed, verification passed 14/14
+- Phase 15.1 gap closure: 15.1-03 and 15.1-04 added for UAT failures (drag opacity, recovery row layout)
 
 ### Blockers/Concerns
 
@@ -147,5 +152,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-06
-Stopped at: Completed 15.1-02-PLAN.md (recovery panel redesigned from cards to flat rows with tab previews)
-Next: Phase 14 (Installer)
+Stopped at: Completed 15.1-03-PLAN.md (LostMouseCapture guard prevents drag abort on capture transfer)
+Next: 15.1-04 (recovery row padding and desktop name prominence), then Phase 14 (Installer)
