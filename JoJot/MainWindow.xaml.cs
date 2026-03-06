@@ -2575,7 +2575,7 @@ namespace JoJot
                 {
                     FontSize = 11,
                     TextTrimming = TextTrimming.CharacterEllipsis,
-                    Margin = new Thickness(8, 1, 0, 1)
+                    Margin = new Thickness(0, 1, 0, 1)
                 };
 
                 if (name != null)
@@ -2617,7 +2617,7 @@ namespace JoJot
                     Text = $"+{remaining} more",
                     FontSize = 11,
                     FontStyle = FontStyles.Italic,
-                    Margin = new Thickness(8, 1, 0, 1)
+                    Margin = new Thickness(0, 1, 0, 1)
                 };
                 moreBlock.SetResourceReference(TextBlock.ForegroundProperty, "c-text-muted");
                 container.Children.Add(moreBlock);

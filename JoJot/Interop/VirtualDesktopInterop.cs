@@ -246,7 +246,7 @@ namespace JoJot.Interop
         /// HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\VirtualDesktops\Desktops\{GUID}\Name
         /// Returns empty string if the key doesn't exist (unnamed desktop) or on any error.
         /// </summary>
-        private static string GetDesktopNameFromRegistry(Guid desktopId)
+        internal static string GetDesktopNameFromRegistry(Guid desktopId)
         {
             try
             {
