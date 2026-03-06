@@ -763,6 +763,68 @@ namespace JoJot.Services
         }
 
         /// <summary>
+        /// R3-RECOVER-01: Returns tab previews (name + content excerpt) for recovery panel.
+        /// </summary>
+        public static async Task<List<(string? Name, string Excerpt)>> GetNotePreviewsForDesktopAsync(string desktopGuid, int limit = 5)
+        {
+            var previews = new List<(string?, string)>();
+            await _writeLock.WaitAsync();
+            try
+            {
+                var cmd = _connection!.CreateCommand();
+                cmd.CommandText = @"SELECT name, COALESCE(SUBSTR(content, 1, 60), '')
+                                   FROM notes
+                                   WHERE desktop_guid = @guid
+                                   ORDER BY sort_order ASC
+                                   LIMIT @limit";
+                cmd.Parameters.AddWithValue("@guid", desktopGuid);
+                cmd.Parameters.AddWithValue("@limit", limit);
+                using var reader = await cmd.ExecuteReaderAsync();
+                while (reader.Read())
+                {
+                    string? name = reader.IsDBNull(0) ? null : reader.GetString(0);
+                    if (string.IsNullOrWhiteSpace(name)) name = null;
+                    string excerpt = reader.IsDBNull(1) ? "" : reader.GetString(1);
+                    previews.Add((name, excerpt));
+                }
+            }
+            catch (Exception ex)
+            {
+                LogService.Error($"GetNotePreviewsForDesktopAsync failed (guid={desktopGuid})", ex);
+            }
+            finally
+            {
+                _writeLock.Release();
+            }
+            return previews;
+        }
+
+        /// <summary>
+        /// R3-RECOVER-01: Returns total note count for a desktop GUID.
+        /// </summary>
+        public static async Task<int> GetNoteCountForDesktopAsync(string desktopGuid)
+        {
+            await _writeLock.WaitAsync();
+            try
+            {
+                var cmd = _connection!.CreateCommand();
+                cmd.CommandText = "SELECT COUNT(*) FROM notes WHERE desktop_guid = @guid";
+                cmd.Parameters.AddWithValue("@guid", desktopGuid);
+                var result = await cmd.ExecuteScalarAsync();
+                return Convert.ToInt32(result);
+            }
+            catch (Exception ex)
+            {
+                LogService.Error($"GetNoteCountForDesktopAsync failed (guid={desktopGuid})", ex);
+                return 0;
+            }
+            finally
+            {
+                _writeLock.Release();
+            }
+        }
+
+        /// <summary>
         /// R2-MOVE-01: Returns the desktop name for a given GUID from the app_state table.
         /// </summary>
         public static async Task<string?> GetDesktopNameAsync(string desktopGuid)
