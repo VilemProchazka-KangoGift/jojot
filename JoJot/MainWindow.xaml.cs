@@ -2523,15 +2523,15 @@ namespace JoJot
         {
             var container = new StackPanel
             {
-                Margin = new Thickness(12, 10, 12, 10)
+                Margin = new Thickness(0, 10, 0, 10)
             };
 
             // Desktop name (bold, primary color)
             var nameBlock = new TextBlock
             {
                 Text = desktopName ?? "Unknown desktop",
-                FontSize = 13,
-                FontWeight = FontWeights.SemiBold,
+                FontSize = 14,
+                FontWeight = FontWeights.Bold,
                 TextTrimming = TextTrimming.CharacterEllipsis
             };
             nameBlock.SetResourceReference(TextBlock.ForegroundProperty, "c-text-primary");
@@ -2673,7 +2673,7 @@ namespace JoJot
                 var divider = new Border
                 {
                     Height = 1,
-                    Margin = new Thickness(12, 0, 12, 0)
+                    Margin = new Thickness(0, 0, 0, 0)
                 };
                 divider.SetResourceReference(Border.BackgroundProperty, "c-border");
                 wrapper.Children.Add(divider);
