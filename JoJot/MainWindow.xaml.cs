@@ -902,6 +902,15 @@ namespace JoJot
                 return;
             }
 
+            // R3-RENAME-01: Escape cancels rename — check before panels/overlays
+            if (e.Key == Key.Escape && _activeRename != null)
+            {
+                CancelRename();
+                Keyboard.Focus(ContentEditor);
+                e.Handled = true;
+                return;
+            }
+
             // Phase 8: Confirmation dialog keyboard handling — intercept before all other shortcuts
             if (ConfirmationOverlay.Visibility == Visibility.Visible)
             {
@@ -3740,14 +3749,26 @@ namespace JoJot
             string oldGuid = _desktopGuid;
             string newGuid = _dragToDesktopGuid;
 
+            // Re-check at click time: another window may have been created for the target
+            // desktop (via IPC) while the overlay was showing.
+            var app = System.Windows.Application.Current as App;
+            if (app?.HasWindowForDesktop(newGuid) == true)
+            {
+                // Refresh overlay with keep-here hidden and merge visible
+                DragOverlayMessage.Text = "Another window was opened on this desktop. You can merge or go back.";
+                DragKeepHereBtn.Visibility = Visibility.Collapsed;
+                DragMergeBtn.Visibility = Visibility.Visible;
+                return;
+            }
+
             // Update notes in database to new desktop
             await DatabaseService.MigrateNotesDesktopGuidAsync(oldGuid, newGuid);
 
             // Update this window's desktop GUID
             _desktopGuid = newGuid;
 
-            // Update window registry in App
-            var app = System.Windows.Application.Current as App;
+            // Update window registry in App (reuse app from guard above)
+            app ??= System.Windows.Application.Current as App;
             app?.ReparentWindow(oldGuid, newGuid);
 
             // Update window title to new desktop name (use fresh COM name, not stale _dragToDesktopName)
