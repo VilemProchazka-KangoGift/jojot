@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Polish & Stability
 status: in_progress
-last_updated: "2026-03-06T11:57:34Z"
+last_updated: "2026-03-06T12:03:34Z"
 progress:
   total_phases: 6
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 19
-  completed_plans: 18
+  completed_plans: 19
 ---
 
 # Project State
@@ -18,16 +18,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-03)
 
 **Core value:** Instant note capture tied to your virtual desktop context -- switch desktops, switch notes, zero friction.
-**Current focus:** v1.1 Polish & Stability -- Phase 15.1 in progress (recovery panel, rename, reorder fixes)
+**Current focus:** v1.1 Polish & Stability -- Phase 15.1 complete, Phase 14 (Installer) remaining
 
 ## Current Position
 
-Phase: 15.1 of 15.1 (Recovery Panel, Rename & Reorder Fixes)
-Plan: 1 of 2 (15.1-01 complete -- rename escape fix + in-place fade drag)
-Status: Plan 15.1-01 complete, 15.1-02 pending
-Last activity: 2026-03-06 -- Completed 15.1-01 (rename escape fix, drag ghost replaced with in-place fade)
+Phase: 15.1 of 15.1 (Recovery Panel, Rename & Reorder Fixes) -- COMPLETE
+Plan: 2 of 2 (15.1-02 complete -- recovery panel flat row redesign)
+Status: Phase 15.1 complete, Phase 14 (Installer) pending
+Last activity: 2026-03-06 -- Completed 15.1-02 (recovery panel redesigned from cards to flat rows with tab previews)
 
-Progress: [█████████░] 95% (18 plans complete across 6 phases; 15.1-02 + Phase 14 remaining)
+Progress: [██████████] 100% (19 plans complete across 6 phases; Phase 14 remaining)
 
 ## Performance Metrics
 
@@ -36,7 +36,7 @@ Progress: [█████████░] 95% (18 plans complete across 6 phase
 - Average duration: ~15 min
 - Total execution time: ~7.5 hours
 
-**v1.1 plans:** 18 completed (1 in Phase 11, 2 in Phase 12, 2 in Phase 13, 0 in Phase 14, 12 in Phase 15, 1 in Phase 15.1)
+**v1.1 plans:** 19 completed (1 in Phase 11, 2 in Phase 12, 2 in Phase 13, 0 in Phase 14, 12 in Phase 15, 2 in Phase 15.1)
 
 *Updated after each plan completion*
 
@@ -116,6 +116,13 @@ Phase 15.1-01 decisions:
 - Drop fade-in animation clears binding on completion via BeginAnimation(null)
 - _isCompletingDrag re-entrancy guard retained (still needed for Mouse.Capture(null) re-fire)
 
+Phase 15.1-02 decisions:
+- Existing GetNoteNamesForDesktopAsync preserved alongside new method (may be used elsewhere)
+- CreateRecoveryRow returns FrameworkElement (not Border) since flat layout uses StackPanel
+- Wrapper StackPanel holds row + divider to return single element; last row skips divider
+- DockPanel with LastChildFill=false for Adopt (left) / Delete (right) button alignment
+- Tab name shown with normal weight, excerpt as italic em-dash suffix using Inline Runs
+
 ### Pending Todos
 
 None.
@@ -139,5 +146,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-06
-Stopped at: Completed 15.1-01-PLAN.md (rename escape fix, drag ghost replaced with in-place fade)
-Next: 15.1-02-PLAN.md (recovery panel fixes) then Phase 14 (Installer)
+Stopped at: Completed 15.1-02-PLAN.md (recovery panel redesigned from cards to flat rows with tab previews)
+Next: Phase 14 (Installer)

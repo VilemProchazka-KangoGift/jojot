@@ -139,7 +139,7 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
   3. Dragging a tab fades it out in the list instead of showing a ghost overlay following the cursor
 **Plans**: 2 plans
 - [x] 15.1-01-PLAN.md — Escape-to-cancel rename fix and drag ghost replacement with in-place fade (R3-RENAME-01, R3-REORDER-01)
-- [ ] 15.1-02-PLAN.md — Recovery panel redesign from cards to flat rows with tab excerpts (R3-RECOVER-01)
+- [x] 15.1-02-PLAN.md — Recovery panel redesign from cards to flat rows with tab excerpts (R3-RECOVER-01)
 
 ### Phase 14: Installer
 **Goal**: JoJot can be installed on a clean Windows machine via a standard installer package
@@ -172,6 +172,6 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
 | 11. Critical Bug Fixes | v1.1 | Complete    | 2026-03-03 | 2026-03-03 |
 | 12. Tab Panel UX | v1.1 | 2/2 | Complete | 2026-03-04 |
 | 13. Theme, Display & Menu Polish | v1.1 | 2/2 | Complete | 2026-03-04 |
-| 15.1. Recovery, Rename, Reorder | v1.1 | 1/2 | In progress | - |
+| 15.1. Recovery, Rename, Reorder | v1.1 | 2/2 | Complete | 2026-03-06 |
 | 14. Installer | v1.1 | 0/? | Not started | - |
 | 15. Review Round 2 UI/UX | v1.1 | 11/11 | Complete | 2026-03-05 |
