@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Polish & Stability
 status: in_progress
-last_updated: "2026-03-06T15:04:50Z"
+last_updated: "2026-03-06T15:08:13Z"
 progress:
   total_phases: 6
   completed_phases: 6
-  total_plans: 22
-  completed_plans: 22
+  total_plans: 23
+  completed_plans: 23
 ---
 
 # Project State
@@ -18,16 +18,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-03)
 
 **Core value:** Instant note capture tied to your virtual desktop context -- switch desktops, switch notes, zero friction.
-**Current focus:** v1.1 Polish & Stability -- Phase 15.1 gap closure (15.1-06 remaining), then Phase 14 (Installer)
+**Current focus:** v1.1 Polish & Stability -- Phase 15.1 complete (all 6 plans), Phase 14 (Installer) remaining
 
 ## Current Position
 
-Phase: 15.1 of 15.1 (Recovery Panel, Rename & Reorder Fixes) -- Gap closure in progress
-Plan: 5 of 6 (15.1-05 complete -- drag opacity reversion fix and hover guards)
-Status: 15.1-06 remaining, then Phase 14 (Installer)
-Last activity: 2026-03-06 -- Completed 15.1-05 (drag opacity reversion fix and hover guards during drag)
+Phase: 15.1 of 15.1 (Recovery Panel, Rename & Reorder Fixes) -- Complete
+Plan: 6 of 6 (15.1-06 complete -- recovery tab preview alignment and desktop name fallback)
+Status: Phase 15.1 complete, Phase 14 (Installer) remaining
+Last activity: 2026-03-06 -- Completed 15.1-06 (recovery panel tab preview alignment and desktop name fallback)
 
-Progress: [██████████] 100% (22 plans complete across 6 phases; 15.1-06 + Phase 14 remaining)
+Progress: [██████████] 100% (23 plans complete across 6 phases; Phase 14 remaining)
 
 ## Performance Metrics
 
@@ -36,7 +36,7 @@ Progress: [██████████] 100% (22 plans complete across 6 phas
 - Average duration: ~15 min
 - Total execution time: ~7.5 hours
 
-**v1.1 plans:** 22 completed (1 in Phase 11, 2 in Phase 12, 2 in Phase 13, 0 in Phase 14, 12 in Phase 15, 5 in Phase 15.1)
+**v1.1 plans:** 23 completed (1 in Phase 11, 2 in Phase 12, 2 in Phase 13, 0 in Phase 14, 12 in Phase 15, 6 in Phase 15.1)
 
 *Updated after each plan completion*
 
@@ -136,6 +136,10 @@ Phase 15.1-05 decisions:
 - Removed local Opacity=0.5 assignment instead of setting Opacity=1.0 in Completed handler (From=0.5 on DoubleAnimation handles initial value without polluting local value store)
 - All 6 pinBtn/closeBtn hover handlers guarded with _isDragging check to suppress visual artifacts during drag
 
+Phase 15.1-06 decisions:
+- Changed GetDesktopNameFromRegistry from private to internal for cross-class access (minimal visibility increase, same assembly)
+- Registry lookup placed before nameBlock creation so existing null-coalescing fallback still applies
+
 ### Pending Todos
 
 None.
@@ -153,6 +157,8 @@ None.
 - Phase 15.1 original scope completed: All 2 plans (15.1-01 through 15.1-02) executed, verification passed 14/14
 - Phase 15.1 gap closure: 15.1-03 and 15.1-04 added for UAT failures (drag opacity, recovery row layout)
 - Phase 15.1 gap closure complete: All 4 plans (15.1-01 through 15.1-04) executed
+- Phase 15.1 second gap closure: 15.1-05 and 15.1-06 added for UAT retest failures (drag opacity, tab preview indent)
+- Phase 15.1 fully complete: All 6 plans (15.1-01 through 15.1-06) executed
 
 ### Blockers/Concerns
 
@@ -162,5 +168,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-06
-Stopped at: Completed 15.1-05-PLAN.md (drag opacity reversion fix and hover guards during drag)
-Next: 15.1-06 (recovery tab preview indent and registry name fallback), then Phase 14 (Installer)
+Stopped at: Completed 15.1-06-PLAN.md (recovery panel tab preview alignment and desktop name fallback)
+Next: Phase 14 (Installer)
