@@ -172,6 +172,7 @@ None.
 - Phase 15.1 gap closure complete: All 4 plans (15.1-01 through 15.1-04) executed
 - Phase 15.1 second gap closure: 15.1-05 and 15.1-06 added for UAT retest failures (drag opacity, tab preview indent)
 - Phase 15.1 fully complete: All 6 plans (15.1-01 through 15.1-06) executed
+- Phase 16 added: Tab Cleanup Panel — replace Delete menu with cleanup side panel (age filter, pinned toggle, preview list, confirmation)
 
 ### Blockers/Concerns
 
