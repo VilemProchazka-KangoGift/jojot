@@ -39,7 +39,7 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
 - [ ] **Phase 14: Installer** — Produce a Windows MSI or MSIX installer for distribution
 - [x] **Phase 15: Review Round 2 — UI/UX Bug Fixes & Polish** — Fix note persistence bug, improve tab interactions, enhance drag-and-drop, refine preferences panel, redesign session recovery, and polish startup/move-to-desktop flows (completed 2026-03-05)
 - [x] **Phase 15.1: Recovery Panel, Tab Rename & Reorder Fixes** — Make recovery items full-width with tab info, fix escape-to-cancel rename, replace drag ghost with fade-out (completed 2026-03-06)
-- [ ] **Phase 16: Tab Cleanup Panel** — Replace Delete menu options with a dedicated cleanup side panel featuring age-based filtering, pinned inclusion toggle, and preview list with confirmation
+- [x] **Phase 16: Tab Cleanup Panel** — Replace Delete menu options with a dedicated cleanup side panel featuring age-based filtering, pinned inclusion toggle, and preview list with confirmation (completed 2026-03-07)
 
 ## Phase Details
 
@@ -167,7 +167,7 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
   7. Only confirmed deletions are executed; cancelling returns to the panel without changes
 **Plans**: 2 plans
 - [x] 16-01-PLAN.md — Menu swap and cleanup panel with filter controls and live preview list (CLEANUP-01, CLEANUP-02, CLEANUP-03, CLEANUP-04, CLEANUP-06)
-- [ ] 16-02-PLAN.md — Delete button action, confirmation dialog, and post-delete behavior (CLEANUP-05, CLEANUP-07)
+- [x] 16-02-PLAN.md — Delete button action, confirmation dialog, and post-delete behavior (CLEANUP-05, CLEANUP-07)
 
 ### Phase 14: Installer
 **Goal**: JoJot can be installed on a clean Windows machine via a standard installer package

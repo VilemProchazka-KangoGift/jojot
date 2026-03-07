@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Polish & Stability
 status: in_progress
-last_updated: "2026-03-07T21:48:35Z"
+last_updated: "2026-03-07T21:54:03Z"
 progress:
   total_phases: 7
-  completed_phases: 6
+  completed_phases: 7
   total_plans: 25
-  completed_plans: 24
+  completed_plans: 25
 ---
 
 # Project State
@@ -18,16 +18,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-03)
 
 **Core value:** Instant note capture tied to your virtual desktop context -- switch desktops, switch notes, zero friction.
-**Current focus:** v1.1 Polish & Stability -- Phase 16 in progress (Tab Cleanup Panel), Phase 14 (Installer) remaining
+**Current focus:** v1.1 Polish & Stability -- Phase 16 complete (Tab Cleanup Panel), Phase 14 (Installer) remaining
 
 ## Current Position
 
-Phase: 16 (Tab Cleanup Panel)
-Plan: 1 of 2 (16-01 complete -- cleanup panel UI with filter controls and preview list)
-Status: Phase 16 plan 01 complete, plan 02 (delete action) next
-Last activity: 2026-03-07 -- Completed 16-01 (cleanup panel skeleton, filter logic, preview list)
+Phase: 16 (Tab Cleanup Panel) -- COMPLETE
+Plan: 2 of 2 (16-02 complete -- cleanup delete action with confirmation)
+Status: Phase 16 fully complete, Phase 14 (Installer) remaining
+Last activity: 2026-03-07 -- Completed 16-02 (cleanup delete with confirmation and hard-delete)
 
-Progress: [████████░░] 96% (24 plans complete across 7 phases; 16-02 + Phase 14 remaining)
+Progress: [█████████░] 98% (25 plans complete across 7 phases; Phase 14 remaining)
 
 ## Performance Metrics
 
@@ -36,11 +36,12 @@ Progress: [████████░░] 96% (24 plans complete across 7 phase
 - Average duration: ~15 min
 - Total execution time: ~7.5 hours
 
-**v1.1 plans:** 24 completed (1 in Phase 11, 2 in Phase 12, 2 in Phase 13, 0 in Phase 14, 12 in Phase 15, 6 in Phase 15.1, 1 in Phase 16)
+**v1.1 plans:** 25 completed (1 in Phase 11, 2 in Phase 12, 2 in Phase 13, 0 in Phase 14, 12 in Phase 15, 6 in Phase 15.1, 2 in Phase 16)
 
 | Phase | Plan | Duration | Tasks | Files |
 |-------|------|----------|-------|-------|
 | 16-tab-cleanup-panel | 01 | 7min | 2 | 2 |
+| 16-tab-cleanup-panel | 02 | 3min | 1 | 1 |
 
 *Updated after each plan completion*
 
@@ -150,6 +151,10 @@ Phase 16-01 decisions:
 - Cleanup panel follows identical pattern to RecoveryPanel (Width=320, slide animation, one-panel-at-a-time)
 - GetCleanupCandidates filters in-memory _tabs collection, not database
 
+Phase 16-02 decisions:
+- UndoManager stacks removed for deleted tabs during cleanup (mirrors CommitPendingDeletionAsync pattern)
+- SaveCurrentTabContent + CommitPendingDeletionAsync called before cleanup deletion to ensure data consistency
+
 ### Pending Todos
 
 None.
@@ -170,6 +175,7 @@ None.
 - Phase 15.1 second gap closure: 15.1-05 and 15.1-06 added for UAT retest failures (drag opacity, tab preview indent)
 - Phase 15.1 fully complete: All 6 plans (15.1-01 through 15.1-06) executed
 - Phase 16 added: Tab Cleanup Panel — replace Delete menu with cleanup side panel (age filter, pinned toggle, preview list, confirmation)
+- Phase 16 completed: All 2 plans (16-01 and 16-02) executed -- cleanup panel UI + delete action with confirmation
 
 ### Blockers/Concerns
 
@@ -179,5 +185,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-07
-Stopped at: Completed 16-01-PLAN.md (cleanup panel UI with filter controls and preview list)
-Next: Phase 16 Plan 02 (cleanup delete action with confirmation)
+Stopped at: Completed 16-02-PLAN.md (cleanup delete action with confirmation)
+Next: Phase 14 (Installer) -- last remaining phase in v1.1
