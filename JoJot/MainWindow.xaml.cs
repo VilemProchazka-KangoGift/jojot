@@ -146,14 +146,54 @@ namespace JoJot
             // Handle drag cancellation when mouse capture is lost
             TabList.LostMouseCapture += (s, e) =>
             {
+
                 // R2-DND-01: Prevent re-entrant cleanup (Mouse.Capture(null) in CompleteDrag can re-fire)
                 // R3-REORDER-01: Skip when capture is being intentionally transferred to TabList
                 if (_isCompletingDrag || _isTransferringCapture) return;
 
                 if (_isDragging)
                 {
+                    // If mouse button is still pressed, WPF stole capture (e.g. ListBox internal handling).
+                    // Re-capture to TabList and continue the drag instead of aborting.
+                    if (Mouse.LeftButton == MouseButtonState.Pressed)
+                    {
+                        _isTransferringCapture = true;
+                        try { Mouse.Capture(TabList, CaptureMode.SubTree); }
+                        finally { _isTransferringCapture = false; }
+                        return;
+                    }
                     RemoveDropIndicator();
-                    if (_dragItem != null) _dragItem.Opacity = 1.0;
+                    if (_dragItem?.Content is FrameworkElement abortContent) abortContent.Opacity = 1.0;
+                    CompleteDrag();
+                }
+            };
+
+            // TabList-level mouse move: handles drag start (fast mouse) and tracking between items
+            TabList.PreviewMouseMove += (s, e) =>
+            {
+                if (_dragItem == null || _dragTab == null) return;
+                if (e.LeftButton != MouseButtonState.Pressed) return;
+
+                if (!_isDragging)
+                {
+                    // Check distance threshold for drag start
+                    var current = e.GetPosition(TabList);
+                    var diff = _dragStartPoint - current;
+                    if (Math.Abs(diff.Y) < 5 && Math.Abs(diff.X) < 5) return;
+
+                    StartDrag();
+                }
+
+                UpdateDropIndicator(e.GetPosition(TabList));
+                e.Handled = true;
+            };
+
+            // TabList-level mouse up: ensures drag completes even if fired between items
+            TabList.PreviewMouseLeftButtonUp += (s, e) =>
+            {
+                if (_isDragging)
+                {
+                    e.Handled = true;
                     CompleteDrag();
                 }
             };
@@ -611,6 +651,7 @@ namespace JoJot
         /// </summary>
         private async void TabList_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
+            if (_isDragging && !_isCompletingDrag) return;
             if (_isRebuildingTabList) return;
 
             // R2-BUG-01: Save current editor content to active tab BEFORE flushing or switching
@@ -1398,44 +1439,46 @@ namespace JoJot
 
         private void TabItem_PreviewMouseMove(object sender, MouseEventArgs e)
         {
-            if (e.LeftButton != MouseButtonState.Pressed || _dragItem == null || _dragTab == null)
-                return;
+            // Drag start and tracking is handled by TabList.PreviewMouseMove (fires first during tunneling).
+            // This handler is kept only as a fallback — the TabList handler sets e.Handled during drag.
+        }
 
-            System.Windows.Point current = e.GetPosition(TabList);
-            Vector diff = _dragStartPoint - current;
+        /// <summary>
+        /// Initiates the drag operation: sets state, fades the tab, captures mouse.
+        /// Called from TabList.PreviewMouseMove when distance threshold is exceeded.
+        /// </summary>
+        private void StartDrag()
+        {
+            if (_isDragging || _dragItem == null || _dragTab == null) return;
 
-            // Minimum 5px distance before drag starts
-            if (Math.Abs(diff.Y) < 5 && Math.Abs(diff.X) < 5) return;
+            _isDragging = true;
 
-            if (!_isDragging)
+            // R2-DND-01: Track original index for indicator suppression
+            _dragOriginalListIndex = TabList.Items.IndexOf(_dragItem);
+
+            // R3-REORDER-01: Fade original item to 50% opacity in-place (no ghost adorner)
+            // Set on content Border (not ListBoxItem) to avoid WPF internal Opacity resets
+            if (_dragItem.Content is FrameworkElement dragContent)
             {
-                _isDragging = true;
-
-                // R2-DND-01: Track original index for indicator suppression
-                _dragOriginalListIndex = TabList.Items.IndexOf(_dragItem);
-
-                // R3-REORDER-01: Fade original item to 50% opacity in-place (no ghost adorner)
-                _dragItem.Opacity = 0.5;
-
-                // R2-DND-01: SubTree mode keeps events routing to children within TabList
-                // so TabItem_PreviewMouseMove and TabItem_PreviewMouseLeftButtonUp still fire
-                // R3-REORDER-01: Guard prevents LostMouseCapture from aborting drag during transfer
-                _isTransferringCapture = true;
-                try
-                {
-                    Mouse.Capture(TabList, CaptureMode.SubTree);
-                }
-                finally
-                {
-                    _isTransferringCapture = false;
-                }
+                dragContent.Opacity = 0.5;
             }
 
-            UpdateDropIndicator(current);
+            // R2-DND-01: SubTree mode keeps events routing to children within TabList
+            // R3-REORDER-01: Guard prevents LostMouseCapture from aborting drag during transfer
+            _isTransferringCapture = true;
+            try
+            {
+                Mouse.Capture(TabList, CaptureMode.SubTree);
+            }
+            finally
+            {
+                _isTransferringCapture = false;
+            }
         }
 
         private void TabItem_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
+            if (_isDragging) e.Handled = true;
             CompleteDrag();
         }
 
@@ -1567,7 +1610,7 @@ namespace JoJot
                 RemoveDropIndicator();
 
                 // Restore old item opacity (no-move path)
-                if (_dragItem != null) _dragItem.Opacity = 1.0;
+                if (_dragItem?.Content is FrameworkElement oldContent) oldContent.Opacity = 1.0;
 
                 if (_dragInsertIndex >= 0 && _dragTab != null)
                 {
@@ -1592,20 +1635,24 @@ namespace JoJot
                         SelectTabByNote(_dragTab);
 
                         // R3-REORDER-01: Fade-in the moved tab at its new position (150ms)
+                        // Animate on content Border to avoid WPF ListBoxItem Opacity interference
                         if (_dragTab != null)
                         {
                             foreach (var obj in TabList.Items)
                             {
-                                if (obj is ListBoxItem item && item.Tag == _dragTab)
+                                if (obj is ListBoxItem item && item.Tag == _dragTab
+                                    && item.Content is FrameworkElement content)
                                 {
+                                    // Set initial opacity before animation to prevent flash of full opacity
+                                    content.Opacity = 0.5;
                                     var fadeIn = new DoubleAnimation
                                     {
                                         From = 0.5, To = 1.0,
-                                        Duration = TimeSpan.FromMilliseconds(150),
+                                        Duration = TimeSpan.FromMilliseconds(200),
                                         EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
                                     };
-                                    fadeIn.Completed += (_, _) => item.BeginAnimation(UIElement.OpacityProperty, null);
-                                    item.BeginAnimation(UIElement.OpacityProperty, fadeIn);
+                                    fadeIn.Completed += (_, _) => { content.Opacity = 1.0; content.BeginAnimation(UIElement.OpacityProperty, null); };
+                                    content.BeginAnimation(UIElement.OpacityProperty, fadeIn);
                                     break;
                                 }
                             }
@@ -1651,7 +1698,7 @@ namespace JoJot
         private void ResetDragState()
         {
             _isDragging = false;
-            if (_dragItem != null) _dragItem.Opacity = 1.0;
+            if (_dragItem?.Content is FrameworkElement resetContent) resetContent.Opacity = 1.0;
             _dragItem = null;
             _dragTab = null;
             _dragInsertIndex = -1;
@@ -2543,10 +2590,12 @@ namespace JoJot
                     desktopName = regName;
             }
 
+            var finalName = string.IsNullOrEmpty(desktopName) ? "Unknown desktop" : desktopName;
+
             // Desktop name (bold, primary color)
             var nameBlock = new TextBlock
             {
-                Text = desktopName ?? "Unknown desktop",
+                Text = finalName,
                 FontSize = 14,
                 FontWeight = FontWeights.Bold,
                 TextTrimming = TextTrimming.CharacterEllipsis

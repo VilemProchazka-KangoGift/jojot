@@ -93,6 +93,7 @@ namespace JoJot.Interop
     /// Provides: GetCount, GetCurrentDesktop, GetDesktops, FindDesktop, SetDesktopName, etc.
     /// GUID shown is for 24H2; actual GUID resolved at runtime.
     /// CRITICAL: Method order must match vtable layout exactly for COM interop to work.
+    /// The 24H2+ vtable (GUID 53F5CA0B) does NOT take hWndOrMon parameters on most methods.
     /// </summary>
     [ComImport]
     [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
@@ -100,7 +101,7 @@ namespace JoJot.Interop
     internal interface IVirtualDesktopManagerInternal
     {
         [PreserveSig]
-        int GetCount(IntPtr hWndOrMon, out uint count);
+        int GetCount(out uint count);
 
         [PreserveSig]
         int MoveViewToDesktop(IntPtr view, [MarshalAs(UnmanagedType.Interface)] IVirtualDesktop desktop);
@@ -109,10 +110,10 @@ namespace JoJot.Interop
         int CanViewMoveDesktops(IntPtr view, out bool canMove);
 
         [PreserveSig]
-        int GetCurrentDesktop(IntPtr hWndOrMon, [MarshalAs(UnmanagedType.Interface)] out IVirtualDesktop desktop);
+        int GetCurrentDesktop([MarshalAs(UnmanagedType.Interface)] out IVirtualDesktop desktop);
 
         [PreserveSig]
-        int GetDesktops(IntPtr hWndOrMon, [MarshalAs(UnmanagedType.Interface)] out IObjectArray desktops);
+        int GetDesktops([MarshalAs(UnmanagedType.Interface)] out IObjectArray desktops);
 
         [PreserveSig]
         int GetAdjacentDesktop(
@@ -121,13 +122,16 @@ namespace JoJot.Interop
             [MarshalAs(UnmanagedType.Interface)] out IVirtualDesktop adjacentDesktop);
 
         [PreserveSig]
-        int SwitchDesktop(IntPtr hWndOrMon, [MarshalAs(UnmanagedType.Interface)] IVirtualDesktop desktop);
+        int SwitchDesktop([MarshalAs(UnmanagedType.Interface)] IVirtualDesktop desktop);
 
         [PreserveSig]
-        int CreateDesktop(IntPtr hWndOrMon, [MarshalAs(UnmanagedType.Interface)] out IVirtualDesktop desktop);
+        int SwitchDesktopAndMoveForegroundView([MarshalAs(UnmanagedType.Interface)] IVirtualDesktop desktop);
 
         [PreserveSig]
-        int MoveDesktop([MarshalAs(UnmanagedType.Interface)] IVirtualDesktop desktop, IntPtr hWndOrMon, int index);
+        int CreateDesktop([MarshalAs(UnmanagedType.Interface)] out IVirtualDesktop desktop);
+
+        [PreserveSig]
+        int MoveDesktop([MarshalAs(UnmanagedType.Interface)] IVirtualDesktop desktop, int index);
 
         [PreserveSig]
         int RemoveDesktop(

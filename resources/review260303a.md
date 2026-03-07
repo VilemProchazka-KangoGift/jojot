@@ -1,0 +1,14 @@
+First round of manual reviews:
+- Pin/unpin causes stack overflow exception
+- Delete causes stack overflow exception
+- Text resize should show percentages instead of pt and affect the tabs as well
+- Renaming a tab froze the app
+- make tab panel resizeable
+- add virtual desktop name in the window title
+- dark mode tab names are illegible
+- add pin icon to the tabs
+- hamburger menu should close when user clicks anywhere outside of it
+- when delete icon on tabs is displayed, the title should be shortened to make room for it. Otherwise the title should span the whole width
+- add support for drag and drop reorder in the tab panel
+- change the tab highlight to background-color based rather than the left border
+- windows installer support

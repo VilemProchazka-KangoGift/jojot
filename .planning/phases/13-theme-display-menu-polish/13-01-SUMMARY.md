@@ -96,6 +96,13 @@ None - no external service configuration required.
 - Font size display is now percentage-based throughout (THEME-02)
 - Ready for Phase 13 Plan 02 (window/menu polish: WIN-01, WIN-02)
 
+## Self-Check: PASSED
+
+- JoJot/MainWindow.xaml.cs: FOUND
+- .planning/phases/13-theme-display-menu-polish/13-01-SUMMARY.md: FOUND
+- Commit dcf00af (THEME-01 fix): FOUND
+- Commit 7ac4ad8 (THEME-02 percentages + scaling): FOUND
+
 ---
 *Phase: 13-theme-display-menu-polish*
 *Completed: 2026-03-04*

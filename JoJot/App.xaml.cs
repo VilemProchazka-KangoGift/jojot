@@ -195,13 +195,13 @@ namespace JoJot
             var geo = await DatabaseService.GetWindowGeometryAsync(desktopGuid);
             WindowPlacementHelper.ApplyGeometry(window, geo);
 
-            // Set title
+            // Set title — look up this specific desktop by GUID, not "current"
             if (VirtualDesktopService.IsAvailable)
             {
-                var desktopInfo = VirtualDesktopService.GetCurrentDesktopInfo();
-                window.UpdateDesktopTitle(
-                    VirtualDesktopService.CurrentDesktopName,
-                    desktopInfo.Index);
+                var desktops = VirtualDesktopService.GetAllDesktops();
+                var info = desktops.FirstOrDefault(d =>
+                    d.Id.ToString().Equals(desktopGuid, StringComparison.OrdinalIgnoreCase));
+                window.UpdateDesktopTitle(info?.Name, info?.Index);
             }
             else
             {
