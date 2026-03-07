@@ -166,7 +166,7 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
   6. Clicking Delete shows a confirmation prompt before actually deleting the matched tabs
   7. Only confirmed deletions are executed; cancelling returns to the panel without changes
 **Plans**: 2 plans
-- [ ] 16-01-PLAN.md — Menu swap and cleanup panel with filter controls and live preview list (CLEANUP-01, CLEANUP-02, CLEANUP-03, CLEANUP-04, CLEANUP-06)
+- [x] 16-01-PLAN.md — Menu swap and cleanup panel with filter controls and live preview list (CLEANUP-01, CLEANUP-02, CLEANUP-03, CLEANUP-04, CLEANUP-06)
 - [ ] 16-02-PLAN.md — Delete button action, confirmation dialog, and post-delete behavior (CLEANUP-05, CLEANUP-07)
 
 ### Phase 14: Installer
@@ -201,6 +201,6 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
 | 12. Tab Panel UX | v1.1 | 2/2 | Complete | 2026-03-04 |
 | 13. Theme, Display & Menu Polish | v1.1 | 2/2 | Complete | 2026-03-04 |
 | 15.1. Recovery, Rename, Reorder | v1.1 | Complete    | 2026-03-06 | 2026-03-06 |
-| 16. Tab Cleanup Panel | v1.1 | 0/2 | Not started | - |
+| 16. Tab Cleanup Panel | v1.1 | 1/2 | In progress | - |
 | 14. Installer | v1.1 | 0/? | Not started | - |
 | 15. Review Round 2 UI/UX | v1.1 | 11/11 | Complete | 2026-03-05 |

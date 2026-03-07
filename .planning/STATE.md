@@ -2,26 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Polish & Stability
-status: unknown
-last_updated: "2026-03-06T15:17:16.083Z"
-progress:
-  total_phases: 5
-  completed_phases: 5
-  total_plans: 22
-  completed_plans: 22
----
-
----
-gsd_state_version: 1.0
-milestone: v1.1
-milestone_name: Polish & Stability
 status: in_progress
-last_updated: "2026-03-06T15:08:13Z"
+last_updated: "2026-03-07T21:48:35Z"
 progress:
-  total_phases: 6
+  total_phases: 7
   completed_phases: 6
-  total_plans: 23
-  completed_plans: 23
+  total_plans: 25
+  completed_plans: 24
 ---
 
 # Project State
@@ -31,16 +18,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-03)
 
 **Core value:** Instant note capture tied to your virtual desktop context -- switch desktops, switch notes, zero friction.
-**Current focus:** v1.1 Polish & Stability -- Phase 15.1 complete (all 6 plans), Phase 14 (Installer) remaining
+**Current focus:** v1.1 Polish & Stability -- Phase 16 in progress (Tab Cleanup Panel), Phase 14 (Installer) remaining
 
 ## Current Position
 
-Phase: 15.1 of 15.1 (Recovery Panel, Rename & Reorder Fixes) -- Complete
-Plan: 6 of 6 (15.1-06 complete -- recovery tab preview alignment and desktop name fallback)
-Status: Phase 15.1 complete, Phase 14 (Installer) remaining
-Last activity: 2026-03-06 -- Completed 15.1-06 (recovery panel tab preview alignment and desktop name fallback)
+Phase: 16 (Tab Cleanup Panel)
+Plan: 1 of 2 (16-01 complete -- cleanup panel UI with filter controls and preview list)
+Status: Phase 16 plan 01 complete, plan 02 (delete action) next
+Last activity: 2026-03-07 -- Completed 16-01 (cleanup panel skeleton, filter logic, preview list)
 
-Progress: [██████████] 100% (23 plans complete across 6 phases; Phase 14 remaining)
+Progress: [████████░░] 96% (24 plans complete across 7 phases; 16-02 + Phase 14 remaining)
 
 ## Performance Metrics
 
@@ -49,7 +36,11 @@ Progress: [██████████] 100% (23 plans complete across 6 phas
 - Average duration: ~15 min
 - Total execution time: ~7.5 hours
 
-**v1.1 plans:** 23 completed (1 in Phase 11, 2 in Phase 12, 2 in Phase 13, 0 in Phase 14, 12 in Phase 15, 6 in Phase 15.1)
+**v1.1 plans:** 24 completed (1 in Phase 11, 2 in Phase 12, 2 in Phase 13, 0 in Phase 14, 12 in Phase 15, 6 in Phase 15.1, 1 in Phase 16)
+
+| Phase | Plan | Duration | Tasks | Files |
+|-------|------|----------|-------|-------|
+| 16-tab-cleanup-panel | 01 | 7min | 2 | 2 |
 
 *Updated after each plan completion*
 
@@ -153,6 +144,12 @@ Phase 15.1-06 decisions:
 - Changed GetDesktopNameFromRegistry from private to internal for cross-class access (minimal visibility increase, same assembly)
 - Registry lookup placed before nameBlock creation so existing null-coalescing fallback still applies
 
+Phase 16-01 decisions:
+- Used E74D (delete icon) for cleanup menu item instead of E9F5 for consistency
+- FontFamily fully qualified as System.Windows.Media.FontFamily to resolve ambiguity with System.Drawing
+- Cleanup panel follows identical pattern to RecoveryPanel (Width=320, slide animation, one-panel-at-a-time)
+- GetCleanupCandidates filters in-memory _tabs collection, not database
+
 ### Pending Todos
 
 None.
@@ -181,6 +178,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-06
-Stopped at: Completed 15.1-06-PLAN.md (recovery panel tab preview alignment and desktop name fallback)
-Next: Phase 14 (Installer)
+Last session: 2026-03-07
+Stopped at: Completed 16-01-PLAN.md (cleanup panel UI with filter controls and preview list)
+Next: Phase 16 Plan 02 (cleanup delete action with confirmation)
