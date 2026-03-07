@@ -2797,10 +2797,214 @@ namespace JoJot
             if (_cleanupPanelOpen) RefreshCleanupPreview();
         }
 
+        /// <summary>
+        /// Parses the age input and unit to compute a cutoff DateTime.
+        /// Returns null if the input is invalid.
+        /// </summary>
+        private DateTime? GetCleanupCutoffDate()
+        {
+            if (!int.TryParse(CleanupAgeInput.Text, out int age) || age < 1)
+                return null;
+
+            var unit = CleanupUnitCombo.SelectedIndex switch
+            {
+                0 => TimeSpan.FromDays(age),        // days
+                1 => TimeSpan.FromHours(age),       // hours
+                2 => TimeSpan.FromDays(age * 7),    // weeks
+                3 => TimeSpan.FromDays(age * 30),   // months (approximate)
+                _ => TimeSpan.FromDays(age)
+            };
+
+            return DateTime.Now - unit;
+        }
+
+        /// <summary>
+        /// Returns tabs matching the current cleanup filter, in tab panel order.
+        /// </summary>
+        private List<NoteTab> GetCleanupCandidates()
+        {
+            var cutoff = GetCleanupCutoffDate();
+            if (cutoff == null) return new List<NoteTab>();
+
+            bool includePinned = CleanupIncludePinned.IsChecked == true;
+
+            return _tabs
+                .Where(t => t.UpdatedAt < cutoff.Value && (includePinned || !t.Pinned))
+                .ToList();
+        }
+
+        /// <summary>
+        /// Rebuilds the cleanup preview list UI based on current filter criteria.
+        /// Called from ShowCleanupPanel and all filter change handlers.
+        /// </summary>
         private void RefreshCleanupPreview()
         {
-            // Stub — full implementation in Task 2
             CleanupPreviewList.Children.Clear();
+
+            var candidates = GetCleanupCandidates();
+
+            // Update delete button text and enabled state
+            if (candidates.Count > 0)
+            {
+                CleanupDeleteText.Text = $"Delete {candidates.Count} tab{(candidates.Count == 1 ? "" : "s")}";
+                CleanupDeleteButton.IsEnabled = true;
+                CleanupDeleteButton.Opacity = 1.0;
+            }
+            else
+            {
+                CleanupDeleteText.Text = "Delete 0 tabs";
+                CleanupDeleteButton.IsEnabled = false;
+                CleanupDeleteButton.Opacity = 0.5;
+            }
+
+            // Empty state
+            if (candidates.Count == 0)
+            {
+                var emptyBlock = new TextBlock
+                {
+                    Text = "No tabs match this filter",
+                    FontSize = 13,
+                    FontStyle = FontStyles.Italic,
+                    Margin = new Thickness(0, 8, 0, 0)
+                };
+                emptyBlock.SetResourceReference(TextBlock.ForegroundProperty, "c-text-muted");
+                CleanupPreviewList.Children.Add(emptyBlock);
+                return;
+            }
+
+            // Build preview rows
+            for (int i = 0; i < candidates.Count; i++)
+            {
+                var tab = candidates[i];
+                bool isLast = (i == candidates.Count - 1);
+                CleanupPreviewList.Children.Add(CreateCleanupPreviewRow(tab, isLast));
+            }
+        }
+
+        /// <summary>
+        /// Creates a single cleanup preview row showing tab title, content excerpt, and relative age.
+        /// </summary>
+        private FrameworkElement CreateCleanupPreviewRow(NoteTab tab, bool isLast)
+        {
+            var container = new StackPanel { Margin = new Thickness(0, 6, 0, 6) };
+
+            // Title line with optional pin icon
+            var titleBlock = new TextBlock
+            {
+                FontSize = 12,
+                TextTrimming = TextTrimming.CharacterEllipsis
+            };
+
+            // Pin icon prefix for pinned tabs
+            if (tab.Pinned)
+            {
+                var pinRun = new System.Windows.Documents.Run("\uE718 ")
+                {
+                    FontFamily = new System.Windows.Media.FontFamily("Segoe Fluent Icons, Segoe MDL2 Assets"),
+                    FontSize = 10
+                };
+                pinRun.SetResourceReference(System.Windows.Documents.Run.ForegroundProperty, "c-text-muted");
+                titleBlock.Inlines.Add(pinRun);
+            }
+
+            // Tab name
+            string displayName = tab.DisplayLabel;
+            titleBlock.Inlines.Add(new System.Windows.Documents.Run(displayName)
+            {
+                FontWeight = FontWeights.Normal
+            });
+
+            // Content excerpt suffix (em-dash + italic)
+            string excerpt = GetCleanupExcerpt(tab);
+            if (!string.IsNullOrEmpty(excerpt))
+            {
+                var excerptRun = new System.Windows.Documents.Run($" \u2014 {excerpt}")
+                {
+                    FontStyle = FontStyles.Italic
+                };
+                excerptRun.SetResourceReference(System.Windows.Documents.Run.ForegroundProperty, "c-text-muted");
+                titleBlock.Inlines.Add(excerptRun);
+            }
+
+            titleBlock.SetResourceReference(TextBlock.ForegroundProperty, "c-text-primary");
+            container.Children.Add(titleBlock);
+
+            // Relative age line (muted, smaller)
+            var ageBlock = new TextBlock
+            {
+                Text = FormatRelativeAge(tab.UpdatedAt),
+                FontSize = 11
+            };
+            ageBlock.SetResourceReference(TextBlock.ForegroundProperty, "c-text-muted");
+            container.Children.Add(ageBlock);
+
+            // Divider (unless last item)
+            if (!isLast)
+            {
+                var wrapper = new StackPanel();
+                wrapper.Children.Add(container);
+                var divider = new Separator
+                {
+                    Margin = new Thickness(0, 2, 0, 0)
+                };
+                divider.SetResourceReference(Separator.BackgroundProperty, "c-border");
+                wrapper.Children.Add(divider);
+                return wrapper;
+            }
+
+            return container;
+        }
+
+        /// <summary>
+        /// Extracts ~50 char content excerpt for display in cleanup preview rows.
+        /// </summary>
+        private static string GetCleanupExcerpt(NoteTab tab)
+        {
+            if (string.IsNullOrWhiteSpace(tab.Content))
+                return "";
+
+            string content = tab.Content.Trim().Replace('\n', ' ').Replace('\r', ' ');
+
+            // If tab has a custom name, show content excerpt
+            if (!string.IsNullOrWhiteSpace(tab.Name))
+            {
+                return content.Length > 50 ? content[..50] + "..." : content;
+            }
+
+            // If no custom name (DisplayLabel shows first 30 chars of content),
+            // don't repeat it — return empty since title already shows content
+            return "";
+        }
+
+        /// <summary>
+        /// Formats UpdatedAt as relative age (e.g., "3 days ago", "2 hours ago").
+        /// </summary>
+        private static string FormatRelativeAge(DateTime updatedAt)
+        {
+            var diff = DateTime.Now - updatedAt;
+
+            if (diff.TotalMinutes < 60)
+                return $"{Math.Max(1, (int)diff.TotalMinutes)} min ago";
+
+            if (diff.TotalHours < 24)
+                return $"{(int)diff.TotalHours} hour{((int)diff.TotalHours == 1 ? "" : "s")} ago";
+
+            if (diff.TotalDays < 7)
+                return $"{(int)diff.TotalDays} day{((int)diff.TotalDays == 1 ? "" : "s")} ago";
+
+            if (diff.TotalDays < 30)
+            {
+                int weeks = (int)(diff.TotalDays / 7);
+                return $"{weeks} week{(weeks == 1 ? "" : "s")} ago";
+            }
+
+            if (diff.TotalDays < 365)
+            {
+                int months = (int)(diff.TotalDays / 30);
+                return $"{months} month{(months == 1 ? "" : "s")} ago";
+            }
+
+            return updatedAt.ToString("MMM d, yyyy");
         }
 
         /// <summary>
