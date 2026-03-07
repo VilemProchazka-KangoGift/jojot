@@ -47,10 +47,12 @@ namespace JoJot
         // ─── Confirmation dialog state (Phase 8) ──────────────────────────
         private Action? _confirmAction;
         private DateTime _hamburgerClosedAt;
-        private System.Windows.Threading.DispatcherTimer? _submenuCloseTimer;
 
         // ─── Recovery panel state (Phase 8: ORPH-02) ──────────────────────
         private bool _recoveryPanelOpen;
+
+        // ─── Cleanup panel state (Phase 16: CLEANUP-01) ──────────────────────
+        private bool _cleanupPanelOpen;
 
         // ─── Phase 9 state: Preferences, File Drop, Find Bar, Font Size ─────
         private bool _preferencesOpen;
@@ -206,13 +208,6 @@ namespace JoJot
             HamburgerMenu.Closed += (s, e) =>
             {
                 _hamburgerClosedAt = DateTime.UtcNow;
-                DeleteOlderSubmenu.IsOpen = false;
-                HamburgerMenu.StaysOpen = false;
-            };
-
-            // Phase 13: Ensure StaysOpen resets whenever submenu closes (WIN-02)
-            DeleteOlderSubmenu.Closed += (s, e) =>
-            {
                 HamburgerMenu.StaysOpen = false;
             };
 
@@ -221,10 +216,8 @@ namespace JoJot
             {
                 if (HamburgerMenu.IsOpen
                     && !IsMouseOverPopup(HamburgerMenu)
-                    && !IsMouseOverPopup(DeleteOlderSubmenu)
                     && !IsMouseOverElement(HamburgerButton))
                 {
-                    DeleteOlderSubmenu.IsOpen = false;
                     HamburgerMenu.IsOpen = false;
                 }
             };
@@ -657,9 +650,11 @@ namespace JoJot
             // R2-BUG-01: Save current editor content to active tab BEFORE flushing or switching
             if (_activeTab != null)
             {
+                bool contentChanged = _activeTab.Content != ContentEditor.Text;
                 _activeTab.Content = ContentEditor.Text;
                 _activeTab.CursorPosition = ContentEditor.CaretIndex;
-                _activeTab.UpdatedAt = DateTime.Now;
+                if (contentChanged)
+                    _activeTab.UpdatedAt = DateTime.Now;
             }
 
             // Remove background highlight from deselected items and hide buttons
@@ -987,6 +982,14 @@ namespace JoJot
             if (e.Key == Key.Escape && EditorFindBar.Visibility == Visibility.Visible)
             {
                 HideEditorFindBar();
+                e.Handled = true;
+                return;
+            }
+
+            // Phase 16: Escape closes cleanup panel if visible
+            if (e.Key == Key.Escape && _cleanupPanelOpen)
+            {
+                HideCleanupPanel();
                 e.Handled = true;
                 return;
             }
@@ -2351,48 +2354,6 @@ namespace JoJot
         private void MenuItem_MouseEnter(object sender, MouseEventArgs e)
         {
             if (sender is Border b) b.Background = GetBrush("c-hover-bg");
-            ScheduleSubmenuClose();
-        }
-
-        private void SubmenuItem_MouseEnter(object sender, MouseEventArgs e)
-        {
-            if (sender is Border b) b.Background = GetBrush("c-hover-bg");
-            CancelSubmenuClose();
-        }
-
-        private void SubmenuBorder_MouseLeave(object sender, MouseEventArgs e)
-        {
-            ScheduleSubmenuClose();
-        }
-
-        private void ScheduleSubmenuClose()
-        {
-            CancelSubmenuClose();
-            _submenuCloseTimer = new System.Windows.Threading.DispatcherTimer
-            {
-                Interval = TimeSpan.FromMilliseconds(250)
-            };
-            _submenuCloseTimer.Tick += (s, e) =>
-            {
-                _submenuCloseTimer?.Stop();
-                CloseSubmenu();
-            };
-            _submenuCloseTimer.Start();
-        }
-
-        private void CancelSubmenuClose()
-        {
-            _submenuCloseTimer?.Stop();
-            _submenuCloseTimer = null;
-        }
-
-        private void CloseSubmenu()
-        {
-            if (DeleteOlderSubmenu.IsOpen)
-            {
-                DeleteOlderSubmenu.IsOpen = false;
-                HamburgerMenu.StaysOpen = false;
-            }
         }
 
         /// <summary>
@@ -2424,65 +2385,12 @@ namespace JoJot
         }
 
         /// <summary>
-        /// "Delete older than" submenu hover — shows submenu on hover.
+        /// Phase 16: "Clean up tabs" menu click — opens the cleanup side panel.
         /// </summary>
-        private void MenuDeleteOlder_MouseEnter(object sender, MouseEventArgs e)
-        {
-            if (sender is Border b) b.Background = GetBrush("c-hover-bg");
-            CancelSubmenuClose();
-            HamburgerMenu.StaysOpen = true;
-            DeleteOlderSubmenu.IsOpen = true;
-        }
-
-        private void MenuDeleteOlder_MouseLeave(object sender, MouseEventArgs e)
-        {
-            if (sender is Border b) b.Background = System.Windows.Media.Brushes.Transparent;
-            ScheduleSubmenuClose();
-        }
-
-        /// <summary>
-        /// "Delete older than" row click — submenu opens on hover; click is no-op.
-        /// </summary>
-        private void MenuDeleteOlder_Click(object sender, MouseButtonEventArgs e) { /* submenu opens on hover */ }
-
-        private void MenuDeleteOlder7_Click(object sender, MouseButtonEventArgs e)
-        {
-            CloseSubmenu();
-            HamburgerMenu.IsOpen = false;
-            _ = ConfirmAndDeleteOlderThanAsync(7);
-        }
-
-        private void MenuDeleteOlder14_Click(object sender, MouseButtonEventArgs e)
-        {
-            CloseSubmenu();
-            HamburgerMenu.IsOpen = false;
-            _ = ConfirmAndDeleteOlderThanAsync(14);
-        }
-
-        private void MenuDeleteOlder30_Click(object sender, MouseButtonEventArgs e)
-        {
-            CloseSubmenu();
-            HamburgerMenu.IsOpen = false;
-            _ = ConfirmAndDeleteOlderThanAsync(30);
-        }
-
-        private void MenuDeleteOlder90_Click(object sender, MouseButtonEventArgs e)
-        {
-            CloseSubmenu();
-            HamburgerMenu.IsOpen = false;
-            _ = ConfirmAndDeleteOlderThanAsync(90);
-        }
-
-        private void MenuDeleteExceptPinned_Click(object sender, MouseButtonEventArgs e)
+        private void MenuCleanup_Click(object sender, MouseButtonEventArgs e)
         {
             HamburgerMenu.IsOpen = false;
-            _ = ConfirmAndDeleteExceptPinnedAsync();
-        }
-
-        private void MenuDeleteAll_Click(object sender, MouseButtonEventArgs e)
-        {
-            HamburgerMenu.IsOpen = false;
-            _ = ConfirmAndDeleteAllAsync();
+            ShowCleanupPanel();
         }
 
         /// <summary>
@@ -2510,6 +2418,7 @@ namespace JoJot
 
             // R2-RECOVER-01: One-panel-at-a-time — close preferences if open
             if (_preferencesOpen) HidePreferencesPanel();
+            if (_cleanupPanelOpen) HideCleanupPanel();
 
             var orphanGuids = VirtualDesktopService.OrphanedSessionGuids;
             if (orphanGuids.Count == 0)
@@ -2805,6 +2714,95 @@ namespace JoJot
                 hasOrphans ? "c-accent" : "c-text-primary");
         }
 
+        // ─── Cleanup Panel (Phase 16: CLEANUP-01 through CLEANUP-06) ────────────
+
+        /// <summary>
+        /// Opens the cleanup side panel and populates it with the default filter.
+        /// Toggles closed if already open.
+        /// </summary>
+        private void ShowCleanupPanel()
+        {
+            if (_cleanupPanelOpen)
+            {
+                HideCleanupPanel();
+                return;
+            }
+
+            // One-panel-at-a-time
+            if (_preferencesOpen) HidePreferencesPanel();
+            if (_recoveryPanelOpen) HideRecoveryPanel();
+
+            // Reset filter to defaults
+            CleanupAgeInput.Text = "7";
+            CleanupUnitCombo.SelectedIndex = 0; // "days"
+            CleanupIncludePinned.IsChecked = false;
+
+            _cleanupPanelOpen = true;
+            CleanupPanel.Visibility = Visibility.Visible;
+
+            // Populate preview list with default filter
+            RefreshCleanupPreview();
+
+            var anim = new DoubleAnimation
+            {
+                From = 320, To = 0,
+                Duration = TimeSpan.FromMilliseconds(250),
+                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+            };
+            CleanupPanelTransform.BeginAnimation(TranslateTransform.XProperty, anim);
+        }
+
+        private void HideCleanupPanel()
+        {
+            if (!_cleanupPanelOpen) return;
+            _cleanupPanelOpen = false;
+
+            var anim = new DoubleAnimation
+            {
+                From = 0, To = 320,
+                Duration = TimeSpan.FromMilliseconds(200),
+                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn }
+            };
+            anim.Completed += (_, _) =>
+            {
+                CleanupPanel.Visibility = Visibility.Collapsed;
+                CleanupPanelTransform.BeginAnimation(TranslateTransform.XProperty, null);
+                CleanupPanelTransform.X = 320;
+            };
+            CleanupPanelTransform.BeginAnimation(TranslateTransform.XProperty, anim);
+        }
+
+        private void CleanupClose_Click(object sender, MouseButtonEventArgs e)
+        {
+            HideCleanupPanel();
+        }
+
+        private void CleanupDelete_Click(object sender, MouseButtonEventArgs e)
+        {
+            // Implemented in plan 02
+        }
+
+        private void CleanupAgeInput_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (_cleanupPanelOpen) RefreshCleanupPreview();
+        }
+
+        private void CleanupUnitCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (_cleanupPanelOpen) RefreshCleanupPreview();
+        }
+
+        private void CleanupIncludePinned_Changed(object sender, RoutedEventArgs e)
+        {
+            if (_cleanupPanelOpen) RefreshCleanupPreview();
+        }
+
+        private void RefreshCleanupPreview()
+        {
+            // Stub — full implementation in Task 2
+            CleanupPreviewList.Children.Clear();
+        }
+
         /// <summary>
         /// Exit — flush all windows and terminate (PROC-06).
         /// Uses Dispatcher.BeginInvoke so the menu closes before shutdown begins.
@@ -2829,79 +2827,6 @@ namespace JoJot
                 window.FlushAndClose();
             }
             Environment.Exit(0);
-        }
-
-        // ─── Bulk Delete Confirmation (Phase 8: Plan 02 — MENU-03, MENU-04, MENU-05) ──
-
-        /// <summary>
-        /// Shows confirmation for "Delete older than N days" (MENU-03).
-        /// Counts non-pinned tabs with updated_at older than N days from now.
-        /// </summary>
-        private Task ConfirmAndDeleteOlderThanAsync(int days)
-        {
-            var cutoff = DateTime.Now.AddDays(-days);
-            var candidates = _tabs.Where(t => !t.Pinned && t.UpdatedAt < cutoff).ToList();
-
-            if (candidates.Count == 0)
-            {
-                ShowConfirmation($"Delete notes older than {days} days", $"No notes are older than {days} days.", null);
-                return Task.CompletedTask;
-            }
-
-            ShowConfirmation(
-                $"Delete notes older than {days} days",
-                $"This will delete {candidates.Count} note{(candidates.Count == 1 ? "" : "s")} that haven't been updated in the last {days} days. Pinned notes are never deleted.",
-                () => _ = DeleteMultipleAsync(candidates)
-            );
-            return Task.CompletedTask;
-        }
-
-        /// <summary>
-        /// Shows confirmation for "Delete all except pinned" (MENU-04).
-        /// </summary>
-        private Task ConfirmAndDeleteExceptPinnedAsync()
-        {
-            var candidates = _tabs.Where(t => !t.Pinned).ToList();
-
-            if (candidates.Count == 0)
-            {
-                ShowConfirmation("Delete all except pinned", "All notes are pinned — nothing to delete.", null);
-                return Task.CompletedTask;
-            }
-
-            ShowConfirmation(
-                "Delete all except pinned",
-                $"This will delete {candidates.Count} unpinned note{(candidates.Count == 1 ? "" : "s")}. Pinned notes will be preserved.",
-                () => _ = DeleteMultipleAsync(candidates)
-            );
-            return Task.CompletedTask;
-        }
-
-        /// <summary>
-        /// Shows confirmation for "Delete all" (MENU-05).
-        /// Note: pinned tabs are still skipped by DeleteMultipleAsync (TDEL-06).
-        /// </summary>
-        private Task ConfirmAndDeleteAllAsync()
-        {
-            var candidates = _tabs.Where(t => !t.Pinned).ToList();
-
-            if (candidates.Count == 0)
-            {
-                ShowConfirmation("Delete all notes", "All notes are pinned — nothing to delete.", null);
-                return Task.CompletedTask;
-            }
-
-            int pinnedCount = _tabs.Count(t => t.Pinned);
-            string pinnedNote = pinnedCount > 0
-                ? $" ({pinnedCount} pinned note{(pinnedCount == 1 ? "" : "s")} will be preserved)"
-                : "";
-
-            ShowConfirmation(
-                "Delete all notes",
-                $"This will delete {candidates.Count} note{(candidates.Count == 1 ? "" : "s")}{pinnedNote}.",
-                () => _ = DeleteMultipleAsync(candidates)
-            );
-            return Task.CompletedTask;
         }
 
         // ─── Confirmation Overlay (Phase 8: Plan 02 — MENU-03, MENU-04, MENU-05) ──
@@ -3321,6 +3246,7 @@ namespace JoJot
         {
             // R2-RECOVER-01: One-panel-at-a-time — close recovery if open
             if (_recoveryPanelOpen) HideRecoveryPanel();
+            if (_cleanupPanelOpen) HideCleanupPanel();
 
             _preferencesOpen = true;
             PreferencesPanel.Visibility = Visibility.Visible;
