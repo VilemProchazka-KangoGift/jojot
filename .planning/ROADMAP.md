@@ -39,6 +39,7 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
 - [ ] **Phase 14: Installer** — Produce a Windows MSI or MSIX installer for distribution
 - [x] **Phase 15: Review Round 2 — UI/UX Bug Fixes & Polish** — Fix note persistence bug, improve tab interactions, enhance drag-and-drop, refine preferences panel, redesign session recovery, and polish startup/move-to-desktop flows (completed 2026-03-05)
 - [x] **Phase 15.1: Recovery Panel, Tab Rename & Reorder Fixes** — Make recovery items full-width with tab info, fix escape-to-cancel rename, replace drag ghost with fade-out (completed 2026-03-06)
+- [ ] **Phase 16: Tab Cleanup Panel** — Replace Delete menu options with a dedicated cleanup side panel featuring age-based filtering, pinned inclusion toggle, and preview list with confirmation
 
 ## Phase Details
 
@@ -145,6 +146,29 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
 - [x] 15.1-05-PLAN.md — Gap closure: fix drag opacity reversion and hover guards during drag (R3-REORDER-01)
 - [x] 15.1-06-PLAN.md — Gap closure: fix recovery tab preview indent and registry name fallback (R3-RECOVER-01)
 
+### Phase 16: Tab Cleanup Panel
+**Goal**: Replace the existing Delete menu options with a new "Clean up tabs" menu item that opens a side panel for bulk tab cleanup
+**Depends on**: Phase 15.1 (builds on existing side panel pattern from recovery/preferences)
+**Requirements**:
+  - **CLEANUP-01**: Remove "Delete..." options from the hamburger menu
+  - **CLEANUP-02**: Add new "Clean up tabs" menu item to the hamburger menu
+  - **CLEANUP-03**: Side panel with age-based filter: "clean up older than [input; default 2] [dropdown days/hours; default days]"
+  - **CLEANUP-04**: Checkbox for "include pinned" (default unchecked)
+  - **CLEANUP-05**: Delete button in the panel controls area
+  - **CLEANUP-06**: Scrollable preview list of tabs matching the filter criteria (same display style as recovery panel)
+  - **CLEANUP-07**: Confirmation dialog before executing deletion
+**Success Criteria** (what must be TRUE):
+  1. The hamburger menu no longer has "Delete..." options; it has "Clean up tabs" instead
+  2. Clicking "Clean up tabs" opens a side panel (consistent with existing recovery/preferences panels)
+  3. User can set an age threshold (number + days/hours) to filter which tabs to clean up
+  4. "Include pinned" checkbox controls whether pinned tabs appear in the cleanup list
+  5. The panel shows a scrollable list of tabs that match the current filter (with tab names and excerpts like recovery panel)
+  6. Clicking Delete shows a confirmation prompt before actually deleting the matched tabs
+  7. Only confirmed deletions are executed; cancelling returns to the panel without changes
+**Plans**: 2 plans
+- [ ] 16-01-PLAN.md — Menu swap and cleanup panel with filter controls and live preview list (CLEANUP-01, CLEANUP-02, CLEANUP-03, CLEANUP-04, CLEANUP-06)
+- [ ] 16-02-PLAN.md — Delete button action, confirmation dialog, and post-delete behavior (CLEANUP-05, CLEANUP-07)
+
 ### Phase 14: Installer
 **Goal**: JoJot can be installed on a clean Windows machine via a standard installer package
 **Depends on**: Phase 13 (all fixes applied before packaging)
@@ -177,5 +201,6 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
 | 12. Tab Panel UX | v1.1 | 2/2 | Complete | 2026-03-04 |
 | 13. Theme, Display & Menu Polish | v1.1 | 2/2 | Complete | 2026-03-04 |
 | 15.1. Recovery, Rename, Reorder | v1.1 | Complete    | 2026-03-06 | 2026-03-06 |
+| 16. Tab Cleanup Panel | v1.1 | 0/2 | Not started | - |
 | 14. Installer | v1.1 | 0/? | Not started | - |
 | 15. Review Round 2 UI/UX | v1.1 | 11/11 | Complete | 2026-03-05 |
