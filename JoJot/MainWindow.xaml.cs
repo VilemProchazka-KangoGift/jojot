@@ -2779,7 +2779,69 @@ namespace JoJot
 
         private void CleanupDelete_Click(object sender, MouseButtonEventArgs e)
         {
-            // Implemented in plan 02
+            var candidates = GetCleanupCandidates();
+            if (candidates.Count == 0) return;
+
+            // Build confirmation message
+            int pinnedCount = candidates.Count(t => t.Pinned);
+            string pinnedNote = pinnedCount > 0 ? $" (including {pinnedCount} pinned)" : "";
+            string message = $"This will permanently delete {candidates.Count} tab{(candidates.Count == 1 ? "" : "s")}{pinnedNote}. This cannot be undone.";
+
+            ShowConfirmation(
+                "Clean up tabs",
+                message,
+                () => _ = ExecuteCleanupDeleteAsync(candidates)
+            );
+        }
+
+        /// <summary>
+        /// Permanently deletes all matched cleanup candidates (hard-delete, no soft-delete/undo toast).
+        /// After deletion, rebuilds the tab list, handles active tab fallback, and refreshes the cleanup panel.
+        /// </summary>
+        private async Task ExecuteCleanupDeleteAsync(List<NoteTab> candidates)
+        {
+            // Save current content before deletion
+            SaveCurrentTabContent();
+
+            // Commit any existing pending soft-deletion first (from single-tab delete)
+            await CommitPendingDeletionAsync();
+
+            bool wasActiveDeleted = _activeTab != null && candidates.Any(t => t.Id == _activeTab.Id);
+            int activeOriginalIndex = wasActiveDeleted ? _tabs.IndexOf(_activeTab!) : 0;
+
+            // Remove from in-memory collection
+            foreach (var tab in candidates)
+                _tabs.Remove(tab);
+
+            // Hard-delete from database (permanent, no undo)
+            foreach (var tab in candidates)
+            {
+                await DatabaseService.DeleteNoteAsync(tab.Id);
+                UndoManager.Instance.RemoveStack(tab.Id);
+            }
+
+            // Rebuild tab list UI
+            RebuildTabList();
+
+            // Handle active tab fallback
+            if (wasActiveDeleted)
+            {
+                if (_tabs.Count > 0)
+                {
+                    await ApplyFocusCascadeAsync(activeOriginalIndex);
+                }
+                else
+                {
+                    // No tabs survive — create a new empty tab
+                    await CreateNewTabAsync();
+                }
+            }
+
+            // Refresh the cleanup panel preview list (panel stays open)
+            if (_cleanupPanelOpen)
+            {
+                RefreshCleanupPreview();
+            }
         }
 
         private void CleanupAgeInput_TextChanged(object sender, TextChangedEventArgs e)
