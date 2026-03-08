@@ -70,6 +70,7 @@ namespace JoJot
         private string? _dragToDesktopGuid;    // Target desktop GUID
         private string? _dragToDesktopName;    // Target desktop name for display
         private bool _isMisplaced;            // DRAG-10: window GUID doesn't match desktop
+        private System.Threading.CancellationTokenSource? _misplacedCheckCts; // debounce rapid desktop switches
         private int _fileDragEnterCount;       // R2-DROP-01: Enter/leave counter for reliable overlay dismiss
 
         // ─── Soft-delete / toast state (Phase 5) ────────────────────────────────
@@ -212,6 +213,7 @@ namespace JoJot
             };
 
             // Phase 13: Force-close hamburger menu on any click outside (WIN-02)
+            // Also commit active rename when clicking outside the rename TextBox
             PreviewMouseDown += (s, e) =>
             {
                 if (HamburgerMenu.IsOpen
@@ -220,6 +222,19 @@ namespace JoJot
                 {
                     HamburgerMenu.IsOpen = false;
                 }
+
+                if (_activeRename is var (_, _, renameBox, _)
+                    && !IsMouseOverElement(renameBox))
+                {
+                    CommitRename();
+                }
+            };
+
+            // Commit active rename when clicking outside the window
+            Deactivated += (s, e) =>
+            {
+                if (_activeRename != null)
+                    CommitRename();
             };
 
             // Phase 7: Initial toolbar state — all buttons disabled until tab selected
@@ -519,7 +534,8 @@ namespace JoJot
             {
                 Text = tab.CreatedDisplay,
                 FontSize = 10,
-                HorizontalAlignment = HorizontalAlignment.Left
+                HorizontalAlignment = HorizontalAlignment.Left,
+                ToolTip = NoteTab.CreatedTooltip(tab.CreatedAt)
             };
             createdBlock.SetResourceReference(TextBlock.ForegroundProperty, "c-text-muted");
             row1.Children.Add(createdBlock);
@@ -527,7 +543,8 @@ namespace JoJot
             {
                 Text = tab.UpdatedDisplay,
                 FontSize = 10,
-                HorizontalAlignment = HorizontalAlignment.Right
+                HorizontalAlignment = HorizontalAlignment.Right,
+                ToolTip = NoteTab.UpdatedTooltip(tab.UpdatedAt)
             };
             updatedBlock.SetResourceReference(TextBlock.ForegroundProperty, "c-text-muted");
             row1.Children.Add(updatedBlock);
@@ -610,6 +627,11 @@ namespace JoJot
         /// </summary>
         private void UpdateTabItemDisplay(NoteTab tab)
         {
+            // If a rename is active for this tab, skip the rebuild to avoid
+            // destroying the rename TextBox. CommitRename will call us again after finishing.
+            if (_activeRename is var (_, renTab, _, _) && renTab.Id == tab.Id)
+                return;
+
             foreach (var obj in TabList.Items)
             {
                 if (obj is ListBoxItem item && item.Tag is NoteTab t && t.Id == tab.Id)
@@ -777,7 +799,21 @@ namespace JoJot
                 if (obj is ListBoxItem item && item.Tag is NoteTab t && t.Id == tab.Id)
                 {
                     TabList.SelectedItem = item;
-                    TabList.ScrollIntoView(item);
+                    try
+                    {
+                        TabList.ScrollIntoView(item);
+                    }
+                    catch (NullReferenceException)
+                    {
+                        // WPF VirtualizingStackPanel can throw during layout
+                        // if the panel hasn't been measured/arranged yet.
+                        // Defer the scroll to after layout completes.
+                        Dispatcher.InvokeAsync(() =>
+                        {
+                            try { TabList.ScrollIntoView(item); }
+                            catch (NullReferenceException) { }
+                        }, System.Windows.Threading.DispatcherPriority.Loaded);
+                    }
                     return;
                 }
             }
@@ -848,9 +884,28 @@ namespace JoJot
         {
             SaveCurrentTabContent();
 
-            int maxSort = await DatabaseService.GetMaxSortOrderAsync(_desktopGuid);
+            // Insert position: right after pinned tabs
+            int pinnedCount = _tabs.Count(t => t.Pinned);
+
+            // If the first unpinned tab is already empty (no title, no content), just focus it
+            if (pinnedCount < _tabs.Count)
+            {
+                var firstUnpinned = _tabs[pinnedCount];
+                if (firstUnpinned.IsPlaceholder)
+                {
+                    SelectTabByNote(firstUnpinned);
+                    Keyboard.Focus(ContentEditor);
+                    return;
+                }
+            }
+
+            // Sort order: one less than the minimum unpinned sort_order
+            int minUnpinnedSort = _tabs.Where(t => !t.Pinned)
+                .Select(t => t.SortOrder).DefaultIfEmpty(0).Min();
+            int newSortOrder = minUnpinnedSort - 1;
+
             long newId = await DatabaseService.InsertNoteAsync(
-                _desktopGuid, null, "", false, maxSort + 1);
+                _desktopGuid, null, "", false, newSortOrder);
 
             var newTab = new NoteTab
             {
@@ -858,17 +913,14 @@ namespace JoJot
                 DesktopGuid = _desktopGuid,
                 Content = "",
                 Pinned = false,
-                SortOrder = maxSort + 1,
+                SortOrder = newSortOrder,
                 CreatedAt = DateTime.Now,
                 UpdatedAt = DateTime.Now
             };
 
-            _tabs.Add(newTab);
-
-            var item = CreateTabListItem(newTab);
-            TabList.Items.Add(item);
-            TabList.SelectedItem = item;
-            TabList.ScrollIntoView(item);
+            _tabs.Insert(pinnedCount, newTab);
+            RebuildTabList();
+            SelectTabByNote(newTab);
             Keyboard.Focus(ContentEditor);
         }
 
@@ -2484,7 +2536,7 @@ namespace JoJot
         /// (name + excerpt), "+N more" if excess, and Adopt/Delete buttons.
         /// </summary>
         private FrameworkElement CreateRecoveryRow(string guid, string? desktopName, int tabCount,
-            DateTime lastUpdated, List<(string? Name, string Excerpt)> tabPreviews, int totalNoteCount, bool isLast)
+            DateTime lastUpdated, List<(string? Name, string Excerpt, DateTime CreatedAt, DateTime UpdatedAt)> tabPreviews, int totalNoteCount, bool isLast)
         {
             var container = new StackPanel
             {
@@ -2522,18 +2574,19 @@ namespace JoJot
             metaBlock.SetResourceReference(TextBlock.ForegroundProperty, "c-text-muted");
             container.Children.Add(metaBlock);
 
-            // Tab preview lines (one per tab, indented)
-            foreach (var (name, excerpt) in tabPreviews)
+            // Tab preview lines (matching cleanup panel style)
+            foreach (var (name, excerpt, createdAt, updatedAt) in tabPreviews)
             {
+                var tabContainer = new StackPanel { Margin = new Thickness(0, 3, 0, 3) };
+
                 string displayExcerpt = excerpt.Length > 50 ? excerpt[..50] + "..." : excerpt;
-                // Replace newlines with spaces for single-line display
                 displayExcerpt = displayExcerpt.Replace('\n', ' ').Replace('\r', ' ');
 
+                // Title line with optional excerpt
                 var lineBlock = new TextBlock
                 {
                     FontSize = 11,
-                    TextTrimming = TextTrimming.CharacterEllipsis,
-                    Margin = new Thickness(0, 1, 0, 1)
+                    TextTrimming = TextTrimming.CharacterEllipsis
                 };
 
                 if (name != null)
@@ -2563,7 +2616,31 @@ namespace JoJot
                 }
 
                 lineBlock.SetResourceReference(TextBlock.ForegroundProperty, "c-text-primary");
-                container.Children.Add(lineBlock);
+                tabContainer.Children.Add(lineBlock);
+
+                // Date row: created (left) + updated (right)
+                var dateRow = new Grid { Margin = new Thickness(0, 1, 0, 0) };
+                var createdBlock = new TextBlock
+                {
+                    Text = NoteTab.FormatCreatedDisplay(createdAt),
+                    FontSize = 10,
+                    HorizontalAlignment = HorizontalAlignment.Left,
+                    ToolTip = NoteTab.CreatedTooltip(createdAt)
+                };
+                createdBlock.SetResourceReference(TextBlock.ForegroundProperty, "c-text-muted");
+                dateRow.Children.Add(createdBlock);
+                var updatedBlock = new TextBlock
+                {
+                    Text = NoteTab.FormatUpdatedDisplay(updatedAt),
+                    FontSize = 10,
+                    HorizontalAlignment = HorizontalAlignment.Right,
+                    ToolTip = NoteTab.UpdatedTooltip(updatedAt)
+                };
+                updatedBlock.SetResourceReference(TextBlock.ForegroundProperty, "c-text-muted");
+                dateRow.Children.Add(updatedBlock);
+                tabContainer.Children.Add(dateRow);
+
+                container.Children.Add(tabContainer);
             }
 
             // "+N more" line (if totalNoteCount > tabPreviews.Count)
@@ -2842,6 +2919,10 @@ namespace JoJot
             {
                 RefreshCleanupPreview();
             }
+
+            // Show confirmation toast (no undo — cleanup deletion is permanent)
+            int deleted = candidates.Count;
+            ShowInfoToast($"{deleted} tab{(deleted == 1 ? "" : "s")} cleaned up");
         }
 
         private void CleanupAgeInput_TextChanged(object sender, TextChangedEventArgs e)
@@ -2991,14 +3072,27 @@ namespace JoJot
             titleBlock.SetResourceReference(TextBlock.ForegroundProperty, "c-text-primary");
             container.Children.Add(titleBlock);
 
-            // Relative age line (muted, smaller)
-            var ageBlock = new TextBlock
+            // Date row: created (left) + updated (right) — matches tab item layout
+            var dateRow = new Grid { Margin = new Thickness(0, 2, 0, 0) };
+            var createdBlock = new TextBlock
             {
-                Text = FormatRelativeAge(tab.UpdatedAt),
-                FontSize = 11
+                Text = tab.CreatedDisplay,
+                FontSize = 10,
+                HorizontalAlignment = HorizontalAlignment.Left,
+                ToolTip = NoteTab.CreatedTooltip(tab.CreatedAt)
             };
-            ageBlock.SetResourceReference(TextBlock.ForegroundProperty, "c-text-muted");
-            container.Children.Add(ageBlock);
+            createdBlock.SetResourceReference(TextBlock.ForegroundProperty, "c-text-muted");
+            dateRow.Children.Add(createdBlock);
+            var updatedBlock = new TextBlock
+            {
+                Text = tab.UpdatedDisplay,
+                FontSize = 10,
+                HorizontalAlignment = HorizontalAlignment.Right,
+                ToolTip = NoteTab.UpdatedTooltip(tab.UpdatedAt)
+            };
+            updatedBlock.SetResourceReference(TextBlock.ForegroundProperty, "c-text-muted");
+            dateRow.Children.Add(updatedBlock);
+            container.Children.Add(dateRow);
 
             // Divider (unless last item)
             if (!isLast)
@@ -3036,37 +3130,6 @@ namespace JoJot
             // If no custom name (DisplayLabel shows first 30 chars of content),
             // don't repeat it — return empty since title already shows content
             return "";
-        }
-
-        /// <summary>
-        /// Formats UpdatedAt as relative age (e.g., "3 days ago", "2 hours ago").
-        /// </summary>
-        private static string FormatRelativeAge(DateTime updatedAt)
-        {
-            var diff = DateTime.Now - updatedAt;
-
-            if (diff.TotalMinutes < 60)
-                return $"{Math.Max(1, (int)diff.TotalMinutes)} min ago";
-
-            if (diff.TotalHours < 24)
-                return $"{(int)diff.TotalHours} hour{((int)diff.TotalHours == 1 ? "" : "s")} ago";
-
-            if (diff.TotalDays < 7)
-                return $"{(int)diff.TotalDays} day{((int)diff.TotalDays == 1 ? "" : "s")} ago";
-
-            if (diff.TotalDays < 30)
-            {
-                int weeks = (int)(diff.TotalDays / 7);
-                return $"{weeks} week{(weeks == 1 ? "" : "s")} ago";
-            }
-
-            if (diff.TotalDays < 365)
-            {
-                int months = (int)(diff.TotalDays / 30);
-                return $"{months} month{(months == 1 ? "" : "s")} ago";
-            }
-
-            return updatedAt.ToString("MMM d, yyyy");
         }
 
         /// <summary>
@@ -4197,12 +4260,28 @@ namespace JoJot
         /// DRAG-10: When a misplaced window gains focus, auto-show the lock overlay.
         /// A window is misplaced when its stored desktop GUID doesn't match the desktop
         /// it's currently on (detected via COM).
+        /// Debounces with 300ms delay to let COM state settle during rapid desktop switching.
         /// </summary>
         private async void OnWindowActivated_CheckMisplaced(object? sender, EventArgs e)
         {
-            // Don't skip when overlay active -- ShowDragOverlayAsync handles re-entry
-            // (auto-dismiss on return, update on third desktop, no-op on same)
             if (!VirtualDesktopService.IsAvailable) return;
+
+            // Cancel any pending check — rapid desktop switches fire Activated multiple times
+            _misplacedCheckCts?.Cancel();
+            var cts = new System.Threading.CancellationTokenSource();
+            _misplacedCheckCts = cts;
+
+            try
+            {
+                // Let COM state settle before querying
+                await Task.Delay(300, cts.Token);
+            }
+            catch (TaskCanceledException)
+            {
+                return; // Superseded by a newer Activated event
+            }
+
+            if (cts.Token.IsCancellationRequested) return;
 
             try
             {
@@ -4212,12 +4291,26 @@ namespace JoJot
                 Guid currentDesktop = Interop.VirtualDesktopInterop.GetWindowDesktopId(hwnd);
                 string currentGuid = currentDesktop.ToString();
 
+                // Double-check after a short pause to confirm it's not a transient COM glitch
                 if (!currentGuid.Equals(_desktopGuid, StringComparison.OrdinalIgnoreCase))
                 {
+                    await Task.Delay(200, cts.Token);
+                    if (cts.Token.IsCancellationRequested) return;
+
+                    // Re-query to confirm the mismatch is stable
+                    Guid confirmDesktop = Interop.VirtualDesktopInterop.GetWindowDesktopId(hwnd);
+                    string confirmGuid = confirmDesktop.ToString();
+                    if (confirmGuid.Equals(_desktopGuid, StringComparison.OrdinalIgnoreCase))
+                    {
+                        // Transient mismatch — COM returned stale data
+                        LogService.Info($"Misplaced check: transient mismatch resolved (was {currentGuid}, now correct)");
+                        return;
+                    }
+                    currentGuid = confirmGuid;
+
                     if (!_isMisplaced)
                     {
                         _isMisplaced = true;
-                        // Update title with "(misplaced)" badge
                         string currentTitle = Title;
                         if (!currentTitle.Contains("(misplaced)"))
                         {
@@ -4251,6 +4344,10 @@ namespace JoJot
                         await HideDragOverlayAsync();
                     }
                 }
+            }
+            catch (TaskCanceledException)
+            {
+                return;
             }
             catch (Exception ex)
             {

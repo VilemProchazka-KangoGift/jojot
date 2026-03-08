@@ -14,10 +14,13 @@ namespace JoJot.Services
         private static string _currentDesktopGuid = "default";
         private static string _currentDesktopName = "";
         private static int _currentDesktopIndex;
+        private static string _previousDesktopGuid = "";
+        private static DateTime _lastDesktopSwitchTime = DateTime.MinValue;
 
         private static VirtualDesktopNotificationListener? _notificationListener;
         private static uint _notificationCookie;
         private static bool _notificationsRegistered;
+        private static Timer? _pollingTimer;
 
         /// <summary>
         /// Fired when a desktop is renamed. Args: (desktopGuid, newName).
@@ -55,6 +58,17 @@ namespace JoJot.Services
         /// Returns empty string if name is not set or in fallback mode.
         /// </summary>
         public static string CurrentDesktopName => _currentDesktopName;
+
+        /// <summary>
+        /// The GUID of the desktop the user was on before the last switch.
+        /// Empty if no switch has occurred yet.
+        /// </summary>
+        public static string PreviousDesktopGuid => _previousDesktopGuid;
+
+        /// <summary>
+        /// UTC timestamp of the last desktop switch. Used for redirect heuristics.
+        /// </summary>
+        public static DateTime LastDesktopSwitchTime => _lastDesktopSwitchTime;
 
         /// <summary>
         /// Initializes the virtual desktop service.
@@ -348,7 +362,8 @@ namespace JoJot.Services
             var notifService = VirtualDesktopInterop.GetNotificationService();
             if (notifService is null)
             {
-                LogService.Warn("Notification service unavailable — live title updates disabled");
+                LogService.Warn("Notification service unavailable — falling back to polling");
+                StartDesktopPolling();
                 return;
             }
 
@@ -380,11 +395,48 @@ namespace JoJot.Services
         }
 
         /// <summary>
+        /// Starts polling GetCurrentDesktop() as a fallback when COM notifications are unavailable.
+        /// Detects desktop switches by comparing the polled GUID to the cached value.
+        /// </summary>
+        private static void StartDesktopPolling()
+        {
+            _pollingTimer = new Timer(_ => PollDesktopChange(), null, 500, 500);
+            LogService.Info("Desktop polling started (500ms interval)");
+        }
+
+        private static void PollDesktopChange()
+        {
+            try
+            {
+                var (id, name, index) = VirtualDesktopInterop.GetCurrentDesktop();
+                string newGuid = id.ToString();
+                if (!newGuid.Equals(_currentDesktopGuid, StringComparison.OrdinalIgnoreCase))
+                {
+                    string oldGuid = _currentDesktopGuid;
+                    _previousDesktopGuid = oldGuid;
+                    _lastDesktopSwitchTime = DateTime.UtcNow;
+                    _currentDesktopGuid = newGuid;
+                    _currentDesktopName = name;
+                    _currentDesktopIndex = index;
+                    LogService.Info($"Poll: desktop switched {oldGuid} -> {newGuid}");
+                    CurrentDesktopChanged?.Invoke(oldGuid, newGuid);
+                }
+            }
+            catch (Exception ex)
+            {
+                LogService.Warn($"Desktop polling failed: {ex.Message}");
+            }
+        }
+
+        /// <summary>
         /// Unregisters the COM notification callback and cleans up the listener.
         /// Safe to call even if not subscribed or already unsubscribed.
         /// </summary>
         public static void UnsubscribeNotifications()
         {
+            _pollingTimer?.Dispose();
+            _pollingTimer = null;
+
             if (!_notificationsRegistered)
                 return;
 
@@ -452,6 +504,10 @@ namespace JoJot.Services
         {
             string oldGuid = oldDesktopId.ToString();
             string newGuid = newDesktopId.ToString();
+
+            // Track previous desktop for redirect heuristics
+            _previousDesktopGuid = oldGuid;
+            _lastDesktopSwitchTime = DateTime.UtcNow;
 
             // Update internal state to reflect the new current desktop
             _currentDesktopGuid = newGuid;
@@ -565,6 +621,28 @@ namespace JoJot.Services
             catch (Exception ex)
             {
                 LogService.Error($"MoveWindowToDesktop failed for {desktopGuid}: {ex.Message}");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Switches the user's view to the specified desktop via COM API.
+        /// Returns true if successful, false if the COM call failed.
+        /// </summary>
+        public static bool TrySwitchToDesktop(string desktopGuid)
+        {
+            if (!_isAvailable) return false;
+
+            try
+            {
+                Guid targetId = Guid.Parse(desktopGuid);
+                VirtualDesktopInterop.SwitchToDesktop(targetId);
+                LogService.Info($"Switched to desktop {desktopGuid}");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                LogService.Error($"SwitchToDesktop failed for {desktopGuid}: {ex.Message}");
                 return false;
             }
         }

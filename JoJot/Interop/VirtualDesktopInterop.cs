@@ -112,6 +112,20 @@ namespace JoJot.Interop
         }
 
         /// <summary>
+        /// Switches the user's view to the specified virtual desktop.
+        /// </summary>
+        public static void SwitchToDesktop(Guid desktopId)
+        {
+            EnsureInitialized();
+            int hr = _managerInternal!.FindDesktop(ref desktopId, out IVirtualDesktop desktop);
+            if (hr != 0)
+                throw new COMException($"FindDesktop failed (HRESULT: 0x{hr:X8})", hr);
+            hr = _managerInternal.SwitchDesktop(desktop);
+            if (hr != 0)
+                throw new COMException($"SwitchDesktop failed (HRESULT: 0x{hr:X8})", hr);
+        }
+
+        /// <summary>
         /// Gets the current virtual desktop's GUID, name, and index.
         /// </summary>
         public static (Guid Id, string Name, int Index) GetCurrentDesktop()

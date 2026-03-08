@@ -14,6 +14,7 @@ namespace JoJot.Services
         private readonly DispatcherTimer _timer;
         private int _debounceMs = 500;
         private DateTime _lastWriteCompleted = DateTime.MinValue;
+        private bool _isDirty;
         private Func<(long TabId, string Content)>? _contentProvider;
         private Action<long>? _onSaveCompleted;
 
@@ -67,6 +68,7 @@ namespace JoJot.Services
             }
 
             // Reset-on-keystroke: stop and restart timer
+            _isDirty = true;
             _timer.Stop();
             _timer.Interval = TimeSpan.FromMilliseconds(_debounceMs);
             _timer.Start();
@@ -80,7 +82,7 @@ namespace JoJot.Services
         {
             _timer.Stop();
 
-            if (_contentProvider == null) return;
+            if (!_isDirty || _contentProvider == null) return;
 
             var (tabId, content) = _contentProvider();
             if (tabId <= 0) return;
@@ -89,6 +91,7 @@ namespace JoJot.Services
             {
                 await DatabaseService.UpdateNoteContentAsync(tabId, content);
                 _lastWriteCompleted = DateTime.Now;
+                _isDirty = false;
 
                 // Push undo snapshot on flush
                 UndoManager.Instance.PushSnapshot(tabId, content);
@@ -118,7 +121,7 @@ namespace JoJot.Services
         {
             _timer.Stop(); // Single-shot: don't fire again until next NotifyTextChanged
 
-            if (_contentProvider == null) return;
+            if (!_isDirty || _contentProvider == null) return;
 
             var (tabId, content) = _contentProvider();
             if (tabId <= 0) return;
@@ -127,6 +130,7 @@ namespace JoJot.Services
             {
                 await DatabaseService.UpdateNoteContentAsync(tabId, content);
                 _lastWriteCompleted = DateTime.Now;
+                _isDirty = false;
 
                 // Push undo snapshot after successful save
                 UndoManager.Instance.PushSnapshot(tabId, content);

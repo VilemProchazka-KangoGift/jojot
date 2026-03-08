@@ -765,14 +765,14 @@ namespace JoJot.Services
         /// <summary>
         /// R3-RECOVER-01: Returns tab previews (name + content excerpt) for recovery panel.
         /// </summary>
-        public static async Task<List<(string? Name, string Excerpt)>> GetNotePreviewsForDesktopAsync(string desktopGuid, int limit = 5)
+        public static async Task<List<(string? Name, string Excerpt, DateTime CreatedAt, DateTime UpdatedAt)>> GetNotePreviewsForDesktopAsync(string desktopGuid, int limit = 5)
         {
-            var previews = new List<(string?, string)>();
+            var previews = new List<(string?, string, DateTime, DateTime)>();
             await _writeLock.WaitAsync();
             try
             {
                 var cmd = _connection!.CreateCommand();
-                cmd.CommandText = @"SELECT name, COALESCE(SUBSTR(content, 1, 60), '')
+                cmd.CommandText = @"SELECT name, COALESCE(SUBSTR(content, 1, 60), ''), created_at, updated_at
                                    FROM notes
                                    WHERE desktop_guid = @guid
                                    ORDER BY sort_order ASC
@@ -785,7 +785,9 @@ namespace JoJot.Services
                     string? name = reader.IsDBNull(0) ? null : reader.GetString(0);
                     if (string.IsNullOrWhiteSpace(name)) name = null;
                     string excerpt = reader.IsDBNull(1) ? "" : reader.GetString(1);
-                    previews.Add((name, excerpt));
+                    DateTime createdAt = reader.IsDBNull(2) ? DateTime.MinValue : reader.GetDateTime(2);
+                    DateTime updatedAt = reader.IsDBNull(3) ? DateTime.MinValue : reader.GetDateTime(3);
+                    previews.Add((name, excerpt, createdAt, updatedAt));
                 }
             }
             catch (Exception ex)

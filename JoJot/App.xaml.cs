@@ -1,6 +1,8 @@
 using System.Diagnostics;
 using System.IO;
 using System.Windows;
+using System.Windows.Interop;
+using JoJot.Interop;
 using JoJot.Models;
 using JoJot.Services;
 
@@ -28,6 +30,7 @@ namespace JoJot
         /// Windows are added on creation and removed on Closed event.
         /// </summary>
         private readonly Dictionary<string, MainWindow> _windows = new(StringComparer.OrdinalIgnoreCase);
+        private DateTime _redirectCooldownUntil = DateTime.MinValue;
 
         private async void OnAppStartup(object sender, StartupEventArgs e)
         {
@@ -68,20 +71,21 @@ namespace JoJot
 
             if (!createdNew)
             {
-                // Second instance detected (PROC-03): send command based on arguments and exit
-                bool isNewTab = e.Args.Any(a =>
-                    a.Equals("--new-tab", StringComparison.OrdinalIgnoreCase));
+                // Second instance detected (PROC-03): query current desktop and send command
+                string? senderDesktop = null;
+                try
+                {
+                    VirtualDesktopInterop.Initialize();
+                    var (id, _, _) = VirtualDesktopInterop.GetCurrentDesktop();
+                    senderDesktop = id.ToString();
+                    LogService.Info($"Second instance detected \u2014 sender desktop {senderDesktop}");
+                }
+                catch (Exception ex)
+                {
+                    LogService.Warn($"Second instance COM query failed: {ex.Message}");
+                }
 
-                if (isNewTab)
-                {
-                    LogService.Info("Second instance detected \u2014 sending new-tab command");
-                    await IpcService.SendCommandAsync(new NewTabCommand());
-                }
-                else
-                {
-                    LogService.Info("Second instance detected \u2014 sending activate command");
-                    await IpcService.SendCommandAsync(new ActivateCommand());
-                }
+                await IpcService.SendCommandAsync(new NewTabCommand(DesktopGuid: senderDesktop));
                 Environment.Exit(0);
                 return;
             }
@@ -158,11 +162,27 @@ namespace JoJot
                 });
             };
 
-            // Log desktop switches (no auto-create per user decision)
+            // Redirect: when Windows pulls the user to a JoJot desktop from a non-JoJot desktop
+            // (e.g. taskbar click), switch back and create a window on the origin desktop.
             VirtualDesktopService.CurrentDesktopChanged += (oldGuid, newGuid) =>
             {
                 LogService.Info($"Desktop switched: {oldGuid} -> {newGuid}");
-                // Per user decision: no auto-create; windows only appear via explicit taskbar click/launch
+
+                Dispatcher.InvokeAsync(async () =>
+                {
+                    // Cooldown: suppress redirects for a few seconds after the last one
+                    if (DateTime.UtcNow < _redirectCooldownUntil) return;
+
+                    // Only redirect when switching TO a desktop with a JoJot window
+                    // FROM a desktop without one (taskbar click pattern)
+                    if (!_windows.ContainsKey(oldGuid) && _windows.ContainsKey(newGuid))
+                    {
+                        LogService.Info($"Redirect: creating window on {oldGuid} and switching back");
+                        _redirectCooldownUntil = DateTime.UtcNow.AddSeconds(3);
+                        await CreateWindowForDesktop(oldGuid);
+                        VirtualDesktopService.TrySwitchToDesktop(oldGuid);
+                    }
+                });
             };
 
             // ── Step 10: Log startup timing (STRT-01) ────────────────────────
@@ -215,6 +235,13 @@ namespace JoJot
             if (geo is not null)
             {
                 WindowPlacementHelper.ApplyGeometry(window, geo);
+            }
+
+            // Ensure window lands on the target desktop (e.g. IPC from a different desktop)
+            if (VirtualDesktopService.IsAvailable)
+            {
+                var hwnd = new WindowInteropHelper(window).Handle;
+                VirtualDesktopService.TryMoveWindowToDesktop(hwnd, desktopGuid);
             }
 
             // Phase 4: Load tabs from database after window is shown
@@ -292,16 +319,20 @@ namespace JoJot
                     }
                     break;
 
-                case NewTabCommand:
-                    LogService.Info($"IPC: new-tab \u2014 desktop {desktopGuid}");
-                    if (_windows.TryGetValue(desktopGuid, out var tabWindow))
+                case NewTabCommand ntc:
+                    // Prefer the sender's desktop GUID (queried by second instance via COM)
+                    string targetDesktop = ntc.DesktopGuid ?? desktopGuid;
+                    LogService.Info($"IPC: new-tab \u2014 target desktop {targetDesktop} (sender={ntc.DesktopGuid}, cached={desktopGuid})");
+                    if (_windows.TryGetValue(targetDesktop, out var tabWindow))
                     {
+                        VirtualDesktopService.TrySwitchToDesktop(targetDesktop);
                         WindowActivationHelper.ActivateWindow(tabWindow);
                         tabWindow.RequestNewTab();
                     }
                     else
                     {
-                        var newWindow = await CreateWindowForDesktop(desktopGuid);
+                        var newWindow = await CreateWindowForDesktop(targetDesktop);
+                        VirtualDesktopService.TrySwitchToDesktop(targetDesktop);
                         newWindow.RequestNewTab();
                     }
                     break;

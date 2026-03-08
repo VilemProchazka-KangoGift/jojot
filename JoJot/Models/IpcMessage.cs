@@ -20,8 +20,9 @@ namespace JoJot.Models
 
     /// <summary>
     /// Opens a new note tab in the JoJot window, optionally pre-filling content.
+    /// DesktopGuid is the virtual desktop the sender was on (resolved by second instance via COM).
     /// </summary>
-    public sealed record NewTabCommand(string? InitialContent = null) : IpcMessage;
+    public sealed record NewTabCommand(string? InitialContent = null, string? DesktopGuid = null) : IpcMessage;
 
     /// <summary>
     /// Switches the JoJot window to the notes for the specified virtual desktop.
