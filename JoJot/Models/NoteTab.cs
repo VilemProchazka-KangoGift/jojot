@@ -73,6 +73,13 @@ namespace JoJot.Models
         /// <summary>
         /// Formats a DateTime as a relative date string for the created_at column.
         /// </summary>
+        public static string FormatCreatedDisplay(DateTime dt) => FormatRelativeDate(dt);
+
+        /// <summary>
+        /// Formats a DateTime as a relative time string for the updated_at column.
+        /// </summary>
+        public static string FormatUpdatedDisplay(DateTime dt) => FormatRelativeTime(dt);
+
         private static string FormatRelativeDate(DateTime dt)
         {
             var now = DateTime.Now;
@@ -91,7 +98,7 @@ namespace JoJot.Models
 
         /// <summary>
         /// Formats a DateTime as a relative time string for the updated_at column.
-        /// More granular than FormatRelativeDate — includes "Just now" and "N min ago" tiers.
+        /// Always includes hour:minute except for "Just now".
         /// </summary>
         private static string FormatRelativeTime(DateTime dt)
         {
@@ -100,19 +107,28 @@ namespace JoJot.Models
             if (diff.TotalMinutes < 1)
                 return "Just now";
 
-            if (diff.TotalMinutes < 60)
-                return $"{(int)diff.TotalMinutes} min ago";
-
             if (dt.Date == DateTime.Now.Date)
                 return $"Today {dt:h:mm tt}";
 
             if (dt.Date == DateTime.Now.Date.AddDays(-1))
-                return "Yesterday";
+                return $"Yesterday {dt:h:mm tt}";
 
             if (dt.Year == DateTime.Now.Year)
-                return dt.ToString("MMM d");
+                return dt.ToString("MMM d, h:mm tt");
 
-            return dt.ToString("MMM d, yyyy");
+            return dt.ToString("MMM d, yyyy h:mm tt");
         }
+
+        /// <summary>
+        /// Exact tooltip string for a created_at date.
+        /// </summary>
+        public static string CreatedTooltip(DateTime dt) =>
+            $"Created: {dt:MMM d, yyyy h:mm tt}";
+
+        /// <summary>
+        /// Exact tooltip string for an updated_at date.
+        /// </summary>
+        public static string UpdatedTooltip(DateTime dt) =>
+            $"Last updated: {dt:MMM d, yyyy h:mm tt}";
     }
 }
