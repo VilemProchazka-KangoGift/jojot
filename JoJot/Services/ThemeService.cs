@@ -1,135 +1,127 @@
 using System.Windows;
 
-namespace JoJot.Services
+namespace JoJot.Services;
+
+/// <summary>
+/// Manages Light, Dark, and System theme switching via ResourceDictionary swap.
+/// Reads/writes the "theme" key in the preferences table for persistence.
+/// System mode auto-follows Windows dark/light via SystemEvents.UserPreferenceChanged.
+/// </summary>
+public static class ThemeService
 {
+    public enum AppTheme { Light, Dark, System }
+
+    private static AppTheme _currentSetting = AppTheme.System;
+    private static bool _initialized;
+
+    /// <summary>The user's chosen theme setting (Light, Dark, or System).</summary>
+    public static AppTheme CurrentSetting => _currentSetting;
+
     /// <summary>
-    /// Manages Light, Dark, and System theme switching via ResourceDictionary swap.
-    /// Reads/writes the "theme" key in the preferences table for persistence.
-    /// System mode auto-follows Windows dark/light via SystemEvents.UserPreferenceChanged.
-    /// Phase 7: THME-01, THME-02, THME-03.
+    /// Initializes the theme system. Called once during app startup after the database
+    /// is open and schema is ensured. Reads the persisted theme preference, applies the
+    /// initial theme, and wires the system theme change listener for auto-follow.
     /// </summary>
-    public static class ThemeService
+    public static async Task InitializeAsync()
     {
-        public enum AppTheme { Light, Dark, System }
-
-        private static AppTheme _currentSetting = AppTheme.System;
-        private static bool _initialized;
-
-        /// <summary>The user's chosen theme setting (Light, Dark, or System).</summary>
-        public static AppTheme CurrentSetting => _currentSetting;
-
-        /// <summary>
-        /// Initializes the theme system. Called once from App.xaml.cs OnAppStartup
-        /// after the database is open and schema is ensured.
-        /// Reads the persisted theme preference and applies the initial theme.
-        /// Wires the system theme change listener for auto-follow.
-        /// </summary>
-        public static async Task InitializeAsync()
+        var saved = await DatabaseService.GetPreferenceAsync("theme").ConfigureAwait(false);
+        _currentSetting = saved switch
         {
-            // Read persisted theme preference
-            var saved = await DatabaseService.GetPreferenceAsync("theme");
-            _currentSetting = saved switch
-            {
-                "light" => AppTheme.Light,
-                "dark" => AppTheme.Dark,
-                _ => AppTheme.System // default to System on first launch
-            };
+            "light" => AppTheme.Light,
+            "dark" => AppTheme.Dark,
+            _ => AppTheme.System
+        };
 
-            // Apply initial theme
-            ApplyTheme(_currentSetting);
+        // Must apply theme on the UI thread
+        ApplyTheme(_currentSetting);
 
-            // Wire system theme change listener
-            Microsoft.Win32.SystemEvents.UserPreferenceChanged += OnSystemPreferenceChanged;
-            _initialized = true;
+        Microsoft.Win32.SystemEvents.UserPreferenceChanged += OnSystemPreferenceChanged;
+        _initialized = true;
+    }
+
+    /// <summary>
+    /// Applies the specified theme by swapping the first MergedDictionary entry.
+    /// If theme is System, detects the current Windows dark/light setting.
+    /// </summary>
+    public static void ApplyTheme(AppTheme theme)
+    {
+        _currentSetting = theme;
+        var effective = theme == AppTheme.System ? DetectSystemTheme() : theme;
+
+        var dictionaries = Application.Current.Resources.MergedDictionaries;
+
+        if (dictionaries.Count > 0 &&
+            dictionaries[0].Source?.OriginalString.Contains("Theme.xaml") == true)
+        {
+            dictionaries.RemoveAt(0);
         }
 
-        /// <summary>
-        /// Applies the specified theme by swapping the first MergedDictionary entry.
-        /// If theme is System, detects the current Windows dark/light setting.
-        /// </summary>
-        public static void ApplyTheme(AppTheme theme)
+        var uri = effective == AppTheme.Dark
+            ? new Uri("Themes/DarkTheme.xaml", UriKind.Relative)
+            : new Uri("Themes/LightTheme.xaml", UriKind.Relative);
+
+        dictionaries.Insert(0, new ResourceDictionary { Source = uri });
+    }
+
+    /// <summary>
+    /// Sets the theme and persists the choice to the preferences table.
+    /// </summary>
+    public static async Task SetThemeAsync(AppTheme theme)
+    {
+        ApplyTheme(theme);
+        var value = theme switch
         {
-            _currentSetting = theme;
-            var effective = theme == AppTheme.System ? DetectSystemTheme() : theme;
+            AppTheme.Light => "light",
+            AppTheme.Dark => "dark",
+            _ => "system"
+        };
+        await DatabaseService.SetPreferenceAsync("theme", value).ConfigureAwait(false);
+    }
 
-            var dictionaries = Application.Current.Resources.MergedDictionaries;
-
-            // Remove existing theme dictionary (always first entry, identified by filename)
-            if (dictionaries.Count > 0 &&
-                dictionaries[0].Source?.OriginalString.Contains("Theme.xaml") == true)
-            {
-                dictionaries.RemoveAt(0);
-            }
-
-            var uri = effective == AppTheme.Dark
-                ? new Uri("Themes/DarkTheme.xaml", UriKind.Relative)
-                : new Uri("Themes/LightTheme.xaml", UriKind.Relative);
-
-            dictionaries.Insert(0, new ResourceDictionary { Source = uri });
+    /// <summary>
+    /// Detects the current Windows dark/light mode by reading the registry.
+    /// AppsUseLightTheme: 0 = dark, 1 = light.
+    /// </summary>
+    private static AppTheme DetectSystemTheme()
+    {
+        try
+        {
+            using var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(
+                @"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize");
+            var value = key?.GetValue("AppsUseLightTheme");
+            return value is int i && i == 0 ? AppTheme.Dark : AppTheme.Light;
         }
-
-        /// <summary>
-        /// Sets the theme and persists the choice to the preferences table.
-        /// Called from Preferences dialog (future phase) or programmatically.
-        /// </summary>
-        public static async Task SetThemeAsync(AppTheme theme)
+        catch
         {
-            ApplyTheme(theme);
-            var value = theme switch
-            {
-                AppTheme.Light => "light",
-                AppTheme.Dark => "dark",
-                _ => "system"
-            };
-            await DatabaseService.SetPreferenceAsync("theme", value);
+            return AppTheme.Light;
         }
+    }
 
-        /// <summary>
-        /// Detects the current Windows dark/light mode by reading the registry.
-        /// AppsUseLightTheme: 0 = dark, 1 = light.
-        /// </summary>
-        private static AppTheme DetectSystemTheme()
+    /// <summary>
+    /// Handles Windows system preference changes. Re-applies theme when in System mode
+    /// and the user changes the Windows dark/light setting.
+    /// Always dispatches to UI thread since the event may fire from a background thread.
+    /// </summary>
+    private static void OnSystemPreferenceChanged(
+        object sender,
+        Microsoft.Win32.UserPreferenceChangedEventArgs e)
+    {
+        if (e.Category == Microsoft.Win32.UserPreferenceCategory.General &&
+            _currentSetting == AppTheme.System)
         {
-            try
-            {
-                using var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(
-                    @"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize");
-                var value = key?.GetValue("AppsUseLightTheme");
-                return value is int i && i == 0 ? AppTheme.Dark : AppTheme.Light;
-            }
-            catch
-            {
-                return AppTheme.Light; // safe default if registry read fails
-            }
+            Application.Current.Dispatcher.InvokeAsync(() => ApplyTheme(AppTheme.System));
         }
+    }
 
-        /// <summary>
-        /// Handles Windows system preference changes. Re-applies theme when in System mode
-        /// and the user changes Windows dark/light setting.
-        /// Category.General fires for theme changes (not every preference category).
-        /// Always dispatches to UI thread since the event may fire from a non-UI thread.
-        /// </summary>
-        private static void OnSystemPreferenceChanged(
-            object sender,
-            Microsoft.Win32.UserPreferenceChangedEventArgs e)
+    /// <summary>
+    /// Unsubscribes the system event handler. Called from App.OnExit to prevent
+    /// a static event handler leak.
+    /// </summary>
+    public static void Shutdown()
+    {
+        if (_initialized)
         {
-            if (e.Category == Microsoft.Win32.UserPreferenceCategory.General &&
-                _currentSetting == AppTheme.System)
-            {
-                Application.Current.Dispatcher.InvokeAsync(() => ApplyTheme(AppTheme.System));
-            }
-        }
-
-        /// <summary>
-        /// Unsubscribes the system event handler. Called from App.OnExit to prevent
-        /// static event handler leak.
-        /// </summary>
-        public static void Shutdown()
-        {
-            if (_initialized)
-            {
-                Microsoft.Win32.SystemEvents.UserPreferenceChanged -= OnSystemPreferenceChanged;
-            }
+            Microsoft.Win32.SystemEvents.UserPreferenceChanged -= OnSystemPreferenceChanged;
         }
     }
 }

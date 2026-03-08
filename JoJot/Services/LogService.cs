@@ -1,65 +1,62 @@
 using System.Diagnostics;
 using System.IO;
 
-namespace JoJot.Services
+namespace JoJot.Services;
+
+/// <summary>
+/// Dual-output logging service that writes to both a log file and <see cref="Debug"/>.
+/// Thread-safe via a file lock. The log file is rotated when it exceeds 5 MB.
+/// </summary>
+public static class LogService
 {
+    private static string _logPath = string.Empty;
+    private static readonly object _fileLock = new();
+
     /// <summary>
-    /// Dual-output logging service: writes to both a log file and System.Diagnostics.Debug.
-    /// Thread-safe via a file lock. Log file is rotated when it exceeds 5MB.
+    /// Initializes the log service and rolls the log file if it exceeds 5 MB.
+    /// Must be called before any other logging methods.
     /// </summary>
-    public static class LogService
+    /// <param name="directory">Directory where <c>jojot.log</c> will be written.</param>
+    public static void Initialize(string directory)
     {
-        private static string _logPath = string.Empty;
-        private static readonly object _fileLock = new();
+        _logPath = Path.Combine(directory, "jojot.log");
 
-        /// <summary>
-        /// Initializes the log service, setting the log directory and rolling the file if > 5MB.
-        /// Must be called before any logging methods.
-        /// </summary>
-        /// <param name="directory">Directory where jojot.log will be written.</param>
-        public static void Initialize(string directory)
+        if (File.Exists(_logPath) && new FileInfo(_logPath).Length > 5 * 1024 * 1024)
         {
-            _logPath = Path.Combine(directory, "jojot.log");
-
-            // Roll if > 5MB: rename to .old (delete previous .old first)
-            if (File.Exists(_logPath) && new FileInfo(_logPath).Length > 5 * 1024 * 1024)
-            {
-                string rolledPath = _logPath + ".old";
-                if (File.Exists(rolledPath))
-                    File.Delete(rolledPath);
-                File.Move(_logPath, rolledPath);
-            }
+            string rolledPath = _logPath + ".old";
+            if (File.Exists(rolledPath))
+                File.Delete(rolledPath);
+            File.Move(_logPath, rolledPath);
         }
+    }
 
-        /// <summary>Logs an informational message.</summary>
-        public static void Info(string message) => Write("INFO", message);
+    /// <summary>Logs an informational message.</summary>
+    public static void Info(string message) => Write("INFO", message);
 
-        /// <summary>Logs a warning message with optional exception details.</summary>
-        public static void Warn(string message, Exception? ex = null) => Write("WARN", message, ex);
+    /// <summary>Logs a warning message with optional exception details.</summary>
+    public static void Warn(string message, Exception? ex = null) => Write("WARN", message, ex);
 
-        /// <summary>Logs an error message with optional exception details.</summary>
-        public static void Error(string message, Exception? ex = null) => Write("ERROR", message, ex);
+    /// <summary>Logs an error message with optional exception details.</summary>
+    public static void Error(string message, Exception? ex = null) => Write("ERROR", message, ex);
 
-        private static void Write(string level, string message, Exception? ex = null)
+    private static void Write(string level, string message, Exception? ex = null)
+    {
+        string line = $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} [{level}] {message}";
+        if (ex is not null)
+            line += $"\n  {ex}";
+
+        // Always write to debug output as a fallback if the file write fails
+        Debug.WriteLine(line);
+
+        lock (_fileLock)
         {
-            string line = $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} [{level}] {message}";
-            if (ex is not null)
-                line += $"\n  {ex}";
-
-            // Always write to debug output — this is our fallback if file write fails
-            Debug.WriteLine(line);
-
-            // Write to file inside lock for thread safety; silent failure if file is unavailable
-            lock (_fileLock)
+            try
             {
-                try
-                {
-                    File.AppendAllText(_logPath, line + "\n");
-                }
-                catch
-                {
-                    // Silent failure — debug output already captured the message above
-                }
+                File.AppendAllText(_logPath, line + "\n");
+            }
+            catch
+            {
+                // Silent failure; debug output already captured the message above
             }
         }
     }

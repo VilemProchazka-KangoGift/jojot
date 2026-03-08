@@ -735,8 +735,8 @@ namespace JoJot
                 // Restore cursor position (best effort — clamp to content length)
                 ContentEditor.CaretIndex = Math.Min(tab.CursorPosition, ContentEditor.Text.Length);
 
-                // Phase 6 (EDIT-05): Restore scroll offset after layout completes
-                ContentEditor.Dispatcher.BeginInvoke(() =>
+                // Restore scroll offset after layout completes
+                _ = ContentEditor.Dispatcher.BeginInvoke(() =>
                 {
                     var sv = GetScrollViewer(ContentEditor);
                     sv?.ScrollToVerticalOffset(tab.EditorScrollOffset);

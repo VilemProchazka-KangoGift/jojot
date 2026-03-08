@@ -8,15 +8,15 @@ namespace JoJot.Services;
 
 /// <summary>
 /// P/Invoke helpers for saving and restoring window geometry via
-/// GetWindowPlacement/SetWindowPlacement, plus off-screen recovery.
+/// <c>GetWindowPlacement</c> / <c>SetWindowPlacement</c>, with off-screen recovery.
 ///
 /// Uses workspace coordinates (GetWindowPlacement/SetWindowPlacement are self-consistent).
-/// Never mix these coordinates with WPF Window.Left/Top or SetWindowPos — they use
-/// different coordinate systems.
+/// Never mix these coordinates with WPF <c>Window.Left/Top</c> or <c>SetWindowPos</c>,
+/// which use different coordinate systems.
 /// </summary>
 public static class WindowPlacementHelper
 {
-    // ─── P/Invoke declarations ──────────────────────────────────────────────
+    // P/Invoke declarations
 
     private const int SW_SHOWNORMAL = 1;
     private const int SW_SHOWMAXIMIZED = 3;
@@ -54,11 +54,11 @@ public static class WindowPlacementHelper
     [DllImport("user32.dll", SetLastError = true)]
     private static extern bool SetWindowPlacement(IntPtr hWnd, ref WINDOWPLACEMENT lpwndpl);
 
-    // ─── Public API ─────────────────────────────────────────────────────────
+    // Public API
 
     /// <summary>
-    /// Captures the current window geometry using GetWindowPlacement.
-    /// Returns the normal (non-maximized) position/size even if the window is currently maximized.
+    /// Captures the current window geometry using <c>GetWindowPlacement</c>.
+    /// Returns the normal (non-maximized) position and size even if the window is currently maximized.
     /// Must be called while the window handle is still valid (before Close completes).
     /// </summary>
     public static WindowGeometry CaptureGeometry(Window window)
@@ -66,7 +66,6 @@ public static class WindowPlacementHelper
         var hwnd = new WindowInteropHelper(window).Handle;
         if (hwnd == IntPtr.Zero)
         {
-            // Window has no handle — return default geometry
             return new WindowGeometry(100, 100, DefaultWidth, DefaultHeight, false);
         }
 
@@ -82,34 +81,29 @@ public static class WindowPlacementHelper
     }
 
     /// <summary>
-    /// Applies saved geometry to a window. Call AFTER Show() so the HWND exists.
-    /// If geo is null, uses default size (500x600) centered on screen.
+    /// Applies saved geometry to a window. Call after <c>Show()</c> so the HWND exists.
+    /// If <paramref name="geo"/> is <c>null</c>, uses default size (500x600) centered on screen.
     /// Performs off-screen recovery before applying.
     ///
-    /// Uses SetWindowPlacement to restore in workspace coordinates, consistent
-    /// with how CaptureGeometry saved them via GetWindowPlacement.
+    /// Uses <c>SetWindowPlacement</c> to restore in workspace coordinates, consistent
+    /// with how <see cref="CaptureGeometry"/> saved them.
     /// </summary>
     public static void ApplyGeometry(Window window, WindowGeometry? geo)
     {
         if (geo is null)
         {
-            // No saved geometry — use WPF defaults (centered, default size)
-            // WindowStartupLocation.CenterScreen is only effective before Show(),
-            // so we set dimensions directly and let WPF center.
             window.Width = DefaultWidth;
             window.Height = DefaultHeight;
             window.WindowStartupLocation = WindowStartupLocation.CenterScreen;
             return;
         }
 
-        // Off-screen recovery
         var corrected = ClampToNearestScreen(geo);
 
-        // Apply via SetWindowPlacement for coordinate-system consistency
         var hwnd = new WindowInteropHelper(window).Handle;
         if (hwnd == IntPtr.Zero)
         {
-            // No HWND yet — fall back to WPF properties (before Show)
+            // No HWND yet; fall back to WPF properties (before Show)
             window.Left = corrected.Left;
             window.Top = corrected.Top;
             window.Width = corrected.Width;
@@ -120,7 +114,6 @@ public static class WindowPlacementHelper
             return;
         }
 
-        // Use SetWindowPlacement for full fidelity (workspace coordinates)
         var wp = new WINDOWPLACEMENT
         {
             length = Marshal.SizeOf<WINDOWPLACEMENT>(),
@@ -137,10 +130,10 @@ public static class WindowPlacementHelper
     }
 
     /// <summary>
-    /// Off-screen recovery: if the saved window position is not visible on any
-    /// connected monitor, snaps position to the nearest screen edge.
-    /// Keeps size intact per user decision — only adjusts position.
-    /// Checks whether the top-left 50x50px region is visible on any screen.
+    /// Off-screen recovery: if the saved window position is not visible on any connected
+    /// monitor, snaps the position to the nearest screen edge. Size is preserved; only the
+    /// position is adjusted. Visibility is determined by whether the top-left 50x50 px region
+    /// intersects any screen's working area.
     /// </summary>
     public static WindowGeometry ClampToNearestScreen(WindowGeometry geo)
     {
@@ -172,14 +165,15 @@ public static class WindowPlacementHelper
         return geo with { Left = newLeft, Top = newTop };
     }
 
-    // ─── Constants ──────────────────────────────────────────────────────────
+    // Constants
 
-    /// <summary>
-    /// Default and minimum window dimensions per user decision.
-    /// Default: 500x600 (compact notepad-sized). Minimum: 320x420.
-    /// </summary>
+    /// <summary>Default window dimensions: 500x600 (compact notepad-sized).</summary>
     public const double DefaultWidth = 500;
+    /// <inheritdoc cref="DefaultWidth"/>
     public const double DefaultHeight = 600;
+
+    /// <summary>Minimum window dimensions: 320x420.</summary>
     public const double MinWidth = 320;
+    /// <inheritdoc cref="MinWidth"/>
     public const double MinHeight = 420;
 }
