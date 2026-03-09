@@ -1,0 +1,86 @@
+<UserControl x:Class="JoJot.Controls.DragOverlay"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Visibility="Collapsed">
+    <Grid>
+        <!-- Semi-transparent backdrop -->
+        <Border Background="#A6000000"/>
+
+        <!-- Centered card -->
+        <Border Background="{DynamicResource c-win-bg}"
+                CornerRadius="8" Padding="32,24"
+                HorizontalAlignment="Center" VerticalAlignment="Center"
+                MinWidth="360" MaxWidth="480">
+            <Border.Effect>
+                <DropShadowEffect BlurRadius="20" Opacity="0.3" ShadowDepth="6" Direction="270"/>
+            </Border.Effect>
+            <StackPanel>
+                <!-- Source desktop name -->
+                <TextBlock x:Name="SourceName"
+                           FontSize="11"
+                           Foreground="{DynamicResource c-text-muted}"
+                           TextWrapping="Wrap"
+                           HorizontalAlignment="Center"
+                           Margin="0,0,0,4"/>
+
+                <!-- Context message -->
+                <TextBlock x:Name="TitleText"
+                           FontSize="18" FontWeight="SemiBold"
+                           Foreground="{DynamicResource c-text-primary}"
+                           TextWrapping="Wrap"
+                           HorizontalAlignment="Center"
+                           Margin="0,0,0,8"/>
+                <TextBlock x:Name="MessageText"
+                           FontSize="13"
+                           Foreground="{DynamicResource c-text-muted}"
+                           TextWrapping="Wrap"
+                           HorizontalAlignment="Center"
+                           Margin="0,0,0,24"/>
+
+                <!-- Action buttons -->
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,8">
+                    <Button x:Name="KeepHereButton"
+                            Content="Keep here"
+                            Click="KeepHereButton_Click"
+                            Padding="16,8" Margin="0,0,8,0"
+                            FontSize="13"
+                            Background="{DynamicResource c-accent}"
+                            Foreground="White"
+                            BorderThickness="0"
+                            Cursor="Hand"/>
+                    <Button x:Name="MergeButton"
+                            Content="Merge notes"
+                            Click="MergeButton_Click"
+                            Padding="16,8" Margin="0,0,8,0"
+                            FontSize="13"
+                            Background="{DynamicResource c-tab-bg}"
+                            Foreground="{DynamicResource c-text-primary}"
+                            BorderBrush="{DynamicResource c-border}"
+                            BorderThickness="1"
+                            Cursor="Hand"/>
+                    <Button x:Name="CancelButton"
+                            Content="Go back"
+                            Click="CancelButton_Click"
+                            Padding="16,8"
+                            FontSize="13"
+                            Background="{DynamicResource c-tab-bg}"
+                            Foreground="{DynamicResource c-text-primary}"
+                            BorderBrush="{DynamicResource c-border}"
+                            BorderThickness="1"
+                            Cursor="Hand"/>
+                </StackPanel>
+
+                <!-- Cancel failure instruction — hidden by default -->
+                <TextBlock x:Name="CancelFailureText"
+                           Text="If retry fails, move this window back manually via Win+Tab"
+                           FontSize="11"
+                           Foreground="{DynamicResource c-text-muted}"
+                           FontStyle="Italic"
+                           TextWrapping="Wrap"
+                           HorizontalAlignment="Center"
+                           Visibility="Collapsed"
+                           Margin="0,8,0,0"/>
+            </StackPanel>
+        </Border>
+    </Grid>
+</UserControl>

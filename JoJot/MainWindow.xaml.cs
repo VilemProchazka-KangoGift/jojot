@@ -63,8 +63,6 @@ public partial class MainWindow : Window
     // ─── Context menu state ─────────────────────────────────────────
     private Popup? _activeContextMenu;
 
-    // ─── Confirmation dialog state ──────────────────────
-    private Action? _confirmAction;
     private DateTime _hamburgerClosedAt;
 
     // ─── Panel state (forwarded to ViewModel) ──────────────────────
@@ -90,7 +88,6 @@ public partial class MainWindow : Window
     private System.Windows.Threading.DispatcherTimer? _fontSizeTooltipTimer;
     private List<int> _findMatches = [];
     private int _currentFindIndex = -1;
-    private bool _helpBuilt;
 
     // ─── Window Drag Detection (forwarded to ViewModel) ────────
     private bool _isDragOverlayActive
@@ -163,6 +160,20 @@ public partial class MainWindow : Window
 
         InitializeComponent();
         InitializeInputBindings();
+        HelpOverlay.CloseRequested += (_, _) => ViewModel.IsHelpOpen = false;
+        CleanupPanel.CloseRequested += (_, _) => HideCleanupPanel();
+        RecoveryPanel.CloseRequested += (_, _) => HideRecoveryPanel();
+        DragOverlay.KeepHereClicked += (_, _) => DragKeepHere_Handler();
+        DragOverlay.MergeClicked += (_, _) => DragMerge_Handler();
+        DragOverlay.CancelClicked += (_, _) => DragCancel_Handler();
+        CleanupPanel.FilterChanged += (_, _) => { if (_cleanupPanelOpen) RefreshCleanupPreview(); };
+        CleanupPanel.DeleteRequested += (_, candidates) =>
+        {
+            int pinnedCount = candidates.Count(t => t.Pinned);
+            string pinnedNote = pinnedCount > 0 ? $" (including {pinnedCount} pinned)" : "";
+            string message = $"This will permanently delete {candidates.Count} tab{(candidates.Count == 1 ? "" : "s")}{pinnedNote}. This cannot be undone.";
+            ShowConfirmation("Clean up tabs", message, () => _ = ExecuteCleanupDeleteAsync(candidates));
+        };
 
         // Configure autosave service
         _autosaveService.Configure(

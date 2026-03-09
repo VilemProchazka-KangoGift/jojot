@@ -156,23 +156,34 @@ When starting a new session, read this file and `MVVM-PLAN.md` to understand whe
 
 ---
 
-## Future Work: XAML UserControl Extraction
+## XAML UserControl Extraction — DONE (5 of 7)
 
-MainWindow.xaml is 905 lines. Extract self-contained UI regions into UserControls (one at a time, easiest first):
+MainWindow.xaml reduced from 905 → 677 lines (228 lines extracted into 5 UserControls).
 
-| Priority | Section | ~Lines | Target File |
+| Priority | Section | Status | Target File |
 |---|---|---|---|
-| 1 | Help overlay | 25 | `Controls/HelpOverlay.xaml` |
-| 2 | Confirmation dialog | 40 | `Controls/ConfirmationOverlay.xaml` |
-| 3 | Cleanup panel | 65 | `Controls/CleanupPanel.xaml` |
-| 4 | Recovery sidebar | 30 | `Controls/RecoveryPanel.xaml` |
-| 5 | Drag overlay | 85 | `Controls/DragOverlay.xaml` |
-| 6 | Hamburger menu | 85 | `Controls/HamburgerMenu.xaml` |
-| 7 | Preferences panel | 110 | `Controls/PreferencesPanel.xaml` |
+| 1 | Help overlay | DONE | `Controls/HelpOverlay.xaml` |
+| 2 | Confirmation dialog | DONE | `Controls/ConfirmationOverlay.xaml` |
+| 3 | Cleanup panel | DONE | `Controls/CleanupPanel.xaml` |
+| 4 | Recovery sidebar | DONE | `Controls/RecoveryPanel.xaml` |
+| 5 | Drag overlay | DONE | `Controls/DragOverlay.xaml` |
+| 6 | Hamburger menu | SKIPPED | Popup with PlacementTarget binding — doesn't map well to UserControl |
+| 7 | Preferences panel | TODO | Many named elements + cross-cutting concerns (font size tooltip, hotkey recording) |
 
-~440 lines extractable → MainWindow.xaml drops to ~460 (layout + toolbar + editor + tab panel).
+### Pattern established:
+- **UserControl** owns XAML visual tree + animations (Show/Hide with slide or fade)
+- **Events** (`CloseRequested`, `FilterChanged`, `DeleteRequested`, etc.) for UserControl→MainWindow communication
+- **MainWindow code-behind** subscribes in constructor, handles business logic (DB, ViewModel state, panel coordination)
+- **Thin delegation**: MainWindow partial class methods become 2-3 line wrappers calling UserControl methods
+- Slide-in panels (Cleanup, Recovery) encapsulate their own TranslateTransform animation
+- Fade overlay (DragOverlay) encapsulates opacity animation with async `HideAsync()`
 
-**Risks:** Each panel's code-behind references MainWindow fields/methods directly. Extraction requires events, commands, or dependency properties for communication. Slide-in/out animations are driven from MainWindow code-behind. Start with help overlay (simplest, least wiring) to establish the pattern.
+### Extraction details:
+- **HelpOverlay**: Self-contained — owns lazy `BuildContent()`, `Show()`/`Hide()`, raises `CloseRequested`
+- **ConfirmationOverlay**: Owns `_confirmAction` state, exposes `Show(title, message, onConfirm)`, `Hide()`, `Confirm()`, `IsOpen`
+- **CleanupPanel**: Owns animation + preview row building. Exposes `AgeText`/`UnitIndex`/`IncludePinned` filter properties, `RefreshPreview(candidates)`, `ResetFilters()`. Events: `CloseRequested`, `DeleteRequested`, `FilterChanged`
+- **RecoveryPanel**: Container only — exposes `SessionList_` (StackPanel) for MainWindow to populate. Row building stays in MainWindow.Recovery.cs (deeply coupled to DB/COM)
+- **DragOverlay**: Clean API — `Show(source, title, message, showKeepHere, showMerge)`, `UpdateContent(...)`, `ShowRetryMode()`, `HideAsync()`, `HideImmediate()`. Events: `KeepHereClicked`, `MergeClicked`, `CancelClicked`
 
 ---
 
@@ -183,6 +194,11 @@ MainWindow.xaml is 905 lines. Extract self-contained UI regions into UserControl
 - `JoJot/ViewModels/RelayCommand.cs`
 - `JoJot/ViewModels/AsyncRelayCommand.cs`
 - `JoJot/ViewModels/MainWindowViewModel.cs`
+- `JoJot/Controls/HelpOverlay.xaml` + `.cs`
+- `JoJot/Controls/ConfirmationOverlay.xaml` + `.cs`
+- `JoJot/Controls/CleanupPanel.xaml` + `.cs`
+- `JoJot/Controls/RecoveryPanel.xaml` + `.cs`
+- `JoJot/Controls/DragOverlay.xaml` + `.cs`
 - `JoJot.Tests/ViewModels/ObservableObjectTests.cs`
 - `JoJot.Tests/ViewModels/RelayCommandTests.cs`
 - `JoJot.Tests/ViewModels/MainWindowViewModelTests.cs`
@@ -195,17 +211,19 @@ MainWindow.xaml is 905 lines. Extract self-contained UI regions into UserControl
 
 ### Modified files:
 - `JoJot/Models/NoteTab.cs` — inherits ObservableObject, SetProperty on 5 props, tooltip computed props
-- `JoJot/MainWindow.xaml` — TabItemTemplate DataTemplate with data bindings + DataTriggers
-- `JoJot/MainWindow.xaml.cs` — ViewModel property, forwarding fields, delegated methods, FindNamedDescendant, removed UpdateTabItemDisplay calls
-- `JoJot/MainWindow.Tabs.cs` — DataTemplate-based CreateTabListItem, TabItemBorder_Loaded, FindAncestor, removed UpdateTabItemDisplay, simplified ApplyActiveHighlight/deselection
-- `JoJot/MainWindow.Rename.cs` — FindNamedDescendant for RenameBox/TitleBlock, removed UpdateTabItemDisplay call
-- `JoJot/MainWindow.TabDeletion.cs` — DeleteTabAsync, DeleteMultipleAsync, UndoDeleteAsync, ApplyFocusCascadeAsync delegate to VM
+- `JoJot/MainWindow.xaml` — TabItemTemplate DataTemplate, 5 panels replaced with UserControl tags (905→677 lines)
+- `JoJot/MainWindow.xaml.cs` — ViewModel property, forwarding fields, UserControl event subscriptions, removed _helpBuilt/_confirmAction
+- `JoJot/MainWindow.Tabs.cs` — DataTemplate-based CreateTabListItem, TabItemBorder_Loaded, FindAncestor
+- `JoJot/MainWindow.Rename.cs` — FindNamedDescendant for RenameBox/TitleBlock
+- `JoJot/MainWindow.TabDeletion.cs` — delegates to VM
 - `JoJot/MainWindow.TabDrag.cs` — CompleteDrag uses ViewModel.MoveTab
 - `JoJot/MainWindow.Search.cs` — MatchesSearch delegates to VM
-- `JoJot/MainWindow.Cleanup.cs` — focus cascade uses ViewModel.GetFocusCascadeTarget; cleanup logic delegates to VM
-- `JoJot/MainWindow.Help.cs` — Show/Hide set ViewModel.IsHelpOpen
-- `JoJot/MainWindow.Keyboard.cs` — InputBinding commands, InitializeInputBindings, slimmed PreviewKeyDown
-- `JoJot/MainWindow.DesktopDrag.cs` — uses EvaluateDrag, BeginDrag, UpdateDragTarget, ResetDragState, IsMisplacedOnDesktop
+- `JoJot/MainWindow.Cleanup.cs` — delegates to CleanupPanel UserControl for UI, keeps business logic
+- `JoJot/MainWindow.Help.cs` — thin wrapper calling HelpOverlay.Show/Hide
+- `JoJot/MainWindow.Confirmation.cs` — thin wrapper calling ConfirmationOverlay.Show/Hide
+- `JoJot/MainWindow.Recovery.cs` — uses RecoveryPanel.SessionList_ + Show/Hide, keeps row building
+- `JoJot/MainWindow.DesktopDrag.cs` — uses DragOverlay API (Show/UpdateContent/HideAsync/ShowRetryMode)
+- `JoJot/MainWindow.Keyboard.cs` — InputBindings, uses ConfirmationOverlay.IsOpen/.Confirm()
 
 ## Key Architectural Decisions
 - Forwarding properties pattern: `_tabs => ViewModel.Tabs` etc. allows all 16 partial classes to work unchanged

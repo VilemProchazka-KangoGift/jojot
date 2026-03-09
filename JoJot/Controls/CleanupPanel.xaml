@@ -1,0 +1,68 @@
+<UserControl x:Class="JoJot.Controls.CleanupPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Visibility="Collapsed">
+    <Border Background="{DynamicResource c-win-bg}" BorderBrush="{DynamicResource c-border}"
+            BorderThickness="1,0,0,0">
+        <Border.RenderTransform>
+            <TranslateTransform x:Name="PanelTransform" X="320"/>
+        </Border.RenderTransform>
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <!-- Row 0: Header with close button -->
+            <Grid Grid.Row="0" Margin="16,16,16,8">
+                <TextBlock Text="Clean up tabs" FontSize="18" FontWeight="SemiBold"
+                           Foreground="{DynamicResource c-text-primary}"/>
+                <TextBlock Text="&#xE711;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="14"
+                           HorizontalAlignment="Right" Cursor="Hand"
+                           Foreground="{DynamicResource c-text-muted}"
+                           MouseLeftButtonDown="Close_Click"/>
+            </Grid>
+
+            <!-- Row 1: Filter controls and delete button -->
+            <StackPanel Grid.Row="1" Margin="16,0,16,8">
+                <!-- Filter row -->
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="Clean up older than" FontSize="13"
+                               Foreground="{DynamicResource c-text-primary}" VerticalAlignment="Center"/>
+                    <TextBox x:Name="AgeInput" Width="45" FontSize="13" Text="7"
+                             Margin="8,0,4,0" Padding="4,2" VerticalAlignment="Center"
+                             Background="{DynamicResource c-editor-bg}"
+                             Foreground="{DynamicResource c-text-primary}"
+                             BorderBrush="{DynamicResource c-border}"
+                             TextChanged="AgeInput_TextChanged"/>
+                    <ComboBox x:Name="UnitCombo" FontSize="13" Width="80"
+                              VerticalAlignment="Center" SelectedIndex="0"
+                              SelectionChanged="UnitCombo_SelectionChanged">
+                        <ComboBoxItem Content="days"/>
+                        <ComboBoxItem Content="hours"/>
+                        <ComboBoxItem Content="weeks"/>
+                        <ComboBoxItem Content="months"/>
+                    </ComboBox>
+                </StackPanel>
+                <!-- Include pinned checkbox -->
+                <CheckBox x:Name="IncludePinnedCheckbox" Content="Include pinned" FontSize="13"
+                          Margin="0,8,0,0" IsChecked="False"
+                          Foreground="{DynamicResource c-text-primary}"
+                          Checked="IncludePinned_Changed" Unchecked="IncludePinned_Changed"/>
+                <!-- Delete button -->
+                <Border x:Name="DeleteButton" Margin="0,12,0,0" Padding="8,6"
+                        CornerRadius="4" Cursor="Hand" HorizontalAlignment="Left"
+                        Background="#e74c3c" IsEnabled="False" Opacity="0.5"
+                        MouseLeftButtonDown="Delete_Click">
+                    <TextBlock x:Name="DeleteText" Text="Delete 0 tabs" FontSize="13" Foreground="White"/>
+                </Border>
+            </StackPanel>
+
+            <!-- Row 2: Scrollable preview list -->
+            <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" Margin="16,0,16,16">
+                <StackPanel x:Name="PreviewList"/>
+            </ScrollViewer>
+        </Grid>
+    </Border>
+</UserControl>

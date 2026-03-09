@@ -2,7 +2,6 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Media.Animation;
 using JoJot.Models;
 using JoJot.Services;
 
@@ -44,7 +43,7 @@ public partial class MainWindow
             }
 
             var orphanInfos = await DatabaseService.GetOrphanedSessionInfoAsync(orphanGuids);
-            RecoverySessionList.Children.Clear();
+            RecoveryPanel.SessionList_.Children.Clear();
 
             var orphanList = orphanInfos.ToList();
             for (int i = 0; i < orphanList.Count; i++)
@@ -53,25 +52,16 @@ public partial class MainWindow
                 var tabPreviews = await DatabaseService.GetNotePreviewsForDesktopAsync(guid, 5);
                 var totalCount = await DatabaseService.GetNoteCountForDesktopAsync(guid);
                 bool isLast = (i == orphanList.Count - 1);
-                RecoverySessionList.Children.Add(CreateRecoveryRow(guid, desktopName, tabCount, lastUpdated, tabPreviews, totalCount, isLast));
+                RecoveryPanel.SessionList_.Children.Add(CreateRecoveryRow(guid, desktopName, tabCount, lastUpdated, tabPreviews, totalCount, isLast));
             }
 
-            if (RecoverySessionList.Children.Count == 0)
+            if (RecoveryPanel.SessionList_.Children.Count == 0)
             {
                 return;
             }
 
             _recoveryPanelOpen = true;
-            RecoveryPanel.Visibility = Visibility.Visible;
-
-            // Slide in from right (matching preferences animation)
-            var anim = new DoubleAnimation
-            {
-                From = 320, To = 0,
-                Duration = TimeSpan.FromMilliseconds(250),
-                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
-            };
-            RecoveryPanelTransform.BeginAnimation(TranslateTransform.XProperty, anim);
+            RecoveryPanel.Show();
         }
         catch (Exception ex)
         {
@@ -83,25 +73,7 @@ public partial class MainWindow
     {
         if (!_recoveryPanelOpen) return;
         _recoveryPanelOpen = false;
-
-        var anim = new DoubleAnimation
-        {
-            From = 0, To = 320,
-            Duration = TimeSpan.FromMilliseconds(200),
-            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn }
-        };
-        anim.Completed += (_, _) =>
-        {
-            RecoveryPanel.Visibility = Visibility.Collapsed;
-            RecoveryPanelTransform.BeginAnimation(TranslateTransform.XProperty, null);
-            RecoveryPanelTransform.X = 320;
-        };
-        RecoveryPanelTransform.BeginAnimation(TranslateTransform.XProperty, anim);
-    }
-
-    private void RecoveryClose_Click(object sender, MouseButtonEventArgs e)
-    {
-        HideRecoveryPanel();
+        RecoveryPanel.Hide();
     }
 
     /// <summary>
@@ -337,7 +309,7 @@ public partial class MainWindow
         // Refresh rows for remaining orphans
         var orphanInfos = await DatabaseService.GetOrphanedSessionInfoAsync(
             VirtualDesktopService.OrphanedSessionGuids);
-        RecoverySessionList.Children.Clear();
+        RecoveryPanel.SessionList_.Children.Clear();
         var orphanList = orphanInfos.ToList();
         for (int i = 0; i < orphanList.Count; i++)
         {
@@ -345,7 +317,7 @@ public partial class MainWindow
             var tabPreviews = await DatabaseService.GetNotePreviewsForDesktopAsync(guid, 5);
             var totalCount = await DatabaseService.GetNoteCountForDesktopAsync(guid);
             bool isLast = (i == orphanList.Count - 1);
-            RecoverySessionList.Children.Add(CreateRecoveryRow(guid, name, tabCount, lastUpdated, tabPreviews, totalCount, isLast));
+            RecoveryPanel.SessionList_.Children.Add(CreateRecoveryRow(guid, name, tabCount, lastUpdated, tabPreviews, totalCount, isLast));
         }
 
         // Reload tabs in case Adopt added new tabs to this desktop

@@ -5,6 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:JoJot"
         xmlns:models="clr-namespace:JoJot.Models"
+        xmlns:controls="clr-namespace:JoJot.Controls"
         mc:Ignorable="d"
         Title="JoJot"
         Width="500" Height="600"
@@ -533,129 +534,10 @@
             </Border>
         </Popup>
 
-        <!-- Bulk delete confirmation overlay (Phase 8: MENU-03, MENU-04, MENU-05) -->
-        <Grid x:Name="ConfirmationOverlay" Visibility="Collapsed" Panel.ZIndex="100"
-              Grid.ColumnSpan="3">
-            <!-- Semi-transparent backdrop -->
-            <Border Background="#80000000" MouseLeftButtonDown="ConfirmOverlayBackdrop_Click"/>
-
-            <!-- Centered confirmation card -->
-            <Border HorizontalAlignment="Center" VerticalAlignment="Center"
-                    Background="{DynamicResource c-sidebar-bg}"
-                    BorderBrush="{DynamicResource c-border}" BorderThickness="1"
-                    CornerRadius="8" Padding="24,20" MinWidth="300" MaxWidth="400">
-                <Border.Effect>
-                    <DropShadowEffect BlurRadius="20" Opacity="0.3" ShadowDepth="6" Direction="270"/>
-                </Border.Effect>
-                <StackPanel>
-                    <!-- Title -->
-                    <TextBlock x:Name="ConfirmTitle" FontSize="15" FontWeight="SemiBold"
-                               Foreground="{DynamicResource c-text-primary}" Margin="0,0,0,8"/>
-                    <!-- Message -->
-                    <TextBlock x:Name="ConfirmMessage" FontSize="13" TextWrapping="Wrap"
-                               Foreground="{DynamicResource c-text-muted}" Margin="0,0,0,20"/>
-                    <!-- Buttons -->
-                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                        <Button x:Name="ConfirmCancelButton" Content="Cancel"
-                                MinWidth="80" Height="30" Margin="0,0,8,0"
-                                FontSize="13" Cursor="Hand"
-                                Background="Transparent"
-                                Foreground="{DynamicResource c-text-primary}"
-                                BorderBrush="{DynamicResource c-border}" BorderThickness="1"
-                                Click="ConfirmCancel_Click"/>
-                        <Button x:Name="ConfirmDeleteButton" Content="Delete"
-                                MinWidth="80" Height="30"
-                                FontSize="13" FontWeight="SemiBold" Cursor="Hand"
-                                Background="#e74c3c" Foreground="White"
-                                BorderThickness="0"
-                                Click="ConfirmDelete_Click"/>
-                    </StackPanel>
-                </StackPanel>
-            </Border>
-        </Grid>
-        <!-- Phase 10: Lock overlay for window drag resolution (DRAG-03) -->
-        <Grid x:Name="DragOverlay" Visibility="Collapsed" Panel.ZIndex="200"
-              Grid.ColumnSpan="3">
-            <!-- Semi-transparent backdrop (DRAG-03: rgba 0,0,0,0.65) -->
-            <Border Background="#A6000000" />
-
-            <!-- Centered card -->
-            <Border Background="{DynamicResource c-win-bg}"
-                    CornerRadius="8" Padding="32,24"
-                    HorizontalAlignment="Center" VerticalAlignment="Center"
-                    MinWidth="360" MaxWidth="480">
-                <Border.Effect>
-                    <DropShadowEffect BlurRadius="20" Opacity="0.3" ShadowDepth="6" Direction="270"/>
-                </Border.Effect>
-                <StackPanel>
-                    <!-- R2-MOVE-01: Source desktop name -->
-                    <TextBlock x:Name="DragOverlaySourceName"
-                               FontSize="11"
-                               Foreground="{DynamicResource c-text-muted}"
-                               TextWrapping="Wrap"
-                               HorizontalAlignment="Center"
-                               Margin="0,0,0,4" />
-
-                    <!-- Context message -->
-                    <TextBlock x:Name="DragOverlayTitle"
-                               FontSize="18" FontWeight="SemiBold"
-                               Foreground="{DynamicResource c-text-primary}"
-                               TextWrapping="Wrap"
-                               HorizontalAlignment="Center"
-                               Margin="0,0,0,8" />
-                    <TextBlock x:Name="DragOverlayMessage"
-                               FontSize="13"
-                               Foreground="{DynamicResource c-text-muted}"
-                               TextWrapping="Wrap"
-                               HorizontalAlignment="Center"
-                               Margin="0,0,0,24" />
-
-                    <!-- Action buttons -->
-                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,8">
-                        <Button x:Name="DragKeepHereBtn"
-                                Content="Keep here"
-                                Click="DragKeepHere_Click"
-                                Padding="16,8" Margin="0,0,8,0"
-                                FontSize="13"
-                                Background="{DynamicResource c-accent}"
-                                Foreground="White"
-                                BorderThickness="0"
-                                Cursor="Hand" />
-                        <Button x:Name="DragMergeBtn"
-                                Content="Merge notes"
-                                Click="DragMerge_Click"
-                                Padding="16,8" Margin="0,0,8,0"
-                                FontSize="13"
-                                Background="{DynamicResource c-tab-bg}"
-                                Foreground="{DynamicResource c-text-primary}"
-                                BorderBrush="{DynamicResource c-border}"
-                                BorderThickness="1"
-                                Cursor="Hand" />
-                        <Button x:Name="DragCancelBtn"
-                                Content="Go back"
-                                Click="DragCancel_Click"
-                                Padding="16,8"
-                                FontSize="13"
-                                Background="{DynamicResource c-tab-bg}"
-                                Foreground="{DynamicResource c-text-primary}"
-                                BorderBrush="{DynamicResource c-border}"
-                                BorderThickness="1"
-                                Cursor="Hand" />
-                    </StackPanel>
-
-                    <!-- Cancel failure instruction (DRAG-07) — hidden by default -->
-                    <TextBlock x:Name="DragCancelFailureText"
-                               Text="If retry fails, move this window back manually via Win+Tab"
-                               FontSize="11"
-                               Foreground="{DynamicResource c-text-muted}"
-                               FontStyle="Italic"
-                               TextWrapping="Wrap"
-                               HorizontalAlignment="Center"
-                               Visibility="Collapsed"
-                               Margin="0,8,0,0" />
-                </StackPanel>
-            </Border>
-        </Grid>
+        <!-- Bulk delete confirmation overlay -->
+        <controls:ConfirmationOverlay x:Name="ConfirmationOverlay" Grid.ColumnSpan="3" Panel.ZIndex="100"/>
+        <!-- Lock overlay for window drag resolution -->
+        <controls:DragOverlay x:Name="DragOverlay" Grid.ColumnSpan="3" Panel.ZIndex="200"/>
         <!-- Phase 9: Preferences slide-in panel (PREF-01 through PREF-05) -->
         <Border x:Name="PreferencesPanel" Width="300" HorizontalAlignment="Right"
                 Background="{DynamicResource c-win-bg}" BorderBrush="{DynamicResource c-border}"
@@ -781,125 +663,15 @@
             </Grid>
         </Border>
 
-        <!-- Phase 9: Help overlay — keyboard shortcuts reference (Ctrl+?) -->
-        <Grid x:Name="HelpOverlay" Visibility="Collapsed" Background="#CC000000" Panel.ZIndex="200"
-              Grid.ColumnSpan="3" MouseLeftButtonDown="HelpOverlay_Click">
-            <Border Background="{DynamicResource c-win-bg}" CornerRadius="8" Padding="24"
-                    MaxWidth="500" MaxHeight="600" HorizontalAlignment="Center" VerticalAlignment="Center"
-                    MouseLeftButtonDown="HelpCard_Click">
-                <ScrollViewer VerticalScrollBarVisibility="Auto">
-                    <StackPanel x:Name="HelpContent">
-                        <Grid>
-                            <TextBlock Text="Keyboard Shortcuts" FontSize="18" FontWeight="SemiBold"
-                                       Foreground="{DynamicResource c-text-primary}"/>
-                            <TextBlock Text="&#xE711;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="14"
-                                       HorizontalAlignment="Right" Cursor="Hand"
-                                       Foreground="{DynamicResource c-text-muted}"
-                                       MouseLeftButtonDown="HelpClose_Click"/>
-                        </Grid>
-                        <TextBlock Text="Press Escape or click outside to close" FontSize="11"
-                                   Foreground="{DynamicResource c-text-muted}" Margin="0,4,0,16"/>
-                    </StackPanel>
-                </ScrollViewer>
-            </Border>
-        </Grid>
+        <!-- Help overlay — keyboard shortcuts reference (Ctrl+?) -->
+        <controls:HelpOverlay x:Name="HelpOverlay" Grid.ColumnSpan="3" Panel.ZIndex="200"/>
 
-        <!-- Recovery sidebar (R2-RECOVER-01) — slide-in from right, same pattern as PreferencesPanel -->
-        <Border x:Name="RecoveryPanel" Width="320" HorizontalAlignment="Right"
-                Background="{DynamicResource c-win-bg}" BorderBrush="{DynamicResource c-border}"
-                BorderThickness="1,0,0,0" Visibility="Collapsed" Panel.ZIndex="85"
-                Grid.ColumnSpan="3">
-            <Border.RenderTransform>
-                <TranslateTransform x:Name="RecoveryPanelTransform" X="320"/>
-            </Border.RenderTransform>
-            <Grid>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="*"/>
-                </Grid.RowDefinitions>
+        <!-- Recovery sidebar — slide-in from right -->
+        <controls:RecoveryPanel x:Name="RecoveryPanel" Width="320" HorizontalAlignment="Right"
+                                 Grid.ColumnSpan="3" Panel.ZIndex="85"/>
 
-                <!-- Header with close button -->
-                <Grid Grid.Row="0" Margin="16,16,16,8">
-                    <TextBlock Text="Recover Sessions" FontSize="18" FontWeight="SemiBold"
-                               Foreground="{DynamicResource c-text-primary}"/>
-                    <TextBlock Text="&#xE711;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="14"
-                               HorizontalAlignment="Right" Cursor="Hand"
-                               Foreground="{DynamicResource c-text-muted}"
-                               MouseLeftButtonDown="RecoveryClose_Click"/>
-                </Grid>
-
-                <!-- Scrollable session list -->
-                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Margin="16,0,16,16">
-                    <StackPanel x:Name="RecoverySessionList"/>
-                </ScrollViewer>
-            </Grid>
-        </Border>
-
-        <!-- Phase 16: Cleanup panel — slide-in from right, same pattern as RecoveryPanel -->
-        <Border x:Name="CleanupPanel" Width="320" HorizontalAlignment="Right"
-                Background="{DynamicResource c-win-bg}" BorderBrush="{DynamicResource c-border}"
-                BorderThickness="1,0,0,0" Visibility="Collapsed" Panel.ZIndex="85"
-                Grid.ColumnSpan="3">
-            <Border.RenderTransform>
-                <TranslateTransform x:Name="CleanupPanelTransform" X="320"/>
-            </Border.RenderTransform>
-            <Grid>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="*"/>
-                </Grid.RowDefinitions>
-
-                <!-- Row 0: Header with close button -->
-                <Grid Grid.Row="0" Margin="16,16,16,8">
-                    <TextBlock Text="Clean up tabs" FontSize="18" FontWeight="SemiBold"
-                               Foreground="{DynamicResource c-text-primary}"/>
-                    <TextBlock Text="&#xE711;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="14"
-                               HorizontalAlignment="Right" Cursor="Hand"
-                               Foreground="{DynamicResource c-text-muted}"
-                               MouseLeftButtonDown="CleanupClose_Click"/>
-                </Grid>
-
-                <!-- Row 1: Filter controls and delete button -->
-                <StackPanel Grid.Row="1" Margin="16,0,16,8">
-                    <!-- Filter row -->
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="Clean up older than" FontSize="13"
-                                   Foreground="{DynamicResource c-text-primary}" VerticalAlignment="Center"/>
-                        <TextBox x:Name="CleanupAgeInput" Width="45" FontSize="13" Text="7"
-                                 Margin="8,0,4,0" Padding="4,2" VerticalAlignment="Center"
-                                 Background="{DynamicResource c-editor-bg}"
-                                 Foreground="{DynamicResource c-text-primary}"
-                                 BorderBrush="{DynamicResource c-border}"
-                                 TextChanged="CleanupAgeInput_TextChanged"/>
-                        <ComboBox x:Name="CleanupUnitCombo" FontSize="13" Width="80"
-                                  VerticalAlignment="Center" SelectedIndex="0"
-                                  SelectionChanged="CleanupUnitCombo_SelectionChanged">
-                            <ComboBoxItem Content="days"/>
-                            <ComboBoxItem Content="hours"/>
-                            <ComboBoxItem Content="weeks"/>
-                            <ComboBoxItem Content="months"/>
-                        </ComboBox>
-                    </StackPanel>
-                    <!-- Include pinned checkbox -->
-                    <CheckBox x:Name="CleanupIncludePinned" Content="Include pinned" FontSize="13"
-                              Margin="0,8,0,0" IsChecked="False"
-                              Foreground="{DynamicResource c-text-primary}"
-                              Checked="CleanupIncludePinned_Changed" Unchecked="CleanupIncludePinned_Changed"/>
-                    <!-- Delete button -->
-                    <Border x:Name="CleanupDeleteButton" Margin="0,12,0,0" Padding="8,6"
-                            CornerRadius="4" Cursor="Hand" HorizontalAlignment="Left"
-                            Background="#e74c3c" IsEnabled="False" Opacity="0.5"
-                            MouseLeftButtonDown="CleanupDelete_Click">
-                        <TextBlock x:Name="CleanupDeleteText" Text="Delete 0 tabs" FontSize="13" Foreground="White"/>
-                    </Border>
-                </StackPanel>
-
-                <!-- Row 2: Scrollable preview list -->
-                <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" Margin="16,0,16,16">
-                    <StackPanel x:Name="CleanupPreviewList"/>
-                </ScrollViewer>
-            </Grid>
-        </Border>
+        <!-- Cleanup panel — slide-in from right -->
+        <controls:CleanupPanel x:Name="CleanupPanel" Width="320" HorizontalAlignment="Right"
+                                Grid.ColumnSpan="3" Panel.ZIndex="85"/>
     </Grid>
 </Window>

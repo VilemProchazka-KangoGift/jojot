@@ -92,7 +92,7 @@ public partial class MainWindow
         }
 
         // Confirmation dialog keyboard handling — intercept before all other shortcuts
-        if (ConfirmationOverlay.Visibility == Visibility.Visible)
+        if (ConfirmationOverlay.IsOpen)
         {
             if (e.Key == Key.Escape)
             {
@@ -101,9 +101,7 @@ public partial class MainWindow
             }
             else if (e.Key == Key.Enter)
             {
-                var action = _confirmAction;
-                HideConfirmation();
-                action?.Invoke();
+                ConfirmationOverlay.Confirm();
                 e.Handled = true;
             }
             else

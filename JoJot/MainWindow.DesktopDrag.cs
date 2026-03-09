@@ -1,5 +1,4 @@
 using System.Windows;
-using System.Windows.Media.Animation;
 using JoJot.Services;
 
 namespace JoJot;
@@ -87,7 +86,6 @@ public partial class MainWindow
         {
             sourceLabel = "Unknown desktop"; // best-effort
         }
-        DragOverlaySourceName.Text = $"From: {sourceLabel}";
 
         // Configure overlay content with name fallback
         string displayName;
@@ -104,42 +102,23 @@ public partial class MainWindow
                 ? $"Desktop {targetDesktop.Index + 1}"
                 : "another desktop";
         }
-        DragOverlayTitle.Text = $"Moved to {displayName}";
 
-        if (targetHasSession)
-        {
-            DragOverlayMessage.Text = "This desktop already has a JoJot window. What would you like to do?";
-            DragMergeBtn.Visibility = Visibility.Visible;
-            DragKeepHereBtn.Visibility = Visibility.Collapsed; // Hide "keep here" — target already has window
-        }
-        else
-        {
-            DragOverlayMessage.Text = "Keep your notes on this desktop, or go back?";
-            DragMergeBtn.Visibility = Visibility.Collapsed;
-            DragKeepHereBtn.Visibility = Visibility.Visible; // Show "keep here" — no conflict
-        }
+        string message = targetHasSession
+            ? "This desktop already has a JoJot window. What would you like to do?"
+            : "Keep your notes on this desktop, or go back?";
 
-        // Reset cancel failure state
-        DragCancelBtn.Content = "Go back";
-        DragCancelFailureText.Visibility = Visibility.Collapsed;
-
-        // Show with 150ms fade-in animation
-        DragOverlay.Opacity = 0;
-        DragOverlay.Visibility = Visibility.Visible;
-        var fadeIn = new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(150))
-        {
-            EasingFunction = new CubicEase
-            {
-                EasingMode = EasingMode.EaseOut
-            }
-        };
-        DragOverlay.BeginAnimation(OpacityProperty, fadeIn);
+        DragOverlay.Show(
+            $"From: {sourceLabel}",
+            $"Moved to {displayName}",
+            message,
+            showKeepHere: !targetHasSession,
+            showMerge: targetHasSession);
     }
 
     /// <summary>
     /// Reparent — re-scope window and all notes to the new desktop.
     /// </summary>
-    private async void DragKeepHere_Click(object sender, RoutedEventArgs e)
+    private async void DragKeepHere_Handler()
     {
         try
         {
@@ -154,9 +133,8 @@ public partial class MainWindow
         if (app?.HasWindowForDesktop(newGuid) == true)
         {
             // Refresh overlay with keep-here hidden and merge visible
-            DragOverlayMessage.Text = "Another window was opened on this desktop. You can merge or go back.";
-            DragKeepHereBtn.Visibility = Visibility.Collapsed;
-            DragMergeBtn.Visibility = Visibility.Visible;
+            DragOverlay.UpdateContent("Another window was opened on this desktop. You can merge or go back.",
+                showKeepHere: false, showMerge: true);
             return;
         }
 
@@ -202,7 +180,7 @@ public partial class MainWindow
     /// <summary>
     /// Merge — append tabs to existing window on target desktop, close this window.
     /// </summary>
-    private async void DragMerge_Click(object sender, RoutedEventArgs e)
+    private async void DragMerge_Handler()
     {
         try
         {
@@ -228,7 +206,7 @@ public partial class MainWindow
 
         // Hide overlay and close this window
         ViewModel.ResetDragState();
-        DragOverlay.Visibility = Visibility.Collapsed;
+        DragOverlay.HideImmediate();
 
         // Unsubscribe from events before closing
         VirtualDesktopService.WindowMovedToDesktop -= OnWindowMovedToDesktop;
@@ -247,7 +225,7 @@ public partial class MainWindow
     /// Cancel — move window back to original desktop.
     /// On failure, replace Go back with Retry + instruction text.
     /// </summary>
-    private async void DragCancel_Click(object sender, RoutedEventArgs e)
+    private async void DragCancel_Handler()
     {
         try
         {
@@ -276,8 +254,7 @@ public partial class MainWindow
             else
             {
                 // Cancel failed — show retry + instruction
-                DragCancelBtn.Content = "Retry";
-                DragCancelFailureText.Visibility = Visibility.Visible;
+                DragOverlay.ShowRetryMode();
 
                 LogService.Warn("Cancel failed: could not move window back to {DesktopGuid}", _dragFromDesktopGuid);
             }
@@ -293,20 +270,7 @@ public partial class MainWindow
     /// </summary>
     private async Task HideDragOverlayAsync()
     {
-        var fadeOut = new DoubleAnimation(1, 0, TimeSpan.FromMilliseconds(150))
-        {
-            EasingFunction = new CubicEase
-            {
-                EasingMode = EasingMode.EaseIn
-            }
-        };
-
-        var tcs = new TaskCompletionSource<bool>();
-        fadeOut.Completed += (_, _) => tcs.SetResult(true);
-        DragOverlay.BeginAnimation(OpacityProperty, fadeOut);
-        await tcs.Task;
-
-        DragOverlay.Visibility = Visibility.Collapsed;
+        await DragOverlay.HideAsync();
         ViewModel.ResetDragState();
     }
 
