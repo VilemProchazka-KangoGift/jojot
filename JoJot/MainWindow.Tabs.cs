@@ -98,261 +98,19 @@ public partial class MainWindow
     }
 
     /// <summary>
-    /// Creates a ListBoxItem for a NoteTab with the two-row visual layout.
+    /// Creates a ListBoxItem for a NoteTab using the XAML DataTemplate.
     /// Tag stores the NoteTab reference for later retrieval.
+    /// Hover/click behavior is wired in TabItemBorder_Loaded (Phase 8).
     /// </summary>
     private ListBoxItem CreateTabListItem(NoteTab tab)
     {
-        var item = new ListBoxItem { Tag = tab, Cursor = Cursors.Hand };
-
-        var outerBorder = new Border
+        var item = new ListBoxItem
         {
-            Padding = new Thickness(8, 6, 8, 6),
-            BorderThickness = new Thickness(0),
-            Background = System.Windows.Media.Brushes.Transparent,
-            Name = "OuterBorder"
-        };
-
-        var grid = new Grid();
-        grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-        grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-
-        // Row 0: adaptive column layout based on pinned state
-        // Both buttons use 22x22 Border for adequate hit targets
-        // UNPINNED: Col 0 = title (Star), Col 1 = pin icon (Auto, hidden), Col 2 = delete icon (Auto, hidden)
-        // PINNED:   Col 0 = pin icon (Auto, always visible), Col 1 = title (Star), Col 2 = delete icon (Auto, hidden)
-        var row0 = new Grid();
-        row0.MinHeight = 22; // Prevent vertical jitter when hover icons toggle Visible/Collapsed
-        row0.ColumnDefinitions.Add(new ColumnDefinition { Width = tab.Pinned ? GridLength.Auto : new GridLength(1, GridUnitType.Star) });
-        row0.ColumnDefinitions.Add(new ColumnDefinition { Width = tab.Pinned ? new GridLength(1, GridUnitType.Star) : GridLength.Auto });
-        row0.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-
-        // Pin/Unpin action button
-        var pinBtn = new Border
-        {
-            Width = 22, Height = 22,
-            CornerRadius = new CornerRadius(3),
-            Background = System.Windows.Media.Brushes.Transparent,
+            Tag = tab,
             Cursor = Cursors.Hand,
-            IsHitTestVisible = true,
-            Margin = new Thickness(0, 0, 4, 0),
-            VerticalAlignment = VerticalAlignment.Center,
-            Opacity = 0,
-            Visibility = Visibility.Collapsed
+            Content = tab,
+            ContentTemplate = (DataTemplate)FindResource("TabItemTemplate")
         };
-
-        var pinBtnIcon = new TextBlock
-        {
-            FontFamily = new System.Windows.Media.FontFamily("Segoe Fluent Icons, Segoe MDL2 Assets"),
-            FontSize = 12,
-            HorizontalAlignment = HorizontalAlignment.Center,
-            VerticalAlignment = VerticalAlignment.Center
-        };
-        pinBtnIcon.SetResourceReference(TextBlock.ForegroundProperty, "c-text-muted");
-
-        if (tab.Pinned)
-        {
-            // Pinned tabs: show pin icon always, on hover swap to X (click to unpin)
-            pinBtnIcon.Text = "\uE718"; // Pin icon
-            pinBtn.ToolTip = "Unpin";
-            pinBtn.Opacity = 1;
-            pinBtn.Visibility = Visibility.Visible;
-
-            pinBtn.MouseEnter += (s, e) =>
-            {
-                if (_isDragging) return;
-                // Unpin glyph (crossed-out pin) instead of multiplication sign
-                pinBtnIcon.Text = "\uE77A"; // Unpin glyph (Segoe Fluent Icons)
-                // Keep existing FontFamily and FontSize — do NOT change
-                pinBtnIcon.Foreground = new System.Windows.Media.SolidColorBrush(
-                    System.Windows.Media.Color.FromRgb(0xe7, 0x4c, 0x3c));
-            };
-            pinBtn.MouseLeave += (s, e) =>
-            {
-                if (_isDragging) return;
-                pinBtnIcon.Text = "\uE718"; // Restore pin icon
-                pinBtnIcon.SetResourceReference(TextBlock.ForegroundProperty, "c-text-muted");
-            };
-        }
-        else
-        {
-            // Unpinned tabs: show pin icon on hover/selection (click to pin)
-            pinBtnIcon.Text = "\uE718"; // Pin icon
-            pinBtn.ToolTip = "Pin";
-
-            // Hover color change for unpinned pin button
-            pinBtn.MouseEnter += (s, e) =>
-            {
-                if (_isDragging) return;
-                pinBtnIcon.Foreground = (SolidColorBrush)FindResource("c-accent");
-            };
-            pinBtn.MouseLeave += (s, e) =>
-            {
-                if (_isDragging) return;
-                pinBtnIcon.SetResourceReference(TextBlock.ForegroundProperty, "c-text-muted");
-            };
-        }
-
-        pinBtn.MouseLeftButtonDown += (s, e) =>
-        {
-            _ = TogglePinAsync(tab);
-            e.Handled = true;
-        };
-        pinBtn.Child = pinBtnIcon;
-        // PINNED: pin in Col 0 (always visible), UNPINNED: pin in Col 1 (hidden by default)
-        Grid.SetColumn(pinBtn, tab.Pinned ? 0 : 1);
-        row0.Children.Add(pinBtn);
-
-        // Title label
-        var labelBlock = new TextBlock
-        {
-            Text = tab.DisplayLabel,
-            FontSize = 13,  // Fixed size — tabs do NOT scale with font control
-            TextTrimming = TextTrimming.CharacterEllipsis,
-            VerticalAlignment = VerticalAlignment.Center
-        };
-        labelBlock.SetResourceReference(TextBlock.ForegroundProperty, "c-text-primary");
-
-        if (tab.IsPlaceholder)
-        {
-            labelBlock.FontStyle = FontStyles.Italic;
-            labelBlock.SetResourceReference(TextBlock.ForegroundProperty, "c-text-muted");
-        }
-
-        // PINNED: title in Col 1, UNPINNED: title in Col 0
-        Grid.SetColumn(labelBlock, tab.Pinned ? 1 : 0);
-        row0.Children.Add(labelBlock);
-
-        // Hidden rename TextBox (shown on F2 / double-click) — shares title column
-        var renameBox = new TextBox
-        {
-            FontSize = 13,  // Fixed size to match labelBlock
-            MinWidth = 80,
-            Visibility = Visibility.Collapsed,
-            Padding = new Thickness(2, 0, 2, 0),
-            VerticalAlignment = VerticalAlignment.Center,
-            Tag = labelBlock // Store reference to label for show/hide toggling
-        };
-        Grid.SetColumn(renameBox, tab.Pinned ? 1 : 0);
-        row0.Children.Add(renameBox);
-
-        // Column 2: Close/delete button — created for ALL tabs, hidden by default, shown on hover
-        var closeBtn = new Border
-        {
-            Width = 22, Height = 22,
-            CornerRadius = new CornerRadius(3),
-            Background = System.Windows.Media.Brushes.Transparent,
-            Cursor = Cursors.Hand,
-            IsHitTestVisible = true,
-            Margin = new Thickness(4, 0, 0, 0),
-            VerticalAlignment = VerticalAlignment.Center,
-            Opacity = 0,
-            Visibility = Visibility.Collapsed
-        };
-
-        var closeIcon = new TextBlock
-        {
-            // Fluent ChromeClose glyph at 12pt (bigger than previous 10pt per user request)
-            Text = "\uE711",
-            FontFamily = new System.Windows.Media.FontFamily("Segoe Fluent Icons, Segoe MDL2 Assets"),
-            FontSize = 12,
-            HorizontalAlignment = HorizontalAlignment.Center,
-            VerticalAlignment = VerticalAlignment.Center
-        };
-        closeIcon.SetResourceReference(TextBlock.ForegroundProperty, "c-text-muted");
-
-        // Close button hover color (red) for both pinned and unpinned
-        closeBtn.MouseEnter += (s, e) =>
-        {
-            if (_isDragging) return;
-            closeIcon.Foreground = new System.Windows.Media.SolidColorBrush(
-                System.Windows.Media.Color.FromRgb(0xe7, 0x4c, 0x3c));
-        };
-        closeBtn.MouseLeave += (s, e) =>
-        {
-            if (_isDragging) return;
-            closeIcon.SetResourceReference(TextBlock.ForegroundProperty, "c-text-muted");
-        };
-
-        closeBtn.MouseLeftButtonDown += (s, e) =>
-        {
-            _ = DeleteTabAsync(tab);
-            e.Handled = true;
-        };
-
-        closeBtn.Child = closeIcon;
-        Grid.SetColumn(closeBtn, 2);
-        row0.Children.Add(closeBtn);
-
-        Grid.SetRow(row0, 0);
-        grid.Children.Add(row0);
-
-        // Row 1: created date (left) + updated time (right)
-        var row1 = new Grid { Margin = new Thickness(0, 2, 0, 0) };
-        var createdBlock = new TextBlock
-        {
-            Text = tab.CreatedDisplay,
-            FontSize = 10,
-            HorizontalAlignment = HorizontalAlignment.Left,
-            ToolTip = NoteTab.CreatedTooltip(tab.CreatedAt)
-        };
-        createdBlock.SetResourceReference(TextBlock.ForegroundProperty, "c-text-muted");
-        row1.Children.Add(createdBlock);
-        var updatedBlock = new TextBlock
-        {
-            Text = tab.UpdatedDisplay,
-            FontSize = 10,
-            HorizontalAlignment = HorizontalAlignment.Right,
-            ToolTip = NoteTab.UpdatedTooltip(tab.UpdatedAt)
-        };
-        updatedBlock.SetResourceReference(TextBlock.ForegroundProperty, "c-text-muted");
-        row1.Children.Add(updatedBlock);
-        Grid.SetRow(row1, 1);
-        grid.Children.Add(row1);
-
-        // Show/hide pin and close buttons on hover
-        outerBorder.MouseEnter += (s, e) =>
-        {
-            // Suppress hover effects during drag to prevent visual artifacts
-            if (_isDragging) return;
-
-            if (item != TabList.SelectedItem)
-                outerBorder.Background = GetBrush("c-hover-bg");
-
-            // UNPINNED: show both pin and close on hover
-            // PINNED: pin already visible, show close only
-            if (!tab.Pinned)
-            {
-                pinBtn.Visibility = Visibility.Visible;
-                AnimateOpacity(pinBtn, 0, 1, 100);
-            }
-
-            // Show close button for ALL tabs on hover
-            closeBtn.Visibility = Visibility.Visible;
-            AnimateOpacity(closeBtn, 0, 1, 100);
-        };
-        outerBorder.MouseLeave += (s, e) =>
-        {
-            // Suppress hover effects during drag to prevent visual artifacts
-            if (_isDragging) return;
-
-            if (item != TabList.SelectedItem)
-                outerBorder.Background = System.Windows.Media.Brushes.Transparent;
-
-            // UNPINNED: hide pin on leave (pinned tabs keep pin visible always)
-            if (!tab.Pinned)
-            {
-                AnimateOpacity(pinBtn, 1, 0, 100);
-                DelayedCollapse(pinBtn);
-            }
-
-            // Hide close button for ALL tabs on leave
-            AnimateOpacity(closeBtn, 1, 0, 100);
-            DelayedCollapse(closeBtn);
-        };
-
-        outerBorder.Child = grid;
-        item.Content = outerBorder;
 
         // Wire mouse events for drag-to-reorder
         item.PreviewMouseLeftButtonDown += TabItem_PreviewMouseLeftButtonDown;
@@ -365,7 +123,7 @@ public partial class MainWindow
             if (e.ChangedButton == MouseButton.Middle)
             {
                 _ = DeleteTabAsync(tab);
-                e.Handled = true; // Prevent WPF auto-scroll on middle-click
+                e.Handled = true;
             }
         };
 
@@ -381,40 +139,126 @@ public partial class MainWindow
     }
 
     /// <summary>
-    /// Updates the visual display of a tab item after model changes (name, content, dates).
-    /// Finds the ListBoxItem and rebuilds its content.
+    /// Loaded handler for the DataTemplate root Border.
+    /// Wires hover show/hide animations and pin/close click handlers.
     /// </summary>
-    private void UpdateTabItemDisplay(NoteTab tab)
+    private void TabItemBorder_Loaded(object sender, RoutedEventArgs e)
     {
-        // If a rename is active for this tab, skip the rebuild to avoid
-        // destroying the rename TextBox. CommitRename will call us again after finishing.
-        if (_activeRename is var (_, renTab, _, _) && renTab.Id == tab.Id)
-            return;
+        var outerBorder = (Border)sender;
+        if (outerBorder.DataContext is not NoteTab tab) return;
 
-        foreach (var obj in TabList.Items)
+        var pinBtn = FindNamedDescendant<Border>(outerBorder, "PinBtn");
+        var pinIcon = FindNamedDescendant<TextBlock>(outerBorder, "PinIcon");
+        var closeBtn = FindNamedDescendant<Border>(outerBorder, "CloseBtn");
+        var closeIcon = FindNamedDescendant<TextBlock>(outerBorder, "CloseIcon");
+        if (pinBtn is null || pinIcon is null || closeBtn is null || closeIcon is null) return;
+
+        // Find parent ListBoxItem for selection check
+        var item = FindAncestor<ListBoxItem>(outerBorder);
+
+        // Pin button click
+        pinBtn.MouseLeftButtonDown += (s, ev) =>
         {
-            if (obj is ListBoxItem item && item.Tag is NoteTab t && t.Id == tab.Id)
+            _ = TogglePinAsync(tab);
+            ev.Handled = true;
+        };
+
+        // Pin button hover — behavior differs for pinned vs unpinned
+        if (tab.Pinned)
+        {
+            pinBtn.MouseEnter += (s, ev) =>
             {
-                bool wasSelected = TabList.SelectedItem == item;
-
-                // Rebuild the item content
-                var newItem = CreateTabListItem(tab);
-                int index = TabList.Items.IndexOf(item);
-                TabList.SelectionChanged -= TabList_SelectionChanged;
-                TabList.Items[index] = newItem;
-                if (wasSelected)
-                {
-                    TabList.SelectedItem = newItem;     // guarded — no SelectionChanged fired
-                }
-                TabList.SelectionChanged += TabList_SelectionChanged;
-
-                if (wasSelected)
-                {
-                    ApplyActiveHighlight(newItem);
-                }
-                return;
-            }
+                if (_isDragging) return;
+                pinIcon.Text = "\uE77A"; // Unpin glyph
+                pinIcon.Foreground = new SolidColorBrush(
+                    System.Windows.Media.Color.FromRgb(0xe7, 0x4c, 0x3c));
+            };
+            pinBtn.MouseLeave += (s, ev) =>
+            {
+                if (_isDragging) return;
+                pinIcon.Text = "\uE718"; // Pin icon
+                pinIcon.SetResourceReference(TextBlock.ForegroundProperty, "c-text-muted");
+            };
         }
+        else
+        {
+            pinBtn.MouseEnter += (s, ev) =>
+            {
+                if (_isDragging) return;
+                pinIcon.Foreground = (SolidColorBrush)FindResource("c-accent");
+            };
+            pinBtn.MouseLeave += (s, ev) =>
+            {
+                if (_isDragging) return;
+                pinIcon.SetResourceReference(TextBlock.ForegroundProperty, "c-text-muted");
+            };
+        }
+
+        // Close button click + hover
+        closeBtn.MouseLeftButtonDown += (s, ev) =>
+        {
+            _ = DeleteTabAsync(tab);
+            ev.Handled = true;
+        };
+        closeBtn.MouseEnter += (s, ev) =>
+        {
+            if (_isDragging) return;
+            closeIcon.Foreground = new SolidColorBrush(
+                System.Windows.Media.Color.FromRgb(0xe7, 0x4c, 0x3c));
+        };
+        closeBtn.MouseLeave += (s, ev) =>
+        {
+            if (_isDragging) return;
+            closeIcon.SetResourceReference(TextBlock.ForegroundProperty, "c-text-muted");
+        };
+
+        // Outer border hover — show/hide pin and close buttons
+        outerBorder.MouseEnter += (s, ev) =>
+        {
+            if (_isDragging) return;
+
+            if (item is not null && item != TabList.SelectedItem)
+                outerBorder.Background = GetBrush("c-hover-bg");
+
+            if (!tab.Pinned)
+            {
+                pinBtn.Visibility = Visibility.Visible;
+                AnimateOpacity(pinBtn, 0, 1, 100);
+            }
+
+            closeBtn.Visibility = Visibility.Visible;
+            AnimateOpacity(closeBtn, 0, 1, 100);
+        };
+        outerBorder.MouseLeave += (s, ev) =>
+        {
+            if (_isDragging) return;
+
+            if (item is not null && item != TabList.SelectedItem)
+                outerBorder.Background = System.Windows.Media.Brushes.Transparent;
+
+            if (!tab.Pinned)
+            {
+                AnimateOpacity(pinBtn, 1, 0, 100);
+                DelayedCollapse(pinBtn);
+            }
+
+            AnimateOpacity(closeBtn, 1, 0, 100);
+            DelayedCollapse(closeBtn);
+        };
+    }
+
+    /// <summary>
+    /// Walks the visual tree upward to find the first ancestor of type T.
+    /// </summary>
+    private static T? FindAncestor<T>(DependencyObject child) where T : DependencyObject
+    {
+        var parent = VisualTreeHelper.GetParent(child);
+        while (parent is not null)
+        {
+            if (parent is T result) return result;
+            parent = VisualTreeHelper.GetParent(parent);
+        }
+        return null;
     }
 
     // ─── Tab Selection ──────────────────────────────────────────────────────
@@ -445,27 +289,26 @@ public partial class MainWindow
             // Remove background highlight from deselected items and hide buttons
             foreach (var removed in e.RemovedItems)
             {
-                if (removed is ListBoxItem oldItem && oldItem.Content is Border oldBorder)
+                if (removed is ListBoxItem oldItem)
                 {
-                    oldBorder.Background = System.Windows.Media.Brushes.Transparent;
+                    var oldBorder = FindNamedDescendant<Border>(oldItem, "OuterBorder");
+                    if (oldBorder is not null)
+                        oldBorder.Background = System.Windows.Media.Brushes.Transparent;
 
-                    // Hide pin/close buttons when deselected
-                    if (oldBorder.Child is Grid oldGrid && oldGrid.Children.Count > 0 && oldGrid.Children[0] is Grid oldRow0)
+                    var oldPinBtn = FindNamedDescendant<Border>(oldItem, "PinBtn");
+                    var oldCloseBtn = FindNamedDescendant<Border>(oldItem, "CloseBtn");
+
+                    // Don't hide pinned tab's always-visible pin icon
+                    if (oldPinBtn is not null && !(oldItem.Tag is NoteTab oldTab && oldTab.Pinned))
                     {
-                        foreach (var child in oldRow0.Children)
-                        {
-                            if (child is Border btn && btn.Width == 22 && btn.Height == 22)
-                            {
-                                // Don't hide pinned tab's always-visible pin icon
-                                if (oldItem.Tag is NoteTab oldTab && oldTab.Pinned && Grid.GetColumn(btn) == 0)
-                                {
-                                    continue;
-                                }
+                        oldPinBtn.Opacity = 0;
+                        oldPinBtn.Visibility = Visibility.Collapsed;
+                    }
 
-                                btn.Opacity = 0;
-                                btn.Visibility = Visibility.Collapsed;
-                            }
-                        }
+                    if (oldCloseBtn is not null)
+                    {
+                        oldCloseBtn.Opacity = 0;
+                        oldCloseBtn.Visibility = Visibility.Collapsed;
                     }
                 }
             }
@@ -539,25 +382,27 @@ public partial class MainWindow
 
     /// <summary>
     /// Applies the background highlight to a selected tab item.
+    /// Uses FindNamedDescendant to locate pin/close buttons in the DataTemplate.
     /// </summary>
     private void ApplyActiveHighlight(ListBoxItem item)
     {
-        if (item.Content is Border border)
-        {
-            border.Background = GetBrush("c-selected-bg");
+        var outerBorder = FindNamedDescendant<Border>(item, "OuterBorder");
+        if (outerBorder is null) return;
 
-            // Show pin/close buttons on selected tab (no hover needed)
-            if (border.Child is Grid grid && grid.Children.Count > 0 && grid.Children[0] is Grid row0)
-            {
-                foreach (var child in row0.Children)
-                {
-                    if (child is Border btn && btn.Width == 22 && btn.Height == 22)
-                    {
-                        btn.Visibility = Visibility.Visible;
-                        btn.Opacity = 1;
-                    }
-                }
-            }
+        outerBorder.Background = GetBrush("c-selected-bg");
+
+        var pinBtn = FindNamedDescendant<Border>(item, "PinBtn");
+        var closeBtn = FindNamedDescendant<Border>(item, "CloseBtn");
+
+        if (pinBtn is not null)
+        {
+            pinBtn.Visibility = Visibility.Visible;
+            pinBtn.Opacity = 1;
+        }
+        if (closeBtn is not null)
+        {
+            closeBtn.Visibility = Visibility.Visible;
+            closeBtn.Opacity = 1;
         }
     }
 
@@ -642,7 +487,6 @@ public partial class MainWindow
 
         _ = DatabaseService.UpdateNoteContentAsync(_activeTab.Id, currentContent);
         UndoManager.Instance.PushSnapshot(_activeTab.Id, currentContent);
-        UpdateTabItemDisplay(_activeTab);
     }
 
     // ─── Tab Creation ───────────────────────────────────────────────────────

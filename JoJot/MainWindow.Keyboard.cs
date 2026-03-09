@@ -3,17 +3,75 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using JoJot.Models;
 using JoJot.Services;
+using JoJot.ViewModels;
 
 namespace JoJot;
 
 public partial class MainWindow
 {
+    // ─── Input Binding Commands (Phase 9) ────────────────────────────────────
+
+    internal ICommand NewTabCommand { get; private set; } = null!;
+    internal ICommand CloseTabCommand { get; private set; } = null!;
+    internal ICommand TogglePinCommand { get; private set; } = null!;
+    internal ICommand CloneTabCommand { get; private set; } = null!;
+    internal ICommand SaveAsCommand { get; private set; } = null!;
+    internal ICommand ToggleHelpCommand { get; private set; } = null!;
+    internal ICommand IncreaseFontCommand { get; private set; } = null!;
+    internal ICommand DecreaseFontCommand { get; private set; } = null!;
+    internal ICommand ResetFontCommand { get; private set; } = null!;
+
+    /// <summary>
+    /// Creates keyboard shortcut commands and registers them as InputBindings.
+    /// Called from constructor after InitializeComponent.
+    /// Simple action shortcuts use InputBindings; complex/context-dependent
+    /// shortcuts remain in Window_PreviewKeyDown.
+    /// </summary>
+    private void InitializeInputBindings()
+    {
+        NewTabCommand = new RelayCommand(() => _ = CreateNewTabAsync());
+        CloseTabCommand = new RelayCommand(
+            () => _ = DeleteTabAsync(_activeTab!),
+            () => _activeTab is not null);
+        TogglePinCommand = new RelayCommand(
+            () => _ = TogglePinAsync(_activeTab!),
+            () => _activeTab is not null);
+        CloneTabCommand = new RelayCommand(
+            () => _ = CloneTabAsync(_activeTab!),
+            () => _activeTab is not null);
+        SaveAsCommand = new RelayCommand(
+            () => SaveAsTxt(),
+            () => _activeTab is not null);
+        ToggleHelpCommand = new RelayCommand(() =>
+        {
+            if (ViewModel.IsHelpOpen) HideHelpOverlay();
+            else ShowHelpOverlay();
+        });
+        IncreaseFontCommand = new RelayCommand(() => _ = ChangeFontSizeAsync(1));
+        DecreaseFontCommand = new RelayCommand(() => _ = ChangeFontSizeAsync(-1));
+        ResetFontCommand = new RelayCommand(() => _ = SetFontSizeAsync(13));
+
+        InputBindings.Add(new KeyBinding(NewTabCommand, Key.T, ModifierKeys.Control));
+        InputBindings.Add(new KeyBinding(CloseTabCommand, Key.W, ModifierKeys.Control));
+        InputBindings.Add(new KeyBinding(TogglePinCommand, Key.P, ModifierKeys.Control));
+        InputBindings.Add(new KeyBinding(CloneTabCommand, Key.K, ModifierKeys.Control));
+        InputBindings.Add(new KeyBinding(SaveAsCommand, Key.S, ModifierKeys.Control));
+        InputBindings.Add(new KeyBinding(ToggleHelpCommand, Key.OemQuestion, ModifierKeys.Control | ModifierKeys.Shift));
+        InputBindings.Add(new KeyBinding(IncreaseFontCommand, Key.OemPlus, ModifierKeys.Control));
+        InputBindings.Add(new KeyBinding(IncreaseFontCommand, Key.Add, ModifierKeys.Control));
+        InputBindings.Add(new KeyBinding(DecreaseFontCommand, Key.OemMinus, ModifierKeys.Control));
+        InputBindings.Add(new KeyBinding(DecreaseFontCommand, Key.Subtract, ModifierKeys.Control));
+        InputBindings.Add(new KeyBinding(ResetFontCommand, Key.D0, ModifierKeys.Control));
+        InputBindings.Add(new KeyBinding(ResetFontCommand, Key.NumPad0, ModifierKeys.Control));
+    }
+
     // ─── Keyboard Shortcuts ─────────────────────────────────────────────────
 
     /// <summary>
-    /// Window-level keyboard shortcut handler.
-    /// Ctrl+W: delete active tab, Ctrl+T: new tab, Ctrl+F: focus search,
-    /// Ctrl+Tab/Ctrl+Shift+Tab: cycle tabs, Ctrl+P: pin/unpin, Ctrl+K: clone, F2: rename.
+    /// Window-level keyboard shortcut handler for guards and complex shortcuts.
+    /// Simple action shortcuts (Ctrl+T/W/P/K/S, help toggle, font size) are
+    /// handled by InputBindings — see InitializeInputBindings.
+    /// Guards here block ALL keys (including InputBindings) during modal states.
     /// </summary>
     private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
     {
@@ -139,7 +197,7 @@ public partial class MainWindow
             return;
         }
 
-        // Ctrl+Z: Undo — MUST be first to prevent WPF native undo
+        // Ctrl+Z: Undo — MUST be in PreviewKeyDown to prevent WPF native undo
         if (e.Key == Key.Z && Keyboard.Modifiers == ModifierKeys.Control)
         {
             if (_activeTab is not null)
@@ -182,101 +240,6 @@ public partial class MainWindow
             return;
         }
 
-        // Ctrl+S: Save as TXT
-        if (e.Key == Key.S && Keyboard.Modifiers == ModifierKeys.Control)
-        {
-            if (_activeTab is not null)
-            {
-                SaveAsTxt();
-            }
-            e.Handled = true;
-            return;
-        }
-
-        // Ctrl+= or Ctrl+NumAdd: Increase font size
-        if ((e.Key == Key.OemPlus || e.Key == Key.Add) && Keyboard.Modifiers == ModifierKeys.Control)
-        {
-            _ = ChangeFontSizeAsync(1);
-            e.Handled = true;
-            return;
-        }
-
-        // Ctrl+- or Ctrl+NumSubtract: Decrease font size
-        if ((e.Key == Key.OemMinus || e.Key == Key.Subtract) && Keyboard.Modifiers == ModifierKeys.Control)
-        {
-            _ = ChangeFontSizeAsync(-1);
-            e.Handled = true;
-            return;
-        }
-
-        // Ctrl+0 or Ctrl+Numpad0: Reset font size to 13pt
-        if ((e.Key == Key.D0 || e.Key == Key.NumPad0) && Keyboard.Modifiers == ModifierKeys.Control)
-        {
-            _ = SetFontSizeAsync(13);
-            e.Handled = true;
-            return;
-        }
-
-        // Ctrl+Shift+/ (Ctrl+?): Show help overlay
-        if (e.Key == Key.OemQuestion && Keyboard.Modifiers == (ModifierKeys.Control | ModifierKeys.Shift))
-        {
-            if (ViewModel.IsHelpOpen)
-                HideHelpOverlay();
-            else
-                ShowHelpOverlay();
-            e.Handled = true;
-            return;
-        }
-
-        // Ctrl+W: Delete active tab
-        if (e.Key == Key.W && Keyboard.Modifiers == ModifierKeys.Control)
-        {
-            if (_activeTab is not null)
-            {
-                _ = DeleteTabAsync(_activeTab);
-                e.Handled = true;
-            }
-            return;
-        }
-
-        // Ctrl+P: Pin/unpin toggle
-        if (e.Key == Key.P && Keyboard.Modifiers == ModifierKeys.Control)
-        {
-            if (_activeTab is not null)
-            {
-                _ = TogglePinAsync(_activeTab);
-                e.Handled = true;
-            }
-            return;
-        }
-
-        // Ctrl+K: Clone tab
-        if (e.Key == Key.K && Keyboard.Modifiers == ModifierKeys.Control)
-        {
-            if (_activeTab is not null)
-            {
-                _ = CloneTabAsync(_activeTab);
-                e.Handled = true;
-            }
-            return;
-        }
-
-        // F2: Rename active tab
-        if (e.Key == Key.F2 && TabList.SelectedItem is ListBoxItem f2Item && f2Item.Tag is NoteTab f2Tab)
-        {
-            BeginRename(f2Item, f2Tab);
-            e.Handled = true;
-            return;
-        }
-
-        // Ctrl+T: New tab
-        if (e.Key == Key.T && Keyboard.Modifiers == ModifierKeys.Control)
-        {
-            _ = CreateNewTabAsync();
-            e.Handled = true;
-            return;
-        }
-
         // Ctrl+F: Context-dependent
         // If editor is focused → show in-editor find bar; otherwise → focus tab search
         if (e.Key == Key.F && Keyboard.Modifiers == ModifierKeys.Control)
@@ -290,6 +253,14 @@ public partial class MainWindow
                 SearchBox.Focus();
                 SearchBox.SelectAll();
             }
+            e.Handled = true;
+            return;
+        }
+
+        // F2: Rename active tab
+        if (e.Key == Key.F2 && TabList.SelectedItem is ListBoxItem f2Item && f2Item.Tag is NoteTab f2Tab)
+        {
+            BeginRename(f2Item, f2Tab);
             e.Handled = true;
             return;
         }

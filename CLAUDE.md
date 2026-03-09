@@ -22,7 +22,14 @@ dotnet clean JoJot/JoJot.slnx
 dotnet publish JoJot/JoJot.csproj -c Release -r win-x64 --self-contained
 ```
 
-The solution file uses the `.slnx` format. No test project exists.
+The solution file uses the `.slnx` format.
+
+```bash
+# Test
+dotnet test JoJot.Tests/JoJot.Tests.csproj
+```
+
+Test project: `JoJot.Tests/` (xUnit + AwesomeAssertions + NSubstitute). 302 tests. `InternalsVisibleTo("JoJot.Tests")` in JoJot.csproj.
 
 ## Architecture
 
@@ -74,9 +81,19 @@ SQLite database at `%LocalAppData%\JoJot\jojot.db`. WAL mode, NORMAL synchronous
 
 Two ResourceDictionaries (`Themes/LightTheme.xaml`, `Themes/DarkTheme.xaml`) swapped at runtime by `ThemeService`. UI code uses `FindResource(key)` or `SetResourceReference` — never hardcoded colors. System mode follows Windows dark/light setting via `SystemEvents.UserPreferenceChanged`.
 
+### MVVM Architecture
+
+Hand-rolled MVVM (no framework). Base classes in `JoJot/ViewModels/`: `ObservableObject`, `RelayCommand`, `AsyncRelayCommand`.
+
+- **`MainWindowViewModel`** owns core state: `Tabs`, `ActiveTab`, `SearchText`, `DesktopGuid`, `FilteredTabs`, panel open/close state, drag state machine, tab CRUD logic
+- **`NoteTab`** inherits `ObservableObject` — `SetProperty` on Name, Content, Pinned, UpdatedAt, SortOrder with dependent property notifications (e.g., Name→DisplayLabel+IsPlaceholder)
+- **Forwarding properties**: Code-behind uses `_tabs => ViewModel.Tabs` etc. so all 16 partial classes work unchanged
+- **DataTemplate**: Tab items use XAML `TabItemTemplate` with data bindings + DataTriggers. Hover/click wired in `TabItemBorder_Loaded` handler
+- **InputBindings**: 9 simple shortcuts (Ctrl+T/W/P/K/S, help, font size) as `ICommand` properties + `InputBindings`. Complex/context-dependent shortcuts remain in `PreviewKeyDown`
+- **Code-behind retains**: Animations, visual tree manipulation, file dialogs, COM dispatching, modal keyboard guards
+
 ### Key Patterns
 
-- **Code-behind, not MVVM**: UI logic lives in `MainWindow.xaml.cs` — no ViewModels or data binding framework
 - **Static services**: Most services are static classes initialized in `App.OnAppStartup`
 - **Async throughout**: Database calls, startup sequence, and IPC are all async
 - **Structured logging**: All log calls use Serilog message templates — never string interpolation. Use `LogService.Info("Text {PropertyName}", value)` not `LogService.Info($"Text {value}")`. Warn/Error with exceptions: `LogService.Error("Failed {Id}", id, ex)`.

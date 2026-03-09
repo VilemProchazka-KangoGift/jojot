@@ -27,7 +27,7 @@ public class NoteTab : ObservableObject
 
     private static readonly string[] NameDependents = [nameof(DisplayLabel), nameof(IsPlaceholder)];
     private static readonly string[] ContentDependents = [nameof(DisplayLabel), nameof(IsPlaceholder)];
-    private static readonly string[] UpdatedAtDependents = [nameof(UpdatedDisplay)];
+    private static readonly string[] UpdatedAtDependents = [nameof(UpdatedDisplay), nameof(UpdatedTooltipText)];
 
     private string? _name;
     private string _content = "";
@@ -213,6 +213,17 @@ public class NoteTab : ObservableObject
 
         return dt.ToString("MMM d, yyyy h:mm tt");
     }
+
+    /// <summary>
+    /// Tooltip text for the created-at date, bound in the tab DataTemplate.
+    /// </summary>
+    public string CreatedTooltipText => CreatedTooltip(CreatedAt);
+
+    /// <summary>
+    /// Tooltip text for the updated-at date, bound in the tab DataTemplate.
+    /// Raises PropertyChanged when UpdatedAt changes (via UpdatedAtDependents).
+    /// </summary>
+    public string UpdatedTooltipText => UpdatedTooltip(UpdatedAt);
 
     /// <summary>
     /// Tooltip string showing the exact created-at date and time.

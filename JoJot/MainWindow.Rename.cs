@@ -18,9 +18,10 @@ public partial class MainWindow
         if (_activeRename is not null) CommitRename();
         if (_isDragging) return;
 
-        // Find the rename TextBox and label in this item's visual tree
-        var renameBox = FindDescendant<TextBox>(item);
-        if (renameBox?.Tag is not TextBlock labelBlock) return;
+        // Find the rename TextBox and label by name in the DataTemplate
+        var renameBox = FindNamedDescendant<TextBox>(item, "RenameBox");
+        var labelBlock = FindNamedDescendant<TextBlock>(item, "TitleBlock");
+        if (renameBox is null || labelBlock is null) return;
 
         labelBlock.Visibility = Visibility.Collapsed;
         renameBox.Text = tab.Name ?? "";
@@ -54,7 +55,6 @@ public partial class MainWindow
 
         _activeRename = null;
 
-        UpdateTabItemDisplay(tab);
         _ = DatabaseService.UpdateNoteNameAsync(tab.Id, tab.Name);
     }
 

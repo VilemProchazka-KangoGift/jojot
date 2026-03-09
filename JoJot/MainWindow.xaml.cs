@@ -162,6 +162,7 @@ public partial class MainWindow : Window
         _checkpointTimer.Tick += CheckpointTimer_Tick;
 
         InitializeComponent();
+        InitializeInputBindings();
 
         // Configure autosave service
         _autosaveService.Configure(
@@ -174,7 +175,6 @@ public partial class MainWindow : Window
                 if (tab is not null)
                 {
                     tab.UpdatedAt = DateTime.Now;
-                    UpdateTabItemDisplay(tab);
                 }
             }
         );
@@ -306,6 +306,22 @@ public partial class MainWindow : Window
     public string DesktopGuid => ViewModel.DesktopGuid;
 
     // ─── Visual Tree Helper ─────────────────────────────────────────────────
+
+    /// <summary>
+    /// Walks the visual tree to find the first descendant of type T with the given Name.
+    /// Used to locate named elements inside DataTemplate instances.
+    /// </summary>
+    private static T? FindNamedDescendant<T>(DependencyObject parent, string name) where T : FrameworkElement
+    {
+        for (int i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
+        {
+            var child = VisualTreeHelper.GetChild(parent, i);
+            if (child is T result && result.Name == name) return result;
+            var found = FindNamedDescendant<T>(child, name);
+            if (found is not null) return found;
+        }
+        return null;
+    }
 
     /// <summary>
     /// Walks the visual tree to find the first descendant of type T.
@@ -495,7 +511,6 @@ public partial class MainWindow : Window
         ContentEditor.CaretIndex = Math.Min(_activeTab.CursorPosition, content.Length);
         _suppressTextChanged = false;
 
-        UpdateTabItemDisplay(_activeTab);
         UpdateToolbarState(); // refresh undo/redo button states
     }
 
@@ -514,7 +529,6 @@ public partial class MainWindow : Window
         ContentEditor.CaretIndex = Math.Min(_activeTab.CursorPosition, content.Length);
         _suppressTextChanged = false;
 
-        UpdateTabItemDisplay(_activeTab);
         UpdateToolbarState(); // refresh undo/redo button states
     }
 

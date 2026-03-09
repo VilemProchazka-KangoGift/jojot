@@ -1,8 +1,7 @@
 # MainWindow MVVM Migration Plan
 
-## Status: IN PROGRESS
-**Current Phase:** 8 — Not started
-**Phases 0-7:** COMPLETE (298 tests passing)
+## Status: COMPLETE
+**All Phases (0-9):** COMPLETE (302 tests passing)
 **Last Updated:** 2026-03-09
 
 ---
@@ -189,24 +188,17 @@ Migrate MainWindow's 16 partial classes (~4,578 lines of code-behind) to MVVM pa
 ---
 
 ## Phase 8: XAML Data Templates
-**Status:** NOT STARTED
-**Prerequisite:** Phases 1-2 complete
-**Files to modify:**
-- `JoJot/MainWindow.xaml` — DataTemplate for NoteTab, ItemsSource binding
-- `JoJot/MainWindow.Tabs.cs` — remove BuildTabList, BuildTabItem, UpdateTabItemDisplay (~400-500 lines)
-- `JoJot/MainWindow.ContextMenu.cs` — simplify with bindings
-
-**Tests:** Existing ViewModel tests provide regression. Manual visual verification.
+**Status:** COMPLETE
+**Files modified:** NoteTab.cs, MainWindow.xaml, MainWindow.xaml.cs, MainWindow.Tabs.cs, MainWindow.Rename.cs
+**Result:** ~240 C# lines removed, ~90 XAML lines added. UpdateTabItemDisplay eliminated. Data bindings handle all display updates automatically.
+**Tests:** 4 new tests (302 total).
 
 ---
 
 ## Phase 9: Keyboard Shortcuts → InputBindings
-**Status:** NOT STARTED
-**Prerequisite:** Phases 3-5 complete (commands exist)
-**Files to modify:**
-- `JoJot/MainWindow.xaml` — Window.InputBindings with KeyBindings
-- `JoJot/MainWindow.Keyboard.cs` — reduce to hotkey recording only (~250 lines removed)
-
+**Status:** COMPLETE
+**Files modified:** MainWindow.Keyboard.cs, MainWindow.xaml.cs
+**Result:** 9 ICommand properties + 12 InputBindings. PreviewKeyDown reduced by ~90 lines. Guards and complex/context-dependent shortcuts remain in PreviewKeyDown.
 **Tests:** Existing command tests cover logic.
 
 ---

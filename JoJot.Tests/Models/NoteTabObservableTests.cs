@@ -157,6 +157,18 @@ public class NoteTabObservableTests
     }
 
     [Fact]
+    public void UpdatedAt_Change_RaisesUpdatedTooltipText()
+    {
+        var tab = new NoteTab();
+        var raised = new List<string>();
+        tab.PropertyChanged += (_, e) => raised.Add(e.PropertyName!);
+
+        tab.UpdatedAt = new DateTime(2026, 1, 1);
+
+        raised.Should().Contain(nameof(NoteTab.UpdatedTooltipText));
+    }
+
+    [Fact]
     public void UpdatedAt_SameValue_DoesNotRaise()
     {
         var dt = new DateTime(2026, 1, 1);
@@ -193,6 +205,36 @@ public class NoteTabObservableTests
         tab.SortOrder = 3;
 
         raised.Should().BeEmpty();
+    }
+
+    // ─── Tooltip computed properties ─────────────────────────────────
+
+    [Fact]
+    public void CreatedTooltipText_ReturnsFormattedCreatedAt()
+    {
+        var tab = new NoteTab { CreatedAt = new DateTime(2026, 3, 15, 14, 30, 0) };
+
+        tab.CreatedTooltipText.Should().Be("Created: Mar 15, 2026 2:30 PM");
+    }
+
+    [Fact]
+    public void UpdatedTooltipText_ReturnsFormattedUpdatedAt()
+    {
+        var tab = new NoteTab { UpdatedAt = new DateTime(2026, 3, 15, 14, 30, 0) };
+
+        tab.UpdatedTooltipText.Should().Be("Last updated: Mar 15, 2026 2:30 PM");
+    }
+
+    [Fact]
+    public void UpdatedTooltipText_ReflectsPropertyChange()
+    {
+        var tab = new NoteTab { UpdatedAt = new DateTime(2026, 1, 1) };
+        var original = tab.UpdatedTooltipText;
+
+        tab.UpdatedAt = new DateTime(2026, 6, 15, 10, 0, 0);
+
+        tab.UpdatedTooltipText.Should().NotBe(original);
+        tab.UpdatedTooltipText.Should().Be("Last updated: Jun 15, 2026 10:00 AM");
     }
 
     // ─── Non-observable properties don't notify ──────────────────────

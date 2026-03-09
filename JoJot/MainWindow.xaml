@@ -4,6 +4,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:JoJot"
+        xmlns:models="clr-namespace:JoJot.Models"
         mc:Ignorable="d"
         Title="JoJot"
         Width="500" Height="600"
@@ -28,6 +29,110 @@
                 </Setter.Value>
             </Setter>
         </Style>
+
+        <!-- Phase 8: Tab item DataTemplate — replaces code-behind CreateTabListItem visual tree -->
+        <DataTemplate x:Key="TabItemTemplate" DataType="{x:Type models:NoteTab}">
+            <Border x:Name="OuterBorder" Padding="8,6,8,6" BorderThickness="0"
+                    Background="Transparent" Loaded="TabItemBorder_Loaded">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Row 0: title + pin button + close button -->
+                    <Grid Grid.Row="0" MinHeight="22">
+                        <Grid.ColumnDefinitions>
+                            <!-- Default (unpinned): Col0=title(Star), Col1=pin(Auto) -->
+                            <!-- Pinned trigger swaps: Col0=pin(Auto), Col1=title(Star) -->
+                            <ColumnDefinition x:Name="Col0" Width="*"/>
+                            <ColumnDefinition x:Name="Col1" Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Pin/Unpin button — default in Col1, hidden -->
+                        <Border x:Name="PinBtn" Grid.Column="1"
+                                Width="22" Height="22" CornerRadius="3"
+                                Background="Transparent" Cursor="Hand"
+                                IsHitTestVisible="True" Margin="0,0,4,0"
+                                VerticalAlignment="Center"
+                                Opacity="0" Visibility="Collapsed"
+                                ToolTip="Pin">
+                            <TextBlock x:Name="PinIcon"
+                                       Text="&#xE718;"
+                                       FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                       FontSize="12"
+                                       Foreground="{DynamicResource c-text-muted}"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+
+                        <!-- Title label — default in Col0 -->
+                        <TextBlock x:Name="TitleBlock" Grid.Column="0"
+                                   Text="{Binding DisplayLabel}"
+                                   FontSize="13"
+                                   Foreground="{DynamicResource c-text-primary}"
+                                   TextTrimming="CharacterEllipsis"
+                                   VerticalAlignment="Center"/>
+
+                        <!-- Hidden rename TextBox — shares title column -->
+                        <TextBox x:Name="RenameBox" Grid.Column="0"
+                                 FontSize="13" MinWidth="80"
+                                 Visibility="Collapsed"
+                                 Padding="2,0,2,0"
+                                 VerticalAlignment="Center"/>
+
+                        <!-- Close/delete button — Col2, hidden by default -->
+                        <Border x:Name="CloseBtn" Grid.Column="2"
+                                Width="22" Height="22" CornerRadius="3"
+                                Background="Transparent" Cursor="Hand"
+                                IsHitTestVisible="True" Margin="4,0,0,0"
+                                VerticalAlignment="Center"
+                                Opacity="0" Visibility="Collapsed">
+                            <TextBlock x:Name="CloseIcon"
+                                       Text="&#xE711;"
+                                       FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                       FontSize="12"
+                                       Foreground="{DynamicResource c-text-muted}"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </Grid>
+
+                    <!-- Row 1: created date (left) + updated time (right) -->
+                    <Grid Grid.Row="1" Margin="0,2,0,0">
+                        <TextBlock Text="{Binding CreatedDisplay}"
+                                   FontSize="10"
+                                   Foreground="{DynamicResource c-text-muted}"
+                                   HorizontalAlignment="Left"
+                                   ToolTip="{Binding CreatedTooltipText}"/>
+                        <TextBlock Text="{Binding UpdatedDisplay}"
+                                   FontSize="10"
+                                   Foreground="{DynamicResource c-text-muted}"
+                                   HorizontalAlignment="Right"
+                                   ToolTip="{Binding UpdatedTooltipText}"/>
+                    </Grid>
+                </Grid>
+            </Border>
+
+            <!-- DataTriggers for pinned state and placeholder styling -->
+            <DataTemplate.Triggers>
+                <!-- Pinned: swap columns, show pin always -->
+                <DataTrigger Binding="{Binding Pinned}" Value="True">
+                    <Setter TargetName="Col0" Property="Width" Value="Auto"/>
+                    <Setter TargetName="Col1" Property="Width" Value="*"/>
+                    <Setter TargetName="PinBtn" Property="Grid.Column" Value="0"/>
+                    <Setter TargetName="TitleBlock" Property="Grid.Column" Value="1"/>
+                    <Setter TargetName="RenameBox" Property="Grid.Column" Value="1"/>
+                    <Setter TargetName="PinBtn" Property="Visibility" Value="Visible"/>
+                    <Setter TargetName="PinBtn" Property="Opacity" Value="1"/>
+                    <Setter TargetName="PinBtn" Property="ToolTip" Value="Unpin"/>
+                </DataTrigger>
+                <!-- Placeholder: italic muted text -->
+                <DataTrigger Binding="{Binding IsPlaceholder}" Value="True">
+                    <Setter TargetName="TitleBlock" Property="FontStyle" Value="Italic"/>
+                    <Setter TargetName="TitleBlock" Property="Foreground" Value="{DynamicResource c-text-muted}"/>
+                </DataTrigger>
+            </DataTemplate.Triggers>
+        </DataTemplate>
 
         <!-- Phase 7: Toolbar button style — rounded-rectangle hover background, disabled opacity -->
         <Style x:Key="ToolbarButtonStyle" TargetType="Button">

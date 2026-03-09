@@ -3,10 +3,10 @@
 ## How to Resume
 When starting a new session, read this file and `MVVM-PLAN.md` to understand where we left off. The current phase and last completed step are always listed below.
 
-**Current Phase:** 8 — Not started
-**Last Completed Phase:** 7
-**Build status:** Clean — 298 tests passing (0 failures)
-**Test count progression:** 126 → 155 → 173 → 199 → 226 → 237 → 253 → 280 → 298
+**Current Phase:** Complete — all phases done
+**Last Completed Phase:** 9
+**Build status:** Clean — 302 tests passing (0 failures)
+**Test count progression:** 126 → 155 → 173 → 199 → 226 → 237 → 253 → 280 → 298 → 302
 
 ---
 
@@ -106,52 +106,73 @@ When starting a new session, read this file and `MVVM-PLAN.md` to understand whe
 
 ---
 
-## Remaining Phases
+### Phase 8: XAML Data Templates — DONE
+- **NoteTab.cs:**
+  - Added `CreatedTooltipText` and `UpdatedTooltipText` computed properties
+  - Added `nameof(UpdatedTooltipText)` to `UpdatedAtDependents` for change notification
+- **MainWindow.xaml:**
+  - Added `xmlns:models="clr-namespace:JoJot.Models"` namespace
+  - Added `DataTemplate x:Key="TabItemTemplate"` with:
+    - Two-row Grid: Row 0 = title + pin + close, Row 1 = dates
+    - Data bindings: `{Binding DisplayLabel}`, `{Binding CreatedDisplay}`, `{Binding UpdatedDisplay}`, `{Binding CreatedTooltipText}`, `{Binding UpdatedTooltipText}`
+    - Named elements: OuterBorder, PinBtn, PinIcon, TitleBlock, RenameBox, CloseBtn, CloseIcon, Col0, Col1
+    - `Loaded="TabItemBorder_Loaded"` on root Border
+    - DataTrigger for `Pinned=True`: swaps columns, shows pin always, sets "Unpin" tooltip
+    - DataTrigger for `IsPlaceholder=True`: italic muted text
+- **MainWindow.xaml.cs:**
+  - Added `FindNamedDescendant<T>(parent, name)` helper (visual tree walk by FrameworkElement.Name)
+  - Removed 5 `UpdateTabItemDisplay` calls (autosave, undo, redo, rename, save)
+- **MainWindow.Tabs.cs:**
+  - `CreateTabListItem` shrunk from ~277 to ~37 lines (uses DataTemplate)
+  - Added `TabItemBorder_Loaded` handler (~80 lines) for hover/click wiring
+  - Added `FindAncestor<T>` helper for visual tree upward walk
+  - Removed `UpdateTabItemDisplay` entirely — data bindings handle updates automatically
+  - Simplified `ApplyActiveHighlight` to use `FindNamedDescendant`
+  - Simplified deselection in `TabList_SelectionChanged` to use `FindNamedDescendant`
+- **MainWindow.Rename.cs:**
+  - `BeginRename` uses `FindNamedDescendant<TextBox>(item, "RenameBox")` and `FindNamedDescendant<TextBlock>(item, "TitleBlock")`
+  - Removed `UpdateTabItemDisplay` call from `CommitRename` — binding handles it
+- Tests: `NoteTabObservableTests.cs` — 4 new tests (UpdatedTooltipText notification, tooltip text values)
 
-### Phase 8: XAML Data Templates — NOT STARTED (detailed plan below)
-Replace code-behind tab item visual tree (CreateTabListItem/UpdateTabItemDisplay) with XAML DataTemplates.
+---
 
-**Implementation plan (from code analysis):**
+### Phase 9: Keyboard Shortcuts → InputBindings — DONE
+- 9 commands created as `ICommand` properties on MainWindow code-behind:
+  - `NewTabCommand` (Ctrl+T), `CloseTabCommand` (Ctrl+W), `TogglePinCommand` (Ctrl+P)
+  - `CloneTabCommand` (Ctrl+K), `SaveAsCommand` (Ctrl+S), `ToggleHelpCommand` (Ctrl+Shift+?)
+  - `IncreaseFontCommand` (Ctrl+=, Ctrl+Add), `DecreaseFontCommand` (Ctrl+-, Ctrl+Sub), `ResetFontCommand` (Ctrl+0)
+- 12 InputBindings registered in `InitializeInputBindings()` (called from constructor after InitializeComponent)
+- CanExecute guards: `CloseTabCommand`/`TogglePinCommand`/`CloneTabCommand`/`SaveAsCommand` require `_activeTab is not null`
+- `Window_PreviewKeyDown` reduced from ~308 to ~220 lines, retains:
+  - Guards: drag overlay (blocks all), confirmation dialog, hotkey recording
+  - Escape chain: rename → help → find bar → cleanup → recovery → preferences
+  - Ctrl+Z/Y: in PreviewKeyDown to prevent WPF native TextBox undo
+  - Ctrl+C: context-dependent (no selection = copy all)
+  - Ctrl+F: context-dependent (editor focused = find bar, else = tab search)
+  - F2: needs SelectedItem cast for inline rename
+  - Ctrl+Tab/Shift+Tab: tab cycling with separator skipping
+- Uses `RelayCommand` from ViewModels namespace (hand-rolled, Phase 0)
+- No new tests (commands wrap existing tested logic; InputBinding wiring is UI-only)
 
-1. **NoteTab changes:** Add `CreatedTooltipText` and `UpdatedTooltipText` computed properties. Add `nameof(UpdatedTooltipText)` to `UpdatedAtDependents`.
+---
 
-2. **MainWindow.xaml changes:**
-   - Add `xmlns:models="clr-namespace:JoJot.Models"` to Window
-   - Add `DataTemplate x:Key="TabItemTemplate"` in Window.Resources with:
-     - Two-row Grid: Row 0 = title + pin button + close button, Row 1 = dates
-     - Bindings: `{Binding DisplayLabel}`, `{Binding CreatedDisplay}`, `{Binding UpdatedDisplay}`, `{Binding CreatedTooltipText}`, `{Binding UpdatedTooltipText}`
-     - `Loaded="TabItemBorder_Loaded"` on root Border for hover/click wiring
-     - `x:Name` on key elements: OuterBorder, PinBtn, PinIcon, TitleBlock, RenameBox, CloseBtn, CloseIcon, Col0, Col1
-     - DataTriggers:
-       - `Pinned=True`: swap Col0/Col1 widths (Auto↔Star), swap PinBtn/TitleBlock Grid.Column (0↔1), PinBtn Visibility=Visible+Opacity=1, ToolTip="Unpin", RenameBox column=1
-       - `IsPlaceholder=True`: TitleBlock FontStyle=Italic, Foreground=c-text-muted
-   - Default state: PinBtn in Col1 (Auto), TitleBlock in Col0 (Star), PinBtn hidden, ToolTip="Pin"
+## Future Work: XAML UserControl Extraction
 
-3. **MainWindow.xaml.cs changes:**
-   - Add `FindNamedDescendant<T>(DependencyObject parent, string name)` helper (walks visual tree by FrameworkElement.Name)
+MainWindow.xaml is 905 lines. Extract self-contained UI regions into UserControls (one at a time, easiest first):
 
-4. **MainWindow.Tabs.cs changes:**
-   - **CreateTabListItem** shrinks from ~277 to ~25 lines: creates ListBoxItem, sets Tag=tab, Content=tab, ContentTemplate=TabItemTemplate, wires drag/middle-click/right-click events
-   - **Add TabItemBorder_Loaded** handler (~80 lines): finds PinBtn/CloseBtn/PinIcon/CloseIcon by name, wires MouseEnter/MouseLeave hover animations (with _isDragging guard), wires pin click (TogglePinAsync) and close click (DeleteTabAsync), wires pinned hover icon swap (pin→unpin glyph + red, on leave restore)
-   - **Remove UpdateTabItemDisplay** entirely — data bindings handle DisplayLabel/UpdatedDisplay/IsPlaceholder changes automatically
-   - **Simplify ApplyActiveHighlight**: use FindNamedDescendant to find PinBtn/CloseBtn by name (instead of fragile visual tree position checks)
-   - **Simplify deselection code** in TabList_SelectionChanged: same approach, find buttons by name
+| Priority | Section | ~Lines | Target File |
+|---|---|---|---|
+| 1 | Help overlay | 25 | `Controls/HelpOverlay.xaml` |
+| 2 | Confirmation dialog | 40 | `Controls/ConfirmationOverlay.xaml` |
+| 3 | Cleanup panel | 65 | `Controls/CleanupPanel.xaml` |
+| 4 | Recovery sidebar | 30 | `Controls/RecoveryPanel.xaml` |
+| 5 | Drag overlay | 85 | `Controls/DragOverlay.xaml` |
+| 6 | Hamburger menu | 85 | `Controls/HamburgerMenu.xaml` |
+| 7 | Preferences panel | 110 | `Controls/PreferencesPanel.xaml` |
 
-5. **Remove UpdateTabItemDisplay call sites** (5 locations):
-   - `MainWindow.xaml.cs:177` (timer), `:498` (undo), `:517` (redo) — remove calls
-   - `MainWindow.Rename.cs:57` (rename commit) — remove call
-   - `MainWindow.Tabs.cs:645` (save content) — remove call
+~440 lines extractable → MainWindow.xaml drops to ~460 (layout + toolbar + editor + tab panel).
 
-6. **MainWindow.Rename.cs changes:**
-   - `BeginRename`: use `FindNamedDescendant<TextBox>(item, "RenameBox")` and `FindNamedDescendant<TextBlock>(item, "TitleBlock")` instead of `FindDescendant<TextBox>` + Tag reference
-   - Remove `Tag = labelBlock` dependency (no longer set in template)
-
-**Key files:** MainWindow.xaml, MainWindow.Tabs.cs (~300 lines removed), MainWindow.xaml.cs, MainWindow.Rename.cs, NoteTab.cs
-**Expected reduction:** ~250+ C# lines removed, ~90 XAML lines added
-**Tests:** Existing ViewModel tests + existing NoteTab tests cover logic. Manual visual verification needed.
-
-### Phase 9: Keyboard Shortcuts → InputBindings — NOT STARTED
-Replace Window_PreviewKeyDown with XAML InputBindings bound to ViewModel commands.
+**Risks:** Each panel's code-behind references MainWindow fields/methods directly. Extraction requires events, commands, or dependency properties for communication. Slide-in/out animations are driven from MainWindow code-behind. Start with help overlay (simplest, least wiring) to establish the pattern.
 
 ---
 
@@ -173,15 +194,17 @@ Replace Window_PreviewKeyDown with XAML InputBindings bound to ViewModel command
 - `JoJot.Tests/ViewModels/DesktopDragTests.cs`
 
 ### Modified files:
-- `JoJot/Models/NoteTab.cs` — inherits ObservableObject, SetProperty on 5 props
-- `JoJot/MainWindow.xaml.cs` — ViewModel property, forwarding fields, delegated methods
-- `JoJot/MainWindow.Tabs.cs` — CreateNewTabAsync, TogglePinAsync, CloneTabAsync, SaveCurrentTabContent delegate to VM
+- `JoJot/Models/NoteTab.cs` — inherits ObservableObject, SetProperty on 5 props, tooltip computed props
+- `JoJot/MainWindow.xaml` — TabItemTemplate DataTemplate with data bindings + DataTriggers
+- `JoJot/MainWindow.xaml.cs` — ViewModel property, forwarding fields, delegated methods, FindNamedDescendant, removed UpdateTabItemDisplay calls
+- `JoJot/MainWindow.Tabs.cs` — DataTemplate-based CreateTabListItem, TabItemBorder_Loaded, FindAncestor, removed UpdateTabItemDisplay, simplified ApplyActiveHighlight/deselection
+- `JoJot/MainWindow.Rename.cs` — FindNamedDescendant for RenameBox/TitleBlock, removed UpdateTabItemDisplay call
 - `JoJot/MainWindow.TabDeletion.cs` — DeleteTabAsync, DeleteMultipleAsync, UndoDeleteAsync, ApplyFocusCascadeAsync delegate to VM
 - `JoJot/MainWindow.TabDrag.cs` — CompleteDrag uses ViewModel.MoveTab
 - `JoJot/MainWindow.Search.cs` — MatchesSearch delegates to VM
 - `JoJot/MainWindow.Cleanup.cs` — focus cascade uses ViewModel.GetFocusCascadeTarget; cleanup logic delegates to VM
 - `JoJot/MainWindow.Help.cs` — Show/Hide set ViewModel.IsHelpOpen
-- `JoJot/MainWindow.Keyboard.cs` — help overlay checks use ViewModel.IsHelpOpen
+- `JoJot/MainWindow.Keyboard.cs` — InputBinding commands, InitializeInputBindings, slimmed PreviewKeyDown
 - `JoJot/MainWindow.DesktopDrag.cs` — uses EvaluateDrag, BeginDrag, UpdateDragTarget, ResetDragState, IsMisplacedOnDesktop
 
 ## Key Architectural Decisions
