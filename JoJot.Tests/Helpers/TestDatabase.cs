@@ -27,8 +27,8 @@ public sealed class TestDatabase : IAsyncDisposable
         var keepalive = new SqliteConnection(connStr);
         await keepalive.OpenAsync();
 
-        await DatabaseService.OpenWithConnectionStringAsync(connStr);
-        await DatabaseService.EnsureSchemaAsync();
+        await DatabaseCore.OpenWithConnectionStringAsync(connStr);
+        await DatabaseCore.EnsureSchemaAsync();
 
         return new TestDatabase { _keepalive = keepalive };
     }
@@ -37,7 +37,7 @@ public sealed class TestDatabase : IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
-        await DatabaseService.CloseAsync();
+        await DatabaseCore.CloseAsync();
         if (_keepalive is not null)
         {
             await _keepalive.CloseAsync();

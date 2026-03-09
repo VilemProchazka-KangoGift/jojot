@@ -42,15 +42,15 @@ public partial class MainWindow
                 return;
             }
 
-            var orphanInfos = await DatabaseService.GetOrphanedSessionInfoAsync(orphanGuids);
+            var orphanInfos = await SessionStore.GetOrphanedSessionInfoAsync(orphanGuids);
             RecoveryPanel.SessionList_.Children.Clear();
 
             var orphanList = orphanInfos.ToList();
             for (int i = 0; i < orphanList.Count; i++)
             {
                 var (guid, desktopName, tabCount, lastUpdated) = orphanList[i];
-                var tabPreviews = await DatabaseService.GetNotePreviewsForDesktopAsync(guid, 5);
-                var totalCount = await DatabaseService.GetNoteCountForDesktopAsync(guid);
+                var tabPreviews = await NoteStore.GetNotePreviewsForDesktopAsync(guid, 5);
+                var totalCount = await NoteStore.GetNoteCountForDesktopAsync(guid);
                 bool isLast = (i == orphanList.Count - 1);
                 RecoveryPanel.SessionList_.Children.Add(CreateRecoveryRow(guid, desktopName, tabCount, lastUpdated, tabPreviews, totalCount, isLast));
             }
@@ -243,8 +243,8 @@ public partial class MainWindow
         DockPanel.SetDock(adoptBtn, Dock.Left);
         adoptBtn.Click += async (s, e) =>
         {
-            await DatabaseService.MigrateTabsAsync(guid, _desktopGuid);
-            await DatabaseService.DeleteSessionAndNotesAsync(guid);
+            await NoteStore.MigrateTabsAsync(guid, _desktopGuid);
+            await SessionStore.DeleteSessionAndNotesAsync(guid);
             RemoveOrphanGuid(guid);
             await RefreshAfterOrphanAction();
         };
@@ -255,7 +255,7 @@ public partial class MainWindow
         DockPanel.SetDock(deleteBtn, Dock.Right);
         deleteBtn.Click += async (s, e) =>
         {
-            await DatabaseService.DeleteSessionAndNotesAsync(guid);
+            await SessionStore.DeleteSessionAndNotesAsync(guid);
             RemoveOrphanGuid(guid);
             await RefreshAfterOrphanAction();
         };
@@ -307,15 +307,15 @@ public partial class MainWindow
         }
 
         // Refresh rows for remaining orphans
-        var orphanInfos = await DatabaseService.GetOrphanedSessionInfoAsync(
+        var orphanInfos = await SessionStore.GetOrphanedSessionInfoAsync(
             VirtualDesktopService.OrphanedSessionGuids);
         RecoveryPanel.SessionList_.Children.Clear();
         var orphanList = orphanInfos.ToList();
         for (int i = 0; i < orphanList.Count; i++)
         {
             var (guid, name, tabCount, lastUpdated) = orphanList[i];
-            var tabPreviews = await DatabaseService.GetNotePreviewsForDesktopAsync(guid, 5);
-            var totalCount = await DatabaseService.GetNoteCountForDesktopAsync(guid);
+            var tabPreviews = await NoteStore.GetNotePreviewsForDesktopAsync(guid, 5);
+            var totalCount = await NoteStore.GetNoteCountForDesktopAsync(guid);
             bool isLast = (i == orphanList.Count - 1);
             RecoveryPanel.SessionList_.Children.Add(CreateRecoveryRow(guid, name, tabCount, lastUpdated, tabPreviews, totalCount, isLast));
         }

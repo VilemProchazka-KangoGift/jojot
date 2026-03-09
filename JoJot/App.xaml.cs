@@ -108,19 +108,19 @@ public partial class App : Application
 
             // Open database and ensure schema
             var dbPath = Path.Combine(appDir, "jojot.db");
-            await DatabaseService.OpenAsync(dbPath);
-            await DatabaseService.EnsureSchemaAsync();
+            await DatabaseCore.OpenAsync(dbPath);
+            await DatabaseCore.EnsureSchemaAsync();
 
             // Integrity check with corruption recovery
-            bool healthy = await DatabaseService.VerifyIntegrityAsync();
+            bool healthy = await DatabaseCore.VerifyIntegrityAsync();
             if (!healthy)
             {
                 LogService.Error("Database integrity check failed — initiating corruption recovery");
-                await DatabaseService.HandleCorruptionAsync(dbPath);
+                await DatabaseCore.HandleCorruptionAsync(dbPath);
             }
 
             // Restore log level from preferences
-            var savedLogLevel = await DatabaseService.GetPreferenceAsync("log_level").ConfigureAwait(false);
+            var savedLogLevel = await PreferenceStore.GetPreferenceAsync("log_level").ConfigureAwait(false);
             if (savedLogLevel is not null && Enum.TryParse<LogEventLevel>(savedLogLevel, true, out var level))
             {
                 LogService.SetMinimumLevel(level);
@@ -254,7 +254,7 @@ public partial class App : Application
         };
 
         // Restore geometry (must happen before Show for WindowStartupLocation to work)
-        var geo = await DatabaseService.GetWindowGeometryAsync(desktopGuid);
+        var geo = await SessionStore.GetWindowGeometryAsync(desktopGuid);
         WindowPlacementHelper.ApplyGeometry(window, geo);
 
         // Set title — look up this specific desktop by GUID, not "current"
@@ -481,7 +481,7 @@ public partial class App : Application
     /// </summary>
     private async Task ResolvePendingMovesAsync()
     {
-        var moves = await DatabaseService.GetPendingMovesAsync();
+        var moves = await PendingMoveStore.GetPendingMovesAsync();
         if (moves.Count == 0)
         {
             LogService.Info("Pending moves check: none found");
@@ -498,7 +498,7 @@ public partial class App : Application
             {
                 try
                 {
-                    await DatabaseService.MigrateTabsPreservePinsAsync(move.ToDesktop, move.FromDesktop);
+                    await NoteStore.MigrateTabsPreservePinsAsync(move.ToDesktop, move.FromDesktop);
                     recovered = true;
                 }
                 catch (Exception ex)
@@ -508,7 +508,7 @@ public partial class App : Application
             }
         }
 
-        await DatabaseService.DeleteAllPendingMovesAsync();
+        await PendingMoveStore.DeleteAllPendingMovesAsync();
 
         if (recovered)
         {
@@ -532,7 +532,7 @@ public partial class App : Application
         ThemeService.Shutdown();
 
         // Synchronous close in exit path — no async available here
-        DatabaseService.CloseAsync().GetAwaiter().GetResult();
+        DatabaseCore.CloseAsync().GetAwaiter().GetResult();
 
         _singleInstanceMutex?.ReleaseMutex();
         _singleInstanceMutex?.Dispose();

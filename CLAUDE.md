@@ -42,7 +42,7 @@ Test project: `JoJot.Tests/` (xUnit + AwesomeAssertions + NSubstitute). 302 test
 
 ### Data Storage
 
-SQLite database at `%LocalAppData%\JoJot\jojot.db`. WAL mode, NORMAL synchronous, foreign keys ON. All writes serialized through a `SemaphoreSlim(1,1)` in `DatabaseService`. Key tables: `notes`, `app_state`, `preferences`, `pending_moves`.
+SQLite database at `%LocalAppData%\JoJot\jojot.db`. WAL mode, NORMAL synchronous, foreign keys ON. All writes serialized through a `SemaphoreSlim(1,1)` in `DatabaseCore`. Key tables: `notes`, `app_state`, `preferences`, `pending_moves`. Domain stores: `NoteStore`, `SessionStore`, `PreferenceStore`, `PendingMoveStore`.
 
 ### Application Lifecycle
 
@@ -64,7 +64,11 @@ SQLite database at `%LocalAppData%\JoJot\jojot.db`. WAL mode, NORMAL synchronous
 
 | Service | Role |
 |---|---|
-| `DatabaseService` | SQLite connection lifecycle, schema, CRUD, migrations |
+| `DatabaseCore` | SQLite connection lifecycle, schema, write lock, migrations |
+| `NoteStore` | Notes CRUD, sort orders, cross-desktop migration |
+| `SessionStore` | Sessions, window geometry, orphaned session operations |
+| `PreferenceStore` | Key-value preferences CRUD |
+| `PendingMoveStore` | Desktop drag pending move tracking |
 | `AutosaveService` | Per-window debounced save (500ms default, reset-on-keystroke) |
 | `UndoManager` / `UndoStack` | Per-tab undo/redo with checkpoint snapshots |
 | `ThemeService` | Light/Dark/System theme via ResourceDictionary swap |

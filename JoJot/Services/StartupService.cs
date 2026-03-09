@@ -12,7 +12,7 @@ public static class StartupService
     /// </summary>
     public static async Task CreateWelcomeTabIfFirstLaunch()
     {
-        long count = await DatabaseService.ExecuteScalarAsync<long>("SELECT COUNT(*) FROM notes;").ConfigureAwait(false);
+        long count = await DatabaseCore.ExecuteScalarAsync<long>("SELECT COUNT(*) FROM notes;").ConfigureAwait(false);
         if (count > 0)
         {
             return;
@@ -31,7 +31,7 @@ public static class StartupService
             "  \u2022 Closing the window keeps JoJot running in the background \u2014 relaunch to get it back.\n\n" +
             "Feel free to delete this tab once you're ready.";
 
-        await DatabaseService.ExecuteNonQueryAsync(
+        await DatabaseCore.ExecuteNonQueryAsync(
             $"INSERT INTO notes (desktop_guid, name, content, pinned, sort_order) " +
             $"VALUES ('{EscapeSql(VirtualDesktopService.CurrentDesktopGuid)}', 'Welcome to JoJot', '{EscapeSql(welcomeContent)}', 0, 0);").ConfigureAwait(false);
     }
@@ -45,7 +45,7 @@ public static class StartupService
     {
         try
         {
-            await DatabaseService.RunPendingMigrationsAsync().ConfigureAwait(false);
+            await DatabaseCore.RunPendingMigrationsAsync().ConfigureAwait(false);
         }
         catch (Exception ex)
         {

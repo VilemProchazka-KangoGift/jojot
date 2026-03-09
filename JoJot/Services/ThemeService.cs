@@ -35,7 +35,7 @@ public static class ThemeService
     /// </summary>
     public static async Task InitializeAsync()
     {
-        var saved = await DatabaseService.GetPreferenceAsync("theme").ConfigureAwait(false);
+        var saved = await PreferenceStore.GetPreferenceAsync("theme").ConfigureAwait(false);
         _currentSetting = saved switch
         {
             "light" => AppTheme.Light,
@@ -88,7 +88,7 @@ public static class ThemeService
             AppTheme.Dark => "dark",
             _ => "system"
         };
-        await DatabaseService.SetPreferenceAsync("theme", value).ConfigureAwait(false);
+        await PreferenceStore.SetPreferenceAsync("theme", value).ConfigureAwait(false);
     }
 
     /// <summary>

@@ -27,9 +27,9 @@ public class NoteTabModelTests : IAsyncLifetime
     [Fact]
     public async Task NoteTab_RoundTrips_ThroughDbContext()
     {
-        var id = await DatabaseService.InsertNoteAsync("rt-desk", "Round Trip", "Hello", true, 5);
+        var id = await NoteStore.InsertNoteAsync("rt-desk", "Round Trip", "Hello", true, 5);
 
-        var notes = await DatabaseService.GetNotesForDesktopAsync("rt-desk");
+        var notes = await NoteStore.GetNotesForDesktopAsync("rt-desk");
         var note = notes.Should().ContainSingle().Subject;
 
         note.Id.Should().Be(id);
@@ -45,9 +45,9 @@ public class NoteTabModelTests : IAsyncLifetime
     [Fact]
     public async Task NoteTab_DefaultValues_AppliedCorrectly()
     {
-        var id = await DatabaseService.InsertNoteAsync("def-desk", null, "", false, 0);
+        var id = await NoteStore.InsertNoteAsync("def-desk", null, "", false, 0);
 
-        var notes = await DatabaseService.GetNotesForDesktopAsync("def-desk");
+        var notes = await NoteStore.GetNotesForDesktopAsync("def-desk");
         var note = notes.Should().ContainSingle().Subject;
 
         note.Name.Should().BeNull();
@@ -63,9 +63,9 @@ public class NoteTabModelTests : IAsyncLifetime
     {
         // Verify that computed properties (DisplayLabel, IsPlaceholder, etc.)
         // don't interfere with EF Core mapping
-        var id = await DatabaseService.InsertNoteAsync("comp-desk", null, "", false, 0);
+        var id = await NoteStore.InsertNoteAsync("comp-desk", null, "", false, 0);
 
-        var notes = await DatabaseService.GetNotesForDesktopAsync("comp-desk");
+        var notes = await NoteStore.GetNotesForDesktopAsync("comp-desk");
         var note = notes.Should().ContainSingle().Subject;
 
         // These should work without EF Core errors (they're ignored in OnModelCreating)
@@ -76,17 +76,17 @@ public class NoteTabModelTests : IAsyncLifetime
     [Fact]
     public async Task Preference_RoundTrips()
     {
-        await DatabaseService.SetPreferenceAsync("model_test", "value_1");
-        var value = await DatabaseService.GetPreferenceAsync("model_test");
+        await PreferenceStore.SetPreferenceAsync("model_test", "value_1");
+        var value = await PreferenceStore.GetPreferenceAsync("model_test");
         value.Should().Be("value_1");
     }
 
     [Fact]
     public async Task AppState_RoundTrips()
     {
-        await DatabaseService.CreateSessionAsync("model-session", "Test Desktop", 2);
+        await SessionStore.CreateSessionAsync("model-session", "Test Desktop", 2);
 
-        var sessions = await DatabaseService.GetAllSessionsAsync();
+        var sessions = await SessionStore.GetAllSessionsAsync();
         sessions.Should().Contain(s =>
             s.DesktopGuid == "model-session" &&
             s.DesktopName == "Test Desktop" &&

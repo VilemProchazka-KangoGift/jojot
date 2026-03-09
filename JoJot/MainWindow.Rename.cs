@@ -55,7 +55,7 @@ public partial class MainWindow
 
         _activeRename = null;
 
-        _ = DatabaseService.UpdateNoteNameAsync(tab.Id, tab.Name);
+        _ = NoteStore.UpdateNoteNameAsync(tab.Id, tab.Name);
     }
 
     /// <summary>

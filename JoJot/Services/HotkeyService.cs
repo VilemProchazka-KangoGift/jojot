@@ -51,8 +51,8 @@ public static class HotkeyService
         _source = HwndSource.FromHwnd(_hwnd);
         _source?.AddHook(WndProc);
 
-        var savedModifiers = await DatabaseService.GetPreferenceAsync("hotkey_modifiers").ConfigureAwait(false);
-        var savedVk = await DatabaseService.GetPreferenceAsync("hotkey_vk").ConfigureAwait(false);
+        var savedModifiers = await PreferenceStore.GetPreferenceAsync("hotkey_modifiers").ConfigureAwait(false);
+        var savedVk = await PreferenceStore.GetPreferenceAsync("hotkey_vk").ConfigureAwait(false);
 
         if (savedModifiers is not null && uint.TryParse(savedModifiers, out var mod))
         {
@@ -101,8 +101,8 @@ public static class HotkeyService
             _vk = vk;
             _isRegistered = true;
 
-            await DatabaseService.SetPreferenceAsync("hotkey_modifiers", modifiers.ToString()).ConfigureAwait(false);
-            await DatabaseService.SetPreferenceAsync("hotkey_vk", vk.ToString()).ConfigureAwait(false);
+            await PreferenceStore.SetPreferenceAsync("hotkey_modifiers", modifiers.ToString()).ConfigureAwait(false);
+            await PreferenceStore.SetPreferenceAsync("hotkey_vk", vk.ToString()).ConfigureAwait(false);
 
             LogService.Info("Global hotkey updated: {HotkeyDisplay}", GetHotkeyDisplayString());
         }

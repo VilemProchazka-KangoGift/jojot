@@ -23,9 +23,9 @@ public partial class MainWindow
         await RestoreTabPanelWidthAsync();
 
         // Silently delete empty unpinned notes before loading
-        await DatabaseService.DeleteEmptyNotesAsync(_desktopGuid);
+        await NoteStore.DeleteEmptyNotesAsync(_desktopGuid);
 
-        var notes = await DatabaseService.GetNotesForDesktopAsync(_desktopGuid);
+        var notes = await NoteStore.GetNotesForDesktopAsync(_desktopGuid);
         _tabs.Clear();
         foreach (var note in notes)
             _tabs.Add(note);
@@ -443,7 +443,7 @@ public partial class MainWindow
     /// </summary>
     private async Task RestoreTabPanelWidthAsync()
     {
-        var saved = await DatabaseService.GetPreferenceAsync("tab_panel_width");
+        var saved = await PreferenceStore.GetPreferenceAsync("tab_panel_width");
         if (saved is not null && double.TryParse(saved, System.Globalization.CultureInfo.InvariantCulture, out double width))
         {
             width = Math.Clamp(width, 120, 400);
@@ -459,7 +459,7 @@ public partial class MainWindow
         try
         {
             var width = TabPanelColumn.ActualWidth;
-            await DatabaseService.SetPreferenceAsync("tab_panel_width",
+            await PreferenceStore.SetPreferenceAsync("tab_panel_width",
                 width.ToString(System.Globalization.CultureInfo.InvariantCulture));
         }
         catch (Exception ex)
@@ -485,7 +485,7 @@ public partial class MainWindow
 
         ViewModel.SaveEditorStateToTab(currentContent, ContentEditor.CaretIndex, scrollOffset);
 
-        _ = DatabaseService.UpdateNoteContentAsync(_activeTab.Id, currentContent);
+        _ = NoteStore.UpdateNoteContentAsync(_activeTab.Id, currentContent);
         UndoManager.Instance.PushSnapshot(_activeTab.Id, currentContent);
     }
 
@@ -508,7 +508,7 @@ public partial class MainWindow
             return;
         }
 
-        long newId = await DatabaseService.InsertNoteAsync(
+        long newId = await NoteStore.InsertNoteAsync(
             _desktopGuid, null, "", false, sortOrder);
 
         var newTab = new NoteTab
@@ -554,10 +554,10 @@ public partial class MainWindow
     private async Task TogglePinAsync(NoteTab tab)
     {
         tab.Pinned = !tab.Pinned;
-        await DatabaseService.UpdateNotePinnedAsync(tab.Id, tab.Pinned);
+        await NoteStore.UpdateNotePinnedAsync(tab.Id, tab.Pinned);
 
         ViewModel.ReorderAfterPinToggle();
-        await DatabaseService.UpdateNoteSortOrdersAsync(_tabs.Select(t => (t.Id, t.SortOrder)));
+        await NoteStore.UpdateNoteSortOrdersAsync(_tabs.Select(t => (t.Id, t.SortOrder)));
 
         RebuildTabList();
         UpdateToolbarState();
@@ -574,7 +574,7 @@ public partial class MainWindow
 
         var (insertIndex, sortOrder) = ViewModel.GetClonePosition(source);
 
-        long newId = await DatabaseService.InsertNoteAsync(
+        long newId = await NoteStore.InsertNoteAsync(
             _desktopGuid, source.Name, source.Content,
             source.Pinned, sortOrder);
 
@@ -591,7 +591,7 @@ public partial class MainWindow
         };
 
         ViewModel.InsertNewTab(clone, insertIndex);
-        await DatabaseService.UpdateNoteSortOrdersAsync(_tabs.Select(t => (t.Id, t.SortOrder)));
+        await NoteStore.UpdateNoteSortOrdersAsync(_tabs.Select(t => (t.Id, t.SortOrder)));
 
         RebuildTabList();
         SelectTabByNote(clone);

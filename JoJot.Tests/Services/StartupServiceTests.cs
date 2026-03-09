@@ -29,10 +29,10 @@ public class StartupServiceTests : IAsyncLifetime
         // because COM is not initialized
         await StartupService.CreateWelcomeTabIfFirstLaunch();
 
-        var count = await DatabaseService.ExecuteScalarAsync<long>("SELECT COUNT(*) FROM notes;");
+        var count = await DatabaseCore.ExecuteScalarAsync<long>("SELECT COUNT(*) FROM notes;");
         count.Should().Be(1);
 
-        var notes = await DatabaseService.GetNotesForDesktopAsync(
+        var notes = await NoteStore.GetNotesForDesktopAsync(
             VirtualDesktopService.CurrentDesktopGuid);
         notes.Should().ContainSingle();
         notes[0].Name.Should().Be("Welcome to JoJot");
@@ -42,11 +42,11 @@ public class StartupServiceTests : IAsyncLifetime
     [Fact]
     public async Task CreateWelcomeTab_SkipsWhenNotesExist()
     {
-        await DatabaseService.InsertNoteAsync("some-desktop", "Existing", "Content", false, 0);
+        await NoteStore.InsertNoteAsync("some-desktop", "Existing", "Content", false, 0);
 
         await StartupService.CreateWelcomeTabIfFirstLaunch();
 
-        var count = await DatabaseService.ExecuteScalarAsync<long>("SELECT COUNT(*) FROM notes;");
+        var count = await DatabaseCore.ExecuteScalarAsync<long>("SELECT COUNT(*) FROM notes;");
         count.Should().Be(1); // Only the pre-existing note, no welcome tab
     }
 

@@ -29,7 +29,7 @@ public partial class MainWindow
 
         foreach (var tab in pending.Tabs)
         {
-            await DatabaseService.DeleteNoteAsync(tab.Id);
+            await NoteStore.DeleteNoteAsync(tab.Id);
             // Remove undo stack on permanent deletion
             UndoManager.Instance.RemoveStack(tab.Id);
         }

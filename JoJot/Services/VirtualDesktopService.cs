@@ -186,10 +186,10 @@ public static class VirtualDesktopService
         if (!_isAvailable)
         {
             LogService.Info("Session matching skipped (fallback mode)");
-            await DatabaseService.CreateSessionAsync(DefaultDesktopGuid, null, null).ConfigureAwait(false);
+            await SessionStore.CreateSessionAsync(DefaultDesktopGuid, null, null).ConfigureAwait(false);
 
             // Fallback orphan detection: any session that isn't the default is orphaned
-            var fallbackSessions = await DatabaseService.GetAllSessionsAsync().ConfigureAwait(false);
+            var fallbackSessions = await SessionStore.GetAllSessionsAsync().ConfigureAwait(false);
             var fallbackOrphans = fallbackSessions
                 .Where(s => !s.DesktopGuid.Equals(DefaultDesktopGuid, StringComparison.OrdinalIgnoreCase))
                 .Select(s => s.DesktopGuid)
@@ -204,7 +204,7 @@ public static class VirtualDesktopService
         }
 
         var liveDesktops = GetAllDesktops();
-        var storedSessions = await DatabaseService.GetAllSessionsAsync().ConfigureAwait(false);
+        var storedSessions = await SessionStore.GetAllSessionsAsync().ConfigureAwait(false);
 
         var matchedSessionGuids = new HashSet<string>();
         var matchedDesktopIds = new HashSet<string>();
@@ -223,7 +223,7 @@ public static class VirtualDesktopService
                 matchedDesktopIds.Add(matchingDesktop.Id.ToString());
 
                 // Update name and index in case they changed
-                await DatabaseService.UpdateSessionAsync(
+                await SessionStore.UpdateSessionAsync(
                     session.DesktopGuid,
                     session.DesktopGuid,
                     matchingDesktop.Name,
@@ -258,7 +258,7 @@ public static class VirtualDesktopService
             {
                 // Unique name match — reassign session to this desktop
                 var desktop = nameMatches[0];
-                await DatabaseService.UpdateSessionAsync(
+                await SessionStore.UpdateSessionAsync(
                     session.DesktopGuid,
                     desktop.Id.ToString(),
                     desktop.Name,
@@ -301,7 +301,7 @@ public static class VirtualDesktopService
             if (indexMatches.Count == 1 && sessionsAtIndex.Count == 1)
             {
                 var desktop = indexMatches[0];
-                await DatabaseService.UpdateSessionAsync(
+                await SessionStore.UpdateSessionAsync(
                     session.DesktopGuid,
                     desktop.Id.ToString(),
                     desktop.Name,
@@ -324,7 +324,7 @@ public static class VirtualDesktopService
                 continue;
             }
 
-            await DatabaseService.CreateSessionAsync(
+            await SessionStore.CreateSessionAsync(
                 desktop.Id.ToString(),
                 desktop.Name,
                 desktop.Index).ConfigureAwait(false);
@@ -350,7 +350,7 @@ public static class VirtualDesktopService
     /// </summary>
     public static async Task EnsureCurrentDesktopSessionAsync(CancellationToken cancellationToken = default)
     {
-        await DatabaseService.CreateSessionAsync(
+        await SessionStore.CreateSessionAsync(
             _currentDesktopGuid,
             _currentDesktopName,
             _isAvailable ? _currentDesktopIndex : (int?)null).ConfigureAwait(false);
@@ -503,7 +503,7 @@ public static class VirtualDesktopService
         {
             try
             {
-                await DatabaseService.UpdateDesktopNameAsync(guidStr, newName).ConfigureAwait(false);
+                await SessionStore.UpdateDesktopNameAsync(guidStr, newName).ConfigureAwait(false);
             }
             catch (Exception ex)
             {

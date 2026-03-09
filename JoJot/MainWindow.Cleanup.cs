@@ -82,7 +82,7 @@ public partial class MainWindow
         // Hard-delete from database (permanent, no undo)
         foreach (var tab in candidates)
         {
-            await DatabaseService.DeleteNoteAsync(tab.Id);
+            await NoteStore.DeleteNoteAsync(tab.Id);
             UndoManager.Instance.RemoveStack(tab.Id);
         }
 

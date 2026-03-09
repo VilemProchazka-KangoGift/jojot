@@ -89,7 +89,7 @@ public partial class MainWindow
 
             if (_tabs.Count > pinnedCount)
             {
-                _ = DatabaseService.UpdateNoteSortOrdersAsync(
+                _ = NoteStore.UpdateNoteSortOrdersAsync(
                     _tabs.Skip(pinnedCount).Select(t => (t.Id, t.SortOrder)));
             }
 
@@ -97,7 +97,7 @@ public partial class MainWindow
             foreach (var result in summary.ValidFiles)
             {
                 int sortOrder = pinnedCount + insertOffset;
-                long newId = await DatabaseService.InsertNoteAsync(
+                long newId = await NoteStore.InsertNoteAsync(
                     _desktopGuid, result.FileName, result.Content!, false, sortOrder);
 
                 var newTab = new NoteTab

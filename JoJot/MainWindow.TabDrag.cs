@@ -204,7 +204,7 @@ public partial class MainWindow
 
                 if (ViewModel.MoveTab(oldIndex, newIndex))
                 {
-                    _ = DatabaseService.UpdateNoteSortOrdersAsync(
+                    _ = NoteStore.UpdateNoteSortOrdersAsync(
                         _tabs.Select(t => (t.Id, t.SortOrder)));
 
                     RebuildTabList();

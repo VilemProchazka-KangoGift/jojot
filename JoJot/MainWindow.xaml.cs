@@ -186,7 +186,7 @@ public partial class MainWindow : Window
         // Configure autosave service
         _autosaveService.Configure(
             contentProvider: () => _activeTab is not null ? (_activeTab.Id, ContentEditor.Text) : (0L, ""),
-            saveFunc: DatabaseService.UpdateNoteContentAsync,
+            saveFunc: NoteStore.UpdateNoteContentAsync,
             onSnapshot: (tabId, content) => UndoManager.Instance.PushSnapshot(tabId, content),
             onSaveCompleted: (tabId) =>
             {
@@ -459,7 +459,7 @@ public partial class MainWindow : Window
                 _activeTab.Content = content;
                 _activeTab.CursorPosition = ContentEditor.CaretIndex;
                 _activeTab.UpdatedAt = DateTime.Now;
-                DatabaseService.UpdateNoteContentAsync(_activeTab.Id, content)
+                NoteStore.UpdateNoteContentAsync(_activeTab.Id, content)
                     .GetAwaiter().GetResult(); // Sync flush on close — no data loss
             }
         }
@@ -471,7 +471,7 @@ public partial class MainWindow : Window
         var geo = WindowPlacementHelper.CaptureGeometry(this);
 
         // Fire-and-forget: save geometry to database (process stays alive so this completes)
-        _ = DatabaseService.SaveWindowGeometryAsync(_desktopGuid, geo);
+        _ = SessionStore.SaveWindowGeometryAsync(_desktopGuid, geo);
 
         LogService.Info("Window closing for desktop {DesktopGuid} \u2014 geometry saved ({Left},{Top} {Width}x{Height} maximized={IsMaximized})", _desktopGuid, geo.Left, geo.Top, geo.Width, geo.Height);
 

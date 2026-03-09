@@ -188,6 +188,22 @@ MainWindow.xaml reduced from 905 → 556 lines (349 lines extracted into 6 UserC
 
 ---
 
+## DatabaseService Split — DONE
+
+Split monolithic `DatabaseService.cs` (1,233 lines) into 5 focused static classes:
+
+| Class | Role | Lines |
+|---|---|---|
+| `DatabaseCore` | Connection lifecycle, schema, migrations, write lock, raw SQL | 290 |
+| `NoteStore` | Notes CRUD, migration, sort orders | 454 |
+| `SessionStore` | Sessions, window geometry, orphaned session operations | 334 |
+| `PreferenceStore` | Key-value preferences | 59 |
+| `PendingMoveStore` | Pending desktop move tracking | 96 |
+
+`DatabaseCore` exposes `internal` infrastructure (`AcquireWriteLockAsync`, `ReleaseWriteLock`, `CreateContext`, `Clock`) consumed by the domain stores. All classes remain in `JoJot.Services` namespace. ~150 call sites updated across production + test code. Zero `DatabaseService.` references remain.
+
+---
+
 ## Files Modified (cumulative)
 
 ### New files created:
@@ -201,6 +217,11 @@ MainWindow.xaml reduced from 905 → 556 lines (349 lines extracted into 6 UserC
 - `JoJot/Controls/RecoveryPanel.xaml` + `.cs`
 - `JoJot/Controls/DragOverlay.xaml` + `.cs`
 - `JoJot/Controls/PreferencesPanel.xaml` + `.cs`
+- `JoJot/Services/DatabaseCore.cs` (split from DatabaseService.cs)
+- `JoJot/Services/NoteStore.cs` (split from DatabaseService.cs)
+- `JoJot/Services/SessionStore.cs` (split from DatabaseService.cs)
+- `JoJot/Services/PreferenceStore.cs` (split from DatabaseService.cs)
+- `JoJot/Services/PendingMoveStore.cs` (split from DatabaseService.cs)
 - `JoJot.Tests/ViewModels/ObservableObjectTests.cs`
 - `JoJot.Tests/ViewModels/RelayCommandTests.cs`
 - `JoJot.Tests/ViewModels/MainWindowViewModelTests.cs`

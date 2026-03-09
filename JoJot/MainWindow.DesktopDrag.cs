@@ -34,7 +34,7 @@ public partial class MainWindow
         switch (action)
         {
             case ViewModels.MainWindowViewModel.DragAction.Dismiss:
-                await DatabaseService.DeletePendingMoveAsync(_desktopGuid);
+                await PendingMoveStore.DeletePendingMoveAsync(_desktopGuid);
                 _isMisplaced = false;
                 if (Title.Contains(" (misplaced)"))
                     Title = Title.Replace(" (misplaced)", "");
@@ -46,14 +46,14 @@ public partial class MainWindow
 
             case ViewModels.MainWindowViewModel.DragAction.UpdateTarget:
                 ViewModel.UpdateDragTarget(toGuid, toName);
-                await DatabaseService.DeletePendingMoveAsync(_desktopGuid);
-                await DatabaseService.InsertPendingMoveAsync(_desktopGuid, _dragFromDesktopGuid!, toGuid);
+                await PendingMoveStore.DeletePendingMoveAsync(_desktopGuid);
+                await PendingMoveStore.InsertPendingMoveAsync(_desktopGuid, _dragFromDesktopGuid!, toGuid);
                 break; // fall through to update UI
 
             case ViewModels.MainWindowViewModel.DragAction.ShowNew:
                 ViewModel.BeginDrag(fromGuid, toGuid, toName);
                 await _autosaveService.FlushAsync();
-                await DatabaseService.InsertPendingMoveAsync(_desktopGuid, fromGuid, toGuid);
+                await PendingMoveStore.InsertPendingMoveAsync(_desktopGuid, fromGuid, toGuid);
                 break; // fall through to update UI
         }
 
@@ -139,7 +139,7 @@ public partial class MainWindow
         }
 
         // Update notes in database to new desktop
-        await DatabaseService.MigrateNotesDesktopGuidAsync(oldGuid, newGuid);
+        await NoteStore.MigrateNotesDesktopGuidAsync(oldGuid, newGuid);
 
         // Update this window's desktop GUID
         _desktopGuid = newGuid;
@@ -158,10 +158,10 @@ public partial class MainWindow
         // Update app_state session with full metadata (guid + name + index)
         string targetName = targetInfo?.Name ?? name;
         int? targetIndex = targetInfo?.Index;
-        await DatabaseService.UpdateSessionDesktopAsync(oldGuid, newGuid, targetName, targetIndex);
+        await SessionStore.UpdateSessionDesktopAsync(oldGuid, newGuid, targetName, targetIndex);
 
         // Clear pending move
-        await DatabaseService.DeletePendingMoveAsync(oldGuid);
+        await PendingMoveStore.DeletePendingMoveAsync(oldGuid);
 
         // Clear misplaced state
         _isMisplaced = false;
@@ -190,10 +190,10 @@ public partial class MainWindow
         string targetGuid = _dragToDesktopGuid;
 
         // Migrate tabs preserving pin state (unlike orphan recovery which unpins)
-        await DatabaseService.MigrateTabsPreservePinsAsync(sourceGuid, targetGuid);
+        await NoteStore.MigrateTabsPreservePinsAsync(sourceGuid, targetGuid);
 
         // Clear pending move
-        await DatabaseService.DeletePendingMoveAsync(sourceGuid);
+        await PendingMoveStore.DeletePendingMoveAsync(sourceGuid);
 
         // Notify target window to reload tabs
         var app = System.Windows.Application.Current as App;
@@ -237,7 +237,7 @@ public partial class MainWindow
             if (success)
             {
                 // Clear pending move
-                await DatabaseService.DeletePendingMoveAsync(_desktopGuid);
+                await PendingMoveStore.DeletePendingMoveAsync(_desktopGuid);
                 _isMisplaced = false;
 
                 // Remove "(misplaced)" badge from title
@@ -358,7 +358,7 @@ public partial class MainWindow
                 // Dismiss the move overlay if it's still showing
                 if (_isDragOverlayActive)
                 {
-                    await DatabaseService.DeletePendingMoveAsync(_desktopGuid);
+                    await PendingMoveStore.DeletePendingMoveAsync(_desktopGuid);
                     await HideDragOverlayAsync();
                 }
             }

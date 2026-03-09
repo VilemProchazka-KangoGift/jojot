@@ -10,7 +10,7 @@ public partial class MainWindow
 
     public async Task InitializePreferencesAsync()
     {
-        var savedFontSize = await DatabaseService.GetPreferenceAsync("font_size");
+        var savedFontSize = await PreferenceStore.GetPreferenceAsync("font_size");
         _currentFontSize = int.TryParse(savedFontSize, out var fs) ? Math.Clamp(fs, 8, 32) : 13;
         ContentEditor.FontSize = _currentFontSize;
         PreferencesPanel.RefreshValues(_currentFontSize, ThemeService.CurrentSetting, HotkeyService.GetHotkeyDisplayString());
@@ -56,7 +56,7 @@ public partial class MainWindow
         _currentFontSize = size;
         ContentEditor.FontSize = size;
         PreferencesPanel.UpdateFontSizeDisplay(size);
-        await DatabaseService.SetPreferenceAsync("font_size", size.ToString());
+        await PreferenceStore.SetPreferenceAsync("font_size", size.ToString());
         ShowFontSizeTooltip(size);
     }
 
