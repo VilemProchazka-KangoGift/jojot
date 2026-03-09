@@ -9,6 +9,9 @@ namespace JoJot.Services;
 /// </summary>
 public class SqlitePragmaInterceptor : DbConnectionInterceptor
 {
+    /// <summary>
+    /// Synchronously sets <c>PRAGMA foreign_keys=ON</c> after a connection is opened.
+    /// </summary>
     public override void ConnectionOpened(DbConnection connection, ConnectionEndEventData eventData)
     {
         using var cmd = connection.CreateCommand();
@@ -16,6 +19,9 @@ public class SqlitePragmaInterceptor : DbConnectionInterceptor
         cmd.ExecuteNonQuery();
     }
 
+    /// <summary>
+    /// Asynchronously sets <c>PRAGMA foreign_keys=ON</c> after a connection is opened.
+    /// </summary>
     public override async Task ConnectionOpenedAsync(DbConnection connection, ConnectionEndEventData eventData, CancellationToken cancellationToken = default)
     {
         await using var cmd = connection.CreateCommand();

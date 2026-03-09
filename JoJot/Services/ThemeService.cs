@@ -9,7 +9,18 @@ namespace JoJot.Services;
 /// </summary>
 public static class ThemeService
 {
-    public enum AppTheme { Light, Dark, System }
+    /// <summary>
+    /// Available application theme settings.
+    /// </summary>
+    public enum AppTheme
+    {
+        /// <summary>Light theme.</summary>
+        Light,
+        /// <summary>Dark theme.</summary>
+        Dark,
+        /// <summary>Follows the Windows system setting.</summary>
+        System
+    }
 
     private static AppTheme _currentSetting = AppTheme.System;
     private static bool _initialized;
@@ -43,6 +54,7 @@ public static class ThemeService
     /// Applies the specified theme by swapping the first MergedDictionary entry.
     /// If theme is System, detects the current Windows dark/light setting.
     /// </summary>
+    /// <param name="theme">The theme to apply.</param>
     public static void ApplyTheme(AppTheme theme)
     {
         _currentSetting = theme;
@@ -66,6 +78,7 @@ public static class ThemeService
     /// <summary>
     /// Sets the theme and persists the choice to the preferences table.
     /// </summary>
+    /// <param name="theme">The theme to set and persist.</param>
     public static async Task SetThemeAsync(AppTheme theme)
     {
         ApplyTheme(theme);
@@ -93,6 +106,8 @@ public static class ThemeService
         }
         catch
         {
+            // Intentional silent catch: registry read may fail on restricted accounts
+            // or unusual Windows configurations. Default to light theme.
             return AppTheme.Light;
         }
     }

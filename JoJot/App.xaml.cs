@@ -23,6 +23,9 @@ public partial class App : Application
     /// </summary>
     private static Mutex? _singleInstanceMutex;
 
+    /// <summary>
+    /// Cancellation source signaled on application exit to stop the IPC server and other background work.
+    /// </summary>
     private readonly CancellationTokenSource _appShutdownCts = new();
 
     /// <summary>
@@ -30,8 +33,16 @@ public partial class App : Application
     /// Windows are added on creation and removed on Closed event.
     /// </summary>
     private readonly Dictionary<string, MainWindow> _windows = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// UTC time before which desktop-switch redirects are suppressed (prevents redirect loops).
+    /// </summary>
     private DateTime _redirectCooldownUntil = DateTime.MinValue;
 
+    /// <summary>
+    /// Async void startup handler. The ENTIRE body after exception-handler setup is wrapped in
+    /// try/catch so no exceptions can escape this async void entry point.
+    /// </summary>
     private async void OnAppStartup(object sender, StartupEventArgs e)
     {
         // Global unhandled exception handlers — set up before mutex so any crash in startup is captured.
@@ -53,139 +64,167 @@ public partial class App : Application
             args.SetObserved();
         };
 
-        var sw = Stopwatch.StartNew();
-
-        // Initialize logging
-        string appDir = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "JoJot");
-        Directory.CreateDirectory(appDir);
-        LogService.Initialize(appDir);
-        LogService.Info("JoJot starting...");
-
-        // Single-instance enforcement via global mutex
-        bool createdNew = IpcService.TryAcquireMutex(out var mutex);
-        _singleInstanceMutex = mutex;
-        GC.KeepAlive(_singleInstanceMutex);
-
-        if (!createdNew)
+        try
         {
-            // Second instance detected — query current desktop and send command
-            string? senderDesktop = null;
-            try
+            var sw = Stopwatch.StartNew();
+
+            // Initialize logging
+            var appDir = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "JoJot");
+            Directory.CreateDirectory(appDir);
+            LogService.Initialize(appDir);
+            LogService.Info("JoJot starting...");
+
+            // Single-instance enforcement via global mutex
+            bool createdNew = IpcService.TryAcquireMutex(out var mutex);
+            _singleInstanceMutex = mutex;
+            GC.KeepAlive(_singleInstanceMutex);
+
+            if (!createdNew)
             {
-                VirtualDesktopInterop.Initialize();
-                var (id, _, _) = VirtualDesktopInterop.GetCurrentDesktop();
-                senderDesktop = id.ToString();
-                LogService.Info($"Second instance detected — sender desktop {senderDesktop}");
-            }
-            catch (Exception ex)
-            {
-                LogService.Warn($"Second instance COM query failed: {ex.Message}");
-            }
-
-            await IpcService.SendCommandAsync(new NewTabCommand(DesktopGuid: senderDesktop));
-            Environment.Exit(0);
-            return;
-        }
-
-        // Explicit shutdown mode — process stays alive when all windows are closed
-        ShutdownMode = ShutdownMode.OnExplicitShutdown;
-
-        // Open database and ensure schema
-        string dbPath = Path.Combine(appDir, "jojot.db");
-        await DatabaseService.OpenAsync(dbPath);
-        await DatabaseService.EnsureSchemaAsync();
-
-        // Integrity check with corruption recovery
-        bool healthy = await DatabaseService.VerifyIntegrityAsync();
-        if (!healthy)
-        {
-            LogService.Error("Database integrity check failed — initiating corruption recovery");
-            await DatabaseService.HandleCorruptionAsync(dbPath);
-        }
-
-        // Initialize theme
-        await ThemeService.InitializeAsync();
-
-        // Virtual desktop detection
-        await VirtualDesktopService.InitializeAsync();
-        if (VirtualDesktopService.IsAvailable)
-            LogService.Info($"Virtual desktop: {VirtualDesktopService.CurrentDesktopGuid} ({VirtualDesktopService.CurrentDesktopName})");
-        else
-            LogService.Info("Virtual desktop: fallback mode (single-notepad)");
-
-        // Subscribe to desktop notifications (must happen on UI thread for COM callbacks)
-        VirtualDesktopService.SubscribeNotifications();
-
-        // Session matching — associate saved sessions with live desktops
-        await VirtualDesktopService.MatchSessionsAsync();
-        await VirtualDesktopService.EnsureCurrentDesktopSessionAsync();
-
-        // Resolve pending moves from crash recovery
-        await ResolvePendingMovesAsync();
-
-        // Welcome tab on first launch
-        await StartupService.CreateWelcomeTabIfFirstLaunch();
-
-        // Start IPC server
-        IpcService.StartServer(HandleIpcCommand, _appShutdownCts.Token);
-
-        // Run pending migrations before window restore.
-        // Migrations must complete before GetWindowGeometryAsync (which reads
-        // columns added by migrations like window_state).
-        await StartupService.RunBackgroundMigrationsAsync();
-
-        // Create and show window for current desktop
-        string currentDesktopGuid = VirtualDesktopService.CurrentDesktopGuid;
-        var mainWindow = await CreateWindowForDesktop(currentDesktopGuid);
-
-        // Set orphan badge after session matching
-        mainWindow.UpdateOrphanBadge();
-
-        // Wire desktop event handlers
-        // Live title updates when desktop is renamed in Windows Settings
-        VirtualDesktopService.DesktopRenamed += (desktopGuid, newName) =>
-        {
-            Dispatcher.InvokeAsync(() =>
-            {
-                if (_windows.TryGetValue(desktopGuid, out var w))
+                // Second instance detected — query current desktop and send command
+                string? senderDesktop = null;
+                try
                 {
-                    var desktops = VirtualDesktopService.GetAllDesktops();
-                    var info = desktops.FirstOrDefault(d =>
-                        d.Id.ToString().Equals(desktopGuid, StringComparison.OrdinalIgnoreCase));
-                    w.UpdateDesktopTitle(newName, info?.Index);
+                    VirtualDesktopInterop.Initialize();
+                    var (id, _, _) = VirtualDesktopInterop.GetCurrentDesktop();
+                    senderDesktop = id.ToString();
+                    LogService.Info($"Second instance detected — sender desktop {senderDesktop}");
                 }
-            });
-        };
-
-        // Redirect: when Windows pulls the user to a JoJot desktop from a non-JoJot desktop
-        // (e.g. taskbar click), switch back and create a window on the origin desktop.
-        VirtualDesktopService.CurrentDesktopChanged += (oldGuid, newGuid) =>
-        {
-            LogService.Info($"Desktop switched: {oldGuid} -> {newGuid}");
-
-            Dispatcher.InvokeAsync(async () =>
-            {
-                // Cooldown: suppress redirects for a few seconds after the last one
-                if (DateTime.UtcNow < _redirectCooldownUntil) return;
-
-                // Only redirect when switching TO a desktop with a JoJot window
-                // FROM a desktop without one (taskbar click pattern)
-                if (!_windows.ContainsKey(oldGuid) && _windows.ContainsKey(newGuid))
+                catch (Exception ex)
                 {
-                    LogService.Info($"Redirect: creating window on {oldGuid} and switching back");
-                    _redirectCooldownUntil = DateTime.UtcNow.AddSeconds(3);
-                    await CreateWindowForDesktop(oldGuid);
-                    VirtualDesktopService.TrySwitchToDesktop(oldGuid);
+                    LogService.Warn($"Second instance COM query failed: {ex.Message}");
                 }
-            });
-        };
 
-        // Log startup timing
-        sw.Stop();
-        LogService.Info($"Startup complete in {sw.ElapsedMilliseconds}ms");
-        Debug.WriteLine($"[JoJot] Startup: {sw.ElapsedMilliseconds}ms");
+                await IpcService.SendCommandAsync(new NewTabCommand(DesktopGuid: senderDesktop));
+                Environment.Exit(0);
+                return;
+            }
+
+            // Explicit shutdown mode — process stays alive when all windows are closed
+            ShutdownMode = ShutdownMode.OnExplicitShutdown;
+
+            // Open database and ensure schema
+            var dbPath = Path.Combine(appDir, "jojot.db");
+            await DatabaseService.OpenAsync(dbPath);
+            await DatabaseService.EnsureSchemaAsync();
+
+            // Integrity check with corruption recovery
+            bool healthy = await DatabaseService.VerifyIntegrityAsync();
+            if (!healthy)
+            {
+                LogService.Error("Database integrity check failed — initiating corruption recovery");
+                await DatabaseService.HandleCorruptionAsync(dbPath);
+            }
+
+            // Initialize theme
+            await ThemeService.InitializeAsync();
+
+            // Virtual desktop detection
+            await VirtualDesktopService.InitializeAsync();
+            if (VirtualDesktopService.IsAvailable)
+            {
+                LogService.Info($"Virtual desktop: {VirtualDesktopService.CurrentDesktopGuid} ({VirtualDesktopService.CurrentDesktopName})");
+            }
+            else
+            {
+                LogService.Info("Virtual desktop: fallback mode (single-notepad)");
+            }
+
+            // Subscribe to desktop notifications (must happen on UI thread for COM callbacks)
+            VirtualDesktopService.SubscribeNotifications();
+
+            // Session matching — associate saved sessions with live desktops
+            await VirtualDesktopService.MatchSessionsAsync();
+            await VirtualDesktopService.EnsureCurrentDesktopSessionAsync();
+
+            // Resolve pending moves from crash recovery
+            await ResolvePendingMovesAsync();
+
+            // Welcome tab on first launch
+            await StartupService.CreateWelcomeTabIfFirstLaunch();
+
+            // Start IPC server
+            IpcService.StartServer(HandleIpcCommand, _appShutdownCts.Token);
+
+            // Run pending migrations before window restore.
+            // Migrations must complete before GetWindowGeometryAsync (which reads
+            // columns added by migrations like window_state).
+            await StartupService.RunBackgroundMigrationsAsync();
+
+            // Create and show window for current desktop
+            var currentDesktopGuid = VirtualDesktopService.CurrentDesktopGuid;
+            var mainWindow = await CreateWindowForDesktop(currentDesktopGuid);
+
+            // Set orphan badge after session matching
+            mainWindow.UpdateOrphanBadge();
+
+            // Wire desktop event handlers
+            // Live title updates when desktop is renamed in Windows Settings
+            VirtualDesktopService.DesktopRenamed += (desktopGuid, newName) =>
+            {
+                Dispatcher.InvokeAsync(() =>
+                {
+                    try
+                    {
+                        if (_windows.TryGetValue(desktopGuid, out var w))
+                        {
+                            var desktops = VirtualDesktopService.GetAllDesktops();
+                            var info = desktops.FirstOrDefault(d =>
+                                d.Id.ToString().Equals(desktopGuid, StringComparison.OrdinalIgnoreCase));
+                            w.UpdateDesktopTitle(newName, info?.Index);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        LogService.Error("Error handling desktop rename event", ex);
+                    }
+                });
+            };
+
+            // Redirect: when Windows pulls the user to a JoJot desktop from a non-JoJot desktop
+            // (e.g. taskbar click), switch back and create a window on the origin desktop.
+            VirtualDesktopService.CurrentDesktopChanged += (oldGuid, newGuid) =>
+            {
+                LogService.Info($"Desktop switched: {oldGuid} -> {newGuid}");
+
+                Dispatcher.InvokeAsync(async () =>
+                {
+                    try
+                    {
+                        // Cooldown: suppress redirects for a few seconds after the last one
+                        if (DateTime.UtcNow < _redirectCooldownUntil)
+                        {
+                            return;
+                        }
+
+                        // Only redirect when switching TO a desktop with a JoJot window
+                        // FROM a desktop without one (taskbar click pattern)
+                        if (!_windows.ContainsKey(oldGuid) && _windows.ContainsKey(newGuid))
+                        {
+                            LogService.Info($"Redirect: creating window on {oldGuid} and switching back");
+                            _redirectCooldownUntil = DateTime.UtcNow.AddSeconds(3);
+                            await CreateWindowForDesktop(oldGuid);
+                            VirtualDesktopService.TrySwitchToDesktop(oldGuid);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        LogService.Error("Error handling desktop switch redirect", ex);
+                    }
+                });
+            };
+
+            // Log startup timing
+            sw.Stop();
+            LogService.Info($"Startup complete in {sw.ElapsedMilliseconds}ms");
+            Debug.WriteLine($"[JoJot] Startup: {sw.ElapsedMilliseconds}ms");
+        }
+        catch (Exception ex)
+        {
+            LogService.Error("Fatal error during application startup", ex);
+        }
     }
 
     // ─── Window Factory ─────────────────────────────────────────────────────
@@ -249,25 +288,32 @@ public partial class App : Application
             {
                 Dispatcher.InvokeAsync(() =>
                 {
-                    // Global hotkey action: toggle focus/minimize
-                    string desktopGuid = VirtualDesktopService.CurrentDesktopGuid;
-                    if (_windows.TryGetValue(desktopGuid, out var w))
+                    try
                     {
-                        // Toggle: if foreground and not minimized -> minimize; otherwise -> activate
-                        if (w.IsActive && w.WindowState != WindowState.Minimized)
+                        // Global hotkey action: toggle focus/minimize
+                        var currentGuid = VirtualDesktopService.CurrentDesktopGuid;
+                        if (_windows.TryGetValue(currentGuid, out var w))
                         {
-                            w.WindowState = WindowState.Minimized;
+                            // Toggle: if foreground and not minimized -> minimize; otherwise -> activate
+                            if (w.IsActive && w.WindowState != WindowState.Minimized)
+                            {
+                                w.WindowState = WindowState.Minimized;
+                            }
+                            else
+                            {
+                                w.WindowState = WindowState.Normal;
+                                WindowActivationHelper.ActivateWindow(w);
+                            }
                         }
                         else
                         {
-                            w.WindowState = WindowState.Normal;
-                            WindowActivationHelper.ActivateWindow(w);
+                            // No window for this desktop — create one
+                            _ = CreateWindowForDesktop(currentGuid);
                         }
                     }
-                    else
+                    catch (Exception ex)
                     {
-                        // No window for this desktop — create one
-                        _ = CreateWindowForDesktop(desktopGuid);
+                        LogService.Error("Error handling global hotkey", ex);
                     }
                 });
             });
@@ -294,50 +340,58 @@ public partial class App : Application
     /// Routes incoming IPC commands to the correct desktop's window.
     /// Resolves the current desktop GUID at handle time (live state, not send time).
     /// Always called on the UI Dispatcher (IpcService ensures this).
+    /// Entire body is wrapped in try/catch since this is an async void handler.
     /// </summary>
     private async void HandleIpcCommand(IpcMessage message)
     {
-        string desktopGuid = VirtualDesktopService.CurrentDesktopGuid;
-
-        switch (message)
+        try
         {
-            case ActivateCommand:
-                LogService.Info($"IPC: activate — desktop {desktopGuid}");
-                if (_windows.TryGetValue(desktopGuid, out var existingWindow))
-                {
-                    WindowActivationHelper.ActivateWindow(existingWindow);
-                }
-                else
-                {
-                    await CreateWindowForDesktop(desktopGuid);
-                }
-                break;
+            var desktopGuid = VirtualDesktopService.CurrentDesktopGuid;
 
-            case NewTabCommand ntc:
-                // Prefer the sender's desktop GUID (queried by second instance via COM)
-                string targetDesktop = ntc.DesktopGuid ?? desktopGuid;
-                LogService.Info($"IPC: new-tab — target desktop {targetDesktop} (sender={ntc.DesktopGuid}, cached={desktopGuid})");
-                if (_windows.TryGetValue(targetDesktop, out var tabWindow))
-                {
-                    VirtualDesktopService.TrySwitchToDesktop(targetDesktop);
-                    WindowActivationHelper.ActivateWindow(tabWindow);
-                    tabWindow.RequestNewTab();
-                }
-                else
-                {
-                    var newWindow = await CreateWindowForDesktop(targetDesktop);
-                    VirtualDesktopService.TrySwitchToDesktop(targetDesktop);
-                    newWindow.RequestNewTab();
-                }
-                break;
+            switch (message)
+            {
+                case ActivateCommand:
+                    LogService.Info($"IPC: activate — desktop {desktopGuid}");
+                    if (_windows.TryGetValue(desktopGuid, out var existingWindow))
+                    {
+                        WindowActivationHelper.ActivateWindow(existingWindow);
+                    }
+                    else
+                    {
+                        await CreateWindowForDesktop(desktopGuid);
+                    }
+                    break;
 
-            case ShowDesktopCommand showCmd:
-                LogService.Info($"IPC: show-desktop {showCmd.DesktopGuid}");
-                break;
+                case NewTabCommand ntc:
+                    // Prefer the sender's desktop GUID (queried by second instance via COM)
+                    var targetDesktop = ntc.DesktopGuid ?? desktopGuid;
+                    LogService.Info($"IPC: new-tab — target desktop {targetDesktop} (sender={ntc.DesktopGuid}, cached={desktopGuid})");
+                    if (_windows.TryGetValue(targetDesktop, out var tabWindow))
+                    {
+                        VirtualDesktopService.TrySwitchToDesktop(targetDesktop);
+                        WindowActivationHelper.ActivateWindow(tabWindow);
+                        tabWindow.RequestNewTab();
+                    }
+                    else
+                    {
+                        var newWindow = await CreateWindowForDesktop(targetDesktop);
+                        VirtualDesktopService.TrySwitchToDesktop(targetDesktop);
+                        newWindow.RequestNewTab();
+                    }
+                    break;
 
-            default:
-                LogService.Warn($"IPC: unknown command type '{message.GetType().Name}'");
-                break;
+                case ShowDesktopCommand showCmd:
+                    LogService.Info($"IPC: show-desktop {showCmd.DesktopGuid}");
+                    break;
+
+                default:
+                    LogService.Warn($"IPC: unknown command type '{message.GetType().Name}'");
+                    break;
+            }
+        }
+        catch (Exception ex)
+        {
+            LogService.Error("Error handling IPC command", ex);
         }
     }
 
@@ -362,6 +416,9 @@ public partial class App : Application
 
     // ─── Window Drag Helper Methods ──────────────────────────────────────────
 
+    /// <summary>
+    /// Whether a recovery toast should be shown on the next window creation.
+    /// </summary>
     private bool _pendingRecoveryToast;
 
     /// <summary>
@@ -453,7 +510,7 @@ public partial class App : Application
 
     /// <summary>
     /// Called when the application exits. Cancels the IPC server, flushes the database,
-    /// and releases the single-instance mutex.
+    /// and releases the single-instance mutex. Disposes the shutdown CancellationTokenSource.
     /// </summary>
     protected override void OnExit(ExitEventArgs e)
     {
@@ -470,6 +527,8 @@ public partial class App : Application
 
         _singleInstanceMutex?.ReleaseMutex();
         _singleInstanceMutex?.Dispose();
+
+        _appShutdownCts.Dispose();
 
         base.OnExit(e);
     }

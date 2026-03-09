@@ -32,6 +32,7 @@ internal sealed class VirtualDesktopNotificationListener : IVirtualDesktopNotifi
     /// <summary>Fired when a window's view changes desktop. Args: (viewPtr)</summary>
     public event Action<IntPtr>? WindowViewChanged;
 
+    /// <inheritdoc />
     public int VirtualDesktopCreated(IntPtr monitors, IVirtualDesktop desktop)
     {
         try
@@ -47,16 +48,19 @@ internal sealed class VirtualDesktopNotificationListener : IVirtualDesktopNotifi
         return 0; // S_OK
     }
 
+    /// <inheritdoc />
     public int VirtualDesktopDestroyBegin(IntPtr monitors, IVirtualDesktop desktopDestroyed, IVirtualDesktop desktopFallback)
     {
         return 0; // S_OK — no action needed
     }
 
+    /// <inheritdoc />
     public int VirtualDesktopDestroyFailed(IntPtr monitors, IVirtualDesktop desktopDestroyed, IVirtualDesktop desktopFallback)
     {
         return 0; // S_OK — no action needed
     }
 
+    /// <inheritdoc />
     public int VirtualDesktopDestroyed(IntPtr monitors, IVirtualDesktop desktopDestroyed, IVirtualDesktop desktopFallback)
     {
         try
@@ -72,12 +76,14 @@ internal sealed class VirtualDesktopNotificationListener : IVirtualDesktopNotifi
         return 0; // S_OK
     }
 
+    /// <inheritdoc />
     public int VirtualDesktopMoved(IntPtr monitors, IVirtualDesktop desktop, int oldIndex, int newIndex)
     {
         LogService.Info($"Notification: desktop moved (index {oldIndex} -> {newIndex})");
         return 0; // S_OK — index changes handled via session matching on next startup
     }
 
+    /// <inheritdoc />
     public int VirtualDesktopRenamed(IVirtualDesktop desktop, string newName)
     {
         try
@@ -94,6 +100,7 @@ internal sealed class VirtualDesktopNotificationListener : IVirtualDesktopNotifi
         return 0; // S_OK
     }
 
+    /// <inheritdoc />
     public int ViewVirtualDesktopChanged(IntPtr view)
     {
         try
@@ -108,6 +115,7 @@ internal sealed class VirtualDesktopNotificationListener : IVirtualDesktopNotifi
         return 0; // S_OK
     }
 
+    /// <inheritdoc />
     public int CurrentVirtualDesktopChanged(IntPtr monitors, IVirtualDesktop desktopOld, IVirtualDesktop desktopNew)
     {
         try
@@ -124,16 +132,19 @@ internal sealed class VirtualDesktopNotificationListener : IVirtualDesktopNotifi
         return 0; // S_OK
     }
 
+    /// <inheritdoc />
     public int VirtualDesktopWallpaperChanged(IVirtualDesktop desktop, string path)
     {
         return 0; // S_OK — wallpaper changes not relevant to JoJot
     }
 
+    /// <inheritdoc />
     public int VirtualDesktopSwitchOverCompleted(IVirtualDesktop desktop)
     {
         return 0; // S_OK — switch animation complete, no action needed
     }
 
+    /// <inheritdoc />
     public int RemoteVirtualDesktopConnected(IVirtualDesktop desktop)
     {
         return 0; // S_OK — remote desktop not relevant to JoJot

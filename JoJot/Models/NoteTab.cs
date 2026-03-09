@@ -6,15 +6,69 @@ namespace JoJot.Models;
 /// </summary>
 public class NoteTab
 {
+    /// <summary>
+    /// Maximum number of characters shown in the display label before truncation.
+    /// </summary>
+    private const int DisplayLabelMaxLength = 30;
+
+    /// <summary>
+    /// Placeholder text shown when a note has no name and no content.
+    /// </summary>
+    private const string PlaceholderLabel = "New note";
+
+    /// <summary>
+    /// Threshold in minutes below which "Just now" is shown instead of a timestamp.
+    /// </summary>
+    private const double JustNowThresholdMinutes = 1.0;
+
+    /// <summary>
+    /// Primary key (auto-incremented row ID).
+    /// </summary>
     public long Id { get; set; }
+
+    /// <summary>
+    /// GUID string identifying the virtual desktop this note belongs to.
+    /// </summary>
     public string DesktopGuid { get; set; } = "";
+
+    /// <summary>
+    /// Optional custom name for the tab. When null, the display label falls back to content preview.
+    /// </summary>
     public string? Name { get; set; }
+
+    /// <summary>
+    /// Full text content of the note.
+    /// </summary>
     public string Content { get; set; } = "";
+
+    /// <summary>
+    /// Whether this tab is pinned to the left side of the tab bar.
+    /// </summary>
     public bool Pinned { get; set; }
+
+    /// <summary>
+    /// Timestamp when the note was first created.
+    /// </summary>
     public DateTime CreatedAt { get; set; }
+
+    /// <summary>
+    /// Timestamp of the most recent content or metadata change.
+    /// </summary>
     public DateTime UpdatedAt { get; set; }
+
+    /// <summary>
+    /// Position index used to persist drag-reorder within the tab bar.
+    /// </summary>
     public int SortOrder { get; set; }
+
+    /// <summary>
+    /// Saved vertical scroll offset of the text editor for this tab.
+    /// </summary>
     public int EditorScrollOffset { get; set; }
+
+    /// <summary>
+    /// Saved caret position within the text editor for this tab.
+    /// </summary>
     public int CursorPosition { get; set; }
 
     /// <summary>
@@ -25,24 +79,29 @@ public class NoteTab
         get
         {
             if (!string.IsNullOrWhiteSpace(Name))
+            {
                 return Name;
+            }
 
             if (!string.IsNullOrWhiteSpace(Content))
             {
-                string trimmed = Content.Trim();
-                if (trimmed.Length <= 30)
+                var trimmed = Content.Trim();
+                if (trimmed.Length <= DisplayLabelMaxLength)
+                {
                     return trimmed;
-                return trimmed[..30];
+                }
+
+                return trimmed[..DisplayLabelMaxLength];
             }
 
-            return "New note";
+            return PlaceholderLabel;
         }
     }
 
     /// <summary>
     /// True when using the "New note" placeholder, which triggers muted italic styling in the UI.
     /// </summary>
-    public bool IsPlaceholder => Name == null && string.IsNullOrWhiteSpace(Content);
+    public bool IsPlaceholder => Name is null && string.IsNullOrWhiteSpace(Content);
 
     /// <summary>
     /// Relative date display for the created-at timestamp.
@@ -56,56 +115,82 @@ public class NoteTab
 
     /// <summary>
     /// Signals the UI to re-read display properties after Name or Content changes.
+    /// No-op: code-behind pattern uses explicit property reads, not binding notifications.
     /// </summary>
     public void RefreshDisplayProperties()
     {
-        // No-op: code-behind pattern uses explicit property reads, not binding notifications.
     }
 
     /// <summary>
-    /// Formats a DateTime as a relative date string for the created-at column.
+    /// Formats a <see cref="DateTime"/> as a relative date string for the created-at column.
     /// </summary>
+    /// <param name="dt">The timestamp to format.</param>
+    /// <returns>A human-friendly relative date string.</returns>
     public static string FormatCreatedDisplay(DateTime dt) => FormatRelativeDate(dt);
 
     /// <summary>
-    /// Formats a DateTime as a relative time string for the updated-at column.
+    /// Formats a <see cref="DateTime"/> as a relative time string for the updated-at column.
     /// </summary>
+    /// <param name="dt">The timestamp to format.</param>
+    /// <returns>A human-friendly relative time string.</returns>
     public static string FormatUpdatedDisplay(DateTime dt) => FormatRelativeTime(dt);
 
+    /// <summary>
+    /// Formats a timestamp as a relative date: time-only for today, "Yesterday",
+    /// month-day for same year, or full date for older entries.
+    /// </summary>
+    /// <param name="dt">The timestamp to format.</param>
+    /// <returns>A context-appropriate date string.</returns>
     private static string FormatRelativeDate(DateTime dt)
     {
         var now = DateTime.Now;
 
         if (dt.Date == now.Date)
+        {
             return dt.ToString("h:mm tt");
+        }
 
         if (dt.Date == now.Date.AddDays(-1))
+        {
             return "Yesterday";
+        }
 
         if (dt.Year == now.Year)
+        {
             return dt.ToString("MMM d");
+        }
 
         return dt.ToString("MMM d, yyyy");
     }
 
     /// <summary>
-    /// Formats a DateTime as a relative time string, always including hour:minute except for "Just now".
+    /// Formats a timestamp as a relative time string, always including hour:minute except for "Just now".
     /// </summary>
+    /// <param name="dt">The timestamp to format.</param>
+    /// <returns>A context-appropriate time string.</returns>
     private static string FormatRelativeTime(DateTime dt)
     {
         var diff = DateTime.Now - dt;
 
-        if (diff.TotalMinutes < 1)
+        if (diff.TotalMinutes < JustNowThresholdMinutes)
+        {
             return "Just now";
+        }
 
         if (dt.Date == DateTime.Now.Date)
+        {
             return $"Today {dt:h:mm tt}";
+        }
 
         if (dt.Date == DateTime.Now.Date.AddDays(-1))
+        {
             return $"Yesterday {dt:h:mm tt}";
+        }
 
         if (dt.Year == DateTime.Now.Year)
+        {
             return dt.ToString("MMM d, h:mm tt");
+        }
 
         return dt.ToString("MMM d, yyyy h:mm tt");
     }
@@ -113,12 +198,16 @@ public class NoteTab
     /// <summary>
     /// Tooltip string showing the exact created-at date and time.
     /// </summary>
+    /// <param name="dt">The creation timestamp.</param>
+    /// <returns>A formatted tooltip string prefixed with "Created:".</returns>
     public static string CreatedTooltip(DateTime dt) =>
         $"Created: {dt:MMM d, yyyy h:mm tt}";
 
     /// <summary>
     /// Tooltip string showing the exact updated-at date and time.
     /// </summary>
+    /// <param name="dt">The last-updated timestamp.</param>
+    /// <returns>A formatted tooltip string prefixed with "Last updated:".</returns>
     public static string UpdatedTooltip(DateTime dt) =>
         $"Last updated: {dt:MMM d, yyyy h:mm tt}";
 }

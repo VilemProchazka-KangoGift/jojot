@@ -117,7 +117,7 @@ public static class DatabaseService
         await _writeLock.WaitAsync().ConfigureAwait(false);
         try
         {
-            var cmd = _rawConnection!.CreateCommand();
+            await using var cmd = _rawConnection!.CreateCommand();
             cmd.CommandText = sql;
             await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
         }
@@ -141,7 +141,7 @@ public static class DatabaseService
         await _writeLock.WaitAsync().ConfigureAwait(false);
         try
         {
-            var cmd = _rawConnection!.CreateCommand();
+            await using var cmd = _rawConnection!.CreateCommand();
             cmd.CommandText = sql;
             var result = await cmd.ExecuteScalarAsync().ConfigureAwait(false);
             return (T)Convert.ChangeType(result!, typeof(T));
@@ -1118,9 +1118,9 @@ public static class DatabaseService
             await _writeLock.WaitAsync().ConfigureAwait(false);
             try
             {
-                var cmd = _rawConnection!.CreateCommand();
+                await using var cmd = _rawConnection!.CreateCommand();
                 cmd.CommandText = "PRAGMA quick_check;";
-                using var reader = await cmd.ExecuteReaderAsync().ConfigureAwait(false);
+                await using var reader = await cmd.ExecuteReaderAsync().ConfigureAwait(false);
                 if (reader.Read())
                 {
                     string result = reader.GetString(0);
@@ -1152,12 +1152,16 @@ public static class DatabaseService
         await _writeLock.WaitAsync().ConfigureAwait(false);
         try
         {
-            var cmd = _rawConnection!.CreateCommand();
+            await using var cmd = _rawConnection!.CreateCommand();
             cmd.CommandText = $"PRAGMA table_info({table});";
-            using var reader = await cmd.ExecuteReaderAsync().ConfigureAwait(false);
+            await using var reader = await cmd.ExecuteReaderAsync().ConfigureAwait(false);
             while (reader.Read())
             {
-                if (reader.GetString(1) == column) { found = true; break; }
+                if (reader.GetString(1) == column)
+                {
+                    found = true;
+                    break;
+                }
             }
         }
         finally
@@ -1173,7 +1177,7 @@ public static class DatabaseService
     /// </summary>
     private static async Task ExecuteRawPragmaAsync(string sql)
     {
-        var cmd = _rawConnection!.CreateCommand();
+        await using var cmd = _rawConnection!.CreateCommand();
         cmd.CommandText = sql;
         await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
     }

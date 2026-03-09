@@ -42,9 +42,11 @@ public static class WindowActivationHelper
             "ActivateWindow must be called on the UI thread");
 
         if (window.WindowState == WindowState.Minimized)
+        {
             window.WindowState = WindowState.Normal;
+        }
 
-        IntPtr hwnd = new WindowInteropHelper(window).Handle;
+        var hwnd = new WindowInteropHelper(window).Handle;
 
         // Attach to the foreground window's thread so SetForegroundWindow succeeds
         IntPtr foregroundHwnd = GetForegroundWindow();

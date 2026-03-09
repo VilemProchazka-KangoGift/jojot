@@ -13,7 +13,7 @@ public class UndoManager
     /// <summary>Singleton instance.</summary>
     public static UndoManager Instance => _instance.Value;
 
-    private readonly Dictionary<long, UndoStack> _stacks = new();
+    private readonly Dictionary<long, UndoStack> _stacks = [];
 
     /// <summary>Global memory budget (50 MB, not configurable).</summary>
     private const long MaxBudgetBytes = 50L * 1024 * 1024;
@@ -32,6 +32,7 @@ public class UndoManager
     /// <summary>
     /// Returns the <see cref="UndoStack"/> for <paramref name="tabId"/>, creating one if needed.
     /// </summary>
+    /// <param name="tabId">The tab identifier.</param>
     public UndoStack GetOrCreateStack(long tabId)
     {
         if (!_stacks.TryGetValue(tabId, out var stack))
@@ -45,14 +46,13 @@ public class UndoManager
     /// <summary>
     /// Returns the <see cref="UndoStack"/> for <paramref name="tabId"/>, or <c>null</c> if none exists.
     /// </summary>
-    public UndoStack? GetStack(long tabId)
-    {
-        return _stacks.GetValueOrDefault(tabId);
-    }
+    /// <param name="tabId">The tab identifier.</param>
+    public UndoStack? GetStack(long tabId) => _stacks.GetValueOrDefault(tabId);
 
     /// <summary>
     /// Sets the currently active tab. The active tab is never collapsed.
     /// </summary>
+    /// <param name="tabId">The active tab identifier, or <c>null</c> if none.</param>
     public void SetActiveTab(long? tabId)
     {
         _activeTabId = tabId;
@@ -61,6 +61,7 @@ public class UndoManager
     /// <summary>
     /// Removes the <see cref="UndoStack"/> for a tab that has been permanently deleted.
     /// </summary>
+    /// <param name="tabId">The tab identifier to remove.</param>
     public void RemoveStack(long tabId)
     {
         _stacks.Remove(tabId);
@@ -69,6 +70,8 @@ public class UndoManager
     /// <summary>
     /// Pushes a snapshot to the tab's undo stack and triggers memory-budget collapse if needed.
     /// </summary>
+    /// <param name="tabId">The tab identifier.</param>
+    /// <param name="content">The content snapshot to push.</param>
     public void PushSnapshot(long tabId, string content)
     {
         var stack = GetOrCreateStack(tabId);
@@ -83,6 +86,7 @@ public class UndoManager
     /// <summary>
     /// Undoes one step. Returns the previous content, or <c>null</c> if at the beginning.
     /// </summary>
+    /// <param name="tabId">The tab identifier.</param>
     public string? Undo(long tabId)
     {
         var stack = GetStack(tabId);
@@ -92,6 +96,7 @@ public class UndoManager
     /// <summary>
     /// Redoes one step. Returns the next content, or <c>null</c> if at the end.
     /// </summary>
+    /// <param name="tabId">The tab identifier.</param>
     public string? Redo(long tabId)
     {
         var stack = GetStack(tabId);
@@ -99,6 +104,7 @@ public class UndoManager
     }
 
     /// <summary>Returns <c>true</c> if the tab has a previous state to undo to.</summary>
+    /// <param name="tabId">The tab identifier.</param>
     public bool CanUndo(long tabId)
     {
         var stack = GetStack(tabId);
@@ -106,6 +112,7 @@ public class UndoManager
     }
 
     /// <summary>Returns <c>true</c> if the tab has a forward state to redo to.</summary>
+    /// <param name="tabId">The tab identifier.</param>
     public bool CanRedo(long tabId)
     {
         var stack = GetStack(tabId);
@@ -135,7 +142,11 @@ public class UndoManager
         // Collapse tier-1 into tier-2 for the oldest stacks first
         foreach (var stack in candidates)
         {
-            if (TotalEstimatedBytes <= targetBytes) break;
+            if (TotalEstimatedBytes <= targetBytes)
+            {
+                break;
+            }
+
             stack.CollapseTier1IntoTier2();
             LogService.Info($"UndoManager: collapsed tier-1 for tab {stack.TabId}, total={TotalEstimatedBytes / 1024}KB");
         }
@@ -143,7 +154,11 @@ public class UndoManager
         // Evict oldest tier-2 entries if still over target
         foreach (var stack in candidates)
         {
-            if (TotalEstimatedBytes <= targetBytes) break;
+            if (TotalEstimatedBytes <= targetBytes)
+            {
+                break;
+            }
+
             stack.EvictOldestTier2(5);
             LogService.Info($"UndoManager: evicted tier-2 entries for tab {stack.TabId}, total={TotalEstimatedBytes / 1024}KB");
         }

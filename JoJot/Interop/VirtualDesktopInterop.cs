@@ -25,31 +25,41 @@ internal static class VirtualDesktopInterop
     public static void Initialize()
     {
         if (_initialized)
+        {
             return;
+        }
 
         int buildNumber = Environment.OSVersion.Version.Build;
         LogService.Info($"VirtualDesktopInterop: initializing for build {buildNumber}");
 
         _guidSet = ComGuids.Resolve(buildNumber);
         if (_guidSet is null)
+        {
             throw new PlatformNotSupportedException(
                 $"Unsupported OS build {buildNumber} — virtual desktop features disabled");
+        }
 
         // 1. Create the documented IVirtualDesktopManager
         var managerType = Type.GetTypeFromCLSID(ComGuids.CLSID_VirtualDesktopManager);
         if (managerType is null)
+        {
             throw new COMException("Failed to resolve CLSID_VirtualDesktopManager");
+        }
 
         _manager = (IVirtualDesktopManager)Activator.CreateInstance(managerType)!;
 
         // 2. Create ImmersiveShell and get IServiceProvider
         var shellType = Type.GetTypeFromCLSID(ComGuids.CLSID_ImmersiveShell);
         if (shellType is null)
+        {
             throw new COMException("Failed to resolve CLSID_ImmersiveShell");
+        }
 
         var shell = Activator.CreateInstance(shellType);
         if (shell is null)
+        {
             throw new COMException("Failed to create ImmersiveShell instance");
+        }
 
         var provider = (IServiceProvider10)shell;
 
@@ -59,8 +69,10 @@ internal static class VirtualDesktopInterop
 
         int hr = provider.QueryService(ref clsidInternal, ref iidInternal, out IntPtr internalPtr);
         if (hr != 0 || internalPtr == IntPtr.Zero)
+        {
             throw new COMException(
                 $"QueryService for IVirtualDesktopManagerInternal failed (HRESULT: 0x{hr:X8})", hr);
+        }
 
         _managerInternal = (IVirtualDesktopManagerInternal)
             Marshal.GetObjectForIUnknown(internalPtr);
@@ -95,7 +107,9 @@ internal static class VirtualDesktopInterop
         EnsureInitialized();
         int hr = _manager!.GetWindowDesktopId(hwnd, out Guid desktopId);
         if (hr != 0)
+        {
             throw new COMException($"GetWindowDesktopId failed (HRESULT: 0x{hr:X8})", hr);
+        }
         return desktopId;
     }
 
@@ -107,7 +121,9 @@ internal static class VirtualDesktopInterop
         EnsureInitialized();
         int hr = _manager!.MoveWindowToDesktop(hwnd, ref desktopId);
         if (hr != 0)
+        {
             throw new COMException($"MoveWindowToDesktop failed (HRESULT: 0x{hr:X8})", hr);
+        }
     }
 
     /// <summary>
@@ -118,10 +134,14 @@ internal static class VirtualDesktopInterop
         EnsureInitialized();
         int hr = _managerInternal!.FindDesktop(ref desktopId, out IVirtualDesktop desktop);
         if (hr != 0)
+        {
             throw new COMException($"FindDesktop failed (HRESULT: 0x{hr:X8})", hr);
+        }
         hr = _managerInternal.SwitchDesktop(desktop);
         if (hr != 0)
+        {
             throw new COMException($"SwitchDesktop failed (HRESULT: 0x{hr:X8})", hr);
+        }
     }
 
     /// <summary>
@@ -133,7 +153,9 @@ internal static class VirtualDesktopInterop
 
         int hr = _managerInternal!.GetCurrentDesktop(out IVirtualDesktop desktop);
         if (hr != 0)
+        {
             throw new COMException($"GetCurrentDesktop failed (HRESULT: 0x{hr:X8})", hr);
+        }
 
         Guid id = desktop.GetId();
         string name;
@@ -175,11 +197,15 @@ internal static class VirtualDesktopInterop
 
         int hr = _managerInternal!.GetDesktops(out IObjectArray desktops);
         if (hr != 0)
+        {
             throw new COMException($"GetDesktops failed (HRESULT: 0x{hr:X8})", hr);
+        }
 
         hr = desktops.GetCount(out uint count);
         if (hr != 0)
+        {
             throw new COMException($"IObjectArray.GetCount failed (HRESULT: 0x{hr:X8})", hr);
+        }
 
         var result = new List<(Guid, string, int)>((int)count);
         var iidVd = _guidSet!.IVirtualDesktop;
@@ -274,9 +300,14 @@ internal static class VirtualDesktopInterop
         }
     }
 
+    /// <summary>
+    /// Throws if <see cref="Initialize"/> has not been called successfully.
+    /// </summary>
     private static void EnsureInitialized()
     {
         if (!_initialized)
+        {
             throw new InvalidOperationException("VirtualDesktopInterop is not initialized. Call Initialize() first.");
+        }
     }
 }

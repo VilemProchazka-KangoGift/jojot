@@ -5,6 +5,13 @@ namespace JoJot.Models;
 /// </summary>
 public class Preference
 {
+    /// <summary>
+    /// Unique setting key used as the primary key.
+    /// </summary>
     public string Key { get; set; } = "";
+
+    /// <summary>
+    /// Setting value stored as a string.
+    /// </summary>
     public string Value { get; set; } = "";
 }

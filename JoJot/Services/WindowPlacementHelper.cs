@@ -61,6 +61,7 @@ public static class WindowPlacementHelper
     /// Returns the normal (non-maximized) position and size even if the window is currently maximized.
     /// Must be called while the window handle is still valid (before Close completes).
     /// </summary>
+    /// <param name="window">The window whose geometry to capture.</param>
     public static WindowGeometry CaptureGeometry(Window window)
     {
         var hwnd = new WindowInteropHelper(window).Handle;
@@ -88,6 +89,8 @@ public static class WindowPlacementHelper
     /// Uses <c>SetWindowPlacement</c> to restore in workspace coordinates, consistent
     /// with how <see cref="CaptureGeometry"/> saved them.
     /// </summary>
+    /// <param name="window">The window to apply geometry to.</param>
+    /// <param name="geo">The saved geometry, or <c>null</c> for defaults.</param>
     public static void ApplyGeometry(Window window, WindowGeometry? geo)
     {
         if (geo is null)
@@ -110,7 +113,10 @@ public static class WindowPlacementHelper
             window.Height = corrected.Height;
             window.WindowStartupLocation = WindowStartupLocation.Manual;
             if (corrected.IsMaximized)
+            {
                 window.WindowState = WindowState.Maximized;
+            }
+
             return;
         }
 
@@ -135,6 +141,7 @@ public static class WindowPlacementHelper
     /// position is adjusted. Visibility is determined by whether the top-left 50x50 px region
     /// intersects any screen's working area.
     /// </summary>
+    /// <param name="geo">The geometry to validate and potentially correct.</param>
     public static WindowGeometry ClampToNearestScreen(WindowGeometry geo)
     {
         var testRect = new System.Drawing.Rectangle(
@@ -143,7 +150,10 @@ public static class WindowPlacementHelper
         bool visible = WinForms.Screen.AllScreens.Any(s =>
             s.WorkingArea.IntersectsWith(testRect));
 
-        if (visible) return geo;
+        if (visible)
+        {
+            return geo;
+        }
 
         // Find nearest screen by Manhattan distance from saved top-left
         var nearest = WinForms.Screen.AllScreens
@@ -167,13 +177,15 @@ public static class WindowPlacementHelper
 
     // Constants
 
-    /// <summary>Default window dimensions: 500x600 (compact notepad-sized).</summary>
+    /// <summary>Default window width: 500 pixels (compact notepad-sized).</summary>
     public const double DefaultWidth = 500;
-    /// <inheritdoc cref="DefaultWidth"/>
+
+    /// <summary>Default window height: 600 pixels (compact notepad-sized).</summary>
     public const double DefaultHeight = 600;
 
-    /// <summary>Minimum window dimensions: 320x420.</summary>
+    /// <summary>Minimum window width: 320 pixels.</summary>
     public const double MinWidth = 320;
-    /// <inheritdoc cref="MinWidth"/>
+
+    /// <summary>Minimum window height: 420 pixels.</summary>
     public const double MinHeight = 420;
 }

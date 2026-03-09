@@ -8,22 +8,56 @@ namespace JoJot.Data;
 /// EF Core DbContext for the JoJot SQLite database.
 /// Configured via Fluent API to match the existing snake_case schema.
 /// </summary>
+/// <param name="connectionString">SQLite connection string used by the provider.</param>
 public class JoJotDbContext(string connectionString) : DbContext
 {
+    /// <summary>
+    /// Notes table — one row per tab/note.
+    /// </summary>
     public DbSet<NoteTab> Notes { get; set; } = null!;
+
+    /// <summary>
+    /// App state table — per-desktop session and window geometry.
+    /// </summary>
     public DbSet<AppState> AppStates { get; set; } = null!;
+
+    /// <summary>
+    /// Preferences table — key/value application settings.
+    /// </summary>
     public DbSet<Preference> Preferences { get; set; } = null!;
+
+    /// <summary>
+    /// Pending moves table — tracks in-flight window drags between desktops.
+    /// </summary>
     public DbSet<PendingMove> PendingMoves { get; set; } = null!;
 
+    /// <summary>
+    /// Configures the SQLite provider and registers the WAL/pragma interceptor.
+    /// </summary>
+    /// <param name="optionsBuilder">The options builder provided by EF Core.</param>
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
         optionsBuilder.UseSqlite(connectionString);
         optionsBuilder.AddInterceptors(new SqlitePragmaInterceptor());
     }
 
+    /// <summary>
+    /// Maps entity types to their snake_case SQLite tables and columns via Fluent API.
+    /// </summary>
+    /// <param name="modelBuilder">The model builder provided by EF Core.</param>
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        // NoteTab -> notes
+        ConfigureNoteTab(modelBuilder);
+        ConfigureAppState(modelBuilder);
+        ConfigurePreference(modelBuilder);
+        ConfigurePendingMove(modelBuilder);
+    }
+
+    /// <summary>
+    /// Maps <see cref="NoteTab"/> to the <c>notes</c> table.
+    /// </summary>
+    private static void ConfigureNoteTab(ModelBuilder modelBuilder)
+    {
         modelBuilder.Entity<NoteTab>(e =>
         {
             e.ToTable("notes");
@@ -46,8 +80,13 @@ public class JoJotDbContext(string connectionString) : DbContext
             e.Ignore(n => n.CreatedDisplay);
             e.Ignore(n => n.UpdatedDisplay);
         });
+    }
 
-        // AppState -> app_state
+    /// <summary>
+    /// Maps <see cref="AppState"/> to the <c>app_state</c> table.
+    /// </summary>
+    private static void ConfigureAppState(ModelBuilder modelBuilder)
+    {
         modelBuilder.Entity<AppState>(e =>
         {
             e.ToTable("app_state");
@@ -67,8 +106,13 @@ public class JoJotDbContext(string connectionString) : DbContext
 
             e.HasIndex(a => a.DesktopGuid).IsUnique();
         });
+    }
 
-        // Preference -> preferences
+    /// <summary>
+    /// Maps <see cref="Preference"/> to the <c>preferences</c> table.
+    /// </summary>
+    private static void ConfigurePreference(ModelBuilder modelBuilder)
+    {
         modelBuilder.Entity<Preference>(e =>
         {
             e.ToTable("preferences");
@@ -77,8 +121,13 @@ public class JoJotDbContext(string connectionString) : DbContext
             e.Property(p => p.Key).HasColumnName("key");
             e.Property(p => p.Value).HasColumnName("value").IsRequired();
         });
+    }
 
-        // PendingMove -> pending_moves
+    /// <summary>
+    /// Maps <see cref="PendingMove"/> to the <c>pending_moves</c> table.
+    /// </summary>
+    private static void ConfigurePendingMove(ModelBuilder modelBuilder)
+    {
         modelBuilder.Entity<PendingMove>(e =>
         {
             e.ToTable("pending_moves");

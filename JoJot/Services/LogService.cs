@@ -23,9 +23,12 @@ public static class LogService
 
         if (File.Exists(_logPath) && new FileInfo(_logPath).Length > 5 * 1024 * 1024)
         {
-            string rolledPath = _logPath + ".old";
+            var rolledPath = _logPath + ".old";
             if (File.Exists(rolledPath))
+            {
                 File.Delete(rolledPath);
+            }
+
             File.Move(_logPath, rolledPath);
         }
     }
@@ -39,11 +42,16 @@ public static class LogService
     /// <summary>Logs an error message with optional exception details.</summary>
     public static void Error(string message, Exception? ex = null) => Write("ERROR", message, ex);
 
+    /// <summary>
+    /// Writes a log entry to both debug output and the log file.
+    /// </summary>
     private static void Write(string level, string message, Exception? ex = null)
     {
-        string line = $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} [{level}] {message}";
+        var line = $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} [{level}] {message}";
         if (ex is not null)
+        {
             line += $"\n  {ex}";
+        }
 
         // Always write to debug output as a fallback if the file write fails
         Debug.WriteLine(line);
@@ -56,7 +64,8 @@ public static class LogService
             }
             catch
             {
-                // Silent failure; debug output already captured the message above
+                // Intentional silent catch: log-to-file failure is non-critical
+                // because the debug output above already captured the message.
             }
         }
     }

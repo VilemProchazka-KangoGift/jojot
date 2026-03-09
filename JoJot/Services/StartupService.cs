@@ -14,7 +14,9 @@ public static class StartupService
     {
         long count = await DatabaseService.ExecuteScalarAsync<long>("SELECT COUNT(*) FROM notes;").ConfigureAwait(false);
         if (count > 0)
+        {
             return;
+        }
 
         LogService.Info("First launch detected — creating welcome tab");
 

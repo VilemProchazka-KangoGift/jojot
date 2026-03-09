@@ -13,7 +13,10 @@ namespace JoJot.Services;
 /// </summary>
 public static class IpcService
 {
+    /// <summary>Named pipe name for IPC communication.</summary>
     public const string PipeName = "JoJot_IPC";
+
+    /// <summary>Global mutex name for single-instance enforcement.</summary>
     public const string MutexName = "Global\\JoJot_SingleInstance";
 
     private static CancellationTokenSource? _cts;
@@ -43,6 +46,11 @@ public static class IpcService
         _cts = null;
     }
 
+    /// <summary>
+    /// Listens for incoming IPC connections in a loop until cancelled.
+    /// Each connection reads a single JSON-serialized <see cref="IpcMessage"/> and
+    /// dispatches it to the command handler on the UI thread.
+    /// </summary>
     private static async Task ListenLoopAsync(CancellationToken ct)
     {
         LogService.Info("IpcService: server listen loop started");
@@ -61,10 +69,10 @@ public static class IpcService
                 await server.WaitForConnectionAsync(ct).ConfigureAwait(false);
 
                 using var reader = new StreamReader(server, leaveOpen: false);
-                string? line = await reader.ReadLineAsync(ct).ConfigureAwait(false);
+                var line = await reader.ReadLineAsync(ct).ConfigureAwait(false);
                 if (line is not null)
                 {
-                    IpcMessage? message = JsonSerializer.Deserialize(
+                    var message = JsonSerializer.Deserialize(
                         line,
                         IpcMessageContext.Default.IpcMessage);
 
@@ -100,7 +108,7 @@ public static class IpcService
     /// </summary>
     /// <param name="message">The IPC command to send.</param>
     /// <param name="timeoutMs">Connect timeout in milliseconds (default 500ms).</param>
-    /// <param name="cancellationToken">Optional cancellation token for the operation.</param>
+    /// <param name="cancellationToken">Cancellation token for the operation.</param>
     public static async Task SendCommandAsync(IpcMessage message, int timeoutMs = 500, CancellationToken cancellationToken = default)
     {
         try
@@ -109,7 +117,7 @@ public static class IpcService
 
             await Task.Run(() => client.Connect(timeoutMs), cancellationToken).ConfigureAwait(false);
 
-            string json = JsonSerializer.Serialize(message, IpcMessageContext.Default.IpcMessage);
+            var json = JsonSerializer.Serialize(message, IpcMessageContext.Default.IpcMessage);
 
             using var writer = new StreamWriter(client, leaveOpen: false) { AutoFlush = true };
             await writer.WriteLineAsync(json.AsMemory(), cancellationToken).ConfigureAwait(false);
@@ -138,10 +146,12 @@ public static class IpcService
     public static void KillExistingInstances()
     {
         int myPid = Environment.ProcessId;
-        foreach (Process proc in Process.GetProcessesByName("JoJot"))
+        foreach (var proc in Process.GetProcessesByName("JoJot"))
         {
             if (proc.Id == myPid)
+            {
                 continue;
+            }
 
             try
             {
@@ -161,7 +171,7 @@ public static class IpcService
     /// Tries to acquire the global single-instance mutex.
     /// </summary>
     /// <param name="mutex">The mutex object — caller must keep this alive for the process lifetime.</param>
-    /// <returns>True if this is the first instance; false if another instance already holds the mutex.</returns>
+    /// <returns><c>true</c> if this is the first instance; <c>false</c> if another instance already holds the mutex.</returns>
     public static bool TryAcquireMutex(out Mutex mutex)
     {
         mutex = new Mutex(true, MutexName, out bool createdNew);

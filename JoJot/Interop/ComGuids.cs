@@ -6,6 +6,10 @@ namespace JoJot.Interop;
 /// Holds a set of COM interface GUIDs (IIDs) specific to a Windows build.
 /// The undocumented virtual desktop interfaces change their GUIDs between major Windows releases.
 /// </summary>
+/// <param name="IVirtualDesktop">IID for the IVirtualDesktop interface.</param>
+/// <param name="IVirtualDesktopManagerInternal">IID for the IVirtualDesktopManagerInternal interface.</param>
+/// <param name="IVirtualDesktopNotification">IID for the IVirtualDesktopNotification callback interface.</param>
+/// <param name="IVirtualDesktopNotificationService">IID for the IVirtualDesktopNotificationService registration interface.</param>
 internal sealed record GuidSet(
     Guid IVirtualDesktop,
     Guid IVirtualDesktopManagerInternal,
@@ -21,17 +25,21 @@ internal static class ComGuids
 {
     // ─── Stable CLSIDs (same across all Windows 11 builds) ──────────────
 
+    /// <summary>CLSID for the ImmersiveShell COM object, used to obtain IServiceProvider.</summary>
     public static readonly Guid CLSID_ImmersiveShell =
         new("C2F03A33-21F5-47FA-B4BB-156362A2F239");
 
+    /// <summary>CLSID for the internal virtual desktop manager COM object.</summary>
     public static readonly Guid CLSID_VirtualDesktopManagerInternal =
         new("C5E0CDCA-7B6E-41B2-9FC4-D93975CC467B");
 
+    /// <summary>CLSID for the documented IVirtualDesktopManager COM object.</summary>
     public static readonly Guid CLSID_VirtualDesktopManager =
         new("AA509086-5CA9-4C25-8F95-589D3C07B48A");
 
     // ─── Documented interface GUID (stable) ─────────────────────────────
 
+    /// <summary>IID for the documented IVirtualDesktopManager interface (stable across builds).</summary>
     public static readonly Guid IID_IVirtualDesktopManager =
         new("A5CD92FF-29BE-454C-8D04-D82879FB3F1B");
 
@@ -72,9 +80,13 @@ internal static class ComGuids
         foreach (var kvp in _buildMap)
         {
             if (kvp.Key <= buildNumber)
+            {
                 result = kvp.Value;
+            }
             else
+            {
                 break;
+            }
         }
 
         if (result is not null)

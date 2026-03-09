@@ -11,7 +11,7 @@ namespace JoJot.Services;
 public static class VirtualDesktopService
 {
     private static bool _isAvailable;
-    private static string _currentDesktopGuid = "default";
+    private static string _currentDesktopGuid = DefaultDesktopGuid;
     private static string _currentDesktopName = "";
     private static int _currentDesktopIndex;
     private static string _previousDesktopGuid = "";
@@ -40,6 +40,9 @@ public static class VirtualDesktopService
     /// The handler should show the lock overlay for conflict resolution.
     /// </summary>
     public static event Action<IntPtr, string, string, string>? WindowMovedToDesktop;
+
+    /// <summary>Default desktop GUID used in fallback mode when COM is unavailable.</summary>
+    private const string DefaultDesktopGuid = "default";
 
     /// <summary>
     /// Whether the virtual desktop COM API is available and functioning.
@@ -95,7 +98,7 @@ public static class VirtualDesktopService
         {
             LogService.Warn($"Virtual desktop API unavailable — fallback mode: {ex.Message}");
             _isAvailable = false;
-            _currentDesktopGuid = "default";
+            _currentDesktopGuid = DefaultDesktopGuid;
             _currentDesktopName = "";
             _currentDesktopIndex = 0;
         }
@@ -110,7 +113,9 @@ public static class VirtualDesktopService
     public static IReadOnlyList<DesktopInfo> GetAllDesktops()
     {
         if (!_isAvailable)
+        {
             return [new DesktopInfo(Guid.Empty, "", 0)];
+        }
 
         try
         {
@@ -134,7 +139,9 @@ public static class VirtualDesktopService
     public static DesktopInfo GetCurrentDesktopInfo()
     {
         if (!_isAvailable)
+        {
             return new DesktopInfo(Guid.Empty, "", 0);
+        }
 
         try
         {
@@ -179,17 +186,19 @@ public static class VirtualDesktopService
         if (!_isAvailable)
         {
             LogService.Info("Session matching skipped (fallback mode)");
-            await DatabaseService.CreateSessionAsync("default", null, null).ConfigureAwait(false);
+            await DatabaseService.CreateSessionAsync(DefaultDesktopGuid, null, null).ConfigureAwait(false);
 
-            // Fallback orphan detection: any session that isn't "default" is orphaned
+            // Fallback orphan detection: any session that isn't the default is orphaned
             var fallbackSessions = await DatabaseService.GetAllSessionsAsync().ConfigureAwait(false);
             var fallbackOrphans = fallbackSessions
-                .Where(s => !s.DesktopGuid.Equals("default", StringComparison.OrdinalIgnoreCase))
+                .Where(s => !s.DesktopGuid.Equals(DefaultDesktopGuid, StringComparison.OrdinalIgnoreCase))
                 .Select(s => s.DesktopGuid)
                 .ToList();
             OrphanedSessionGuids = fallbackOrphans;
             if (fallbackOrphans.Count > 0)
+            {
                 LogService.Info($"Fallback orphan detection: {fallbackOrphans.Count} orphaned session(s)");
+            }
 
             return;
         }
@@ -236,7 +245,9 @@ public static class VirtualDesktopService
         foreach (var session in unmatchedSessions.ToList())
         {
             if (string.IsNullOrEmpty(session.DesktopName))
+            {
                 continue;
+            }
 
             // Find desktops with matching name that haven't been matched yet
             var nameMatches = unmatchedDesktops
@@ -271,7 +282,9 @@ public static class VirtualDesktopService
         foreach (var session in unmatchedSessions.ToList())
         {
             if (!session.DesktopIndex.HasValue)
+            {
                 continue;
+            }
 
             int sessionIndex = session.DesktopIndex.Value;
 
@@ -307,7 +320,9 @@ public static class VirtualDesktopService
         foreach (var desktop in unmatchedDesktops)
         {
             if (desktop.Id == Guid.Empty)
+            {
                 continue;
+            }
 
             await DatabaseService.CreateSessionAsync(
                 desktop.Id.ToString(),
@@ -403,6 +418,9 @@ public static class VirtualDesktopService
         LogService.Info("Desktop polling started (500ms interval)");
     }
 
+    /// <summary>
+    /// Polls the current desktop and fires <see cref="CurrentDesktopChanged"/> if a switch is detected.
+    /// </summary>
     private static void PollDesktopChange()
     {
         try
@@ -437,7 +455,9 @@ public static class VirtualDesktopService
         _pollingTimer = null;
 
         if (!_notificationsRegistered)
+        {
             return;
+        }
 
         try
         {
@@ -560,10 +580,16 @@ public static class VirtualDesktopService
     /// </summary>
     private static void DetectMovedWindow()
     {
-        if (!_isAvailable) return;
+        if (!_isAvailable)
+        {
+            return;
+        }
 
         var app = System.Windows.Application.Current as App;
-        if (app is null) return;
+        if (app is null)
+        {
+            return;
+        }
 
         var allWindows = app.GetAllWindows();
         foreach (var window in allWindows)
@@ -571,7 +597,10 @@ public static class VirtualDesktopService
             try
             {
                 var hwnd = new System.Windows.Interop.WindowInteropHelper(window).Handle;
-                if (hwnd == IntPtr.Zero) continue;
+                if (hwnd == IntPtr.Zero)
+                {
+                    continue;
+                }
 
                 Guid currentDesktopId = VirtualDesktopInterop.GetWindowDesktopId(hwnd);
                 string currentDesktopGuid = currentDesktopId.ToString();
@@ -608,7 +637,10 @@ public static class VirtualDesktopService
     /// </summary>
     public static bool TryMoveWindowToDesktop(IntPtr hwnd, string desktopGuid)
     {
-        if (!_isAvailable) return false;
+        if (!_isAvailable)
+        {
+            return false;
+        }
 
         try
         {
@@ -630,7 +662,10 @@ public static class VirtualDesktopService
     /// </summary>
     public static bool TrySwitchToDesktop(string desktopGuid)
     {
-        if (!_isAvailable) return false;
+        if (!_isAvailable)
+        {
+            return false;
+        }
 
         try
         {

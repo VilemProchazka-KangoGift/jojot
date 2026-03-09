@@ -42,6 +42,8 @@ public static class HotkeyService
     /// Loads saved hotkey from preferences and registers it.
     /// Returns false if the hotkey is already in use by another application.
     /// </summary>
+    /// <param name="window">The window to use for hotkey message reception.</param>
+    /// <param name="onHotkeyPressed">Callback invoked when the hotkey is pressed.</param>
     public static async Task<bool> InitializeAsync(Window window, Action onHotkeyPressed)
     {
         _onHotkeyPressed = onHotkeyPressed;
@@ -52,10 +54,15 @@ public static class HotkeyService
         var savedModifiers = await DatabaseService.GetPreferenceAsync("hotkey_modifiers").ConfigureAwait(false);
         var savedVk = await DatabaseService.GetPreferenceAsync("hotkey_vk").ConfigureAwait(false);
 
-        if (savedModifiers != null && uint.TryParse(savedModifiers, out var mod))
+        if (savedModifiers is not null && uint.TryParse(savedModifiers, out var mod))
+        {
             _modifiers = mod;
-        if (savedVk != null && uint.TryParse(savedVk, out var vk))
+        }
+
+        if (savedVk is not null && uint.TryParse(savedVk, out var vk))
+        {
             _vk = vk;
+        }
 
         bool success = RegisterHotKey(_hwnd, HOTKEY_ID, _modifiers | MOD_NOREPEAT, _vk);
         if (!success)
@@ -77,6 +84,8 @@ public static class HotkeyService
     /// Unregisters the current hotkey, registers the new one, and persists to database.
     /// Returns false if the new hotkey is already in use.
     /// </summary>
+    /// <param name="modifiers">Win32 modifier flags.</param>
+    /// <param name="vk">Virtual key code.</param>
     public static async Task<bool> UpdateHotkeyAsync(uint modifiers, uint vk)
     {
         if (_isRegistered)
@@ -117,22 +126,36 @@ public static class HotkeyService
     /// <summary>
     /// Formats the current hotkey as a human-readable string (e.g., "Win + Shift + N").
     /// </summary>
-    public static string GetHotkeyDisplayString()
-    {
-        return FormatHotkey(_modifiers, _vk);
-    }
+    public static string GetHotkeyDisplayString() => FormatHotkey(_modifiers, _vk);
 
     /// <summary>
     /// Formats any modifier+vk combination as a human-readable string.
     /// </summary>
+    /// <param name="modifiers">Win32 modifier flags.</param>
+    /// <param name="vk">Virtual key code.</param>
     public static string FormatHotkey(uint modifiers, uint vk)
     {
         List<string> parts = [];
 
-        if ((modifiers & MOD_WIN) != 0) parts.Add("Win");
-        if ((modifiers & MOD_CONTROL) != 0) parts.Add("Ctrl");
-        if ((modifiers & MOD_ALT) != 0) parts.Add("Alt");
-        if ((modifiers & MOD_SHIFT) != 0) parts.Add("Shift");
+        if ((modifiers & MOD_WIN) != 0)
+        {
+            parts.Add("Win");
+        }
+
+        if ((modifiers & MOD_CONTROL) != 0)
+        {
+            parts.Add("Ctrl");
+        }
+
+        if ((modifiers & MOD_ALT) != 0)
+        {
+            parts.Add("Alt");
+        }
+
+        if ((modifiers & MOD_SHIFT) != 0)
+        {
+            parts.Add("Shift");
+        }
 
         try
         {
@@ -141,6 +164,8 @@ public static class HotkeyService
         }
         catch
         {
+            // Intentional silent catch: KeyFromVirtualKey may throw for
+            // unrecognized virtual key codes. Fall back to hex representation.
             parts.Add($"0x{vk:X2}");
         }
 
@@ -148,15 +173,32 @@ public static class HotkeyService
     }
 
     /// <summary>
-    /// Converts WPF ModifierKeys to Win32 modifier flags for RegisterHotKey.
+    /// Converts WPF <see cref="ModifierKeys"/> to Win32 modifier flags for RegisterHotKey.
     /// </summary>
+    /// <param name="modifiers">The WPF modifier keys to convert.</param>
     public static uint ModifierKeysToWin32(ModifierKeys modifiers)
     {
         uint result = 0;
-        if (modifiers.HasFlag(ModifierKeys.Alt)) result |= MOD_ALT;
-        if (modifiers.HasFlag(ModifierKeys.Control)) result |= MOD_CONTROL;
-        if (modifiers.HasFlag(ModifierKeys.Shift)) result |= MOD_SHIFT;
-        if (modifiers.HasFlag(ModifierKeys.Windows)) result |= MOD_WIN;
+        if (modifiers.HasFlag(ModifierKeys.Alt))
+        {
+            result |= MOD_ALT;
+        }
+
+        if (modifiers.HasFlag(ModifierKeys.Control))
+        {
+            result |= MOD_CONTROL;
+        }
+
+        if (modifiers.HasFlag(ModifierKeys.Shift))
+        {
+            result |= MOD_SHIFT;
+        }
+
+        if (modifiers.HasFlag(ModifierKeys.Windows))
+        {
+            result |= MOD_WIN;
+        }
+
         return result;
     }
 
@@ -185,9 +227,13 @@ public static class HotkeyService
             bool success = RegisterHotKey(_hwnd, HOTKEY_ID, _modifiers | MOD_NOREPEAT, _vk);
             _isRegistered = success;
             if (success)
+            {
                 LogService.Info($"Global hotkey resumed: {GetHotkeyDisplayString()}");
+            }
             else
+            {
                 LogService.Warn("Failed to resume global hotkey after recording cancel");
+            }
         }
     }
 
@@ -202,6 +248,7 @@ public static class HotkeyService
             UnregisterHotKey(_hwnd, HOTKEY_ID);
             _isRegistered = false;
         }
+
         _source?.RemoveHook(WndProc);
         _source = null;
         LogService.Info("Global hotkey service shutdown");
@@ -217,6 +264,7 @@ public static class HotkeyService
             _onHotkeyPressed?.Invoke();
             handled = true;
         }
+
         return IntPtr.Zero;
     }
 }

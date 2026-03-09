@@ -17,11 +17,18 @@ public static class FileDropService
     /// <summary>
     /// Result of validating a single dropped file.
     /// </summary>
+    /// <param name="IsValid">Whether the file passed validation.</param>
+    /// <param name="FileName">The file name (without path).</param>
+    /// <param name="Content">The text content if valid; <c>null</c> otherwise.</param>
+    /// <param name="ErrorMessage">Describes why validation failed; <c>null</c> if valid.</param>
     public record FileDropResult(bool IsValid, string FileName, string? Content, string? ErrorMessage);
 
     /// <summary>
     /// Summary of processing multiple dropped files.
     /// </summary>
+    /// <param name="ValidFiles">Files that passed validation.</param>
+    /// <param name="ErrorCount">Number of files that failed validation.</param>
+    /// <param name="CombinedErrorMessage">Aggregate error message for toast display; <c>null</c> if no errors.</param>
     public record FileDropSummary(List<FileDropResult> ValidFiles, int ErrorCount, string? CombinedErrorMessage);
 
     /// <summary>
@@ -30,14 +37,27 @@ public static class FileDropService
     /// Looks for null bytes and non-printable characters, excluding common text
     /// whitespace (tab, line feed, carriage return, escape).
     /// </summary>
+    /// <param name="buffer">The byte buffer to inspect.</param>
+    /// <param name="bytesRead">Number of valid bytes in the buffer.</param>
     public static bool IsBinaryContent(byte[] buffer, int bytesRead)
     {
         for (int i = 0; i < bytesRead; i++)
         {
             byte b = buffer[i];
-            if (b == 0) return true;
-            if (b < 0x08) return true;
-            if (b > 0x0D && b < 0x20 && b != 0x1B) return true;
+            if (b == 0)
+            {
+                return true;
+            }
+
+            if (b < 0x08)
+            {
+                return true;
+            }
+
+            if (b > 0x0D && b < 0x20 && b != 0x1B)
+            {
+                return true;
+            }
         }
         return false;
     }
@@ -47,9 +67,11 @@ public static class FileDropService
     /// then inspects content for binary data.
     /// Returns a result with either valid content or an error message.
     /// </summary>
+    /// <param name="filePath">Absolute path to the file to validate.</param>
+    /// <param name="cancellationToken">Cancellation token for async operations.</param>
     public static async Task<FileDropResult> ValidateFileAsync(string filePath, CancellationToken cancellationToken = default)
     {
-        string fileName = Path.GetFileName(filePath);
+        var fileName = Path.GetFileName(filePath);
 
         try
         {
@@ -61,17 +83,17 @@ public static class FileDropService
             }
 
             // Content inspection: read first 8 KB for binary check
-            byte[] buffer = new byte[Math.Min(InspectionBufferSize, (int)fileInfo.Length)];
+            var buffer = new byte[Math.Min(InspectionBufferSize, (int)fileInfo.Length)];
             using (var fs = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read))
             {
-                int bytesRead = await fs.ReadAsync(buffer, 0, buffer.Length, cancellationToken).ConfigureAwait(false);
+                int bytesRead = await fs.ReadAsync(buffer.AsMemory(), cancellationToken).ConfigureAwait(false);
                 if (IsBinaryContent(buffer, bytesRead))
                 {
                     return new FileDropResult(false, fileName, null, $"'{fileName}' contains binary content");
                 }
             }
 
-            string content = await File.ReadAllTextAsync(filePath, cancellationToken).ConfigureAwait(false);
+            var content = await File.ReadAllTextAsync(filePath, cancellationToken).ConfigureAwait(false);
             return new FileDropResult(true, fileName, content, null);
         }
         catch (UnauthorizedAccessException)
@@ -96,6 +118,8 @@ public static class FileDropService
     /// block valid ones. Returns a summary with valid files, error count, and a combined
     /// error message suitable for toast display.
     /// </summary>
+    /// <param name="filePaths">Array of file paths to process.</param>
+    /// <param name="cancellationToken">Cancellation token for async operations.</param>
     public static async Task<FileDropSummary> ProcessDroppedFilesAsync(string[] filePaths, CancellationToken cancellationToken = default)
     {
         List<FileDropResult> validFiles = [];

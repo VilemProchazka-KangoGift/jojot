@@ -1,0 +1,126 @@
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Input;
+using System.Windows.Media;
+using JoJot.Services;
+
+namespace JoJot;
+
+public partial class MainWindow
+{
+    // ─── Help Overlay (Ctrl+?) ─────────────────────────────────────
+
+    private void ShowHelpOverlay()
+    {
+        if (!_helpBuilt)
+        {
+            BuildHelpContent();
+            _helpBuilt = true;
+        }
+        HelpOverlay.Visibility = Visibility.Visible;
+    }
+
+    private void HideHelpOverlay()
+    {
+        HelpOverlay.Visibility = Visibility.Collapsed;
+    }
+
+    private void BuildHelpContent()
+    {
+        var shortcuts = new (string section, (string key, string desc)[] items)[]
+        {
+            ("TABS", new[]
+            {
+                ("Ctrl+T", "New tab"),
+                ("Ctrl+W", "Delete tab"),
+                ("Ctrl+Tab", "Next tab"),
+                ("Ctrl+Shift+Tab", "Previous tab"),
+                ("F2", "Rename tab"),
+                ("Ctrl+P", "Pin / Unpin"),
+                ("Ctrl+K", "Clone tab"),
+            }),
+            ("EDITOR", new[]
+            {
+                ("Ctrl+Z", "Undo"),
+                ("Ctrl+Y", "Redo"),
+                ("Ctrl+Shift+Z", "Redo (alt)"),
+                ("Ctrl+C", "Copy (all if no selection)"),
+                ("Ctrl+V", "Paste"),
+                ("Ctrl+X", "Cut"),
+                ("Ctrl+A", "Select all"),
+                ("Ctrl+S", "Save as TXT"),
+                ("Ctrl+F", "Find in editor / Search tabs"),
+            }),
+            ("VIEW", new[]
+            {
+                ("Ctrl+=", "Increase font size"),
+                ("Ctrl+-", "Decrease font size"),
+                ("Ctrl+0", "Reset font size (100%)"),
+                ("Ctrl+Scroll", "Zoom (over editor)"),
+            }),
+            ("GLOBAL", new[]
+            {
+                (HotkeyService.GetHotkeyDisplayString(), "Focus / minimize JoJot"),
+                ("Ctrl+Shift+/", "Show this help"),
+            }),
+        };
+
+        foreach (var (section, items) in shortcuts)
+        {
+            var sectionHeader = new TextBlock
+            {
+                Text = section,
+                FontSize = 11,
+                FontWeight = FontWeights.SemiBold,
+                Margin = new Thickness(0, 12, 0, 6)
+            };
+            sectionHeader.SetResourceReference(TextBlock.ForegroundProperty, "c-text-muted");
+            HelpContent.Children.Add(sectionHeader);
+
+            foreach (var (key, desc) in items)
+            {
+                var row = new Grid();
+                row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(140) });
+                row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+                row.Margin = new Thickness(0, 2, 0, 2);
+
+                var keyBlock = new TextBlock
+                {
+                    Text = key,
+                    FontSize = 12,
+                    FontFamily = new System.Windows.Media.FontFamily("Consolas"),
+                    FontWeight = FontWeights.SemiBold
+                };
+                keyBlock.SetResourceReference(TextBlock.ForegroundProperty, "c-accent");
+                Grid.SetColumn(keyBlock, 0);
+                row.Children.Add(keyBlock);
+
+                var descBlock = new TextBlock
+                {
+                    Text = desc,
+                    FontSize = 12
+                };
+                descBlock.SetResourceReference(TextBlock.ForegroundProperty, "c-text-primary");
+                Grid.SetColumn(descBlock, 1);
+                row.Children.Add(descBlock);
+
+                HelpContent.Children.Add(row);
+            }
+        }
+    }
+
+    private void HelpOverlay_Click(object sender, MouseButtonEventArgs e)
+    {
+        HideHelpOverlay();
+    }
+
+    private void HelpCard_Click(object sender, MouseButtonEventArgs e)
+    {
+        e.Handled = true; // Prevent click-through to overlay background
+    }
+
+    private void HelpClose_Click(object sender, MouseButtonEventArgs e)
+    {
+        HideHelpOverlay();
+    }
+}

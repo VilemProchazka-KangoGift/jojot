@@ -7,9 +7,13 @@ namespace JoJot.Services;
 /// The two tiers form a seamless logical sequence for undo/redo traversal.
 /// State is in-memory only and is discarded when the window closes.
 /// </summary>
-public class UndoStack
+/// <param name="tabId">The <c>NoteTab.Id</c> this stack belongs to.</param>
+public class UndoStack(long tabId)
 {
+    /// <summary>Maximum number of tier-1 (fine-grained) snapshots.</summary>
     public const int MaxTier1 = 50;
+
+    /// <summary>Maximum number of tier-2 (coarse checkpoint) entries.</summary>
     public const int MaxTier2 = 20;
 
     private readonly List<string> _tier1 = []; // Fine-grained snapshots
@@ -18,15 +22,10 @@ public class UndoStack
     private DateTime _lastCheckpointTime = DateTime.MinValue;
 
     /// <summary>The <c>NoteTab.Id</c> this stack belongs to.</summary>
-    public long TabId { get; }
+    public long TabId { get; } = tabId;
 
     /// <summary>Updated on any push, undo, or redo. Used by <see cref="UndoManager"/> for LRU collapse.</summary>
     public DateTime LastAccessTime { get; set; } = DateTime.Now;
-
-    public UndoStack(long tabId)
-    {
-        TabId = tabId;
-    }
 
     /// <summary>Total entries across both tiers.</summary>
     private int TotalCount => _tier2.Count + _tier1.Count;
@@ -48,6 +47,7 @@ public class UndoStack
     /// Initializes the stack with the content loaded from the database.
     /// This becomes the baseline state that Ctrl+Z can always restore to.
     /// </summary>
+    /// <param name="content">The initial content from the database.</param>
     public void PushInitialContent(string content)
     {
         _tier1.Clear();
@@ -62,6 +62,7 @@ public class UndoStack
     /// Pushes a snapshot on every debounced autosave when content differs from the current state.
     /// Typing after undo destroys the redo future (linear stack model).
     /// </summary>
+    /// <param name="content">The content snapshot to push.</param>
     public void PushSnapshot(string content)
     {
         if (TotalCount == 0)
@@ -73,7 +74,10 @@ public class UndoStack
         }
 
         string? current = GetContentAtIndex(_currentIndex);
-        if (current != null && current == content) return;
+        if (current is not null && current == content)
+        {
+            return;
+        }
 
         // Destroy redo future
         TruncateAfterCurrent();
@@ -93,16 +97,23 @@ public class UndoStack
     /// Adds a coarse checkpoint to tier-2 if content differs from the last checkpoint.
     /// Called by the 5-minute checkpoint timer.
     /// </summary>
+    /// <param name="content">The content to checkpoint.</param>
     public void PushCheckpoint(string content)
     {
-        if (_tier2.Count > 0 && _tier2[^1] == content) return;
+        if (_tier2.Count > 0 && _tier2[^1] == content)
+        {
+            return;
+        }
 
         _tier2.Add(content);
 
         if (_tier2.Count > MaxTier2)
         {
             _tier2.RemoveAt(0);
-            if (_currentIndex > 0) _currentIndex--;
+            if (_currentIndex > 0)
+            {
+                _currentIndex--;
+            }
         }
 
         _lastCheckpointTime = DateTime.Now;
@@ -115,7 +126,11 @@ public class UndoStack
     /// </summary>
     public string? Undo()
     {
-        if (!CanUndo) return null;
+        if (!CanUndo)
+        {
+            return null;
+        }
+
         _currentIndex--;
         LastAccessTime = DateTime.Now;
         return GetContentAtIndex(_currentIndex);
@@ -127,7 +142,11 @@ public class UndoStack
     /// </summary>
     public string? Redo()
     {
-        if (!CanRedo) return null;
+        if (!CanRedo)
+        {
+            return null;
+        }
+
         _currentIndex++;
         LastAccessTime = DateTime.Now;
         return GetContentAtIndex(_currentIndex);
@@ -136,10 +155,7 @@ public class UndoStack
     /// <summary>
     /// Returns <c>true</c> if more than 5 minutes have elapsed since the last checkpoint.
     /// </summary>
-    public bool ShouldCreateCheckpoint()
-    {
-        return (DateTime.Now - _lastCheckpointTime).TotalMinutes >= 5;
-    }
+    public bool ShouldCreateCheckpoint() => (DateTime.Now - _lastCheckpointTime).TotalMinutes >= 5;
 
     /// <summary>
     /// Collapses tier-1 into tier-2 by sampling every 5th entry.
@@ -147,7 +163,10 @@ public class UndoStack
     /// </summary>
     public void CollapseTier1IntoTier2()
     {
-        if (_tier1.Count == 0) return;
+        if (_tier1.Count == 0)
+        {
+            return;
+        }
 
         for (int i = 0; i < _tier1.Count; i += 5)
         {
@@ -164,15 +183,22 @@ public class UndoStack
     /// <summary>
     /// Evicts the oldest tier-2 entries. Called during extreme memory pressure.
     /// </summary>
+    /// <param name="count">Maximum number of entries to evict.</param>
     public void EvictOldestTier2(int count)
     {
         int toRemove = Math.Min(count, _tier2.Count);
-        if (toRemove <= 0) return;
+        if (toRemove <= 0)
+        {
+            return;
+        }
 
         _tier2.RemoveRange(0, toRemove);
         _currentIndex = Math.Max(0, _currentIndex - toRemove);
 
-        if (TotalCount == 0) _currentIndex = -1;
+        if (TotalCount == 0)
+        {
+            _currentIndex = -1;
+        }
     }
 
     /// <summary>
@@ -182,10 +208,15 @@ public class UndoStack
     /// </summary>
     private string? GetContentAtIndex(int index)
     {
-        if (index < 0 || index >= TotalCount) return null;
+        if (index < 0 || index >= TotalCount)
+        {
+            return null;
+        }
 
         if (index < _tier2.Count)
+        {
             return _tier2[index];
+        }
 
         return _tier1[index - _tier2.Count];
     }
@@ -197,7 +228,10 @@ public class UndoStack
     private void TruncateAfterCurrent()
     {
         int totalAfterCurrent = TotalCount - 1 - _currentIndex;
-        if (totalAfterCurrent <= 0) return;
+        if (totalAfterCurrent <= 0)
+        {
+            return;
+        }
 
         int tier1Start = _tier2.Count;
 

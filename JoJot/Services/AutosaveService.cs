@@ -18,6 +18,9 @@ public class AutosaveService
     private Func<(long TabId, string Content)>? _contentProvider;
     private Action<long>? _onSaveCompleted;
 
+    /// <summary>
+    /// Initializes a new instance of <see cref="AutosaveService"/> with a 500 ms debounce timer.
+    /// </summary>
     public AutosaveService()
     {
         _timer = new DispatcherTimer
@@ -80,10 +83,16 @@ public class AutosaveService
     {
         _timer.Stop();
 
-        if (!_isDirty || _contentProvider == null) return;
+        if (!_isDirty || _contentProvider is null)
+        {
+            return;
+        }
 
         var (tabId, content) = _contentProvider();
-        if (tabId <= 0) return;
+        if (tabId <= 0)
+        {
+            return;
+        }
 
         try
         {
@@ -117,10 +126,16 @@ public class AutosaveService
     {
         _timer.Stop(); // Single-shot: don't fire again until next NotifyTextChanged
 
-        if (!_isDirty || _contentProvider == null) return;
+        if (!_isDirty || _contentProvider is null)
+        {
+            return;
+        }
 
         var (tabId, content) = _contentProvider();
-        if (tabId <= 0) return;
+        if (tabId <= 0)
+        {
+            return;
+        }
 
         try
         {
