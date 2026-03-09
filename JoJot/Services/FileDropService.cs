@@ -84,7 +84,7 @@ public static class FileDropService
 
             // Content inspection: read first 8 KB for binary check
             var buffer = new byte[Math.Min(InspectionBufferSize, (int)fileInfo.Length)];
-            using (var fs = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read))
+            await using (var fs = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read))
             {
                 int bytesRead = await fs.ReadAsync(buffer.AsMemory(), cancellationToken).ConfigureAwait(false);
                 if (IsBinaryContent(buffer, bytesRead))

@@ -115,13 +115,13 @@ public static class IpcService
         {
             try
             {
-                using var client = new NamedPipeClientStream(".", PipeName, PipeDirection.Out, PipeOptions.None);
+                await using var client = new NamedPipeClientStream(".", PipeName, PipeDirection.Out, PipeOptions.None);
 
                 await Task.Run(() => client.Connect(timeoutMs), cancellationToken).ConfigureAwait(false);
 
                 var json = JsonSerializer.Serialize(message, IpcMessageContext.Default.IpcMessage);
 
-                using var writer = new StreamWriter(client, leaveOpen: false) { AutoFlush = true };
+                await using var writer = new StreamWriter(client, leaveOpen: false) { AutoFlush = true };
                 await writer.WriteLineAsync(json.AsMemory(), cancellationToken).ConfigureAwait(false);
 
                 LogService.Info("IpcService: sent command {Command} to first instance", json);

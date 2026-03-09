@@ -16,7 +16,7 @@ public static class SessionStore
         await DatabaseCore.AcquireWriteLockAsync(ct).ConfigureAwait(false);
         try
         {
-            using var context = DatabaseCore.CreateContext();
+            await using var context = DatabaseCore.CreateContext();
             return await context.AppStates
                 .Select(a => new { a.DesktopGuid, a.DesktopName, a.DesktopIndex })
                 .AsNoTracking()
@@ -43,7 +43,7 @@ public static class SessionStore
         await DatabaseCore.AcquireWriteLockAsync().ConfigureAwait(false);
         try
         {
-            using var context = DatabaseCore.CreateContext();
+            await using var context = DatabaseCore.CreateContext();
             await context.AppStates
                 .Where(a => a.DesktopGuid == oldGuid)
                 .ExecuteUpdateAsync(s => s
@@ -78,7 +78,7 @@ public static class SessionStore
         await DatabaseCore.AcquireWriteLockAsync().ConfigureAwait(false);
         try
         {
-            using var context = DatabaseCore.CreateContext();
+            await using var context = DatabaseCore.CreateContext();
             bool exists = await context.AppStates.AnyAsync(a => a.DesktopGuid == desktopGuid).ConfigureAwait(false);
             if (!exists)
             {
@@ -110,7 +110,7 @@ public static class SessionStore
         await DatabaseCore.AcquireWriteLockAsync().ConfigureAwait(false);
         try
         {
-            using var context = DatabaseCore.CreateContext();
+            await using var context = DatabaseCore.CreateContext();
             await context.AppStates
                 .Where(a => a.DesktopGuid == desktopGuid)
                 .ExecuteUpdateAsync(s => s
@@ -135,7 +135,7 @@ public static class SessionStore
         await DatabaseCore.AcquireWriteLockAsync(ct).ConfigureAwait(false);
         try
         {
-            using var context = DatabaseCore.CreateContext();
+            await using var context = DatabaseCore.CreateContext();
             return await context.AppStates
                 .AsNoTracking()
                 .Where(a => a.DesktopGuid == desktopGuid)
@@ -162,7 +162,7 @@ public static class SessionStore
         await DatabaseCore.AcquireWriteLockAsync().ConfigureAwait(false);
         try
         {
-            using var context = DatabaseCore.CreateContext();
+            await using var context = DatabaseCore.CreateContext();
 
             await context.AppStates
                 .Where(a => a.DesktopGuid == newGuid)
@@ -199,7 +199,7 @@ public static class SessionStore
         await DatabaseCore.AcquireWriteLockAsync(ct).ConfigureAwait(false);
         try
         {
-            using var context = DatabaseCore.CreateContext();
+            await using var context = DatabaseCore.CreateContext();
             var state = await context.AppStates
                 .AsNoTracking()
                 .Where(a => a.DesktopGuid == desktopGuid && a.WindowLeft != null)
@@ -234,7 +234,7 @@ public static class SessionStore
         await DatabaseCore.AcquireWriteLockAsync().ConfigureAwait(false);
         try
         {
-            using var context = DatabaseCore.CreateContext();
+            await using var context = DatabaseCore.CreateContext();
             await context.AppStates
                 .Where(a => a.DesktopGuid == desktopGuid)
                 .ExecuteUpdateAsync(s => s
@@ -269,7 +269,7 @@ public static class SessionStore
         await DatabaseCore.AcquireWriteLockAsync(ct).ConfigureAwait(false);
         try
         {
-            using var context = DatabaseCore.CreateContext();
+            await using var context = DatabaseCore.CreateContext();
             foreach (var guid in orphanGuids)
             {
                 var desktopName = await context.AppStates
@@ -311,7 +311,7 @@ public static class SessionStore
         await DatabaseCore.AcquireWriteLockAsync().ConfigureAwait(false);
         try
         {
-            using var context = DatabaseCore.CreateContext();
+            await using var context = DatabaseCore.CreateContext();
             await context.Notes
                 .Where(n => n.DesktopGuid == desktopGuid)
                 .ExecuteDeleteAsync().ConfigureAwait(false);

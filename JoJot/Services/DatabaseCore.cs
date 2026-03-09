@@ -95,7 +95,7 @@ public static class DatabaseCore
     /// </summary>
     public static async Task EnsureSchemaAsync()
     {
-        using var context = CreateContext();
+        await using var context = CreateContext();
         await context.Database.EnsureCreatedAsync().ConfigureAwait(false);
         LogService.Info("Schema ensured (all four tables).");
     }

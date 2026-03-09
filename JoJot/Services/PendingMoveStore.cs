@@ -16,7 +16,7 @@ public static class PendingMoveStore
         await DatabaseCore.AcquireWriteLockAsync().ConfigureAwait(false);
         try
         {
-            using var context = DatabaseCore.CreateContext();
+            await using var context = DatabaseCore.CreateContext();
             var move = new PendingMove(0, windowId, fromDesktop, toDesktop, DatabaseCore.Clock.UtcNow.ToString("yyyy-MM-dd HH:mm:ss"));
             context.PendingMoves.Add(move);
             await context.SaveChangesAsync().ConfigureAwait(false);
@@ -43,7 +43,7 @@ public static class PendingMoveStore
         await DatabaseCore.AcquireWriteLockAsync().ConfigureAwait(false);
         try
         {
-            using var context = DatabaseCore.CreateContext();
+            await using var context = DatabaseCore.CreateContext();
             int deleted = await context.PendingMoves
                 .Where(p => p.WindowId == windowId)
                 .ExecuteDeleteAsync().ConfigureAwait(false);
@@ -65,7 +65,7 @@ public static class PendingMoveStore
     /// </summary>
     public static async Task<List<PendingMove>> GetPendingMovesAsync(CancellationToken ct = default)
     {
-        using var context = DatabaseCore.CreateContext();
+        await using var context = DatabaseCore.CreateContext();
         return await context.PendingMoves
             .AsNoTracking()
             .ToListAsync(ct).ConfigureAwait(false);
@@ -79,7 +79,7 @@ public static class PendingMoveStore
         await DatabaseCore.AcquireWriteLockAsync().ConfigureAwait(false);
         try
         {
-            using var context = DatabaseCore.CreateContext();
+            await using var context = DatabaseCore.CreateContext();
             int deleted = await context.PendingMoves.ExecuteDeleteAsync().ConfigureAwait(false);
             LogService.Info("DeleteAllPendingMoves: rows={Deleted}", deleted);
         }

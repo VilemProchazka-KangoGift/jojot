@@ -15,7 +15,7 @@ public static class PreferenceStore
         await DatabaseCore.AcquireWriteLockAsync(ct).ConfigureAwait(false);
         try
         {
-            using var context = DatabaseCore.CreateContext();
+            await using var context = DatabaseCore.CreateContext();
             return await context.Preferences
                 .AsNoTracking()
                 .Where(p => p.Key == key)
@@ -41,7 +41,7 @@ public static class PreferenceStore
         await DatabaseCore.AcquireWriteLockAsync().ConfigureAwait(false);
         try
         {
-            using var context = DatabaseCore.CreateContext();
+            await using var context = DatabaseCore.CreateContext();
             await context.Database.ExecuteSqlRawAsync(
                 "INSERT INTO preferences (key, value) VALUES ({0}, {1}) ON CONFLICT(key) DO UPDATE SET value = {1}",
                 key, value).ConfigureAwait(false);

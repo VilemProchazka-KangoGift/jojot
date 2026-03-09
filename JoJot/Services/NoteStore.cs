@@ -16,7 +16,7 @@ public static class NoteStore
         await DatabaseCore.AcquireWriteLockAsync(ct).ConfigureAwait(false);
         try
         {
-            using var context = DatabaseCore.CreateContext();
+            await using var context = DatabaseCore.CreateContext();
             return await context.Notes
                 .AsNoTracking()
                 .Where(n => n.DesktopGuid == desktopGuid)
@@ -43,7 +43,7 @@ public static class NoteStore
         await DatabaseCore.AcquireWriteLockAsync().ConfigureAwait(false);
         try
         {
-            using var context = DatabaseCore.CreateContext();
+            await using var context = DatabaseCore.CreateContext();
             var now = DatabaseCore.Clock.UtcNow;
             var note = new NoteTab
             {
@@ -78,7 +78,7 @@ public static class NoteStore
         await DatabaseCore.AcquireWriteLockAsync().ConfigureAwait(false);
         try
         {
-            using var context = DatabaseCore.CreateContext();
+            await using var context = DatabaseCore.CreateContext();
             var now = DatabaseCore.Clock.UtcNow;
             await context.Notes
                 .Where(n => n.Id == noteId)
@@ -105,7 +105,7 @@ public static class NoteStore
         await DatabaseCore.AcquireWriteLockAsync().ConfigureAwait(false);
         try
         {
-            using var context = DatabaseCore.CreateContext();
+            await using var context = DatabaseCore.CreateContext();
             var now = DatabaseCore.Clock.UtcNow;
             await context.Notes
                 .Where(n => n.Id == noteId)
@@ -132,7 +132,7 @@ public static class NoteStore
         await DatabaseCore.AcquireWriteLockAsync().ConfigureAwait(false);
         try
         {
-            using var context = DatabaseCore.CreateContext();
+            await using var context = DatabaseCore.CreateContext();
             var now = DatabaseCore.Clock.UtcNow;
             await context.Notes
                 .Where(n => n.Id == noteId)
@@ -159,7 +159,7 @@ public static class NoteStore
         await DatabaseCore.AcquireWriteLockAsync().ConfigureAwait(false);
         try
         {
-            using var context = DatabaseCore.CreateContext();
+            await using var context = DatabaseCore.CreateContext();
             foreach (var (id, sortOrder) in updates)
             {
                 await context.Notes
@@ -187,7 +187,7 @@ public static class NoteStore
         await DatabaseCore.AcquireWriteLockAsync().ConfigureAwait(false);
         try
         {
-            using var context = DatabaseCore.CreateContext();
+            await using var context = DatabaseCore.CreateContext();
             await context.Notes
                 .Where(n => n.Id == noteId)
                 .ExecuteDeleteAsync().ConfigureAwait(false);
@@ -212,7 +212,7 @@ public static class NoteStore
         await DatabaseCore.AcquireWriteLockAsync().ConfigureAwait(false);
         try
         {
-            using var context = DatabaseCore.CreateContext();
+            await using var context = DatabaseCore.CreateContext();
             int deleted = await context.Notes
                 .Where(n => n.DesktopGuid == desktopGuid
                     && (n.Content == null || n.Content.Trim() == "")
@@ -241,7 +241,7 @@ public static class NoteStore
         await DatabaseCore.AcquireWriteLockAsync(ct).ConfigureAwait(false);
         try
         {
-            using var context = DatabaseCore.CreateContext();
+            await using var context = DatabaseCore.CreateContext();
             var maxOrder = await context.Notes
                 .Where(n => n.DesktopGuid == desktopGuid)
                 .Select(n => (int?)n.SortOrder)
@@ -267,7 +267,7 @@ public static class NoteStore
         await DatabaseCore.AcquireWriteLockAsync(ct).ConfigureAwait(false);
         try
         {
-            using var context = DatabaseCore.CreateContext();
+            await using var context = DatabaseCore.CreateContext();
             var names = await context.Database
                 .SqlQueryRaw<string>(
                     "SELECT COALESCE(NULLIF(name, ''), SUBSTR(content, 1, 30)) AS [Value] FROM notes WHERE desktop_guid = {0} ORDER BY sort_order ASC LIMIT {1}",
@@ -295,7 +295,7 @@ public static class NoteStore
         await DatabaseCore.AcquireWriteLockAsync(ct).ConfigureAwait(false);
         try
         {
-            using var context = DatabaseCore.CreateContext();
+            await using var context = DatabaseCore.CreateContext();
             var previews = await context.Notes
                 .AsNoTracking()
                 .Where(n => n.DesktopGuid == desktopGuid)
@@ -330,7 +330,7 @@ public static class NoteStore
         await DatabaseCore.AcquireWriteLockAsync(ct).ConfigureAwait(false);
         try
         {
-            using var context = DatabaseCore.CreateContext();
+            await using var context = DatabaseCore.CreateContext();
             return await context.Notes.CountAsync(n => n.DesktopGuid == desktopGuid, ct).ConfigureAwait(false);
         }
         catch (Exception ex)
@@ -352,7 +352,7 @@ public static class NoteStore
         await DatabaseCore.AcquireWriteLockAsync().ConfigureAwait(false);
         try
         {
-            using var context = DatabaseCore.CreateContext();
+            await using var context = DatabaseCore.CreateContext();
             int affected = await context.Notes
                 .Where(n => n.DesktopGuid == fromGuid)
                 .ExecuteUpdateAsync(s => s
@@ -379,7 +379,7 @@ public static class NoteStore
         await DatabaseCore.AcquireWriteLockAsync().ConfigureAwait(false);
         try
         {
-            using var context = DatabaseCore.CreateContext();
+            await using var context = DatabaseCore.CreateContext();
             var maxSortOrder = await context.Notes
                 .Where(n => n.DesktopGuid == targetGuid)
                 .Select(n => (int?)n.SortOrder)
@@ -420,7 +420,7 @@ public static class NoteStore
         await DatabaseCore.AcquireWriteLockAsync().ConfigureAwait(false);
         try
         {
-            using var context = DatabaseCore.CreateContext();
+            await using var context = DatabaseCore.CreateContext();
             var maxSortOrder = await context.Notes
                 .Where(n => n.DesktopGuid == targetGuid)
                 .Select(n => (int?)n.SortOrder)
