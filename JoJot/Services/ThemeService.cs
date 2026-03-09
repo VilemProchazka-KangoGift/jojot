@@ -29,6 +29,27 @@ public static class ThemeService
     public static AppTheme CurrentSetting => _currentSetting;
 
     /// <summary>
+    /// Parses a stored preference string into an AppTheme enum.
+    /// Returns System for null, empty, or unrecognized values.
+    /// </summary>
+    internal static AppTheme ParseThemePreference(string? saved) => saved switch
+    {
+        "light" => AppTheme.Light,
+        "dark" => AppTheme.Dark,
+        _ => AppTheme.System
+    };
+
+    /// <summary>
+    /// Converts an AppTheme enum to its preference string for storage.
+    /// </summary>
+    internal static string ThemeToPreferenceString(AppTheme theme) => theme switch
+    {
+        AppTheme.Light => "light",
+        AppTheme.Dark => "dark",
+        _ => "system"
+    };
+
+    /// <summary>
     /// Initializes the theme system. Called once during app startup after the database
     /// is open and schema is ensured. Reads the persisted theme preference, applies the
     /// initial theme, and wires the system theme change listener for auto-follow.
@@ -36,12 +57,7 @@ public static class ThemeService
     public static async Task InitializeAsync()
     {
         var saved = await PreferenceStore.GetPreferenceAsync("theme").ConfigureAwait(false);
-        _currentSetting = saved switch
-        {
-            "light" => AppTheme.Light,
-            "dark" => AppTheme.Dark,
-            _ => AppTheme.System
-        };
+        _currentSetting = ParseThemePreference(saved);
 
         // Must apply theme on the UI thread
         ApplyTheme(_currentSetting);
@@ -82,13 +98,7 @@ public static class ThemeService
     public static async Task SetThemeAsync(AppTheme theme)
     {
         ApplyTheme(theme);
-        var value = theme switch
-        {
-            AppTheme.Light => "light",
-            AppTheme.Dark => "dark",
-            _ => "system"
-        };
-        await PreferenceStore.SetPreferenceAsync("theme", value).ConfigureAwait(false);
+        await PreferenceStore.SetPreferenceAsync("theme", ThemeToPreferenceString(theme)).ConfigureAwait(false);
     }
 
     /// <summary>

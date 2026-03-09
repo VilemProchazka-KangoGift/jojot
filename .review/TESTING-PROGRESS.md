@@ -16,7 +16,7 @@
 | # | Item | Est. Lines | Est. Tests | Status | Session |
 |---|------|-----------|-----------|--------|---------|
 | T1.1 | PreviewKeyDown → KeyAction router | ~100 | ~40 | [ ] | |
-| T1.2 | Find engine (FindAllMatches, CycleIndex) | ~30 | ~15 | [ ] | |
+| T1.2 | Find engine (FindAllMatches, CycleIndex) | ~30 | 23 | [x] | 6 |
 | T1.3 | Tab deletion orchestration / state machine | ~35 | ~12 | [ ] | |
 | T1.4 | Font size parse & clamp | ~10 | 17 | [x] | 5 |
 | T1.5 | Toast content formatting | ~8 | ~5 | [ ] | |
@@ -27,12 +27,12 @@
 | # | Item | Est. Lines | Est. Tests | Status | Session |
 |---|------|-----------|-----------|--------|---------|
 | T2.1 | ComGuids.Resolve (build→GuidSet) | ~13 | 14 | [x] | 1 |
-| T2.2 | ThemeService (preference ↔ enum) | ~12 | ~8 | [ ] | |
+| T2.2 | ThemeService (preference ↔ enum) | ~12 | 13 | [x] | 6 |
 | T2.3 | HotkeyService FormatHotkey catch path | ~4 | 0 | [-] | 1 |
 | T2.4 | DatabaseCore corruption & integrity | ~30 | 8 | [x] | 2 |
 | T2.5 | LogService template overloads | ~15 | 0 | [-] | 1 |
 | T2.6 | IpcService (mutex, stop server) | ~10 | ~4 | [ ] | |
-| T2.7 | Store async cancellation paths (38 methods) | ~100 | ~20 | [ ] | |
+| T2.7 | Store async cancellation paths (38 methods) | ~100 | 7 | [x] | 6 |
 | T2.8 | StartupService.EscapeSql | ~1 | 6 | [x] | 1 |
 | T2.9 | FileDropService edge cases | ~8 | 21 | [x] | 1 |
 | T2.10 | WindowPlacementHelper (zero-hwnd, neg coords) | ~5 | ~5 | [ ] | |
@@ -42,7 +42,7 @@
 | # | Item | Est. Lines | Est. Tests | Status | Session |
 |---|------|-----------|-----------|--------|---------|
 | T3.1 | VirtualDesktopService.MatchSessionsAsync | ~80 | ~20 | [ ] | |
-| T3.2 | App.xaml.cs extractable logic | ~20 | ~12 | [ ] | |
+| T3.2 | App.xaml.cs extractable logic | ~20 | 16 | [x] | 6 |
 | T3.3 | PreferencesPanel.FontSizeToPercent | ~1 | 6 | [x] | 1 |
 
 ## Tier 5: Edge Case & Boundary Tests (on 100%-covered code)
@@ -128,3 +128,4 @@
 | 3 | 2026-03-09 | T5.1 | 29 | 908 | ~30% |
 | 4 | 2026-03-09 | T5.2 | 21 | 929 | ~30% |
 | 5 | 2026-03-09 | T5.4, T1.4 | 41 | 970 | ~31% |
+| 6 | 2026-03-09 | T1.2, T2.2, T2.7, T3.2 | 59 | 1029 | ~32% |

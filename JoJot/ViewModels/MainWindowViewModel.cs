@@ -300,6 +300,49 @@ public class MainWindowViewModel : ObservableObject
         return true;
     }
 
+    // ─── Find Engine ────────────────────────────────────────────────
+
+    /// <summary>
+    /// Finds all case-insensitive occurrences of <paramref name="query"/> in <paramref name="content"/>.
+    /// Returns a list of starting indices. Non-overlapping matches only.
+    /// </summary>
+    internal static List<int> FindAllMatches(string content, string query)
+    {
+        var matches = new List<int>();
+        if (string.IsNullOrEmpty(query) || string.IsNullOrEmpty(content))
+            return matches;
+
+        int index = 0;
+        while ((index = content.IndexOf(query, index, StringComparison.OrdinalIgnoreCase)) != -1)
+        {
+            matches.Add(index);
+            index += query.Length;
+        }
+        return matches;
+    }
+
+    /// <summary>
+    /// Cycles a match index forward or backward with wrapping.
+    /// Returns -1 if total is 0.
+    /// </summary>
+    internal static int CycleIndex(int current, int total, bool forward)
+    {
+        if (total == 0) return -1;
+        return forward
+            ? (current + 1) % total
+            : (current - 1 + total) % total;
+    }
+
+    /// <summary>
+    /// Formats the find bar count text (e.g. "1/5" or "No matches").
+    /// </summary>
+    internal static string FormatFindCountText(int currentIndex, int totalMatches)
+    {
+        return totalMatches > 0
+            ? $"{currentIndex + 1}/{totalMatches}"
+            : "No matches";
+    }
+
     // ─── Font Size ──────────────────────────────────────────────────
 
     internal const int FontSizeMin = 8;

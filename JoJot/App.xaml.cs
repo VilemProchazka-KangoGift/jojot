@@ -121,10 +121,11 @@ public partial class App : Application
 
             // Restore log level from preferences
             var savedLogLevel = await PreferenceStore.GetPreferenceAsync("log_level").ConfigureAwait(false);
-            if (savedLogLevel is not null && Enum.TryParse<LogEventLevel>(savedLogLevel, true, out var level))
+            var parsedLevel = ParseLogLevel(savedLogLevel);
+            if (parsedLevel is not null)
             {
-                LogService.SetMinimumLevel(level);
-                LogService.Info("Log level restored from preferences: {LogLevel}", level);
+                LogService.SetMinimumLevel(parsedLevel.Value);
+                LogService.Info("Log level restored from preferences: {LogLevel}", parsedLevel.Value);
             }
 
             // Initialize theme
@@ -202,21 +203,16 @@ public partial class App : Application
                 {
                     try
                     {
-                        // Cooldown: suppress redirects for a few seconds after the last one
-                        if (DateTime.UtcNow < _redirectCooldownUntil)
+                        if (!ShouldRedirect(DateTime.UtcNow, _redirectCooldownUntil,
+                            _windows.ContainsKey(oldGuid), _windows.ContainsKey(newGuid)))
                         {
                             return;
                         }
 
-                        // Only redirect when switching TO a desktop with a JoJot window
-                        // FROM a desktop without one (taskbar click pattern)
-                        if (!_windows.ContainsKey(oldGuid) && _windows.ContainsKey(newGuid))
-                        {
-                            LogService.Info("Redirect: creating window on {DesktopGuid} and switching back", oldGuid);
-                            _redirectCooldownUntil = DateTime.UtcNow.AddSeconds(3);
-                            await CreateWindowForDesktop(oldGuid);
-                            VirtualDesktopService.TrySwitchToDesktop(oldGuid);
-                        }
+                        LogService.Info("Redirect: creating window on {DesktopGuid} and switching back", oldGuid);
+                        _redirectCooldownUntil = DateTime.UtcNow.AddSeconds(3);
+                        await CreateWindowForDesktop(oldGuid);
+                        VirtualDesktopService.TrySwitchToDesktop(oldGuid);
                     }
                     catch (Exception ex)
                     {
@@ -409,6 +405,40 @@ public partial class App : Application
     /// </summary>
     public List<MainWindow> GetAllWindows() => [.. _windows.Values];
 
+    // ─── Extracted Pure Logic ────────────────────────────────────────────────
+
+    /// <summary>
+    /// Parses a stored log level preference string into a LogEventLevel.
+    /// Returns null if the value is null or not a valid enum member.
+    /// Case-insensitive.
+    /// </summary>
+    internal static LogEventLevel? ParseLogLevel(string? saved)
+    {
+        if (saved is not null && Enum.TryParse<LogEventLevel>(saved, true, out var level))
+            return level;
+        return null;
+    }
+
+    /// <summary>
+    /// Determines whether a desktop-switch redirect should occur.
+    /// Redirect fires only when switching FROM a desktop without a JoJot window
+    /// TO a desktop with one, and the cooldown has expired.
+    /// </summary>
+    internal static bool ShouldRedirect(DateTime now, DateTime cooldownUntil, bool hasOldWindow, bool hasNewWindow)
+    {
+        if (now < cooldownUntil) return false;
+        return !hasOldWindow && hasNewWindow;
+    }
+
+    /// <summary>
+    /// Determines whether a pending move should be recovered (migrated).
+    /// A move is recoverable if toDesktop is non-null and differs from fromDesktop (case-insensitive).
+    /// </summary>
+    internal static bool ShouldRecoverMove(string? toDesktop, string fromDesktop)
+    {
+        return toDesktop is not null && !fromDesktop.Equals(toDesktop, StringComparison.OrdinalIgnoreCase);
+    }
+
     /// <summary>
     /// Opens a new window for an orphaned session GUID.
     /// The orphan already has a desktop_guid — we open a window bound to it.
@@ -494,11 +524,11 @@ public partial class App : Application
         foreach (var move in moves)
         {
             LogService.Info("Recovering pending move: window={WindowId}, from={FromDesktop}, to={ToDesktop}", move.WindowId, move.FromDesktop, move.ToDesktop);
-            if (move.ToDesktop is not null && !move.FromDesktop.Equals(move.ToDesktop, StringComparison.OrdinalIgnoreCase))
+            if (ShouldRecoverMove(move.ToDesktop, move.FromDesktop))
             {
                 try
                 {
-                    await NoteStore.MigrateTabsPreservePinsAsync(move.ToDesktop, move.FromDesktop);
+                    await NoteStore.MigrateTabsPreservePinsAsync(move.ToDesktop!, move.FromDesktop);
                     recovered = true;
                 }
                 catch (Exception ex)

@@ -64,23 +64,16 @@ public partial class MainWindow
     private void EditorFindInput_TextChanged(object sender, TextChangedEventArgs e)
     {
         string query = EditorFindInput.Text;
-        _findMatches.Clear();
         _currentFindIndex = -1;
 
         if (string.IsNullOrEmpty(query) || _activeTab is null)
         {
+            _findMatches.Clear();
             EditorFindCount.Text = "";
             return;
         }
 
-        // Case-insensitive search within current note
-        string content = ContentEditor.Text;
-        int index = 0;
-        while ((index = content.IndexOf(query, index, StringComparison.OrdinalIgnoreCase)) != -1)
-        {
-            _findMatches.Add(index);
-            index += query.Length;
-        }
+        _findMatches = ViewModels.MainWindowViewModel.FindAllMatches(ContentEditor.Text, query);
 
         if (_findMatches.Count > 0)
         {
@@ -88,9 +81,7 @@ public partial class MainWindow
             HighlightFindMatch();
         }
 
-        EditorFindCount.Text = _findMatches.Count > 0
-            ? $"{_currentFindIndex + 1}/{_findMatches.Count}"
-            : "No matches";
+        EditorFindCount.Text = ViewModels.MainWindowViewModel.FormatFindCountText(_currentFindIndex, _findMatches.Count);
     }
 
     private void HighlightFindMatch()
@@ -102,20 +93,20 @@ public partial class MainWindow
         var lineIndex = ContentEditor.GetLineIndexFromCharacterIndex(pos);
         if (lineIndex >= 0) ContentEditor.ScrollToLine(lineIndex);
 
-        EditorFindCount.Text = $"{_currentFindIndex + 1}/{_findMatches.Count}";
+        EditorFindCount.Text = ViewModels.MainWindowViewModel.FormatFindCountText(_currentFindIndex, _findMatches.Count);
     }
 
     private void EditorFindNext_Click(object sender, MouseButtonEventArgs e)
     {
         if (_findMatches.Count == 0) return;
-        _currentFindIndex = (_currentFindIndex + 1) % _findMatches.Count;
+        _currentFindIndex = ViewModels.MainWindowViewModel.CycleIndex(_currentFindIndex, _findMatches.Count, forward: true);
         HighlightFindMatch();
     }
 
     private void EditorFindPrevious_Click(object sender, MouseButtonEventArgs e)
     {
         if (_findMatches.Count == 0) return;
-        _currentFindIndex = (_currentFindIndex - 1 + _findMatches.Count) % _findMatches.Count;
+        _currentFindIndex = ViewModels.MainWindowViewModel.CycleIndex(_currentFindIndex, _findMatches.Count, forward: false);
         HighlightFindMatch();
     }
 
@@ -130,21 +121,11 @@ public partial class MainWindow
         }
         else if (e.Key == Key.Enter)
         {
-            if (Keyboard.Modifiers == ModifierKeys.Shift)
+            if (_findMatches.Count > 0)
             {
-                if (_findMatches.Count > 0)
-                {
-                    _currentFindIndex = (_currentFindIndex - 1 + _findMatches.Count) % _findMatches.Count;
-                    HighlightFindMatch();
-                }
-            }
-            else
-            {
-                if (_findMatches.Count > 0)
-                {
-                    _currentFindIndex = (_currentFindIndex + 1) % _findMatches.Count;
-                    HighlightFindMatch();
-                }
+                bool forward = Keyboard.Modifiers != ModifierKeys.Shift;
+                _currentFindIndex = ViewModels.MainWindowViewModel.CycleIndex(_currentFindIndex, _findMatches.Count, forward);
+                HighlightFindMatch();
             }
             e.Handled = true;
         }
