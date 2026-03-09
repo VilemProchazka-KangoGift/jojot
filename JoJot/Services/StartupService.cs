@@ -58,5 +58,5 @@ public static class StartupService
     /// Prefer parameterized queries in future callers — this helper is only
     /// used here for the one-time welcome content insertion.
     /// </summary>
-    private static string EscapeSql(string value) => value.Replace("'", "''");
+    internal static string EscapeSql(string value) => value.Replace("'", "''");
 }
