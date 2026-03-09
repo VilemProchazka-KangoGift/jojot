@@ -18,7 +18,7 @@
 | T1.1 | PreviewKeyDown → KeyAction router | ~100 | ~40 | [ ] | |
 | T1.2 | Find engine (FindAllMatches, CycleIndex) | ~30 | ~15 | [ ] | |
 | T1.3 | Tab deletion orchestration / state machine | ~35 | ~12 | [ ] | |
-| T1.4 | Font size parse & clamp | ~10 | ~8 | [ ] | |
+| T1.4 | Font size parse & clamp | ~10 | 17 | [x] | 5 |
 | T1.5 | Toast content formatting | ~8 | ~5 | [ ] | |
 | T1.6 | Context menu pin state | ~5 | ~2 | [ ] | |
 
@@ -52,7 +52,7 @@
 | T5.1 | NoteTab boundaries (midnight, JustNow 59/60/61s, 31-char, whitespace, null Content, year boundary, AM/PM) | 29 | [x] | 3 |
 | T5.2 | ViewModel logical gaps (FilteredTabs empty, MoveTab 1-item, pin boundary, RemoveMultiple non-contiguous, RestoreTabs scattered, cleanup cutoff exact, null/negative SaveEditorState, SanitizeFilename Unicode/illegal, ReorderAfterPinToggle alternating) | 21 | [x] | 4 |
 | T5.3 | Store edge cases (preview truncation 59/60/61, migration pin order, MaxSortOrder gaps, GUID case, delete non-existent session, duplicate PendingMove, orphan ordering) | 22 | [x] | 2 |
-| T5.4 | UndoManager/Stack behavioral (two-phase collapse, SetActive+Remove, tabId=0, dedup empty, MaxTier1/2 exact, 5min boundary, emoji bytes, empty tier collapse, EvictOldest(0), 100+ cycle, tier-boundary undo, tier-boundary truncate) | ~20 | [ ] | |
+| T5.4 | UndoManager/Stack behavioral (two-phase collapse, SetActive+Remove, tabId=0, dedup empty, MaxTier1/2 exact, 5min boundary, emoji bytes, empty tier collapse, EvictOldest(0), 100+ cycle, tier-boundary undo, tier-boundary truncate) | 23 | [x] | 5 |
 | T5.5 | IPC & Model edge cases (unknown discriminator, case sensitivity, DesktopInfo record, AppState negative/zero, WindowGeometry negative, PendingMove same from/to) | 24 | [x] | 1 |
 | T5.6 | HotkeyService & FileDropService gaps (all modifier combos, invalid VK, ModifierKeys.None, byte boundaries 0x08/0x0E-0x1A/0x20, empty file, exact 8KB) | 15 | [x] | 1 |
 
@@ -127,3 +127,4 @@
 | 2 | 2026-03-09 | T2.4, T5.3 | 30 | 879 | ~30% |
 | 3 | 2026-03-09 | T5.1 | 29 | 908 | ~30% |
 | 4 | 2026-03-09 | T5.2 | 21 | 929 | ~30% |
+| 5 | 2026-03-09 | T5.4, T1.4 | 41 | 970 | ~31% |

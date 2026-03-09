@@ -300,6 +300,25 @@ public class MainWindowViewModel : ObservableObject
         return true;
     }
 
+    // ─── Font Size ──────────────────────────────────────────────────
+
+    internal const int FontSizeMin = 8;
+    internal const int FontSizeMax = 32;
+    internal const int FontSizeDefault = 13;
+
+    /// <summary>
+    /// Parses a stored font size preference string, clamping to [8, 32].
+    /// Returns 13 (default) if the value is null, empty, or non-numeric.
+    /// </summary>
+    internal static int ParseFontSize(string? saved) =>
+        int.TryParse(saved, out var fs) ? Math.Clamp(fs, FontSizeMin, FontSizeMax) : FontSizeDefault;
+
+    /// <summary>
+    /// Computes a new font size by applying a delta, clamped to [8, 32].
+    /// </summary>
+    internal static int ClampFontSize(int current, int delta) =>
+        Math.Clamp(current + delta, FontSizeMin, FontSizeMax);
+
     // ─── Editor State ──────────────────────────────────────────────
 
     private bool _isRestoringContent;

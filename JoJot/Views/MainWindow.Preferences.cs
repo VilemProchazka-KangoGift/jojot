@@ -11,7 +11,7 @@ public partial class MainWindow
     public async Task InitializePreferencesAsync()
     {
         var savedFontSize = await PreferenceStore.GetPreferenceAsync("font_size");
-        _currentFontSize = int.TryParse(savedFontSize, out var fs) ? Math.Clamp(fs, 8, 32) : 13;
+        _currentFontSize = ViewModels.MainWindowViewModel.ParseFontSize(savedFontSize);
         ContentEditor.FontSize = _currentFontSize;
         PreferencesPanel.RefreshValues(_currentFontSize, ThemeService.CurrentSetting, HotkeyService.GetHotkeyDisplayString());
     }
@@ -47,7 +47,7 @@ public partial class MainWindow
 
     private async Task ChangeFontSizeAsync(int delta)
     {
-        int newSize = Math.Clamp(_currentFontSize + delta, 8, 32);
+        int newSize = ViewModels.MainWindowViewModel.ClampFontSize(_currentFontSize, delta);
         await SetFontSizeAsync(newSize);
     }
 
