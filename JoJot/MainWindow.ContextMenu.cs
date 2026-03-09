@@ -137,7 +137,7 @@ public partial class MainWindow
 
         // Separator
         var sep = new Separator { Margin = new Thickness(4, 2, 4, 2) };
-        sep.SetResourceReference(Separator.BackgroundProperty, "c-border");
+        sep.SetResourceReference(BackgroundProperty, "c-border");
         stack.Children.Add(sep);
 
         // Delete

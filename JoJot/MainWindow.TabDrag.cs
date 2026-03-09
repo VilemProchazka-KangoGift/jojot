@@ -227,8 +227,8 @@ public partial class MainWindow
                                     Duration = TimeSpan.FromMilliseconds(200),
                                     EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
                                 };
-                                fadeIn.Completed += (_, _) => { content.Opacity = 1.0; content.BeginAnimation(UIElement.OpacityProperty, null); };
-                                content.BeginAnimation(UIElement.OpacityProperty, fadeIn);
+                                fadeIn.Completed += (_, _) => { content.Opacity = 1.0; content.BeginAnimation(OpacityProperty, null); };
+                                content.BeginAnimation(OpacityProperty, fadeIn);
                                 break;
                             }
                         }

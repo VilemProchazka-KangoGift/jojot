@@ -144,7 +144,7 @@ public static class WindowPlacementHelper
     /// <param name="geo">The geometry to validate and potentially correct.</param>
     public static WindowGeometry ClampToNearestScreen(WindowGeometry geo)
     {
-        var testRect = new System.Drawing.Rectangle(
+        var testRect = new Rectangle(
             (int)geo.Left, (int)geo.Top, 50, 50);
 
         bool visible = WinForms.Screen.AllScreens.Any(s =>

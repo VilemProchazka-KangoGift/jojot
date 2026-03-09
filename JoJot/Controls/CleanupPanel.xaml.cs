@@ -171,7 +171,7 @@ public partial class CleanupPanel : UserControl
             {
                 Margin = new Thickness(0, 2, 0, 0)
             };
-            divider.SetResourceReference(Separator.BackgroundProperty, "c-border");
+            divider.SetResourceReference(BackgroundProperty, "c-border");
             wrapper.Children.Add(divider);
             return wrapper;
         }

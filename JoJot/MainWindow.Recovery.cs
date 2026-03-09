@@ -223,17 +223,17 @@ public partial class MainWindow
                 Padding = new Thickness(8, 2, 8, 2),
                 BorderThickness = new Thickness(1)
             };
-            btn.SetResourceReference(Button.BorderBrushProperty, "c-border");
+            btn.SetResourceReference(BorderBrushProperty, "c-border");
             if (isDestructive)
             {
-                btn.Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0xe7, 0x4c, 0x3c));
+                btn.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(0xe7, 0x4c, 0x3c));
                 btn.Foreground = System.Windows.Media.Brushes.White;
                 btn.BorderThickness = new Thickness(0);
             }
             else
             {
                 btn.Background = System.Windows.Media.Brushes.Transparent;
-                btn.SetResourceReference(Button.ForegroundProperty, "c-text-primary");
+                btn.SetResourceReference(ForegroundProperty, "c-text-primary");
             }
             return btn;
         }

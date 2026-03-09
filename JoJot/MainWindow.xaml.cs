@@ -114,7 +114,7 @@ public partial class MainWindow : Window
         get => ViewModel.IsMisplaced;
         set => ViewModel.IsMisplaced = value;
     }
-    private System.Threading.CancellationTokenSource? _misplacedCheckCts; // debounce rapid desktop switches
+    private CancellationTokenSource? _misplacedCheckCts; // debounce rapid desktop switches
     private int _fileDragEnterCount;       // Enter/leave counter for reliable overlay dismiss
 
     // ─── Soft-delete / toast state ────────────────────────────────
@@ -380,7 +380,7 @@ public partial class MainWindow : Window
     private static void AnimateOpacity(UIElement element, double from, double to, int durationMs)
     {
         var anim = new DoubleAnimation(from, to, TimeSpan.FromMilliseconds(durationMs));
-        element.BeginAnimation(UIElement.OpacityProperty, anim);
+        element.BeginAnimation(OpacityProperty, anim);
     }
 
     /// <summary>

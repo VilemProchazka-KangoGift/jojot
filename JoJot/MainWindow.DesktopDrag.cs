@@ -58,7 +58,7 @@ public partial class MainWindow
         }
 
         // Determine if target desktop has an existing JoJot session
-        var app = System.Windows.Application.Current as App;
+        var app = Application.Current as App;
         bool targetHasSession = app?.HasWindowForDesktop(toGuid) ?? false;
 
         // Show source desktop name from live COM (not stale DB)
@@ -122,54 +122,54 @@ public partial class MainWindow
     {
         try
         {
-        if (_dragToDesktopGuid is null) return;
+            if (_dragToDesktopGuid is null) return;
 
-        string oldGuid = _desktopGuid;
-        string newGuid = _dragToDesktopGuid;
+            string oldGuid = _desktopGuid;
+            string newGuid = _dragToDesktopGuid;
 
-        // Re-check at click time: another window may have been created for the target
-        // desktop (via IPC) while the overlay was showing.
-        var app = System.Windows.Application.Current as App;
-        if (app?.HasWindowForDesktop(newGuid) == true)
-        {
-            // Refresh overlay with keep-here hidden and merge visible
-            DragOverlay.UpdateContent("Another window was opened on this desktop. You can merge or go back.",
-                showKeepHere: false, showMerge: true);
-            return;
-        }
+            // Re-check at click time: another window may have been created for the target
+            // desktop (via IPC) while the overlay was showing.
+            var app = Application.Current as App;
+            if (app?.HasWindowForDesktop(newGuid) == true)
+            {
+                // Refresh overlay with keep-here hidden and merge visible
+                DragOverlay.UpdateContent("Another window was opened on this desktop. You can merge or go back.",
+                    showKeepHere: false, showMerge: true);
+                return;
+            }
 
-        // Update notes in database to new desktop
-        await NoteStore.MigrateNotesDesktopGuidAsync(oldGuid, newGuid);
+            // Update notes in database to new desktop
+            await NoteStore.MigrateNotesDesktopGuidAsync(oldGuid, newGuid);
 
-        // Update this window's desktop GUID
-        _desktopGuid = newGuid;
+            // Update this window's desktop GUID
+            _desktopGuid = newGuid;
 
-        // Update window registry in App (reuse app from guard above)
-        app ??= System.Windows.Application.Current as App;
-        app?.ReparentWindow(oldGuid, newGuid);
+            // Update window registry in App (reuse app from guard above)
+            app ??= Application.Current as App;
+            app?.ReparentWindow(oldGuid, newGuid);
 
-        // Update window title to new desktop name (use fresh COM name, not stale _dragToDesktopName)
-        var desktops = VirtualDesktopService.GetAllDesktops();
-        var targetInfo = desktops.FirstOrDefault(d =>
-            d.Id.ToString().Equals(newGuid, StringComparison.OrdinalIgnoreCase));
-        string name = targetInfo?.Name ?? _dragToDesktopName ?? "";
-        UpdateDesktopTitle(name, targetInfo?.Index);
+            // Update window title to new desktop name (use fresh COM name, not stale _dragToDesktopName)
+            var desktops = VirtualDesktopService.GetAllDesktops();
+            var targetInfo = desktops.FirstOrDefault(d =>
+                d.Id.ToString().Equals(newGuid, StringComparison.OrdinalIgnoreCase));
+            string name = targetInfo?.Name ?? _dragToDesktopName ?? "";
+            UpdateDesktopTitle(name, targetInfo?.Index);
 
-        // Update app_state session with full metadata (guid + name + index)
-        string targetName = targetInfo?.Name ?? name;
-        int? targetIndex = targetInfo?.Index;
-        await SessionStore.UpdateSessionDesktopAsync(oldGuid, newGuid, targetName, targetIndex);
+            // Update app_state session with full metadata (guid + name + index)
+            string targetName = targetInfo?.Name ?? name;
+            int? targetIndex = targetInfo?.Index;
+            await SessionStore.UpdateSessionDesktopAsync(oldGuid, newGuid, targetName, targetIndex);
 
-        // Clear pending move
-        await PendingMoveStore.DeletePendingMoveAsync(oldGuid);
+            // Clear pending move
+            await PendingMoveStore.DeletePendingMoveAsync(oldGuid);
 
-        // Clear misplaced state
-        _isMisplaced = false;
+            // Clear misplaced state
+            _isMisplaced = false;
 
-        // Hide overlay with fade-out
-        await HideDragOverlayAsync();
+            // Hide overlay with fade-out
+            await HideDragOverlayAsync();
 
-        LogService.Info("Reparented window from {OldGuid} to {NewGuid}", oldGuid, newGuid);
+            LogService.Info("Reparented window from {OldGuid} to {NewGuid}", oldGuid, newGuid);
         }
         catch (Exception ex)
         {
@@ -184,36 +184,36 @@ public partial class MainWindow
     {
         try
         {
-        if (_dragToDesktopGuid is null || _dragFromDesktopGuid is null) return;
+            if (_dragToDesktopGuid is null || _dragFromDesktopGuid is null) return;
 
-        string sourceGuid = _desktopGuid;
-        string targetGuid = _dragToDesktopGuid;
+            string sourceGuid = _desktopGuid;
+            string targetGuid = _dragToDesktopGuid;
 
-        // Migrate tabs preserving pin state (unlike orphan recovery which unpins)
-        await NoteStore.MigrateTabsPreservePinsAsync(sourceGuid, targetGuid);
+            // Migrate tabs preserving pin state (unlike orphan recovery which unpins)
+            await NoteStore.MigrateTabsPreservePinsAsync(sourceGuid, targetGuid);
 
-        // Clear pending move
-        await PendingMoveStore.DeletePendingMoveAsync(sourceGuid);
+            // Clear pending move
+            await PendingMoveStore.DeletePendingMoveAsync(sourceGuid);
 
-        // Notify target window to reload tabs
-        var app = System.Windows.Application.Current as App;
-        app?.ReloadWindowTabs(targetGuid);
+            // Notify target window to reload tabs
+            var app = Application.Current as App;
+            app?.ReloadWindowTabs(targetGuid);
 
-        // Show toast on target window
-        int tabCount = _tabs.Count;
-        string fromName = Title.Replace("JoJot \u2014 ", "").Replace(" (misplaced)", "");
-        app?.ShowMergeToast(targetGuid, tabCount, fromName);
+            // Show toast on target window
+            int tabCount = _tabs.Count;
+            string fromName = Title.Replace("JoJot \u2014 ", "").Replace(" (misplaced)", "");
+            app?.ShowMergeToast(targetGuid, tabCount, fromName);
 
-        // Hide overlay and close this window
-        ViewModel.ResetDragState();
-        DragOverlay.HideImmediate();
+            // Hide overlay and close this window
+            ViewModel.ResetDragState();
+            DragOverlay.HideImmediate();
 
-        // Unsubscribe from events before closing
-        VirtualDesktopService.WindowMovedToDesktop -= OnWindowMovedToDesktop;
+            // Unsubscribe from events before closing
+            VirtualDesktopService.WindowMovedToDesktop -= OnWindowMovedToDesktop;
 
-        FlushAndClose();
+            FlushAndClose();
 
-        LogService.Info("Merged {TabCount} tabs from {SourceGuid} to {TargetGuid}", tabCount, sourceGuid, targetGuid);
+            LogService.Info("Merged {TabCount} tabs from {SourceGuid} to {TargetGuid}", tabCount, sourceGuid, targetGuid);
         }
         catch (Exception ex)
         {
@@ -286,7 +286,7 @@ public partial class MainWindow
 
         // Cancel any pending check — rapid desktop switches fire Activated multiple times
         _misplacedCheckCts?.Cancel();
-        var cts = new System.Threading.CancellationTokenSource();
+        var cts = new CancellationTokenSource();
         _misplacedCheckCts = cts;
 
         try
