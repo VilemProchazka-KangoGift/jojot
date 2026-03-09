@@ -1,3 +1,5 @@
+using JoJot.Services;
+
 namespace JoJot.Models;
 
 /// <summary>
@@ -106,12 +108,12 @@ public class NoteTab
     /// <summary>
     /// Relative date display for the created-at timestamp.
     /// </summary>
-    public string CreatedDisplay => FormatRelativeDate(CreatedAt);
+    public string CreatedDisplay => FormatRelativeDate(CreatedAt, null);
 
     /// <summary>
     /// Relative time display for the updated-at timestamp.
     /// </summary>
-    public string UpdatedDisplay => FormatRelativeTime(UpdatedAt);
+    public string UpdatedDisplay => FormatRelativeTime(UpdatedAt, null);
 
     /// <summary>
     /// Signals the UI to re-read display properties after Name or Content changes.
@@ -125,25 +127,28 @@ public class NoteTab
     /// Formats a <see cref="DateTime"/> as a relative date string for the created-at column.
     /// </summary>
     /// <param name="dt">The timestamp to format.</param>
+    /// <param name="clock">Optional clock for testability; defaults to system clock.</param>
     /// <returns>A human-friendly relative date string.</returns>
-    public static string FormatCreatedDisplay(DateTime dt) => FormatRelativeDate(dt);
+    public static string FormatCreatedDisplay(DateTime dt, IClock? clock = null) => FormatRelativeDate(dt, clock);
 
     /// <summary>
     /// Formats a <see cref="DateTime"/> as a relative time string for the updated-at column.
     /// </summary>
     /// <param name="dt">The timestamp to format.</param>
+    /// <param name="clock">Optional clock for testability; defaults to system clock.</param>
     /// <returns>A human-friendly relative time string.</returns>
-    public static string FormatUpdatedDisplay(DateTime dt) => FormatRelativeTime(dt);
+    public static string FormatUpdatedDisplay(DateTime dt, IClock? clock = null) => FormatRelativeTime(dt, clock);
 
     /// <summary>
     /// Formats a timestamp as a relative date: time-only for today, "Yesterday",
     /// month-day for same year, or full date for older entries.
     /// </summary>
     /// <param name="dt">The timestamp to format.</param>
+    /// <param name="clock">Optional clock for testability; defaults to system clock.</param>
     /// <returns>A context-appropriate date string.</returns>
-    private static string FormatRelativeDate(DateTime dt)
+    internal static string FormatRelativeDate(DateTime dt, IClock? clock)
     {
-        var now = DateTime.Now;
+        var now = (clock ?? SystemClock.Instance).Now;
 
         if (dt.Date == now.Date)
         {
@@ -167,27 +172,29 @@ public class NoteTab
     /// Formats a timestamp as a relative time string, always including hour:minute except for "Just now".
     /// </summary>
     /// <param name="dt">The timestamp to format.</param>
+    /// <param name="clock">Optional clock for testability; defaults to system clock.</param>
     /// <returns>A context-appropriate time string.</returns>
-    private static string FormatRelativeTime(DateTime dt)
+    internal static string FormatRelativeTime(DateTime dt, IClock? clock)
     {
-        var diff = DateTime.Now - dt;
+        var now = (clock ?? SystemClock.Instance).Now;
+        var diff = now - dt;
 
         if (diff.TotalMinutes < JustNowThresholdMinutes)
         {
             return "Just now";
         }
 
-        if (dt.Date == DateTime.Now.Date)
+        if (dt.Date == now.Date)
         {
             return $"Today {dt:h:mm tt}";
         }
 
-        if (dt.Date == DateTime.Now.Date.AddDays(-1))
+        if (dt.Date == now.Date.AddDays(-1))
         {
             return $"Yesterday {dt:h:mm tt}";
         }
 
-        if (dt.Year == DateTime.Now.Year)
+        if (dt.Year == now.Year)
         {
             return dt.ToString("MMM d, h:mm tt");
         }

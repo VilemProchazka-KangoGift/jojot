@@ -17,11 +17,21 @@ public static class DatabaseService
     private static readonly SemaphoreSlim _writeLock = new(1, 1);
     private static string _dbPath = string.Empty;
     private static string _connectionString = string.Empty;
+    private static IClock _clock = SystemClock.Instance;
+
+    /// <summary>Replaces the clock used for timestamps. For testing only.</summary>
+    internal static void SetClock(IClock clock) => _clock = clock;
 
     /// <summary>
     /// Creates a new DbContext instance for a unit of work.
     /// </summary>
     private static JoJotDbContext CreateContext() => new(_connectionString);
+
+    /// <summary>The current connection string. Exposed for test verification only.</summary>
+    internal static string ConnectionString => _connectionString;
+
+    /// <summary>Creates a DbContext using the current connection string. For integration tests.</summary>
+    internal static JoJotDbContext CreateTestContext() => CreateContext();
 
     /// <summary>
     /// Opens (or creates) the SQLite database at the specified path.
@@ -50,6 +60,21 @@ public static class DatabaseService
         await ExecuteRawPragmaAsync("PRAGMA foreign_keys=ON;").ConfigureAwait(false);
 
         LogService.Info("Database opened: {DbPath}", dbPath);
+    }
+
+    /// <summary>
+    /// Opens the database using a pre-built connection string (no file path processing).
+    /// For integration tests with in-memory SQLite.
+    /// </summary>
+    internal static async Task OpenWithConnectionStringAsync(string connectionString)
+    {
+        _dbPath = ":memory:";
+        _connectionString = connectionString;
+
+        _rawConnection = new SqliteConnection(_connectionString);
+        await _rawConnection.OpenAsync().ConfigureAwait(false);
+
+        await ExecuteRawPragmaAsync("PRAGMA foreign_keys=ON;").ConfigureAwait(false);
     }
 
     /// <summary>
@@ -417,7 +442,7 @@ public static class DatabaseService
         try
         {
             using var context = CreateContext();
-            var now = DateTime.UtcNow;
+            var now = _clock.UtcNow;
             var note = new NoteTab
             {
                 DesktopGuid = desktopGuid,
@@ -452,11 +477,12 @@ public static class DatabaseService
         try
         {
             using var context = CreateContext();
+            var now = _clock.UtcNow;
             await context.Notes
                 .Where(n => n.Id == noteId)
                 .ExecuteUpdateAsync(s => s
                     .SetProperty(n => n.Content, content)
-                    .SetProperty(n => n.UpdatedAt, DateTime.UtcNow)).ConfigureAwait(false);
+                    .SetProperty(n => n.UpdatedAt, now)).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -478,11 +504,12 @@ public static class DatabaseService
         try
         {
             using var context = CreateContext();
+            var now = _clock.UtcNow;
             await context.Notes
                 .Where(n => n.Id == noteId)
                 .ExecuteUpdateAsync(s => s
                     .SetProperty(n => n.Name, name)
-                    .SetProperty(n => n.UpdatedAt, DateTime.UtcNow)).ConfigureAwait(false);
+                    .SetProperty(n => n.UpdatedAt, now)).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -504,11 +531,12 @@ public static class DatabaseService
         try
         {
             using var context = CreateContext();
+            var now = _clock.UtcNow;
             await context.Notes
                 .Where(n => n.Id == noteId)
                 .ExecuteUpdateAsync(s => s
                     .SetProperty(n => n.Pinned, pinned)
-                    .SetProperty(n => n.UpdatedAt, DateTime.UtcNow)).ConfigureAwait(false);
+                    .SetProperty(n => n.UpdatedAt, now)).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -927,7 +955,7 @@ public static class DatabaseService
         try
         {
             using var context = CreateContext();
-            var move = new PendingMove(0, windowId, fromDesktop, toDesktop, DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss"));
+            var move = new PendingMove(0, windowId, fromDesktop, toDesktop, _clock.UtcNow.ToString("yyyy-MM-dd HH:mm:ss"));
             context.PendingMoves.Add(move);
             await context.SaveChangesAsync().ConfigureAwait(false);
 

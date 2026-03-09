@@ -113,6 +113,8 @@ public partial class MainWindow : Window
         // Configure autosave service
         _autosaveService.Configure(
             contentProvider: () => _activeTab is not null ? (_activeTab.Id, ContentEditor.Text) : (0L, ""),
+            saveFunc: DatabaseService.UpdateNoteContentAsync,
+            onSnapshot: (tabId, content) => UndoManager.Instance.PushSnapshot(tabId, content),
             onSaveCompleted: (tabId) =>
             {
                 var tab = _tabs.FirstOrDefault(t => t.Id == tabId);

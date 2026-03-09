@@ -8,7 +8,8 @@ namespace JoJot.Services;
 /// State is in-memory only and is discarded when the window closes.
 /// </summary>
 /// <param name="tabId">The <c>NoteTab.Id</c> this stack belongs to.</param>
-public class UndoStack(long tabId)
+/// <param name="clock">Clock abstraction for testability; defaults to system clock.</param>
+public class UndoStack(long tabId, IClock? clock = null)
 {
     /// <summary>Maximum number of tier-1 (fine-grained) snapshots.</summary>
     public const int MaxTier1 = 50;
@@ -16,6 +17,7 @@ public class UndoStack(long tabId)
     /// <summary>Maximum number of tier-2 (coarse checkpoint) entries.</summary>
     public const int MaxTier2 = 20;
 
+    private readonly IClock _clock = clock ?? SystemClock.Instance;
     private readonly List<string> _tier1 = []; // Fine-grained snapshots
     private readonly List<string> _tier2 = []; // Coarse checkpoints
     private int _currentIndex = -1;            // Pointer into the combined logical sequence
@@ -25,7 +27,7 @@ public class UndoStack(long tabId)
     public long TabId { get; } = tabId;
 
     /// <summary>Updated on any push, undo, or redo. Used by <see cref="UndoManager"/> for LRU collapse.</summary>
-    public DateTime LastAccessTime { get; set; } = DateTime.Now;
+    public DateTime LastAccessTime { get; set; } = (clock ?? SystemClock.Instance).Now;
 
     /// <summary>Total entries across both tiers.</summary>
     private int TotalCount => _tier2.Count + _tier1.Count;
@@ -54,8 +56,8 @@ public class UndoStack(long tabId)
         _tier2.Clear();
         _tier1.Add(content);
         _currentIndex = 0;
-        _lastCheckpointTime = DateTime.Now;
-        LastAccessTime = DateTime.Now;
+        _lastCheckpointTime = _clock.Now;
+        LastAccessTime = _clock.Now;
     }
 
     /// <summary>
@@ -69,7 +71,7 @@ public class UndoStack(long tabId)
         {
             _tier1.Add(content);
             _currentIndex = 0;
-            LastAccessTime = DateTime.Now;
+            LastAccessTime = _clock.Now;
             return;
         }
 
@@ -90,7 +92,7 @@ public class UndoStack(long tabId)
         }
 
         _currentIndex = TotalCount - 1;
-        LastAccessTime = DateTime.Now;
+        LastAccessTime = _clock.Now;
     }
 
     /// <summary>
@@ -116,8 +118,8 @@ public class UndoStack(long tabId)
             }
         }
 
-        _lastCheckpointTime = DateTime.Now;
-        LastAccessTime = DateTime.Now;
+        _lastCheckpointTime = _clock.Now;
+        LastAccessTime = _clock.Now;
     }
 
     /// <summary>
@@ -132,7 +134,7 @@ public class UndoStack(long tabId)
         }
 
         _currentIndex--;
-        LastAccessTime = DateTime.Now;
+        LastAccessTime = _clock.Now;
         return GetContentAtIndex(_currentIndex);
     }
 
@@ -148,14 +150,14 @@ public class UndoStack(long tabId)
         }
 
         _currentIndex++;
-        LastAccessTime = DateTime.Now;
+        LastAccessTime = _clock.Now;
         return GetContentAtIndex(_currentIndex);
     }
 
     /// <summary>
     /// Returns <c>true</c> if more than 5 minutes have elapsed since the last checkpoint.
     /// </summary>
-    public bool ShouldCreateCheckpoint() => (DateTime.Now - _lastCheckpointTime).TotalMinutes >= 5;
+    public bool ShouldCreateCheckpoint() => (_clock.Now - _lastCheckpointTime).TotalMinutes >= 5;
 
     /// <summary>
     /// Collapses tier-1 into tier-2 by sampling every 5th entry.

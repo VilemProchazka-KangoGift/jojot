@@ -37,6 +37,17 @@ public static class LogService
             .CreateLogger();
     }
 
+    /// <summary>
+    /// Initializes a no-op logger with no sinks. For use in unit tests to prevent
+    /// file system access while keeping log calls safe.
+    /// </summary>
+    internal static void InitializeNoop()
+    {
+        Log.Logger = new LoggerConfiguration()
+            .MinimumLevel.Fatal()
+            .CreateLogger();
+    }
+
     // ─── Simple Messages ─────────────────────────────────────────────────────
 
     /// <summary>Logs a debug-level message (only visible when minimum level is Debug).</summary>

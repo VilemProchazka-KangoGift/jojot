@@ -8,11 +8,15 @@ namespace JoJot.Services;
 /// </summary>
 public class UndoManager
 {
-    private static readonly Lazy<UndoManager> _instance = new(() => new UndoManager());
+    private static UndoManager _instance = new(SystemClock.Instance);
 
     /// <summary>Singleton instance.</summary>
-    public static UndoManager Instance => _instance.Value;
+    public static UndoManager Instance => _instance;
 
+    /// <summary>Replaces the singleton instance. For testing only.</summary>
+    internal static void SetInstance(UndoManager manager) => _instance = manager;
+
+    private readonly IClock _clock;
     private readonly Dictionary<long, UndoStack> _stacks = [];
 
     /// <summary>Global memory budget (50 MB, not configurable).</summary>
@@ -27,7 +31,8 @@ public class UndoManager
     /// <summary>Currently active tab, exempt from collapse.</summary>
     private long? _activeTabId;
 
-    private UndoManager() { }
+    /// <summary>Creates a new UndoManager with the specified clock.</summary>
+    internal UndoManager(IClock clock) { _clock = clock; }
 
     /// <summary>
     /// Returns the <see cref="UndoStack"/> for <paramref name="tabId"/>, creating one if needed.
@@ -37,7 +42,7 @@ public class UndoManager
     {
         if (!_stacks.TryGetValue(tabId, out var stack))
         {
-            stack = new UndoStack(tabId);
+            stack = new UndoStack(tabId, _clock);
             _stacks[tabId] = stack;
         }
         return stack;

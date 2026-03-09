@@ -10,6 +10,10 @@
     <PublishReadyToRun>true</PublishReadyToRun>
   </PropertyGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="JoJot.Tests" />
+  </ItemGroup>
+
   <!-- Exclude WinForms global using to avoid ambiguity with WPF (Application, etc.) -->
   <ItemGroup>
     <Using Remove="System.Windows.Forms" />
