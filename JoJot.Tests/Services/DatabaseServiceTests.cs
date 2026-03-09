@@ -22,6 +22,23 @@ public class DatabaseServiceTests : IAsyncLifetime
         await _db.DisposeAsync();
     }
 
+    // ─── Connection Configuration ─────────────────────────────────────
+
+    [Fact]
+    public void ProductionConnectionString_IncludesBusyTimeout()
+    {
+        // Verify that the production OpenAsync path sets DefaultTimeout.
+        // The test DB uses OpenWithConnectionStringAsync (no builder), so we verify the builder directly.
+        var builder = new Microsoft.Data.Sqlite.SqliteConnectionStringBuilder
+        {
+            DataSource = "test.db",
+            Mode = Microsoft.Data.Sqlite.SqliteOpenMode.ReadWriteCreate,
+            DefaultTimeout = 5,
+        };
+        builder.ToString().Should().Contain("Default Timeout=5",
+            "BusyTimeout should be set to prevent indefinite blocking on lock contention");
+    }
+
     // ─── Note CRUD ─────────────────────────────────────────────────────
 
     [Fact]

@@ -109,33 +109,45 @@ public static class IpcService
     /// <param name="message">The IPC command to send.</param>
     /// <param name="timeoutMs">Connect timeout in milliseconds (default 500ms).</param>
     /// <param name="cancellationToken">Cancellation token for the operation.</param>
-    public static async Task SendCommandAsync(IpcMessage message, int timeoutMs = 500, CancellationToken cancellationToken = default)
+    public static async Task SendCommandAsync(IpcMessage message, int timeoutMs = 500, int maxRetries = 2, CancellationToken cancellationToken = default)
     {
-        try
+        for (int attempt = 0; attempt <= maxRetries; attempt++)
         {
-            using var client = new NamedPipeClientStream(".", PipeName, PipeDirection.Out, PipeOptions.None);
+            try
+            {
+                using var client = new NamedPipeClientStream(".", PipeName, PipeDirection.Out, PipeOptions.None);
 
-            await Task.Run(() => client.Connect(timeoutMs), cancellationToken).ConfigureAwait(false);
+                await Task.Run(() => client.Connect(timeoutMs), cancellationToken).ConfigureAwait(false);
 
-            var json = JsonSerializer.Serialize(message, IpcMessageContext.Default.IpcMessage);
+                var json = JsonSerializer.Serialize(message, IpcMessageContext.Default.IpcMessage);
 
-            using var writer = new StreamWriter(client, leaveOpen: false) { AutoFlush = true };
-            await writer.WriteLineAsync(json.AsMemory(), cancellationToken).ConfigureAwait(false);
+                using var writer = new StreamWriter(client, leaveOpen: false) { AutoFlush = true };
+                await writer.WriteLineAsync(json.AsMemory(), cancellationToken).ConfigureAwait(false);
 
-            LogService.Info("IpcService: sent command {Command} to first instance", json);
-        }
-        catch (TimeoutException)
-        {
-            LogService.Warn("IpcService: connect timeout — killing zombie process");
-            KillExistingInstances();
-        }
-        catch (OperationCanceledException)
-        {
-            throw;
-        }
-        catch (Exception ex)
-        {
-            LogService.Warn("IpcService: failed to send command to first instance", ex);
+                LogService.Info("IpcService: sent command {Command} to first instance", json);
+                return;
+            }
+            catch (TimeoutException) when (attempt < maxRetries)
+            {
+                LogService.Warn("IpcService: connect timeout (attempt {Attempt}/{MaxRetries}) — retrying",
+                    attempt + 1, maxRetries);
+                await Task.Delay(100 * (attempt + 1), cancellationToken).ConfigureAwait(false);
+            }
+            catch (TimeoutException)
+            {
+                LogService.Warn("IpcService: connect timeout after {MaxRetries} retries — killing zombie process", maxRetries);
+                KillExistingInstances();
+                return;
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                LogService.Warn("IpcService: failed to send command to first instance", ex);
+                return;
+            }
         }
     }
 

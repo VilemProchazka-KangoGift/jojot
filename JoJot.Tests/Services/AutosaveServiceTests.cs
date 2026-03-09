@@ -229,4 +229,51 @@ public class AutosaveServiceTests
 
         _timer.Interval.Should().Be(TimeSpan.FromMilliseconds(1000));
     }
+
+    // ─── Save Failure Resilience ─────────────────────────────────────
+
+    [Fact]
+    public void TimerTick_KeepsDirtyFlag_WhenSaveFails()
+    {
+        var svc = CreateService();
+
+        svc.Configure(
+            () => (1L, "content"),
+            (_, _) => throw new InvalidOperationException("DB locked"));
+
+        svc.NotifyTextChanged();
+        _timer.Fire(); // triggers save which throws
+
+        svc.IsDirty.Should().BeTrue("save failed, so content should remain dirty for retry");
+    }
+
+    [Fact]
+    public void TimerTick_RetriesOnNextTick_AfterFailure()
+    {
+        var svc = CreateService();
+        int attempt = 0;
+        long savedTabId = 0;
+
+        svc.Configure(
+            () => (1L, "content"),
+            (id, _) =>
+            {
+                attempt++;
+                if (attempt == 1)
+                    throw new InvalidOperationException("DB locked");
+                savedTabId = id;
+                return Task.CompletedTask;
+            });
+
+        svc.NotifyTextChanged();
+        _timer.Fire(); // first attempt fails
+        svc.IsDirty.Should().BeTrue();
+
+        // Simulate user typing again which starts the timer
+        svc.NotifyTextChanged();
+        _timer.Fire(); // second attempt succeeds
+
+        savedTabId.Should().Be(1);
+        svc.IsDirty.Should().BeFalse();
+    }
 }

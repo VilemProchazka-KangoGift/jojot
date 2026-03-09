@@ -15,12 +15,32 @@ public static class DatabaseService
 {
     private static SqliteConnection? _rawConnection;
     private static readonly SemaphoreSlim _writeLock = new(1, 1);
+    private static readonly TimeSpan WriteLockTimeout = TimeSpan.FromSeconds(10);
     private static string _dbPath = string.Empty;
     private static string _connectionString = string.Empty;
     private static IClock _clock = SystemClock.Instance;
 
     /// <summary>Replaces the clock used for timestamps. For testing only.</summary>
     internal static void SetClock(IClock clock) => _clock = clock;
+
+    /// <summary>
+    /// Acquires the write lock with a timeout to prevent indefinite blocking.
+    /// Throws <see cref="TimeoutException"/> if the lock cannot be acquired within <see cref="WriteLockTimeout"/>.
+    /// </summary>
+    private static async Task AcquireWriteLockAsync(CancellationToken ct = default)
+    {
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        cts.CancelAfter(WriteLockTimeout);
+        try
+        {
+            await _writeLock.WaitAsync(cts.Token).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+        {
+            throw new TimeoutException(
+                $"Failed to acquire database write lock within {WriteLockTimeout.TotalSeconds}s");
+        }
+    }
 
     /// <summary>
     /// Creates a new DbContext instance for a unit of work.
@@ -47,6 +67,7 @@ public static class DatabaseService
         {
             DataSource = dbPath,
             Mode = SqliteOpenMode.ReadWriteCreate,
+            DefaultTimeout = 5,
         };
         _connectionString = connStrBuilder.ToString();
 
@@ -139,7 +160,7 @@ public static class DatabaseService
     /// </summary>
     public static async Task ExecuteNonQueryAsync(string sql)
     {
-        await _writeLock.WaitAsync().ConfigureAwait(false);
+        await AcquireWriteLockAsync().ConfigureAwait(false);
         try
         {
             await using var cmd = _rawConnection!.CreateCommand();
@@ -163,7 +184,7 @@ public static class DatabaseService
     /// </summary>
     public static async Task<T> ExecuteScalarAsync<T>(string sql)
     {
-        await _writeLock.WaitAsync().ConfigureAwait(false);
+        await AcquireWriteLockAsync().ConfigureAwait(false);
         try
         {
             await using var cmd = _rawConnection!.CreateCommand();
@@ -222,7 +243,7 @@ public static class DatabaseService
     /// </summary>
     public static async Task<List<(string DesktopGuid, string? DesktopName, int? DesktopIndex)>> GetAllSessionsAsync(CancellationToken ct = default)
     {
-        await _writeLock.WaitAsync(ct).ConfigureAwait(false);
+        await AcquireWriteLockAsync(ct).ConfigureAwait(false);
         try
         {
             using var context = CreateContext();
@@ -249,7 +270,7 @@ public static class DatabaseService
     /// </summary>
     public static async Task UpdateSessionAsync(string oldGuid, string newGuid, string? name, int? index)
     {
-        await _writeLock.WaitAsync().ConfigureAwait(false);
+        await AcquireWriteLockAsync().ConfigureAwait(false);
         try
         {
             using var context = CreateContext();
@@ -285,7 +306,7 @@ public static class DatabaseService
     /// </summary>
     public static async Task CreateSessionAsync(string desktopGuid, string? desktopName, int? desktopIndex)
     {
-        await _writeLock.WaitAsync().ConfigureAwait(false);
+        await AcquireWriteLockAsync().ConfigureAwait(false);
         try
         {
             using var context = CreateContext();
@@ -317,7 +338,7 @@ public static class DatabaseService
     /// </summary>
     public static async Task UpdateDesktopNameAsync(string desktopGuid, string newName)
     {
-        await _writeLock.WaitAsync().ConfigureAwait(false);
+        await AcquireWriteLockAsync().ConfigureAwait(false);
         try
         {
             using var context = CreateContext();
@@ -345,7 +366,7 @@ public static class DatabaseService
     /// </summary>
     public static async Task<WindowGeometry?> GetWindowGeometryAsync(string desktopGuid, CancellationToken ct = default)
     {
-        await _writeLock.WaitAsync(ct).ConfigureAwait(false);
+        await AcquireWriteLockAsync(ct).ConfigureAwait(false);
         try
         {
             using var context = CreateContext();
@@ -380,7 +401,7 @@ public static class DatabaseService
     /// </summary>
     public static async Task SaveWindowGeometryAsync(string desktopGuid, WindowGeometry geo)
     {
-        await _writeLock.WaitAsync().ConfigureAwait(false);
+        await AcquireWriteLockAsync().ConfigureAwait(false);
         try
         {
             using var context = CreateContext();
@@ -411,7 +432,7 @@ public static class DatabaseService
     /// </summary>
     public static async Task<List<NoteTab>> GetNotesForDesktopAsync(string desktopGuid, CancellationToken ct = default)
     {
-        await _writeLock.WaitAsync(ct).ConfigureAwait(false);
+        await AcquireWriteLockAsync(ct).ConfigureAwait(false);
         try
         {
             using var context = CreateContext();
@@ -438,7 +459,7 @@ public static class DatabaseService
     /// </summary>
     public static async Task<long> InsertNoteAsync(string desktopGuid, string? name, string content, bool pinned, int sortOrder)
     {
-        await _writeLock.WaitAsync().ConfigureAwait(false);
+        await AcquireWriteLockAsync().ConfigureAwait(false);
         try
         {
             using var context = CreateContext();
@@ -473,7 +494,7 @@ public static class DatabaseService
     /// </summary>
     public static async Task UpdateNoteContentAsync(long noteId, string content)
     {
-        await _writeLock.WaitAsync().ConfigureAwait(false);
+        await AcquireWriteLockAsync().ConfigureAwait(false);
         try
         {
             using var context = CreateContext();
@@ -500,7 +521,7 @@ public static class DatabaseService
     /// </summary>
     public static async Task UpdateNoteNameAsync(long noteId, string? name)
     {
-        await _writeLock.WaitAsync().ConfigureAwait(false);
+        await AcquireWriteLockAsync().ConfigureAwait(false);
         try
         {
             using var context = CreateContext();
@@ -527,7 +548,7 @@ public static class DatabaseService
     /// </summary>
     public static async Task UpdateNotePinnedAsync(long noteId, bool pinned)
     {
-        await _writeLock.WaitAsync().ConfigureAwait(false);
+        await AcquireWriteLockAsync().ConfigureAwait(false);
         try
         {
             using var context = CreateContext();
@@ -554,7 +575,7 @@ public static class DatabaseService
     /// </summary>
     public static async Task UpdateNoteSortOrdersAsync(IEnumerable<(long Id, int SortOrder)> updates)
     {
-        await _writeLock.WaitAsync().ConfigureAwait(false);
+        await AcquireWriteLockAsync().ConfigureAwait(false);
         try
         {
             using var context = CreateContext();
@@ -582,7 +603,7 @@ public static class DatabaseService
     /// </summary>
     public static async Task DeleteNoteAsync(long noteId)
     {
-        await _writeLock.WaitAsync().ConfigureAwait(false);
+        await AcquireWriteLockAsync().ConfigureAwait(false);
         try
         {
             using var context = CreateContext();
@@ -608,7 +629,7 @@ public static class DatabaseService
     /// </summary>
     public static async Task<int> DeleteEmptyNotesAsync(string desktopGuid)
     {
-        await _writeLock.WaitAsync().ConfigureAwait(false);
+        await AcquireWriteLockAsync().ConfigureAwait(false);
         try
         {
             using var context = CreateContext();
@@ -637,7 +658,7 @@ public static class DatabaseService
     /// </summary>
     public static async Task<int> GetMaxSortOrderAsync(string desktopGuid, CancellationToken ct = default)
     {
-        await _writeLock.WaitAsync(ct).ConfigureAwait(false);
+        await AcquireWriteLockAsync(ct).ConfigureAwait(false);
         try
         {
             using var context = CreateContext();
@@ -664,7 +685,7 @@ public static class DatabaseService
     /// </summary>
     public static async Task<List<string>> GetNoteNamesForDesktopAsync(string desktopGuid, int limit = 5, CancellationToken ct = default)
     {
-        await _writeLock.WaitAsync(ct).ConfigureAwait(false);
+        await AcquireWriteLockAsync(ct).ConfigureAwait(false);
         try
         {
             using var context = CreateContext();
@@ -692,7 +713,7 @@ public static class DatabaseService
     /// </summary>
     public static async Task<List<(string? Name, string Excerpt, DateTime CreatedAt, DateTime UpdatedAt)>> GetNotePreviewsForDesktopAsync(string desktopGuid, int limit = 5, CancellationToken ct = default)
     {
-        await _writeLock.WaitAsync(ct).ConfigureAwait(false);
+        await AcquireWriteLockAsync(ct).ConfigureAwait(false);
         try
         {
             using var context = CreateContext();
@@ -727,7 +748,7 @@ public static class DatabaseService
     /// </summary>
     public static async Task<int> GetNoteCountForDesktopAsync(string desktopGuid, CancellationToken ct = default)
     {
-        await _writeLock.WaitAsync(ct).ConfigureAwait(false);
+        await AcquireWriteLockAsync(ct).ConfigureAwait(false);
         try
         {
             using var context = CreateContext();
@@ -749,7 +770,7 @@ public static class DatabaseService
     /// </summary>
     public static async Task<string?> GetDesktopNameAsync(string desktopGuid, CancellationToken ct = default)
     {
-        await _writeLock.WaitAsync(ct).ConfigureAwait(false);
+        await AcquireWriteLockAsync(ct).ConfigureAwait(false);
         try
         {
             using var context = CreateContext();
@@ -781,7 +802,7 @@ public static class DatabaseService
         List<(string, string?, int, DateTime)> results = [];
         if (orphanGuids.Count == 0) return results;
 
-        await _writeLock.WaitAsync(ct).ConfigureAwait(false);
+        await AcquireWriteLockAsync(ct).ConfigureAwait(false);
         try
         {
             using var context = CreateContext();
@@ -825,7 +846,7 @@ public static class DatabaseService
     /// </summary>
     public static async Task MigrateTabsAsync(string sourceGuid, string targetGuid)
     {
-        await _writeLock.WaitAsync().ConfigureAwait(false);
+        await AcquireWriteLockAsync().ConfigureAwait(false);
         try
         {
             using var context = CreateContext();
@@ -868,7 +889,7 @@ public static class DatabaseService
     /// </summary>
     public static async Task DeleteSessionAndNotesAsync(string desktopGuid)
     {
-        await _writeLock.WaitAsync().ConfigureAwait(false);
+        await AcquireWriteLockAsync().ConfigureAwait(false);
         try
         {
             using var context = CreateContext();
@@ -899,7 +920,7 @@ public static class DatabaseService
     /// </summary>
     public static async Task<string?> GetPreferenceAsync(string key, CancellationToken ct = default)
     {
-        await _writeLock.WaitAsync(ct).ConfigureAwait(false);
+        await AcquireWriteLockAsync(ct).ConfigureAwait(false);
         try
         {
             using var context = CreateContext();
@@ -925,7 +946,7 @@ public static class DatabaseService
     /// </summary>
     public static async Task SetPreferenceAsync(string key, string value)
     {
-        await _writeLock.WaitAsync().ConfigureAwait(false);
+        await AcquireWriteLockAsync().ConfigureAwait(false);
         try
         {
             using var context = CreateContext();
@@ -951,7 +972,7 @@ public static class DatabaseService
     /// </summary>
     public static async Task<long> InsertPendingMoveAsync(string windowId, string fromDesktop, string? toDesktop)
     {
-        await _writeLock.WaitAsync().ConfigureAwait(false);
+        await AcquireWriteLockAsync().ConfigureAwait(false);
         try
         {
             using var context = CreateContext();
@@ -978,7 +999,7 @@ public static class DatabaseService
     /// </summary>
     public static async Task DeletePendingMoveAsync(string windowId)
     {
-        await _writeLock.WaitAsync().ConfigureAwait(false);
+        await AcquireWriteLockAsync().ConfigureAwait(false);
         try
         {
             using var context = CreateContext();
@@ -1014,7 +1035,7 @@ public static class DatabaseService
     /// </summary>
     public static async Task DeleteAllPendingMovesAsync()
     {
-        await _writeLock.WaitAsync().ConfigureAwait(false);
+        await AcquireWriteLockAsync().ConfigureAwait(false);
         try
         {
             using var context = CreateContext();
@@ -1037,7 +1058,7 @@ public static class DatabaseService
     /// </summary>
     public static async Task MigrateNotesDesktopGuidAsync(string fromGuid, string toGuid)
     {
-        await _writeLock.WaitAsync().ConfigureAwait(false);
+        await AcquireWriteLockAsync().ConfigureAwait(false);
         try
         {
             using var context = CreateContext();
@@ -1063,7 +1084,7 @@ public static class DatabaseService
     /// </summary>
     public static async Task MigrateTabsPreservePinsAsync(string sourceGuid, string targetGuid)
     {
-        await _writeLock.WaitAsync().ConfigureAwait(false);
+        await AcquireWriteLockAsync().ConfigureAwait(false);
         try
         {
             using var context = CreateContext();
@@ -1104,7 +1125,7 @@ public static class DatabaseService
     /// </summary>
     public static async Task UpdateSessionDesktopAsync(string oldGuid, string newGuid, string? name, int? index)
     {
-        await _writeLock.WaitAsync().ConfigureAwait(false);
+        await AcquireWriteLockAsync().ConfigureAwait(false);
         try
         {
             using var context = CreateContext();
@@ -1143,7 +1164,7 @@ public static class DatabaseService
     {
         try
         {
-            await _writeLock.WaitAsync().ConfigureAwait(false);
+            await AcquireWriteLockAsync().ConfigureAwait(false);
             try
             {
                 await using var cmd = _rawConnection!.CreateCommand();
@@ -1177,7 +1198,7 @@ public static class DatabaseService
     private static async Task<bool> ColumnExistsAsync(string table, string column)
     {
         bool found = false;
-        await _writeLock.WaitAsync().ConfigureAwait(false);
+        await AcquireWriteLockAsync().ConfigureAwait(false);
         try
         {
             await using var cmd = _rawConnection!.CreateCommand();

@@ -154,7 +154,8 @@ public class AutosaveService
         }
         catch (Exception ex)
         {
-            LogService.Error("AutosaveService tick failed for tab {TabId}", tabId, ex);
+            // Keep _isDirty = true so the next tick retries the save
+            LogService.Error("AutosaveService tick failed for tab {TabId} — will retry on next tick", tabId, ex);
         }
     }
 }
