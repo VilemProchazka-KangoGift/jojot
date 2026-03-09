@@ -75,7 +75,7 @@ public partial class MainWindow
         }
         catch (Exception ex)
         {
-            LogService.Warn($"Failed to show recovery panel: {ex.Message}");
+            LogService.Warn("Failed to show recovery panel: {ErrorMessage}", ex.Message);
         }
     }
 

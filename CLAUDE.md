@@ -31,7 +31,7 @@ The solution file uses the `.slnx` format. No test project exists.
 - **Nullable reference types**: Enabled
 - **Implicit usings**: Enabled
 - **Namespace**: `JoJot` (flat — `JoJot.Models`, `JoJot.Services`, `JoJot.Interop`)
-- **Dependencies**: `Microsoft.Data.Sqlite` (SQLite via Microsoft.Data.Sqlite)
+- **Dependencies**: `Microsoft.EntityFrameworkCore.Sqlite`, `Serilog` (+ Sinks.File, Sinks.Debug, Enrichers.Thread, Enrichers.Process)
 
 ### Data Storage
 
@@ -39,7 +39,7 @@ SQLite database at `%LocalAppData%\JoJot\jojot.db`. WAL mode, NORMAL synchronous
 
 ### Application Lifecycle
 
-`App.xaml` uses `Startup="OnAppStartup"` (not `StartupUri`). `ShutdownMode` is `OnExplicitShutdown` — the process stays alive when all windows are closed. The startup sequence in `App.xaml.cs` is ordered: logging → mutex → database → theme → virtual desktop detection → session matching → IPC server → window creation.
+`App.xaml` uses `Startup="OnAppStartup"` (not `StartupUri`). `ShutdownMode` is `OnExplicitShutdown` — the process stays alive when all windows are closed. The startup sequence in `App.xaml.cs` is ordered: logging → mutex → database → log level restore → theme → virtual desktop detection → session matching → IPC server → window creation.
 
 ### Single-Instance & IPC
 
@@ -64,7 +64,7 @@ SQLite database at `%LocalAppData%\JoJot\jojot.db`. WAL mode, NORMAL synchronous
 | `HotkeyService` | Global Win+Shift+N hotkey via Win32 `RegisterHotKey` P/Invoke |
 | `IpcService` | Single-instance mutex + named pipe IPC |
 | `VirtualDesktopService` | Desktop detection, session matching, notifications |
-| `LogService` | File logging to `%LocalAppData%\JoJot\` |
+| `LogService` | Serilog-backed structured logging to `%LocalAppData%\JoJot\` (rolling daily, 5MB cap, 5 retained files). Configurable level via `log_level` preference. ThreadId/ProcessId enriched. |
 | `StartupService` | First-launch welcome tab, background migrations |
 | `FileDropService` | File drag-and-drop import |
 | `WindowPlacementHelper` | Win32 `SetWindowPlacement` for geometry save/restore |
@@ -79,4 +79,5 @@ Two ResourceDictionaries (`Themes/LightTheme.xaml`, `Themes/DarkTheme.xaml`) swa
 - **Code-behind, not MVVM**: UI logic lives in `MainWindow.xaml.cs` — no ViewModels or data binding framework
 - **Static services**: Most services are static classes initialized in `App.OnAppStartup`
 - **Async throughout**: Database calls, startup sequence, and IPC are all async
+- **Structured logging**: All log calls use Serilog message templates — never string interpolation. Use `LogService.Info("Text {PropertyName}", value)` not `LogService.Info($"Text {value}")`. Warn/Error with exceptions: `LogService.Error("Failed {Id}", id, ex)`.
 - **Phase comments**: Code comments reference design phases (e.g., "Phase 4: TABS-02") — these are historical build phases, not runtime phases

@@ -91,12 +91,12 @@ public static class VirtualDesktopService
             _isAvailable = true;
 
             LogService.Info(
-                $"VirtualDesktopService: available=true, desktop={_currentDesktopGuid}, " +
-                $"name=\"{_currentDesktopName}\", index={_currentDesktopIndex}");
+                "VirtualDesktopService: available=true, desktop={DesktopGuid}, name={DesktopName}, index={DesktopIndex}",
+                _currentDesktopGuid, _currentDesktopName, _currentDesktopIndex);
         }
         catch (Exception ex)
         {
-            LogService.Warn($"Virtual desktop API unavailable — fallback mode: {ex.Message}");
+            LogService.Warn("Virtual desktop API unavailable — fallback mode: {ErrorMessage}", ex.Message);
             _isAvailable = false;
             _currentDesktopGuid = DefaultDesktopGuid;
             _currentDesktopName = "";
@@ -127,7 +127,7 @@ public static class VirtualDesktopService
         }
         catch (Exception ex)
         {
-            LogService.Warn($"Failed to enumerate desktops: {ex.Message}");
+            LogService.Warn("Failed to enumerate desktops: {ErrorMessage}", ex.Message);
             return [new DesktopInfo(Guid.Empty, "", 0)];
         }
     }
@@ -150,7 +150,7 @@ public static class VirtualDesktopService
         }
         catch (Exception ex)
         {
-            LogService.Warn($"Failed to get current desktop: {ex.Message}");
+            LogService.Warn("Failed to get current desktop: {ErrorMessage}", ex.Message);
             return new DesktopInfo(Guid.Empty, "", 0);
         }
     }
@@ -197,7 +197,7 @@ public static class VirtualDesktopService
             OrphanedSessionGuids = fallbackOrphans;
             if (fallbackOrphans.Count > 0)
             {
-                LogService.Info($"Fallback orphan detection: {fallbackOrphans.Count} orphaned session(s)");
+                LogService.Info("Fallback orphan detection: {OrphanCount} orphaned session(s)", fallbackOrphans.Count);
             }
 
             return;
@@ -340,9 +340,8 @@ public static class VirtualDesktopService
         int orphanedCount = orphanedGuids.Count;
 
         LogService.Info(
-            $"Session matching complete: Tier 1 (GUID): {tier1Count}, " +
-            $"Tier 2 (Name): {tier2Count}, Tier 3 (Index): {tier3Count}, " +
-            $"Orphaned: {orphanedCount}, New: {newCount}");
+            "Session matching complete: Tier 1 (GUID): {Tier1}, Tier 2 (Name): {Tier2}, Tier 3 (Index): {Tier3}, Orphaned: {Orphaned}, New: {New}",
+            tier1Count, tier2Count, tier3Count, orphanedCount, newCount);
     }
 
     /// <summary>
@@ -393,17 +392,17 @@ public static class VirtualDesktopService
             int hr = notifService.Register(_notificationListener, out _notificationCookie);
             if (hr != 0)
             {
-                LogService.Warn($"Notification registration failed (HRESULT: 0x{hr:X8}) — live updates disabled");
+                LogService.Warn("Notification registration failed (HRESULT: {HResult}) — live updates disabled", $"0x{hr:X8}");
                 _notificationListener = null;
                 return;
             }
 
             _notificationsRegistered = true;
-            LogService.Info($"Desktop notifications registered (cookie={_notificationCookie})");
+            LogService.Info("Desktop notifications registered (cookie={Cookie})", _notificationCookie);
         }
         catch (Exception ex)
         {
-            LogService.Warn($"Failed to subscribe to desktop notifications: {ex.Message}");
+            LogService.Warn("Failed to subscribe to desktop notifications: {ErrorMessage}", ex.Message);
             _notificationListener = null;
         }
     }
@@ -435,13 +434,13 @@ public static class VirtualDesktopService
                 _currentDesktopGuid = newGuid;
                 _currentDesktopName = name;
                 _currentDesktopIndex = index;
-                LogService.Info($"Poll: desktop switched {oldGuid} -> {newGuid}");
+                LogService.Info("Poll: desktop switched {OldGuid} -> {NewGuid}", oldGuid, newGuid);
                 CurrentDesktopChanged?.Invoke(oldGuid, newGuid);
             }
         }
         catch (Exception ex)
         {
-            LogService.Warn($"Desktop polling failed: {ex.Message}");
+            LogService.Warn("Desktop polling failed: {ErrorMessage}", ex.Message);
         }
     }
 
@@ -465,12 +464,12 @@ public static class VirtualDesktopService
             if (notifService is not null && _notificationCookie != 0)
             {
                 notifService.Unregister(_notificationCookie);
-                LogService.Info($"Desktop notifications unregistered (cookie={_notificationCookie})");
+                LogService.Info("Desktop notifications unregistered (cookie={Cookie})", _notificationCookie);
             }
         }
         catch (Exception ex)
         {
-            LogService.Warn($"Error unregistering desktop notifications: {ex.Message}");
+            LogService.Warn("Error unregistering desktop notifications: {ErrorMessage}", ex.Message);
         }
 
         if (_notificationListener is not null)
@@ -508,7 +507,7 @@ public static class VirtualDesktopService
             }
             catch (Exception ex)
             {
-                LogService.Error($"Failed to persist desktop rename to database: {ex.Message}");
+                LogService.Error("Failed to persist desktop rename to database: {ErrorMessage}", ex.Message);
             }
         });
 
@@ -540,7 +539,7 @@ public static class VirtualDesktopService
         }
         catch (Exception ex)
         {
-            LogService.Warn($"Failed to refresh desktop info after switch: {ex.Message}");
+            LogService.Warn("Failed to refresh desktop info after switch: {ErrorMessage}", ex.Message);
         }
 
         // Fire public event (consumers handle UI thread marshaling)
@@ -569,7 +568,7 @@ public static class VirtualDesktopService
                 }
                 catch (Exception ex)
                 {
-                    LogService.Warn($"Error detecting moved window: {ex.Message}");
+                    LogService.Warn("Error detecting moved window: {ErrorMessage}", ex.Message);
                 }
             }));
     }
@@ -619,14 +618,14 @@ public static class VirtualDesktopService
                     }
                     catch { /* name lookup is best-effort */ }
 
-                    LogService.Info($"Window drag detected: {expectedDesktopGuid} -> {currentDesktopGuid} (target: \"{toDesktopName}\")");
+                    LogService.Info("Window drag detected: {FromDesktop} -> {ToDesktop} (target: {TargetName})", expectedDesktopGuid, currentDesktopGuid, toDesktopName);
                     WindowMovedToDesktop?.Invoke(hwnd, expectedDesktopGuid, currentDesktopGuid, toDesktopName);
                     return; // Only one window can move at a time
                 }
             }
             catch (Exception ex)
             {
-                LogService.Warn($"Error checking window desktop: {ex.Message}");
+                LogService.Warn("Error checking window desktop: {ErrorMessage}", ex.Message);
             }
         }
     }
@@ -646,12 +645,12 @@ public static class VirtualDesktopService
         {
             Guid targetId = Guid.Parse(desktopGuid);
             VirtualDesktopInterop.MoveWindowToDesktop(hwnd, targetId);
-            LogService.Info($"Moved window to desktop {desktopGuid}");
+            LogService.Info("Moved window to desktop {DesktopGuid}", desktopGuid);
             return true;
         }
         catch (Exception ex)
         {
-            LogService.Error($"MoveWindowToDesktop failed for {desktopGuid}: {ex.Message}");
+            LogService.Error("MoveWindowToDesktop failed for {DesktopGuid}: {ErrorMessage}", desktopGuid, ex.Message);
             return false;
         }
     }
@@ -671,12 +670,12 @@ public static class VirtualDesktopService
         {
             Guid targetId = Guid.Parse(desktopGuid);
             VirtualDesktopInterop.SwitchToDesktop(targetId);
-            LogService.Info($"Switched to desktop {desktopGuid}");
+            LogService.Info("Switched to desktop {DesktopGuid}", desktopGuid);
             return true;
         }
         catch (Exception ex)
         {
-            LogService.Error($"SwitchToDesktop failed for {desktopGuid}: {ex.Message}");
+            LogService.Error("SwitchToDesktop failed for {DesktopGuid}: {ErrorMessage}", desktopGuid, ex.Message);
             return false;
         }
     }
@@ -696,7 +695,7 @@ public static class VirtualDesktopService
         }
         catch (Exception ex)
         {
-            LogService.Warn($"Error during VirtualDesktopService shutdown: {ex.Message}");
+            LogService.Warn("Error during VirtualDesktopService shutdown: {ErrorMessage}", ex.Message);
         }
 
         _isAvailable = false;

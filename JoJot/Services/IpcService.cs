@@ -122,7 +122,7 @@ public static class IpcService
             using var writer = new StreamWriter(client, leaveOpen: false) { AutoFlush = true };
             await writer.WriteLineAsync(json.AsMemory(), cancellationToken).ConfigureAwait(false);
 
-            LogService.Info($"IpcService: sent command '{json}' to first instance");
+            LogService.Info("IpcService: sent command {Command} to first instance", json);
         }
         catch (TimeoutException)
         {
@@ -155,12 +155,12 @@ public static class IpcService
 
             try
             {
-                LogService.Info($"IpcService: killing zombie process PID={proc.Id}");
+                LogService.Info("IpcService: killing zombie process PID={ProcessId}", proc.Id);
                 proc.Kill(entireProcessTree: true);
             }
             catch (Exception ex)
             {
-                LogService.Warn($"IpcService: failed to kill process PID={proc.Id}", ex);
+                LogService.Warn("IpcService: failed to kill process PID={ProcessId}", proc.Id, ex);
             }
         }
     }

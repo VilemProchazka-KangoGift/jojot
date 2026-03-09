@@ -171,7 +171,7 @@ public static class WindowPlacementHelper
         double newLeft = Math.Clamp(geo.Left, wa.Left, Math.Max(wa.Left, wa.Right - geo.Width));
         double newTop = Math.Clamp(geo.Top, wa.Top, Math.Max(wa.Top, wa.Bottom - geo.Height));
 
-        LogService.Info($"Off-screen recovery: ({geo.Left},{geo.Top}) -> ({newLeft},{newTop})");
+        LogService.Info("Off-screen recovery: ({OldLeft},{OldTop}) -> ({NewLeft},{NewTop})", geo.Left, geo.Top, newLeft, newTop);
         return geo with { Left = newLeft, Top = newTop };
     }
 

@@ -106,7 +106,7 @@ public class AutosaveService
         }
         catch (Exception ex)
         {
-            LogService.Error($"AutosaveService flush failed for tab {tabId}", ex);
+            LogService.Error("AutosaveService flush failed for tab {TabId}", tabId, ex);
         }
     }
 
@@ -149,7 +149,7 @@ public class AutosaveService
         }
         catch (Exception ex)
         {
-            LogService.Error($"AutosaveService tick failed for tab {tabId}", ex);
+            LogService.Error("AutosaveService tick failed for tab {TabId}", tabId, ex);
         }
     }
 }

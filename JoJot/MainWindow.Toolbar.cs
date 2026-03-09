@@ -36,7 +36,7 @@ public partial class MainWindow
         }
         catch (Exception ex)
         {
-            LogService.Warn($"Clipboard access failed: {ex.Message}");
+            LogService.Warn("Clipboard access failed: {ErrorMessage}", ex.Message);
         }
     }
 

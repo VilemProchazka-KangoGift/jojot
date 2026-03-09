@@ -533,7 +533,7 @@ public partial class MainWindow
         }
         catch (Exception ex)
         {
-            LogService.Warn($"Tab selection change failed: {ex.Message}");
+            LogService.Warn("Tab selection change failed: {ErrorMessage}", ex.Message);
         }
     }
 
@@ -619,7 +619,7 @@ public partial class MainWindow
         }
         catch (Exception ex)
         {
-            LogService.Warn($"Failed to save tab panel width: {ex.Message}");
+            LogService.Warn("Failed to save tab panel width: {ErrorMessage}", ex.Message);
         }
     }
 
@@ -709,7 +709,7 @@ public partial class MainWindow
     /// </summary>
     public void RequestNewTab()
     {
-        LogService.Info($"RequestNewTab called for desktop {_desktopGuid}");
+        LogService.Info("RequestNewTab called for desktop {DesktopGuid}", _desktopGuid);
         _ = CreateNewTabAsync();
     }
 

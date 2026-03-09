@@ -68,12 +68,12 @@ public static class HotkeyService
         if (!success)
         {
             int error = Marshal.GetLastWin32Error();
-            LogService.Warn($"Global hotkey registration failed (Win32 error {error}). Key may be in use by another app.");
+            LogService.Warn("Global hotkey registration failed (Win32 error {Win32Error}). Key may be in use by another app.", error);
         }
         else
         {
             _isRegistered = true;
-            LogService.Info($"Global hotkey registered: {GetHotkeyDisplayString()}");
+            LogService.Info("Global hotkey registered: {HotkeyDisplay}", GetHotkeyDisplayString());
         }
 
         return success;
@@ -104,12 +104,12 @@ public static class HotkeyService
             await DatabaseService.SetPreferenceAsync("hotkey_modifiers", modifiers.ToString()).ConfigureAwait(false);
             await DatabaseService.SetPreferenceAsync("hotkey_vk", vk.ToString()).ConfigureAwait(false);
 
-            LogService.Info($"Global hotkey updated: {GetHotkeyDisplayString()}");
+            LogService.Info("Global hotkey updated: {HotkeyDisplay}", GetHotkeyDisplayString());
         }
         else
         {
             int error = Marshal.GetLastWin32Error();
-            LogService.Warn($"Failed to register new hotkey (Win32 error {error}). Restoring previous.");
+            LogService.Warn("Failed to register new hotkey (Win32 error {Win32Error}). Restoring previous.", error);
 
             RegisterHotKey(_hwnd, HOTKEY_ID, _modifiers | MOD_NOREPEAT, _vk);
             _isRegistered = true;
@@ -228,7 +228,7 @@ public static class HotkeyService
             _isRegistered = success;
             if (success)
             {
-                LogService.Info($"Global hotkey resumed: {GetHotkeyDisplayString()}");
+                LogService.Info("Global hotkey resumed: {HotkeyDisplay}", GetHotkeyDisplayString());
             }
             else
             {

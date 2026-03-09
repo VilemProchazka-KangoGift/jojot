@@ -38,12 +38,12 @@ internal sealed class VirtualDesktopNotificationListener : IVirtualDesktopNotifi
         try
         {
             Guid id = desktop.GetId();
-            LogService.Info($"Notification: desktop created ({id})");
+            LogService.Info("Notification: desktop created ({DesktopId})", id);
             DesktopCreated?.Invoke(id);
         }
         catch (Exception ex)
         {
-            LogService.Warn($"Error in VirtualDesktopCreated callback: {ex.Message}");
+            LogService.Warn("Error in VirtualDesktopCreated callback: {ErrorMessage}", ex.Message);
         }
         return 0; // S_OK
     }
@@ -66,12 +66,12 @@ internal sealed class VirtualDesktopNotificationListener : IVirtualDesktopNotifi
         try
         {
             Guid id = desktopDestroyed.GetId();
-            LogService.Info($"Notification: desktop destroyed ({id})");
+            LogService.Info("Notification: desktop destroyed ({DesktopId})", id);
             DesktopDestroyed?.Invoke(id);
         }
         catch (Exception ex)
         {
-            LogService.Warn($"Error in VirtualDesktopDestroyed callback: {ex.Message}");
+            LogService.Warn("Error in VirtualDesktopDestroyed callback: {ErrorMessage}", ex.Message);
         }
         return 0; // S_OK
     }
@@ -79,7 +79,7 @@ internal sealed class VirtualDesktopNotificationListener : IVirtualDesktopNotifi
     /// <inheritdoc />
     public int VirtualDesktopMoved(IntPtr monitors, IVirtualDesktop desktop, int oldIndex, int newIndex)
     {
-        LogService.Info($"Notification: desktop moved (index {oldIndex} -> {newIndex})");
+        LogService.Info("Notification: desktop moved (index {OldIndex} -> {NewIndex})", oldIndex, newIndex);
         return 0; // S_OK — index changes handled via session matching on next startup
     }
 
@@ -90,12 +90,12 @@ internal sealed class VirtualDesktopNotificationListener : IVirtualDesktopNotifi
         {
             Guid id = desktop.GetId();
             string safeName = newName ?? "";
-            LogService.Info($"Notification: desktop renamed ({id}) -> \"{safeName}\"");
+            LogService.Info("Notification: desktop renamed ({DesktopId}) -> {NewName}", id, safeName);
             DesktopRenamed?.Invoke(id, safeName);
         }
         catch (Exception ex)
         {
-            LogService.Warn($"Error in VirtualDesktopRenamed callback: {ex.Message}");
+            LogService.Warn("Error in VirtualDesktopRenamed callback: {ErrorMessage}", ex.Message);
         }
         return 0; // S_OK
     }
@@ -105,12 +105,12 @@ internal sealed class VirtualDesktopNotificationListener : IVirtualDesktopNotifi
     {
         try
         {
-            LogService.Info($"Notification: window view changed (view=0x{view:X})");
+            LogService.Info("Notification: window view changed (view={ViewPtr})", $"0x{view:X}");
             WindowViewChanged?.Invoke(view);
         }
         catch (Exception ex)
         {
-            LogService.Warn($"Error in ViewVirtualDesktopChanged callback: {ex.Message}");
+            LogService.Warn("Error in ViewVirtualDesktopChanged callback: {ErrorMessage}", ex.Message);
         }
         return 0; // S_OK
     }
@@ -122,12 +122,12 @@ internal sealed class VirtualDesktopNotificationListener : IVirtualDesktopNotifi
         {
             Guid oldId = desktopOld.GetId();
             Guid newId = desktopNew.GetId();
-            LogService.Info($"Notification: desktop switched ({oldId} -> {newId})");
+            LogService.Info("Notification: desktop switched ({OldDesktopId} -> {NewDesktopId})", oldId, newId);
             CurrentDesktopChanged?.Invoke(oldId, newId);
         }
         catch (Exception ex)
         {
-            LogService.Warn($"Error in CurrentVirtualDesktopChanged callback: {ex.Message}");
+            LogService.Warn("Error in CurrentVirtualDesktopChanged callback: {ErrorMessage}", ex.Message);
         }
         return 0; // S_OK
     }

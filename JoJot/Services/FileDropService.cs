@@ -98,17 +98,17 @@ public static class FileDropService
         }
         catch (UnauthorizedAccessException)
         {
-            LogService.Error($"File drop: access denied for '{filePath}'");
+            LogService.Error("File drop: access denied for {FilePath}", filePath);
             return new FileDropResult(false, fileName, null, $"Failed to read '{fileName}'");
         }
         catch (IOException ex)
         {
-            LogService.Error($"File drop: IO error for '{filePath}'", ex);
+            LogService.Error("File drop: IO error for {FilePath}", filePath, ex);
             return new FileDropResult(false, fileName, null, $"Failed to read '{fileName}'");
         }
         catch (Exception ex)
         {
-            LogService.Error($"File drop: unexpected error for '{filePath}'", ex);
+            LogService.Error("File drop: unexpected error for {FilePath}", filePath, ex);
             return new FileDropResult(false, fileName, null, $"Failed to read '{fileName}'");
         }
     }

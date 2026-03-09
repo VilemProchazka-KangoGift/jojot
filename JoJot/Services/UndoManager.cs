@@ -148,7 +148,7 @@ public class UndoManager
             }
 
             stack.CollapseTier1IntoTier2();
-            LogService.Info($"UndoManager: collapsed tier-1 for tab {stack.TabId}, total={TotalEstimatedBytes / 1024}KB");
+            LogService.Info("UndoManager: collapsed tier-1 for tab {TabId}, total={TotalKB}KB", stack.TabId, TotalEstimatedBytes / 1024);
         }
 
         // Evict oldest tier-2 entries if still over target
@@ -160,9 +160,9 @@ public class UndoManager
             }
 
             stack.EvictOldestTier2(5);
-            LogService.Info($"UndoManager: evicted tier-2 entries for tab {stack.TabId}, total={TotalEstimatedBytes / 1024}KB");
+            LogService.Info("UndoManager: evicted tier-2 entries for tab {TabId}, total={TotalKB}KB", stack.TabId, TotalEstimatedBytes / 1024);
         }
 
-        LogService.Info($"UndoManager: collapse complete, total={TotalEstimatedBytes / 1024}KB (target={targetBytes / 1024}KB)");
+        LogService.Info("UndoManager: collapse complete, total={TotalKB}KB (target={TargetKB}KB)", TotalEstimatedBytes / 1024, targetBytes / 1024);
     }
 }

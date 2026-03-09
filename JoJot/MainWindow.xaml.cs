@@ -346,7 +346,7 @@ public partial class MainWindow : Window
     /// </summary>
     public void FlushAndClose()
     {
-        LogService.Info($"FlushAndClose called for desktop {_desktopGuid}");
+        LogService.Info("FlushAndClose called for desktop {DesktopGuid}", _desktopGuid);
 
         // Unsubscribe from drag detection to prevent events firing during close
         VirtualDesktopService.WindowMovedToDesktop -= OnWindowMovedToDesktop;
@@ -397,7 +397,7 @@ public partial class MainWindow : Window
         // Fire-and-forget: save geometry to database (process stays alive so this completes)
         _ = DatabaseService.SaveWindowGeometryAsync(_desktopGuid, geo);
 
-        LogService.Info($"Window closing for desktop {_desktopGuid} \u2014 geometry saved ({geo.Left},{geo.Top} {geo.Width}x{geo.Height} maximized={geo.IsMaximized})");
+        LogService.Info("Window closing for desktop {DesktopGuid} \u2014 geometry saved ({Left},{Top} {Width}x{Height} maximized={IsMaximized})", _desktopGuid, geo.Left, geo.Top, geo.Width, geo.Height);
 
         // Do NOT set e.Cancel = true — let the window close and be destroyed
     }

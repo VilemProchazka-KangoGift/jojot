@@ -49,7 +49,7 @@ public static class DatabaseService
         await ExecuteRawPragmaAsync("PRAGMA synchronous=NORMAL;").ConfigureAwait(false);
         await ExecuteRawPragmaAsync("PRAGMA foreign_keys=ON;").ConfigureAwait(false);
 
-        LogService.Info($"Database opened: {dbPath}");
+        LogService.Info("Database opened: {DbPath}", dbPath);
     }
 
     /// <summary>
@@ -77,7 +77,7 @@ public static class DatabaseService
                 $"SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='{table}';").ConfigureAwait(false);
             if (count == 0)
             {
-                LogService.Warn($"Expected table '{table}' is missing — running PRAGMA quick_check");
+                LogService.Warn("Expected table {Table} is missing — running PRAGMA quick_check", table);
                 return await RunQuickCheckAsync().ConfigureAwait(false);
             }
         }
@@ -100,7 +100,7 @@ public static class DatabaseService
             File.Delete(corruptPath);
 
         File.Move(dbPath, corruptPath);
-        LogService.Warn($"Corrupt database backed up to: {corruptPath}");
+        LogService.Warn("Corrupt database backed up to: {CorruptPath}", corruptPath);
 
         await OpenAsync(dbPath).ConfigureAwait(false);
         await EnsureSchemaAsync().ConfigureAwait(false);
@@ -123,7 +123,7 @@ public static class DatabaseService
         }
         catch (Exception ex)
         {
-            LogService.Error($"ExecuteNonQueryAsync failed: {sql}", ex);
+            LogService.Error("ExecuteNonQueryAsync failed: {Sql}", sql, ex);
             throw;
         }
         finally
@@ -148,7 +148,7 @@ public static class DatabaseService
         }
         catch (Exception ex)
         {
-            LogService.Error($"ExecuteScalarAsync failed: {sql}", ex);
+            LogService.Error("ExecuteScalarAsync failed: {Sql}", sql, ex);
             throw;
         }
         finally
@@ -245,7 +245,7 @@ public static class DatabaseService
         }
         catch (Exception ex)
         {
-            LogService.Error($"UpdateSessionAsync failed (old={oldGuid}, new={newGuid})", ex);
+            LogService.Error("UpdateSessionAsync failed (old={OldGuid}, new={NewGuid})", oldGuid, newGuid, ex);
             throw;
         }
         finally
@@ -278,7 +278,7 @@ public static class DatabaseService
         }
         catch (Exception ex)
         {
-            LogService.Error($"CreateSessionAsync failed (guid={desktopGuid})", ex);
+            LogService.Error("CreateSessionAsync failed (guid={DesktopGuid})", desktopGuid, ex);
             throw;
         }
         finally
@@ -303,7 +303,7 @@ public static class DatabaseService
         }
         catch (Exception ex)
         {
-            LogService.Error($"UpdateDesktopNameAsync failed (guid={desktopGuid})", ex);
+            LogService.Error("UpdateDesktopNameAsync failed (guid={DesktopGuid})", desktopGuid, ex);
             throw;
         }
         finally
@@ -341,7 +341,7 @@ public static class DatabaseService
         }
         catch (Exception ex)
         {
-            LogService.Error($"GetWindowGeometryAsync failed (guid={desktopGuid})", ex);
+            LogService.Error("GetWindowGeometryAsync failed (guid={DesktopGuid})", desktopGuid, ex);
             throw;
         }
         finally
@@ -370,7 +370,7 @@ public static class DatabaseService
         }
         catch (Exception ex)
         {
-            LogService.Error($"SaveWindowGeometryAsync failed (guid={desktopGuid})", ex);
+            LogService.Error("SaveWindowGeometryAsync failed (guid={DesktopGuid})", desktopGuid, ex);
             throw;
         }
         finally
@@ -399,7 +399,7 @@ public static class DatabaseService
         }
         catch (Exception ex)
         {
-            LogService.Error($"GetNotesForDesktopAsync failed (guid={desktopGuid})", ex);
+            LogService.Error("GetNotesForDesktopAsync failed (guid={DesktopGuid})", desktopGuid, ex);
             throw;
         }
         finally
@@ -434,7 +434,7 @@ public static class DatabaseService
         }
         catch (Exception ex)
         {
-            LogService.Error($"InsertNoteAsync failed (guid={desktopGuid})", ex);
+            LogService.Error("InsertNoteAsync failed (guid={DesktopGuid})", desktopGuid, ex);
             throw;
         }
         finally
@@ -460,7 +460,7 @@ public static class DatabaseService
         }
         catch (Exception ex)
         {
-            LogService.Error($"UpdateNoteContentAsync failed (id={noteId})", ex);
+            LogService.Error("UpdateNoteContentAsync failed (id={NoteId})", noteId, ex);
             throw;
         }
         finally
@@ -486,7 +486,7 @@ public static class DatabaseService
         }
         catch (Exception ex)
         {
-            LogService.Error($"UpdateNoteNameAsync failed (id={noteId})", ex);
+            LogService.Error("UpdateNoteNameAsync failed (id={NoteId})", noteId, ex);
             throw;
         }
         finally
@@ -512,7 +512,7 @@ public static class DatabaseService
         }
         catch (Exception ex)
         {
-            LogService.Error($"UpdateNotePinnedAsync failed (id={noteId})", ex);
+            LogService.Error("UpdateNotePinnedAsync failed (id={NoteId})", noteId, ex);
             throw;
         }
         finally
@@ -564,7 +564,7 @@ public static class DatabaseService
         }
         catch (Exception ex)
         {
-            LogService.Error($"DeleteNoteAsync failed (id={noteId})", ex);
+            LogService.Error("DeleteNoteAsync failed (id={NoteId})", noteId, ex);
             throw;
         }
         finally
@@ -590,12 +590,12 @@ public static class DatabaseService
                     && !n.Pinned)
                 .ExecuteDeleteAsync().ConfigureAwait(false);
             if (deleted > 0)
-                LogService.Info($"Startup cleanup: deleted {deleted} empty note(s) for desktop {desktopGuid}");
+                LogService.Info("Startup cleanup: deleted {DeletedCount} empty note(s) for desktop {DesktopGuid}", deleted, desktopGuid);
             return deleted;
         }
         catch (Exception ex)
         {
-            LogService.Error($"DeleteEmptyNotesAsync failed (guid={desktopGuid})", ex);
+            LogService.Error("DeleteEmptyNotesAsync failed (guid={DesktopGuid})", desktopGuid, ex);
             return 0; // Non-fatal — don't crash on startup cleanup failure
         }
         finally
@@ -621,7 +621,7 @@ public static class DatabaseService
         }
         catch (Exception ex)
         {
-            LogService.Error($"GetMaxSortOrderAsync failed (guid={desktopGuid})", ex);
+            LogService.Error("GetMaxSortOrderAsync failed (guid={DesktopGuid})", desktopGuid, ex);
             throw;
         }
         finally
@@ -650,7 +650,7 @@ public static class DatabaseService
         }
         catch (Exception ex)
         {
-            LogService.Error($"GetNoteNamesForDesktopAsync failed (guid={desktopGuid})", ex);
+            LogService.Error("GetNoteNamesForDesktopAsync failed (guid={DesktopGuid})", desktopGuid, ex);
             return [];
         }
         finally
@@ -685,7 +685,7 @@ public static class DatabaseService
         }
         catch (Exception ex)
         {
-            LogService.Error($"GetNotePreviewsForDesktopAsync failed (guid={desktopGuid})", ex);
+            LogService.Error("GetNotePreviewsForDesktopAsync failed (guid={DesktopGuid})", desktopGuid, ex);
             return [];
         }
         finally
@@ -707,7 +707,7 @@ public static class DatabaseService
         }
         catch (Exception ex)
         {
-            LogService.Error($"GetNoteCountForDesktopAsync failed (guid={desktopGuid})", ex);
+            LogService.Error("GetNoteCountForDesktopAsync failed (guid={DesktopGuid})", desktopGuid, ex);
             return 0;
         }
         finally
@@ -733,7 +733,7 @@ public static class DatabaseService
         }
         catch (Exception ex)
         {
-            LogService.Error($"GetDesktopNameAsync failed (guid={desktopGuid})", ex);
+            LogService.Error("GetDesktopNameAsync failed (guid={DesktopGuid})", desktopGuid, ex);
             return null;
         }
         finally
@@ -822,11 +822,11 @@ public static class DatabaseService
             }
             await context.SaveChangesAsync().ConfigureAwait(false);
 
-            LogService.Info($"Migrated tabs from {sourceGuid} to {targetGuid} (base sort_order: {baseOrder})");
+            LogService.Info("Migrated tabs from {SourceGuid} to {TargetGuid} (base sort_order: {BaseOrder})", sourceGuid, targetGuid, baseOrder);
         }
         catch (Exception ex)
         {
-            LogService.Error($"MigrateTabsAsync failed (source={sourceGuid}, target={targetGuid})", ex);
+            LogService.Error("MigrateTabsAsync failed (source={SourceGuid}, target={TargetGuid})", sourceGuid, targetGuid, ex);
             throw;
         }
         finally
@@ -851,11 +851,11 @@ public static class DatabaseService
                 .Where(a => a.DesktopGuid == desktopGuid)
                 .ExecuteDeleteAsync().ConfigureAwait(false);
 
-            LogService.Info($"Deleted orphaned session and notes for {desktopGuid}");
+            LogService.Info("Deleted orphaned session and notes for {DesktopGuid}", desktopGuid);
         }
         catch (Exception ex)
         {
-            LogService.Error($"DeleteSessionAndNotesAsync failed (guid={desktopGuid})", ex);
+            LogService.Error("DeleteSessionAndNotesAsync failed (guid={DesktopGuid})", desktopGuid, ex);
             throw;
         }
         finally
@@ -883,7 +883,7 @@ public static class DatabaseService
         }
         catch (Exception ex)
         {
-            LogService.Error($"GetPreferenceAsync failed for key: {key}", ex);
+            LogService.Error("GetPreferenceAsync failed for key: {Key}", key, ex);
             return null;
         }
         finally
@@ -907,7 +907,7 @@ public static class DatabaseService
         }
         catch (Exception ex)
         {
-            LogService.Error($"SetPreferenceAsync failed for key: {key}", ex);
+            LogService.Error("SetPreferenceAsync failed for key: {Key}", key, ex);
             throw;
         }
         finally
@@ -931,12 +931,12 @@ public static class DatabaseService
             context.PendingMoves.Add(move);
             await context.SaveChangesAsync().ConfigureAwait(false);
 
-            LogService.Info($"InsertPendingMove: id={move.Id}, window={windowId}, from={fromDesktop}, to={toDesktop}");
+            LogService.Info("InsertPendingMove: id={MoveId}, window={WindowId}, from={FromDesktop}, to={ToDesktop}", move.Id, windowId, fromDesktop, toDesktop);
             return move.Id;
         }
         catch (Exception ex)
         {
-            LogService.Error($"InsertPendingMoveAsync failed (window={windowId})", ex);
+            LogService.Error("InsertPendingMoveAsync failed (window={WindowId})", windowId, ex);
             throw;
         }
         finally
@@ -957,11 +957,11 @@ public static class DatabaseService
             int deleted = await context.PendingMoves
                 .Where(p => p.WindowId == windowId)
                 .ExecuteDeleteAsync().ConfigureAwait(false);
-            LogService.Info($"DeletePendingMove: window={windowId}, rows={deleted}");
+            LogService.Info("DeletePendingMove: window={WindowId}, rows={Deleted}", windowId, deleted);
         }
         catch (Exception ex)
         {
-            LogService.Error($"DeletePendingMoveAsync failed (window={windowId})", ex);
+            LogService.Error("DeletePendingMoveAsync failed (window={WindowId})", windowId, ex);
             throw;
         }
         finally
@@ -991,11 +991,11 @@ public static class DatabaseService
         {
             using var context = CreateContext();
             int deleted = await context.PendingMoves.ExecuteDeleteAsync().ConfigureAwait(false);
-            LogService.Info($"DeleteAllPendingMoves: rows={deleted}");
+            LogService.Info("DeleteAllPendingMoves: rows={Deleted}", deleted);
         }
         catch (Exception ex)
         {
-            LogService.Error($"DeleteAllPendingMovesAsync failed", ex);
+            LogService.Error("DeleteAllPendingMovesAsync failed", ex);
             throw;
         }
         finally
@@ -1017,11 +1017,11 @@ public static class DatabaseService
                 .Where(n => n.DesktopGuid == fromGuid)
                 .ExecuteUpdateAsync(s => s
                     .SetProperty(n => n.DesktopGuid, toGuid)).ConfigureAwait(false);
-            LogService.Info($"Reparented {affected} notes from {fromGuid} to {toGuid}");
+            LogService.Info("Reparented {Affected} notes from {FromGuid} to {ToGuid}", affected, fromGuid, toGuid);
         }
         catch (Exception ex)
         {
-            LogService.Error($"MigrateNotesDesktopGuidAsync failed (from={fromGuid}, to={toGuid})", ex);
+            LogService.Error("MigrateNotesDesktopGuidAsync failed (from={FromGuid}, to={ToGuid})", fromGuid, toGuid, ex);
             throw;
         }
         finally
@@ -1057,11 +1057,11 @@ public static class DatabaseService
             }
             await context.SaveChangesAsync().ConfigureAwait(false);
 
-            LogService.Info($"Migrated tabs (preserving pins) from {sourceGuid} to {targetGuid} (base sort_order: {baseOrder})");
+            LogService.Info("Migrated tabs (preserving pins) from {SourceGuid} to {TargetGuid} (base sort_order: {BaseOrder})", sourceGuid, targetGuid, baseOrder);
         }
         catch (Exception ex)
         {
-            LogService.Error($"MigrateTabsPreservePinsAsync failed (source={sourceGuid}, target={targetGuid})", ex);
+            LogService.Error("MigrateTabsPreservePinsAsync failed (source={SourceGuid}, target={TargetGuid})", sourceGuid, targetGuid, ex);
             throw;
         }
         finally
@@ -1093,11 +1093,11 @@ public static class DatabaseService
                     .SetProperty(a => a.DesktopName, name)
                     .SetProperty(a => a.DesktopIndex, index)).ConfigureAwait(false);
 
-            LogService.Info($"Updated session desktop: {oldGuid} -> {newGuid} (name={name}, index={index})");
+            LogService.Info("Updated session desktop: {OldGuid} -> {NewGuid} (name={Name}, index={Index})", oldGuid, newGuid, name, index);
         }
         catch (Exception ex)
         {
-            LogService.Error($"UpdateSessionDesktopAsync failed (old={oldGuid}, new={newGuid})", ex);
+            LogService.Error("UpdateSessionDesktopAsync failed (old={OldGuid}, new={NewGuid})", oldGuid, newGuid, ex);
             throw;
         }
         finally
@@ -1126,7 +1126,7 @@ public static class DatabaseService
                     string result = reader.GetString(0);
                     bool ok = string.Equals(result, "ok", StringComparison.OrdinalIgnoreCase);
                     if (!ok)
-                        LogService.Error($"PRAGMA quick_check returned: {result}");
+                        LogService.Error("PRAGMA quick_check returned: {Result}", result);
                     return ok;
                 }
                 return false;

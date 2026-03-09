@@ -30,7 +30,7 @@ internal static class VirtualDesktopInterop
         }
 
         int buildNumber = Environment.OSVersion.Version.Build;
-        LogService.Info($"VirtualDesktopInterop: initializing for build {buildNumber}");
+        LogService.Info("VirtualDesktopInterop: initializing for build {BuildNumber}", buildNumber);
 
         _guidSet = ComGuids.Resolve(buildNumber);
         if (_guidSet is null)
@@ -85,7 +85,7 @@ internal static class VirtualDesktopInterop
         {
             // Notification service is optional — title updates won't work but detection still does
             LogService.Warn(
-                $"QueryService for IVirtualDesktopNotificationService failed (HRESULT: 0x{hr:X8}) — live notifications disabled");
+                "QueryService for IVirtualDesktopNotificationService failed (HRESULT: {HResult}) — live notifications disabled", $"0x{hr:X8}");
             _notificationService = null;
         }
         else
@@ -215,7 +215,7 @@ internal static class VirtualDesktopInterop
             hr = desktops.GetAt(i, ref iidVd, out object desktopObj);
             if (hr != 0)
             {
-                LogService.Warn($"IObjectArray.GetAt({i}) failed (HRESULT: 0x{hr:X8}) — skipping");
+                LogService.Warn("IObjectArray.GetAt({Index}) failed (HRESULT: {HResult}) — skipping", i, $"0x{hr:X8}");
                 continue;
             }
 

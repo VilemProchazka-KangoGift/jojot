@@ -200,11 +200,11 @@ public partial class MainWindow
         // Hide overlay with fade-out
         await HideDragOverlayAsync();
 
-        LogService.Info($"Reparented window from {oldGuid} to {newGuid}");
+        LogService.Info("Reparented window from {OldGuid} to {NewGuid}", oldGuid, newGuid);
         }
         catch (Exception ex)
         {
-            LogService.Warn($"DragKeepHere failed: {ex.Message}");
+            LogService.Warn("DragKeepHere failed: {ErrorMessage}", ex.Message);
         }
     }
 
@@ -244,11 +244,11 @@ public partial class MainWindow
 
         FlushAndClose();
 
-        LogService.Info($"Merged {tabCount} tabs from {sourceGuid} to {targetGuid}");
+        LogService.Info("Merged {TabCount} tabs from {SourceGuid} to {TargetGuid}", tabCount, sourceGuid, targetGuid);
         }
         catch (Exception ex)
         {
-            LogService.Warn($"DragMerge failed: {ex.Message}");
+            LogService.Warn("DragMerge failed: {ErrorMessage}", ex.Message);
         }
     }
 
@@ -280,7 +280,7 @@ public partial class MainWindow
                 // Hide overlay with fade-out
                 await HideDragOverlayAsync();
 
-                LogService.Info($"Cancel: moved window back to {_dragFromDesktopGuid}");
+                LogService.Info("Cancel: moved window back to {DesktopGuid}", _dragFromDesktopGuid);
             }
             else
             {
@@ -288,12 +288,12 @@ public partial class MainWindow
                 DragCancelBtn.Content = "Retry";
                 DragCancelFailureText.Visibility = Visibility.Visible;
 
-                LogService.Warn($"Cancel failed: could not move window back to {_dragFromDesktopGuid}");
+                LogService.Warn("Cancel failed: could not move window back to {DesktopGuid}", _dragFromDesktopGuid);
             }
         }
         catch (Exception ex)
         {
-            LogService.Warn($"DragCancel failed: {ex.Message}");
+            LogService.Warn("DragCancel failed: {ErrorMessage}", ex.Message);
         }
     }
 
@@ -369,7 +369,7 @@ public partial class MainWindow
                 if (confirmGuid.Equals(_desktopGuid, StringComparison.OrdinalIgnoreCase))
                 {
                     // Transient mismatch — COM returned stale data
-                    LogService.Info($"Misplaced check: transient mismatch resolved (was {currentGuid}, now correct)");
+                    LogService.Info("Misplaced check: transient mismatch resolved (was {CurrentGuid}, now correct)", currentGuid);
                     return;
                 }
                 currentGuid = confirmGuid;
@@ -417,7 +417,7 @@ public partial class MainWindow
         }
         catch (Exception ex)
         {
-            LogService.Warn($"Misplaced check failed: {ex.Message}");
+            LogService.Warn("Misplaced check failed: {ErrorMessage}", ex.Message);
         }
     }
 }

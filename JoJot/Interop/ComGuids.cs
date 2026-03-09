@@ -71,7 +71,7 @@ internal static class ComGuids
     {
         if (buildNumber < 22621)
         {
-            LogService.Warn($"Unsupported OS build {buildNumber} — virtual desktop features disabled");
+            LogService.Warn("Unsupported OS build {BuildNumber} — virtual desktop features disabled", buildNumber);
             return null;
         }
 
@@ -91,11 +91,11 @@ internal static class ComGuids
 
         if (result is not null)
         {
-            LogService.Info($"COM GUIDs resolved for build {buildNumber}");
+            LogService.Info("COM GUIDs resolved for build {BuildNumber}", buildNumber);
         }
         else
         {
-            LogService.Warn($"No COM GUID mapping for build {buildNumber} — virtual desktop features disabled");
+            LogService.Warn("No COM GUID mapping for build {BuildNumber} — virtual desktop features disabled", buildNumber);
         }
 
         return result;

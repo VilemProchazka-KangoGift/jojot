@@ -5,6 +5,7 @@ using System.Windows.Interop;
 using JoJot.Interop;
 using JoJot.Models;
 using JoJot.Services;
+using Serilog.Events;
 
 namespace JoJot;
 
@@ -90,11 +91,11 @@ public partial class App : Application
                     VirtualDesktopInterop.Initialize();
                     var (id, _, _) = VirtualDesktopInterop.GetCurrentDesktop();
                     senderDesktop = id.ToString();
-                    LogService.Info($"Second instance detected — sender desktop {senderDesktop}");
+                    LogService.Info("Second instance detected — sender desktop {SenderDesktop}", senderDesktop);
                 }
                 catch (Exception ex)
                 {
-                    LogService.Warn($"Second instance COM query failed: {ex.Message}");
+                    LogService.Warn("Second instance COM query failed: {ErrorMessage}", ex.Message);
                 }
 
                 await IpcService.SendCommandAsync(new NewTabCommand(DesktopGuid: senderDesktop));
@@ -118,6 +119,14 @@ public partial class App : Application
                 await DatabaseService.HandleCorruptionAsync(dbPath);
             }
 
+            // Restore log level from preferences
+            var savedLogLevel = await DatabaseService.GetPreferenceAsync("log_level").ConfigureAwait(false);
+            if (savedLogLevel is not null && Enum.TryParse<LogEventLevel>(savedLogLevel, true, out var level))
+            {
+                LogService.SetMinimumLevel(level);
+                LogService.Info("Log level restored from preferences: {LogLevel}", level);
+            }
+
             // Initialize theme
             await ThemeService.InitializeAsync();
 
@@ -125,7 +134,7 @@ public partial class App : Application
             await VirtualDesktopService.InitializeAsync();
             if (VirtualDesktopService.IsAvailable)
             {
-                LogService.Info($"Virtual desktop: {VirtualDesktopService.CurrentDesktopGuid} ({VirtualDesktopService.CurrentDesktopName})");
+                LogService.Info("Virtual desktop: {DesktopGuid} ({DesktopName})", VirtualDesktopService.CurrentDesktopGuid, VirtualDesktopService.CurrentDesktopName);
             }
             else
             {
@@ -187,7 +196,7 @@ public partial class App : Application
             // (e.g. taskbar click), switch back and create a window on the origin desktop.
             VirtualDesktopService.CurrentDesktopChanged += (oldGuid, newGuid) =>
             {
-                LogService.Info($"Desktop switched: {oldGuid} -> {newGuid}");
+                LogService.Info("Desktop switched: {OldGuid} -> {NewGuid}", oldGuid, newGuid);
 
                 Dispatcher.InvokeAsync(async () =>
                 {
@@ -203,7 +212,7 @@ public partial class App : Application
                         // FROM a desktop without one (taskbar click pattern)
                         if (!_windows.ContainsKey(oldGuid) && _windows.ContainsKey(newGuid))
                         {
-                            LogService.Info($"Redirect: creating window on {oldGuid} and switching back");
+                            LogService.Info("Redirect: creating window on {DesktopGuid} and switching back", oldGuid);
                             _redirectCooldownUntil = DateTime.UtcNow.AddSeconds(3);
                             await CreateWindowForDesktop(oldGuid);
                             VirtualDesktopService.TrySwitchToDesktop(oldGuid);
@@ -218,7 +227,7 @@ public partial class App : Application
 
             // Log startup timing
             sw.Stop();
-            LogService.Info($"Startup complete in {sw.ElapsedMilliseconds}ms");
+            LogService.Info("Startup complete in {ElapsedMs}ms", sw.ElapsedMilliseconds);
             Debug.WriteLine($"[JoJot] Startup: {sw.ElapsedMilliseconds}ms");
         }
         catch (Exception ex)
@@ -241,7 +250,7 @@ public partial class App : Application
         window.Closed += (_, _) =>
         {
             _windows.Remove(desktopGuid);
-            LogService.Info($"Window removed from registry for desktop {desktopGuid} ({_windows.Count} windows remaining)");
+            LogService.Info("Window removed from registry for desktop {DesktopGuid} ({WindowCount} windows remaining)", desktopGuid, _windows.Count);
         };
 
         // Restore geometry (must happen before Show for WindowStartupLocation to work)
@@ -351,7 +360,7 @@ public partial class App : Application
             switch (message)
             {
                 case ActivateCommand:
-                    LogService.Info($"IPC: activate — desktop {desktopGuid}");
+                    LogService.Info("IPC: activate — desktop {DesktopGuid}", desktopGuid);
                     if (_windows.TryGetValue(desktopGuid, out var existingWindow))
                     {
                         WindowActivationHelper.ActivateWindow(existingWindow);
@@ -365,7 +374,7 @@ public partial class App : Application
                 case NewTabCommand ntc:
                     // Prefer the sender's desktop GUID (queried by second instance via COM)
                     var targetDesktop = ntc.DesktopGuid ?? desktopGuid;
-                    LogService.Info($"IPC: new-tab — target desktop {targetDesktop} (sender={ntc.DesktopGuid}, cached={desktopGuid})");
+                    LogService.Info("IPC: new-tab — target desktop {TargetDesktop} (sender={SenderDesktop}, cached={CachedDesktop})", targetDesktop, ntc.DesktopGuid, desktopGuid);
                     if (_windows.TryGetValue(targetDesktop, out var tabWindow))
                     {
                         VirtualDesktopService.TrySwitchToDesktop(targetDesktop);
@@ -381,11 +390,11 @@ public partial class App : Application
                     break;
 
                 case ShowDesktopCommand showCmd:
-                    LogService.Info($"IPC: show-desktop {showCmd.DesktopGuid}");
+                    LogService.Info("IPC: show-desktop {DesktopGuid}", showCmd.DesktopGuid);
                     break;
 
                 default:
-                    LogService.Warn($"IPC: unknown command type '{message.GetType().Name}'");
+                    LogService.Warn("IPC: unknown command type {CommandType}", message.GetType().Name);
                     break;
             }
         }
@@ -439,7 +448,7 @@ public partial class App : Application
         {
             _windows.Remove(oldGuid);
             _windows[newGuid] = window;
-            LogService.Info($"Window reparented in registry: {oldGuid} -> {newGuid}");
+            LogService.Info("Window reparented in registry: {OldGuid} -> {NewGuid}", oldGuid, newGuid);
         }
     }
 
@@ -479,12 +488,12 @@ public partial class App : Application
             return;
         }
 
-        LogService.Info($"Pending moves check: {moves.Count} unresolved move(s) found — recovering");
+        LogService.Info("Pending moves check: {MoveCount} unresolved move(s) found — recovering", moves.Count);
         bool recovered = false;
 
         foreach (var move in moves)
         {
-            LogService.Info($"Recovering pending move: window={move.WindowId}, from={move.FromDesktop}, to={move.ToDesktop}");
+            LogService.Info("Recovering pending move: window={WindowId}, from={FromDesktop}, to={ToDesktop}", move.WindowId, move.FromDesktop, move.ToDesktop);
             if (move.ToDesktop is not null && !move.FromDesktop.Equals(move.ToDesktop, StringComparison.OrdinalIgnoreCase))
             {
                 try
@@ -494,7 +503,7 @@ public partial class App : Application
                 }
                 catch (Exception ex)
                 {
-                    LogService.Error($"Failed to recover pending move {move.Id}: {ex.Message}");
+                    LogService.Error("Failed to recover pending move {MoveId}: {ErrorMessage}", move.Id, ex.Message);
                 }
             }
         }
@@ -529,6 +538,8 @@ public partial class App : Application
         _singleInstanceMutex?.Dispose();
 
         _appShutdownCts.Dispose();
+
+        LogService.Shutdown();
 
         base.OnExit(e);
     }
