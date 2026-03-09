@@ -83,7 +83,6 @@ public partial class MainWindow : Window
         get => ViewModel.IsPreferencesOpen;
         set => ViewModel.IsPreferencesOpen = value;
     }
-    private bool _recordingHotkey;
     private int _currentFontSize = 13;
     private System.Windows.Threading.DispatcherTimer? _fontSizeTooltipTimer;
     private List<int> _findMatches = [];
@@ -173,6 +172,15 @@ public partial class MainWindow : Window
             string pinnedNote = pinnedCount > 0 ? $" (including {pinnedCount} pinned)" : "";
             string message = $"This will permanently delete {candidates.Count} tab{(candidates.Count == 1 ? "" : "s")}{pinnedNote}. This cannot be undone.";
             ShowConfirmation("Clean up tabs", message, () => _ = ExecuteCleanupDeleteAsync(candidates));
+        };
+        PreferencesPanel.CloseRequested += (_, _) => HidePreferencesPanel();
+        PreferencesPanel.ThemeChangeRequested += (_, theme) => _ = ThemeService.SetThemeAsync(theme);
+        PreferencesPanel.FontSizeChangeRequested += (_, delta) => _ = ChangeFontSizeAsync(delta);
+        PreferencesPanel.FontSizeResetRequested += (_, _) => _ = SetFontSizeAsync(13);
+        PreferencesPanel.HotkeyRecordingChanged += (_, isRecording) =>
+        {
+            if (isRecording) HotkeyService.PauseHotkey();
+            else HotkeyService.ResumeHotkey();
         };
 
         // Configure autosave service

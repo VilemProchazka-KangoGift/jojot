@@ -156,9 +156,9 @@ When starting a new session, read this file and `MVVM-PLAN.md` to understand whe
 
 ---
 
-## XAML UserControl Extraction — DONE (5 of 7)
+## XAML UserControl Extraction — DONE (6 of 7)
 
-MainWindow.xaml reduced from 905 → 677 lines (228 lines extracted into 5 UserControls).
+MainWindow.xaml reduced from 905 → 556 lines (349 lines extracted into 6 UserControls).
 
 | Priority | Section | Status | Target File |
 |---|---|---|---|
@@ -168,7 +168,7 @@ MainWindow.xaml reduced from 905 → 677 lines (228 lines extracted into 5 UserC
 | 4 | Recovery sidebar | DONE | `Controls/RecoveryPanel.xaml` |
 | 5 | Drag overlay | DONE | `Controls/DragOverlay.xaml` |
 | 6 | Hamburger menu | SKIPPED | Popup with PlacementTarget binding — doesn't map well to UserControl |
-| 7 | Preferences panel | TODO | Many named elements + cross-cutting concerns (font size tooltip, hotkey recording) |
+| 7 | Preferences panel | DONE | `Controls/PreferencesPanel.xaml` |
 
 ### Pattern established:
 - **UserControl** owns XAML visual tree + animations (Show/Hide with slide or fade)
@@ -184,6 +184,7 @@ MainWindow.xaml reduced from 905 → 677 lines (228 lines extracted into 5 UserC
 - **CleanupPanel**: Owns animation + preview row building. Exposes `AgeText`/`UnitIndex`/`IncludePinned` filter properties, `RefreshPreview(candidates)`, `ResetFilters()`. Events: `CloseRequested`, `DeleteRequested`, `FilterChanged`
 - **RecoveryPanel**: Container only — exposes `SessionList_` (StackPanel) for MainWindow to populate. Row building stays in MainWindow.Recovery.cs (deeply coupled to DB/COM)
 - **DragOverlay**: Clean API — `Show(source, title, message, showKeepHere, showMerge)`, `UpdateContent(...)`, `ShowRetryMode()`, `HideAsync()`, `HideImmediate()`. Events: `KeepHereClicked`, `MergeClicked`, `CancelClicked`
+- **PreferencesPanel**: Owns XAML, slide animation, theme toggle highlight, recording state display. Exposes `RefreshValues(fontSize, theme, hotkeyDisplay)`, `UpdateFontSizeDisplay(fontSize)`, `UpdateHotkeyDisplay(display)`, `StopRecording()`, `IsRecordingHotkey`, `FontSizeToPercent(size)` (internal static). Events: `CloseRequested`, `ThemeChangeRequested`, `FontSizeChangeRequested`, `FontSizeResetRequested`, `HotkeyRecordingChanged`. MainWindow.Preferences.cs retains font size business logic (DB, ContentEditor, tooltip), MainWindow.Keyboard.cs uses `PreferencesPanel.IsRecordingHotkey` + `StopRecording()` for hotkey capture
 
 ---
 
@@ -199,6 +200,7 @@ MainWindow.xaml reduced from 905 → 677 lines (228 lines extracted into 5 UserC
 - `JoJot/Controls/CleanupPanel.xaml` + `.cs`
 - `JoJot/Controls/RecoveryPanel.xaml` + `.cs`
 - `JoJot/Controls/DragOverlay.xaml` + `.cs`
+- `JoJot/Controls/PreferencesPanel.xaml` + `.cs`
 - `JoJot.Tests/ViewModels/ObservableObjectTests.cs`
 - `JoJot.Tests/ViewModels/RelayCommandTests.cs`
 - `JoJot.Tests/ViewModels/MainWindowViewModelTests.cs`
@@ -211,8 +213,8 @@ MainWindow.xaml reduced from 905 → 677 lines (228 lines extracted into 5 UserC
 
 ### Modified files:
 - `JoJot/Models/NoteTab.cs` — inherits ObservableObject, SetProperty on 5 props, tooltip computed props
-- `JoJot/MainWindow.xaml` — TabItemTemplate DataTemplate, 5 panels replaced with UserControl tags (905→677 lines)
-- `JoJot/MainWindow.xaml.cs` — ViewModel property, forwarding fields, UserControl event subscriptions, removed _helpBuilt/_confirmAction
+- `JoJot/MainWindow.xaml` — TabItemTemplate DataTemplate, 6 panels replaced with UserControl tags (905→556 lines)
+- `JoJot/MainWindow.xaml.cs` — ViewModel property, forwarding fields, UserControl event subscriptions, removed _helpBuilt/_confirmAction/_recordingHotkey
 - `JoJot/MainWindow.Tabs.cs` — DataTemplate-based CreateTabListItem, TabItemBorder_Loaded, FindAncestor
 - `JoJot/MainWindow.Rename.cs` — FindNamedDescendant for RenameBox/TitleBlock
 - `JoJot/MainWindow.TabDeletion.cs` — delegates to VM
@@ -223,7 +225,8 @@ MainWindow.xaml reduced from 905 → 677 lines (228 lines extracted into 5 UserC
 - `JoJot/MainWindow.Confirmation.cs` — thin wrapper calling ConfirmationOverlay.Show/Hide
 - `JoJot/MainWindow.Recovery.cs` — uses RecoveryPanel.SessionList_ + Show/Hide, keeps row building
 - `JoJot/MainWindow.DesktopDrag.cs` — uses DragOverlay API (Show/UpdateContent/HideAsync/ShowRetryMode)
-- `JoJot/MainWindow.Keyboard.cs` — InputBindings, uses ConfirmationOverlay.IsOpen/.Confirm()
+- `JoJot/MainWindow.Keyboard.cs` — InputBindings, uses ConfirmationOverlay.IsOpen/.Confirm(), PreferencesPanel.IsRecordingHotkey
+- `JoJot/MainWindow.Preferences.cs` — thin delegation to PreferencesPanel UserControl, retains font size business logic + tooltip
 
 ## Key Architectural Decisions
 - Forwarding properties pattern: `_tabs => ViewModel.Tabs` etc. allows all 16 partial classes to work unchanged

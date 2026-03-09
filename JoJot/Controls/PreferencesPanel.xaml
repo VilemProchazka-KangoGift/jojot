@@ -1,0 +1,126 @@
+<UserControl x:Class="JoJot.Controls.PreferencesPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Visibility="Collapsed">
+    <Border Background="{DynamicResource c-win-bg}" BorderBrush="{DynamicResource c-border}"
+            BorderThickness="1,0,0,0">
+        <Border.RenderTransform>
+            <TranslateTransform x:Name="PanelTransform" X="300"/>
+        </Border.RenderTransform>
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <!-- Header with close button -->
+            <Grid Grid.Row="0" Margin="16,16,16,8">
+                <TextBlock Text="Preferences" FontSize="18" FontWeight="SemiBold"
+                           Foreground="{DynamicResource c-text-primary}"/>
+                <TextBlock Text="&#xE711;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="14"
+                           HorizontalAlignment="Right" Cursor="Hand"
+                           Foreground="{DynamicResource c-text-muted}"
+                           MouseLeftButtonDown="Close_Click"/>
+            </Grid>
+
+            <!-- Scrollable content -->
+            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Margin="16,0,16,16">
+                <StackPanel>
+                    <!-- APPEARANCE SECTION -->
+                    <TextBlock Text="APPEARANCE" FontSize="11" FontWeight="SemiBold" Margin="0,8,0,8"
+                               Foreground="{DynamicResource c-text-muted}"/>
+
+                    <!-- Theme toggle -->
+                    <TextBlock Text="Theme" FontSize="13" Margin="0,0,0,6"
+                               Foreground="{DynamicResource c-text-primary}"/>
+                    <Grid x:Name="ThemeToggle" Margin="0,0,0,16">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Border x:Name="ThemeLightBtn" Grid.Column="0" CornerRadius="4,0,0,4"
+                                BorderThickness="1" BorderBrush="{DynamicResource c-border}"
+                                Cursor="Hand" Padding="8,6"
+                                MouseLeftButtonDown="ThemeLight_Click">
+                            <TextBlock Text="Light" FontSize="12" HorizontalAlignment="Center"
+                                       Foreground="{DynamicResource c-text-primary}"/>
+                        </Border>
+                        <Border x:Name="ThemeSystemBtn" Grid.Column="1"
+                                BorderThickness="0,1,0,1" BorderBrush="{DynamicResource c-border}"
+                                Cursor="Hand" Padding="8,6"
+                                MouseLeftButtonDown="ThemeSystem_Click">
+                            <TextBlock Text="System" FontSize="12" HorizontalAlignment="Center"
+                                       Foreground="{DynamicResource c-text-primary}"/>
+                        </Border>
+                        <Border x:Name="ThemeDarkBtn" Grid.Column="2" CornerRadius="0,4,4,0"
+                                BorderThickness="1" BorderBrush="{DynamicResource c-border}"
+                                Cursor="Hand" Padding="8,6"
+                                MouseLeftButtonDown="ThemeDark_Click">
+                            <TextBlock Text="Dark" FontSize="12" HorizontalAlignment="Center"
+                                       Foreground="{DynamicResource c-text-primary}"/>
+                        </Border>
+                    </Grid>
+
+                    <!-- Font size -->
+                    <TextBlock Text="Font Size" FontSize="13" Margin="0,0,0,6"
+                               Foreground="{DynamicResource c-text-primary}"/>
+                    <Grid Margin="0,0,0,4">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <Border Grid.Column="0" CornerRadius="4" BorderThickness="1"
+                                BorderBrush="{DynamicResource c-text-muted}" Cursor="Hand"
+                                Padding="10,4" MouseLeftButtonDown="FontSizeDecrease_Click">
+                            <TextBlock Text="-" FontSize="14" FontWeight="Bold"
+                                       Foreground="{DynamicResource c-text-primary}" HorizontalAlignment="Center"/>
+                        </Border>
+                        <TextBlock x:Name="FontSizeDisplay" Grid.Column="1" FontSize="13"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"
+                                   Foreground="{DynamicResource c-text-primary}"/>
+                        <Border Grid.Column="2" CornerRadius="4" BorderThickness="1"
+                                BorderBrush="{DynamicResource c-text-muted}" Cursor="Hand"
+                                Padding="10,4" MouseLeftButtonDown="FontSizeIncrease_Click">
+                            <TextBlock Text="+" FontSize="14" FontWeight="Bold"
+                                       Foreground="{DynamicResource c-text-primary}" HorizontalAlignment="Center"/>
+                        </Border>
+                    </Grid>
+                    <TextBlock Text="100%" FontSize="11" Foreground="{DynamicResource c-accent}"
+                               Cursor="Hand" Margin="0,2,0,16" HorizontalAlignment="Center"
+                               MouseLeftButtonDown="FontSizeReset_Click"
+                               TextDecorations="Underline"/>
+
+                    <!-- SHORTCUTS SECTION -->
+                    <TextBlock Text="SHORTCUTS" FontSize="11" FontWeight="SemiBold" Margin="0,8,0,8"
+                               Foreground="{DynamicResource c-text-muted}"/>
+
+                    <!-- Global hotkey picker -->
+                    <TextBlock Text="Global Hotkey" FontSize="13" Margin="0,0,0,6"
+                               Foreground="{DynamicResource c-text-primary}"/>
+                    <Grid Margin="0,0,0,4">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <Border Grid.Column="0" CornerRadius="4" BorderThickness="1"
+                                BorderBrush="{DynamicResource c-text-muted}" Padding="8,4"
+                                Background="{DynamicResource c-tab-bg}">
+                            <TextBlock x:Name="HotkeyDisplay" FontSize="13"
+                                       Foreground="{DynamicResource c-text-primary}"/>
+                        </Border>
+                        <Border x:Name="HotkeyRecordBtn" Grid.Column="1" CornerRadius="4" Cursor="Hand"
+                                Background="{DynamicResource c-accent}" Padding="12,4" Margin="8,0,0,0"
+                                MouseLeftButtonDown="HotkeyRecord_Click">
+                            <TextBlock x:Name="HotkeyRecordText" Text="Record" FontSize="12"
+                                       Foreground="White" HorizontalAlignment="Center"/>
+                        </Border>
+                    </Grid>
+                    <TextBlock Text="Focus JoJot from any app" FontSize="11" Margin="0,2,0,16"
+                               Foreground="{DynamicResource c-text-muted}"/>
+                </StackPanel>
+            </ScrollViewer>
+        </Grid>
+    </Border>
+</UserControl>

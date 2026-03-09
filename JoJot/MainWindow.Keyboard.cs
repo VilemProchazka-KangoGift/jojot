@@ -152,7 +152,7 @@ public partial class MainWindow
         }
 
         // Hotkey recording — capture key combination in preferences panel
-        if (_recordingHotkey)
+        if (PreferencesPanel.IsRecordingHotkey)
         {
             var mods = Keyboard.Modifiers;
             var key = e.Key == Key.System ? e.SystemKey : e.Key;
@@ -181,9 +181,8 @@ public partial class MainWindow
                 bool success = await HotkeyService.UpdateHotkeyAsync(win32Mods, vk);
                 await Dispatcher.InvokeAsync(() =>
                 {
-                    _recordingHotkey = false;
-                    HotkeyRecordText.Text = "Record";
-                    HotkeyDisplay.Text = HotkeyService.GetHotkeyDisplayString();
+                    PreferencesPanel.StopRecording();
+                    PreferencesPanel.UpdateHotkeyDisplay(HotkeyService.GetHotkeyDisplayString());
                     if (!success)
                     {
                         ShowInfoToast("Hotkey already in use by another app");
