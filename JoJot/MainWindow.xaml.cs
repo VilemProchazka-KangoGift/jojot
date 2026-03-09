@@ -8,6 +8,7 @@ using System.Windows.Media;
 using System.Windows.Media.Animation;
 using JoJot.Models;
 using JoJot.Services;
+using JoJot.ViewModels;
 
 namespace JoJot;
 
@@ -19,10 +20,28 @@ namespace JoJot;
 /// </summary>
 public partial class MainWindow : Window
 {
-    private string _desktopGuid;
-    private readonly ObservableCollection<NoteTab> _tabs = new();
-    private NoteTab? _activeTab;
-    private string _searchText = "";
+    /// <summary>
+    /// ViewModel backing this window's core state (tabs, active tab, search, desktop identity).
+    /// </summary>
+    internal MainWindowViewModel ViewModel { get; }
+
+    // Forwarding properties — all partial classes continue using these names unchanged.
+    private ObservableCollection<NoteTab> _tabs => ViewModel.Tabs;
+    private NoteTab? _activeTab
+    {
+        get => ViewModel.ActiveTab;
+        set => ViewModel.ActiveTab = value;
+    }
+    private string _searchText
+    {
+        get => ViewModel.SearchText;
+        set => ViewModel.SearchText = value;
+    }
+    private string _desktopGuid
+    {
+        get => ViewModel.DesktopGuid;
+        set => ViewModel.DesktopGuid = value;
+    }
 
     // ─── Rename state ───────────────────────────────────────────────────────
     private (ListBoxItem Item, NoteTab Tab, TextBox Box, TextBlock Label)? _activeRename;
@@ -48,14 +67,24 @@ public partial class MainWindow : Window
     private Action? _confirmAction;
     private DateTime _hamburgerClosedAt;
 
-    // ─── Recovery panel state ──────────────────────
-    private bool _recoveryPanelOpen;
+    // ─── Panel state (forwarded to ViewModel) ──────────────────────
+    private bool _recoveryPanelOpen
+    {
+        get => ViewModel.IsRecoveryOpen;
+        set => ViewModel.IsRecoveryOpen = value;
+    }
 
-    // ─── Cleanup panel state ──────────────────────
-    private bool _cleanupPanelOpen;
+    private bool _cleanupPanelOpen
+    {
+        get => ViewModel.IsCleanupOpen;
+        set => ViewModel.IsCleanupOpen = value;
+    }
 
-    // ─── Preferences, File Drop, Find Bar, Font Size ─────
-    private bool _preferencesOpen;
+    private bool _preferencesOpen
+    {
+        get => ViewModel.IsPreferencesOpen;
+        set => ViewModel.IsPreferencesOpen = value;
+    }
     private bool _recordingHotkey;
     private int _currentFontSize = 13;
     private System.Windows.Threading.DispatcherTimer? _fontSizeTooltipTimer;
@@ -63,12 +92,32 @@ public partial class MainWindow : Window
     private int _currentFindIndex = -1;
     private bool _helpBuilt;
 
-    // ─── Window Drag Detection ──────────────────────────────
-    private bool _isDragOverlayActive;     // guard against second drag
-    private string? _dragFromDesktopGuid;  // Origin desktop GUID for cancel flow
-    private string? _dragToDesktopGuid;    // Target desktop GUID
-    private string? _dragToDesktopName;    // Target desktop name for display
-    private bool _isMisplaced;            // window GUID doesn't match desktop
+    // ─── Window Drag Detection (forwarded to ViewModel) ────────
+    private bool _isDragOverlayActive
+    {
+        get => ViewModel.IsDragOverlayActive;
+        set => ViewModel.IsDragOverlayActive = value;
+    }
+    private string? _dragFromDesktopGuid
+    {
+        get => ViewModel.DragFromDesktopGuid;
+        set => ViewModel.DragFromDesktopGuid = value;
+    }
+    private string? _dragToDesktopGuid
+    {
+        get => ViewModel.DragToDesktopGuid;
+        set => ViewModel.DragToDesktopGuid = value;
+    }
+    private string? _dragToDesktopName
+    {
+        get => ViewModel.DragToDesktopName;
+        set => ViewModel.DragToDesktopName = value;
+    }
+    private bool _isMisplaced
+    {
+        get => ViewModel.IsMisplaced;
+        set => ViewModel.IsMisplaced = value;
+    }
     private System.Threading.CancellationTokenSource? _misplacedCheckCts; // debounce rapid desktop switches
     private int _fileDragEnterCount;       // Enter/leave counter for reliable overlay dismiss
 
@@ -84,7 +133,11 @@ public partial class MainWindow : Window
     // ─── Autosave & Undo ─────────────────────────────────────────
     private readonly AutosaveService _autosaveService = new();
     private readonly System.Windows.Threading.DispatcherTimer _checkpointTimer;
-    private bool _suppressTextChanged;
+    private bool _suppressTextChanged
+    {
+        get => ViewModel.IsRestoringContent;
+        set => ViewModel.IsRestoringContent = value;
+    }
     private string? _lastSaveDirectory;
 
     // ─── Theme-aware brush helper ──
@@ -99,7 +152,7 @@ public partial class MainWindow : Window
     /// </summary>
     public MainWindow(string desktopGuid)
     {
-        _desktopGuid = desktopGuid;
+        ViewModel = new MainWindowViewModel(desktopGuid);
 
         // Initialize checkpoint timer before InitializeComponent
         _checkpointTimer = new System.Windows.Threading.DispatcherTimer
@@ -250,7 +303,7 @@ public partial class MainWindow : Window
     /// The virtual desktop GUID this window is bound to.
     /// Used by App for registry keying and event routing.
     /// </summary>
-    public string DesktopGuid => _desktopGuid;
+    public string DesktopGuid => ViewModel.DesktopGuid;
 
     // ─── Visual Tree Helper ─────────────────────────────────────────────────
 
@@ -317,26 +370,12 @@ public partial class MainWindow : Window
 
     /// <summary>
     /// Updates the window title based on the current desktop identity.
-    /// Title format (per user decision VDSK-06):
-    ///   - "JoJot — {desktop name}" when name is known and non-empty
-    ///   - "JoJot — Desktop N" when name is empty but index is known (N = index + 1)
-    ///   - "JoJot" in fallback mode or when no desktop info available
-    /// Uses em-dash (U+2014 —) with spaces, not hyphen (-) or en-dash (U+2013).
+    /// Delegates to ViewModel for title formatting.
     /// </summary>
     public void UpdateDesktopTitle(string? desktopName, int? desktopIndex)
     {
-        if (!string.IsNullOrEmpty(desktopName))
-        {
-            Title = $"JoJot \u2014 {desktopName}";
-        }
-        else if (desktopIndex.HasValue)
-        {
-            Title = $"JoJot \u2014 Desktop {desktopIndex.Value + 1}";
-        }
-        else
-        {
-            Title = "JoJot";
-        }
+        ViewModel.UpdateDesktopInfo(desktopName, desktopIndex);
+        Title = ViewModel.WindowTitle;
     }
 
     // ─── Window Lifecycle ───────────────────────────────────────────────────
@@ -491,7 +530,7 @@ public partial class MainWindow : Window
         {
             Filter = "Text files (*.txt)|*.txt|All files (*.*)|*.*",
             DefaultExt = ".txt",
-            FileName = GetDefaultFilename(_activeTab)
+            FileName = MainWindowViewModel.GetDefaultFilename(_activeTab)
         };
 
         if (!string.IsNullOrEmpty(_lastSaveDirectory))
@@ -503,44 +542,5 @@ public partial class MainWindow : Window
             System.IO.File.WriteAllText(dialog.FileName, _activeTab.Content, utf8Bom);
             _lastSaveDirectory = System.IO.Path.GetDirectoryName(dialog.FileName);
         }
-    }
-
-    /// <summary>
-    /// Generates a default filename for the Save As dialog.
-    /// Priority: tab name, first 30 chars of content, "JoJot note YYYY-MM-DD".
-    /// </summary>
-    private static string GetDefaultFilename(NoteTab tab)
-    {
-        if (!string.IsNullOrWhiteSpace(tab.Name))
-            return SanitizeFilename(tab.Name) + ".txt";
-
-        if (!string.IsNullOrWhiteSpace(tab.Content))
-        {
-            string preview = tab.Content.Trim();
-            if (preview.Length > 30)
-                preview = preview[..30];
-            return SanitizeFilename(preview) + ".txt";
-        }
-
-        return $"JoJot note {DateTime.Now:yyyy-MM-dd}.txt";
-    }
-
-    /// <summary>
-    /// Removes characters that are illegal in Windows filenames.
-    /// </summary>
-    private static string SanitizeFilename(string name)
-    {
-        char[] invalid = System.IO.Path.GetInvalidFileNameChars();
-        var sanitized = new System.Text.StringBuilder(name.Length);
-        foreach (char c in name)
-        {
-            if (Array.IndexOf(invalid, c) < 0)
-                sanitized.Append(c);
-            else
-                sanitized.Append('_');
-        }
-        // Trim trailing dots and spaces (Windows doesn't allow them in filenames)
-        string result = sanitized.ToString().TrimEnd('.', ' ');
-        return string.IsNullOrWhiteSpace(result) ? "JoJot note" : result;
     }
 }

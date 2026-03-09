@@ -17,11 +17,13 @@ public partial class MainWindow
             BuildHelpContent();
             _helpBuilt = true;
         }
+        ViewModel.IsHelpOpen = true;
         HelpOverlay.Visibility = Visibility.Visible;
     }
 
     private void HideHelpOverlay()
     {
+        ViewModel.IsHelpOpen = false;
         HelpOverlay.Visibility = Visibility.Collapsed;
     }
 

@@ -202,17 +202,8 @@ public partial class MainWindow
                 int oldIndex = _tabs.IndexOf(_dragTab);
                 int newIndex = CalculateCollectionIndex(_dragInsertIndex);
 
-                if (oldIndex >= 0 && newIndex >= 0 && oldIndex != newIndex)
+                if (ViewModel.MoveTab(oldIndex, newIndex))
                 {
-                    // Adjust for removal shifting indexes
-                    if (newIndex > oldIndex) newIndex--;
-
-                    _tabs.Move(oldIndex, newIndex);
-
-                    // Reassign sort_order to match new collection order
-                    for (int i = 0; i < _tabs.Count; i++)
-                        _tabs[i].SortOrder = i;
-
                     _ = DatabaseService.UpdateNoteSortOrdersAsync(
                         _tabs.Select(t => (t.Id, t.SortOrder)));
 

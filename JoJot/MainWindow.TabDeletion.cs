@@ -45,13 +45,13 @@ public partial class MainWindow
         await CommitPendingDeletionAsync();
 
         int originalIndex = _tabs.IndexOf(tab);
-        bool wasActive = (_activeTab?.Id == tab.Id);
-
-        _tabs.Remove(tab);
+        var focusTarget = ViewModel.RemoveTab(tab);
         RebuildTabList();
 
-        if (wasActive)
-            await ApplyFocusCascadeAsync(originalIndex);
+        if (focusTarget is not null)
+            await ApplyFocusCascadeAsync(focusTarget);
+        else if (_tabs.Count == 0)
+            await CreateNewTabAsync();
 
         var cts = new CancellationTokenSource();
         _pendingDeletion = new PendingDeletion([tab], [originalIndex], cts);
@@ -65,29 +65,22 @@ public partial class MainWindow
     /// </summary>
     private async Task DeleteMultipleAsync(IEnumerable<NoteTab> candidates)
     {
-        var toDelete = candidates.Where(t => !t.Pinned).ToList();
-        if (toDelete.Count == 0) return;
-
         SaveCurrentTabContent();
         await CommitPendingDeletionAsync();
 
-        // Capture original indexes before any removal
-        var originalIndexes = toDelete.Select(t => _tabs.IndexOf(t)).ToList();
-
-        bool wasActive = _activeTab is not null && toDelete.Any(t => t.Id == _activeTab.Id);
-        int activeOriginalIndex = wasActive ? _tabs.IndexOf(_activeTab!) : 0;
-
-        foreach (var tab in toDelete)
-            _tabs.Remove(tab);
+        var (removed, originalIndexes, focusTarget) = ViewModel.RemoveMultiple(candidates);
+        if (removed.Count == 0) return;
 
         RebuildTabList();
 
-        if (wasActive)
-            await ApplyFocusCascadeAsync(activeOriginalIndex);
+        if (focusTarget is not null)
+            await ApplyFocusCascadeAsync(focusTarget);
+        else if (_tabs.Count == 0)
+            await CreateNewTabAsync();
 
         var cts = new CancellationTokenSource();
-        _pendingDeletion = new PendingDeletion(toDelete, originalIndexes, cts);
-        ShowToast(isBulk: true, count: toDelete.Count);
+        _pendingDeletion = new PendingDeletion(removed, originalIndexes, cts);
+        ShowToast(isBulk: true, count: removed.Count);
         _ = StartDismissTimerAsync(cts.Token);
     }
 
@@ -114,79 +107,52 @@ public partial class MainWindow
     /// Undo handler: re-inserts the pending tabs at their original positions.
     /// Cancels the dismiss timer so no hard-delete occurs.
     /// </summary>
-    private async Task UndoDeleteAsync()
+    private Task UndoDeleteAsync()
     {
-        if (_pendingDeletion is null) return;
+        if (_pendingDeletion is null) return Task.CompletedTask;
 
         var pending = _pendingDeletion;
         _pendingDeletion = null;
 
-        // Cancel and dispose the timer CTS — no hard-delete will occur
         pending.Cts.Cancel();
         pending.Cts.Dispose();
 
-        // Re-insert in ascending index order with clamping to handle shifted indexes
-        var pairs = pending.Tabs.Zip(pending.OriginalIndexes, (tab, idx) => (tab, idx))
-                                .OrderBy(p => p.idx)
-                                .ToList();
-
-        foreach (var (tab, originalIndex) in pairs)
-        {
-            int insertAt = Math.Min(originalIndex, _tabs.Count);
-            _tabs.Insert(insertAt, tab);
-        }
-
+        ViewModel.RestoreTabs(pending.Tabs, pending.OriginalIndexes);
         RebuildTabList();
-
-        // Select the first restored tab
         SelectTabByNote(pending.Tabs[0]);
-
         HideToast();
 
-        await Task.CompletedTask; // Satisfies async contract; logic is synchronous
+        return Task.CompletedTask;
     }
 
     /// <summary>
-    /// Focus cascade after deleting the active tab:
-    /// 1. First visible tab at or below the deleted position
-    /// 2. Last visible tab (if no tab below)
-    /// 3. Clear search and recurse if search is hiding all tabs
-    /// 4. Create a new empty tab if no tabs exist at all
+    /// Applies focus to the cascade target after a deletion.
+    /// If the target is null and search is active, clears search and retries.
+    /// If no tabs exist at all, creates a new empty tab.
     /// </summary>
-    private async Task ApplyFocusCascadeAsync(int deletedIndex)
+    private async Task ApplyFocusCascadeAsync(NoteTab? target)
     {
-        var visible = _tabs.Where(t => MatchesSearch(t)).ToList();
-
-        if (visible.Count > 0)
+        if (target is not null)
         {
-            // Find the first visible tab whose _tabs position >= deletedIndex
-            NoteTab? target = null;
-            foreach (var t in visible)
-            {
-                if (_tabs.IndexOf(t) >= deletedIndex)
-                {
-                    target = t;
-                    break;
-                }
-            }
-            // Fallback to last visible tab
-            target ??= visible[^1];
             SelectTabByNote(target);
+            return;
         }
-        else if (!string.IsNullOrEmpty(_searchText))
+
+        if (!string.IsNullOrEmpty(_searchText))
         {
-            // Search is active and hiding everything — clear it and recurse
+            // Search is hiding everything — clear it and retry
             SearchBox.Text = "";
             _searchText = "";
             SearchPlaceholder.Visibility = Visibility.Visible;
             RebuildTabList();
-            await ApplyFocusCascadeAsync(0);
+
+            var retryTarget = ViewModel.GetFocusCascadeTarget(0);
+            await ApplyFocusCascadeAsync(retryTarget);
+            return;
         }
-        else
-        {
-            // No tabs at all — auto-create an empty tab
-            await CreateNewTabAsync();
-        }
+
+        // No tabs at all — auto-create
+        await CreateNewTabAsync();
     }
 
     // ─── Toast Overlay ──────────────────

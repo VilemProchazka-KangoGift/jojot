@@ -122,15 +122,8 @@ public partial class MainWindow
         // Handle active tab fallback
         if (wasActiveDeleted)
         {
-            if (_tabs.Count > 0)
-            {
-                await ApplyFocusCascadeAsync(activeOriginalIndex);
-            }
-            else
-            {
-                // No tabs survive — create a new empty tab
-                await CreateNewTabAsync();
-            }
+            var focusTarget = ViewModel.GetFocusCascadeTarget(activeOriginalIndex);
+            await ApplyFocusCascadeAsync(focusTarget);
         }
 
         // Refresh the cleanup panel preview list (panel stays open)
@@ -160,28 +153,18 @@ public partial class MainWindow
     }
 
     /// <summary>
-    /// Parses the age input and unit to compute a cutoff DateTime.
-    /// Returns null if the input is invalid.
+    /// Parses the age input and unit from UI controls, delegates to ViewModel.
     /// </summary>
     private DateTime? GetCleanupCutoffDate()
     {
-        if (!int.TryParse(CleanupAgeInput.Text, out int age) || age < 1)
+        if (!int.TryParse(CleanupAgeInput.Text, out int age))
             return null;
 
-        var unit = CleanupUnitCombo.SelectedIndex switch
-        {
-            0 => TimeSpan.FromDays(age),        // days
-            1 => TimeSpan.FromHours(age),       // hours
-            2 => TimeSpan.FromDays(age * 7),    // weeks
-            3 => TimeSpan.FromDays(age * 30),   // months (approximate)
-            _ => TimeSpan.FromDays(age)
-        };
-
-        return DateTime.Now - unit;
+        return ViewModels.MainWindowViewModel.GetCleanupCutoffDate(age, CleanupUnitCombo.SelectedIndex, DateTime.Now);
     }
 
     /// <summary>
-    /// Returns tabs matching the current cleanup filter, in tab panel order.
+    /// Returns tabs matching the current cleanup filter, delegating to ViewModel.
     /// </summary>
     private List<NoteTab> GetCleanupCandidates()
     {
@@ -189,10 +172,7 @@ public partial class MainWindow
         if (cutoff is null) return new List<NoteTab>();
 
         bool includePinned = CleanupIncludePinned.IsChecked == true;
-
-        return _tabs
-            .Where(t => t.UpdatedAt < cutoff.Value && (includePinned || !t.Pinned))
-            .ToList();
+        return ViewModel.GetCleanupCandidates(cutoff.Value, includePinned);
     }
 
     /// <summary>
@@ -332,22 +312,8 @@ public partial class MainWindow
 
     /// <summary>
     /// Extracts ~50 char content excerpt for display in cleanup preview rows.
+    /// Delegates to ViewModel.
     /// </summary>
-    private static string GetCleanupExcerpt(NoteTab tab)
-    {
-        if (string.IsNullOrWhiteSpace(tab.Content))
-            return "";
-
-        string content = tab.Content.Trim().Replace('\n', ' ').Replace('\r', ' ');
-
-        // If tab has a custom name, show content excerpt
-        if (!string.IsNullOrWhiteSpace(tab.Name))
-        {
-            return content.Length > 50 ? content[..50] + "..." : content;
-        }
-
-        // If no custom name (DisplayLabel shows first 30 chars of content),
-        // don't repeat it — return empty since title already shows content
-        return "";
-    }
+    private static string GetCleanupExcerpt(NoteTab tab) =>
+        ViewModels.MainWindowViewModel.GetCleanupExcerpt(tab);
 }

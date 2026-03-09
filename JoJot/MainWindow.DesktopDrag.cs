@@ -29,42 +29,33 @@ public partial class MainWindow
     /// </summary>
     private async Task ShowDragOverlayAsync(string fromGuid, string toGuid, string toName)
     {
-        // Context-aware re-entry handling
-        if (_isDragOverlayActive)
+        // Context-aware re-entry handling via ViewModel state machine
+        var action = ViewModel.EvaluateDrag(toGuid);
+
+        switch (action)
         {
-            // Moved back to original desktop -- auto-dismiss
-            if (toGuid.Equals(_dragFromDesktopGuid, StringComparison.OrdinalIgnoreCase))
-            {
+            case ViewModels.MainWindowViewModel.DragAction.Dismiss:
                 await DatabaseService.DeletePendingMoveAsync(_desktopGuid);
                 _isMisplaced = false;
                 if (Title.Contains(" (misplaced)"))
                     Title = Title.Replace(" (misplaced)", "");
                 await HideDragOverlayAsync();
                 return;
-            }
-            // Same target desktop -- no-op
-            if (toGuid.Equals(_dragToDesktopGuid, StringComparison.OrdinalIgnoreCase))
+
+            case ViewModels.MainWindowViewModel.DragAction.NoOp:
                 return;
-            // Different target desktop -- update overlay in-place (fall through)
-            _dragToDesktopGuid = toGuid;
-            _dragToDesktopName = toName;
-            // Update pending_moves to new target
-            await DatabaseService.DeletePendingMoveAsync(_desktopGuid);
-            await DatabaseService.InsertPendingMoveAsync(_desktopGuid, _dragFromDesktopGuid!, toGuid);
-            // Fall through to update UI below
-        }
-        else
-        {
-            _isDragOverlayActive = true;
-            _dragFromDesktopGuid = fromGuid;
-            _dragToDesktopGuid = toGuid;
-            _dragToDesktopName = toName;
 
-            // Flush unsaved content before entering drag state
-            await _autosaveService.FlushAsync();
+            case ViewModels.MainWindowViewModel.DragAction.UpdateTarget:
+                ViewModel.UpdateDragTarget(toGuid, toName);
+                await DatabaseService.DeletePendingMoveAsync(_desktopGuid);
+                await DatabaseService.InsertPendingMoveAsync(_desktopGuid, _dragFromDesktopGuid!, toGuid);
+                break; // fall through to update UI
 
-            // Write pending_moves row immediately
-            await DatabaseService.InsertPendingMoveAsync(_desktopGuid, fromGuid, toGuid);
+            case ViewModels.MainWindowViewModel.DragAction.ShowNew:
+                ViewModel.BeginDrag(fromGuid, toGuid, toName);
+                await _autosaveService.FlushAsync();
+                await DatabaseService.InsertPendingMoveAsync(_desktopGuid, fromGuid, toGuid);
+                break; // fall through to update UI
         }
 
         // Determine if target desktop has an existing JoJot session
@@ -236,7 +227,7 @@ public partial class MainWindow
         app?.ShowMergeToast(targetGuid, tabCount, fromName);
 
         // Hide overlay and close this window
-        _isDragOverlayActive = false;
+        ViewModel.ResetDragState();
         DragOverlay.Visibility = Visibility.Collapsed;
 
         // Unsubscribe from events before closing
@@ -316,10 +307,7 @@ public partial class MainWindow
         await tcs.Task;
 
         DragOverlay.Visibility = Visibility.Collapsed;
-        _isDragOverlayActive = false;
-        _dragFromDesktopGuid = null;
-        _dragToDesktopGuid = null;
-        _dragToDesktopName = null;
+        ViewModel.ResetDragState();
     }
 
     /// <summary>
@@ -358,7 +346,7 @@ public partial class MainWindow
             string currentGuid = currentDesktop.ToString();
 
             // Double-check after a short pause to confirm it's not a transient COM glitch
-            if (!currentGuid.Equals(_desktopGuid, StringComparison.OrdinalIgnoreCase))
+            if (ViewModel.IsMisplacedOnDesktop(currentGuid))
             {
                 await Task.Delay(200, cts.Token);
                 if (cts.Token.IsCancellationRequested) return;
@@ -366,7 +354,7 @@ public partial class MainWindow
                 // Re-query to confirm the mismatch is stable
                 Guid confirmDesktop = Interop.VirtualDesktopInterop.GetWindowDesktopId(hwnd);
                 string confirmGuid = confirmDesktop.ToString();
-                if (confirmGuid.Equals(_desktopGuid, StringComparison.OrdinalIgnoreCase))
+                if (!ViewModel.IsMisplacedOnDesktop(confirmGuid))
                 {
                     // Transient mismatch — COM returned stale data
                     LogService.Info("Misplaced check: transient mismatch resolved (was {CurrentGuid}, now correct)", currentGuid);

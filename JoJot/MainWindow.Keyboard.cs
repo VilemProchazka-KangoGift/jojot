@@ -56,7 +56,7 @@ public partial class MainWindow
         }
 
         // Escape closes help overlay if visible
-        if (e.Key == Key.Escape && HelpOverlay.Visibility == Visibility.Visible)
+        if (e.Key == Key.Escape && ViewModel.IsHelpOpen)
         {
             HideHelpOverlay();
             e.Handled = true;
@@ -220,7 +220,7 @@ public partial class MainWindow
         // Ctrl+Shift+/ (Ctrl+?): Show help overlay
         if (e.Key == Key.OemQuestion && Keyboard.Modifiers == (ModifierKeys.Control | ModifierKeys.Shift))
         {
-            if (HelpOverlay.Visibility == Visibility.Visible)
+            if (ViewModel.IsHelpOpen)
                 HideHelpOverlay();
             else
                 ShowHelpOverlay();

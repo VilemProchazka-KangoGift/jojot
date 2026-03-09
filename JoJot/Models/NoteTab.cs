@@ -1,12 +1,14 @@
 using JoJot.Services;
+using JoJot.ViewModels;
 
 namespace JoJot.Models;
 
 /// <summary>
 /// In-memory representation of a note/tab entry.
 /// Maps 1:1 to the notes table in SQLite.
+/// Raises PropertyChanged for UI-affecting properties.
 /// </summary>
-public class NoteTab
+public class NoteTab : ObservableObject
 {
     /// <summary>
     /// Maximum number of characters shown in the display label before truncation.
@@ -23,6 +25,16 @@ public class NoteTab
     /// </summary>
     private const double JustNowThresholdMinutes = 1.0;
 
+    private static readonly string[] NameDependents = [nameof(DisplayLabel), nameof(IsPlaceholder)];
+    private static readonly string[] ContentDependents = [nameof(DisplayLabel), nameof(IsPlaceholder)];
+    private static readonly string[] UpdatedAtDependents = [nameof(UpdatedDisplay)];
+
+    private string? _name;
+    private string _content = "";
+    private bool _pinned;
+    private DateTime _updatedAt;
+    private int _sortOrder;
+
     /// <summary>
     /// Primary key (auto-incremented row ID).
     /// </summary>
@@ -36,17 +48,29 @@ public class NoteTab
     /// <summary>
     /// Optional custom name for the tab. When null, the display label falls back to content preview.
     /// </summary>
-    public string? Name { get; set; }
+    public string? Name
+    {
+        get => _name;
+        set => SetProperty(ref _name, value, NameDependents);
+    }
 
     /// <summary>
     /// Full text content of the note.
     /// </summary>
-    public string Content { get; set; } = "";
+    public string Content
+    {
+        get => _content;
+        set => SetProperty(ref _content, value, ContentDependents);
+    }
 
     /// <summary>
     /// Whether this tab is pinned to the left side of the tab bar.
     /// </summary>
-    public bool Pinned { get; set; }
+    public bool Pinned
+    {
+        get => _pinned;
+        set => SetProperty(ref _pinned, value);
+    }
 
     /// <summary>
     /// Timestamp when the note was first created.
@@ -56,12 +80,20 @@ public class NoteTab
     /// <summary>
     /// Timestamp of the most recent content or metadata change.
     /// </summary>
-    public DateTime UpdatedAt { get; set; }
+    public DateTime UpdatedAt
+    {
+        get => _updatedAt;
+        set => SetProperty(ref _updatedAt, value, UpdatedAtDependents);
+    }
 
     /// <summary>
     /// Position index used to persist drag-reorder within the tab bar.
     /// </summary>
-    public int SortOrder { get; set; }
+    public int SortOrder
+    {
+        get => _sortOrder;
+        set => SetProperty(ref _sortOrder, value);
+    }
 
     /// <summary>
     /// Saved vertical scroll offset of the text editor for this tab.
@@ -116,36 +148,19 @@ public class NoteTab
     public string UpdatedDisplay => FormatRelativeTime(UpdatedAt, null);
 
     /// <summary>
-    /// Signals the UI to re-read display properties after Name or Content changes.
-    /// No-op: code-behind pattern uses explicit property reads, not binding notifications.
-    /// </summary>
-    public void RefreshDisplayProperties()
-    {
-    }
-
-    /// <summary>
     /// Formats a <see cref="DateTime"/> as a relative date string for the created-at column.
     /// </summary>
-    /// <param name="dt">The timestamp to format.</param>
-    /// <param name="clock">Optional clock for testability; defaults to system clock.</param>
-    /// <returns>A human-friendly relative date string.</returns>
     public static string FormatCreatedDisplay(DateTime dt, IClock? clock = null) => FormatRelativeDate(dt, clock);
 
     /// <summary>
     /// Formats a <see cref="DateTime"/> as a relative time string for the updated-at column.
     /// </summary>
-    /// <param name="dt">The timestamp to format.</param>
-    /// <param name="clock">Optional clock for testability; defaults to system clock.</param>
-    /// <returns>A human-friendly relative time string.</returns>
     public static string FormatUpdatedDisplay(DateTime dt, IClock? clock = null) => FormatRelativeTime(dt, clock);
 
     /// <summary>
     /// Formats a timestamp as a relative date: time-only for today, "Yesterday",
     /// month-day for same year, or full date for older entries.
     /// </summary>
-    /// <param name="dt">The timestamp to format.</param>
-    /// <param name="clock">Optional clock for testability; defaults to system clock.</param>
-    /// <returns>A context-appropriate date string.</returns>
     internal static string FormatRelativeDate(DateTime dt, IClock? clock)
     {
         var now = (clock ?? SystemClock.Instance).Now;
@@ -171,9 +186,6 @@ public class NoteTab
     /// <summary>
     /// Formats a timestamp as a relative time string, always including hour:minute except for "Just now".
     /// </summary>
-    /// <param name="dt">The timestamp to format.</param>
-    /// <param name="clock">Optional clock for testability; defaults to system clock.</param>
-    /// <returns>A context-appropriate time string.</returns>
     internal static string FormatRelativeTime(DateTime dt, IClock? clock)
     {
         var now = (clock ?? SystemClock.Instance).Now;
@@ -205,16 +217,12 @@ public class NoteTab
     /// <summary>
     /// Tooltip string showing the exact created-at date and time.
     /// </summary>
-    /// <param name="dt">The creation timestamp.</param>
-    /// <returns>A formatted tooltip string prefixed with "Created:".</returns>
     public static string CreatedTooltip(DateTime dt) =>
         $"Created: {dt:MMM d, yyyy h:mm tt}";
 
     /// <summary>
     /// Tooltip string showing the exact updated-at date and time.
     /// </summary>
-    /// <param name="dt">The last-updated timestamp.</param>
-    /// <returns>A formatted tooltip string prefixed with "Last updated:".</returns>
     public static string UpdatedTooltip(DateTime dt) =>
         $"Last updated: {dt:MMM d, yyyy h:mm tt}";
 }

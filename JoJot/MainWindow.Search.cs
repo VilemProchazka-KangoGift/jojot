@@ -39,14 +39,9 @@ public partial class MainWindow
 
     /// <summary>
     /// Tests whether a tab matches the current search text (case-insensitive).
-    /// Matches against DisplayLabel and Content.
+    /// Delegates to ViewModel.
     /// </summary>
-    private bool MatchesSearch(NoteTab tab)
-    {
-        if (string.IsNullOrEmpty(_searchText)) return true;
-        return tab.DisplayLabel.Contains(_searchText, StringComparison.OrdinalIgnoreCase)
-            || tab.Content.Contains(_searchText, StringComparison.OrdinalIgnoreCase);
-    }
+    private bool MatchesSearch(NoteTab tab) => ViewModel.MatchesSearch(tab);
 
     // ─── In-Editor Find Bar ────────────────────────────────────────
 

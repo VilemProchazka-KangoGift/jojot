@@ -635,21 +635,13 @@ public partial class MainWindow
         string currentContent = ContentEditor.Text;
         if (currentContent == _activeTab.Content) return; // No change
 
-        _activeTab.Content = currentContent;
-        _activeTab.CursorPosition = ContentEditor.CaretIndex;
-        _activeTab.UpdatedAt = DateTime.Now;
-
-        // Save scroll offset
         var scrollViewer = GetScrollViewer(ContentEditor);
-        if (scrollViewer is not null)
-            _activeTab.EditorScrollOffset = (int)scrollViewer.VerticalOffset;
+        int scrollOffset = scrollViewer is not null ? (int)scrollViewer.VerticalOffset : 0;
+
+        ViewModel.SaveEditorStateToTab(currentContent, ContentEditor.CaretIndex, scrollOffset);
 
         _ = DatabaseService.UpdateNoteContentAsync(_activeTab.Id, currentContent);
-
-        // Push undo snapshot on explicit save
         UndoManager.Instance.PushSnapshot(_activeTab.Id, currentContent);
-
-        // Refresh display label in case content changed the fallback
         UpdateTabItemDisplay(_activeTab);
     }
 
@@ -663,28 +655,17 @@ public partial class MainWindow
     {
         SaveCurrentTabContent();
 
-        // Insert position: right after pinned tabs
-        int pinnedCount = _tabs.Count(t => t.Pinned);
+        var (existingPlaceholder, insertIndex, sortOrder) = ViewModel.GetNewTabPosition();
 
-        // If the first unpinned tab is already empty (no title, no content), just focus it
-        if (pinnedCount < _tabs.Count)
+        if (existingPlaceholder is not null)
         {
-            var firstUnpinned = _tabs[pinnedCount];
-            if (firstUnpinned.IsPlaceholder)
-            {
-                SelectTabByNote(firstUnpinned);
-                Keyboard.Focus(ContentEditor);
-                return;
-            }
+            SelectTabByNote(existingPlaceholder);
+            Keyboard.Focus(ContentEditor);
+            return;
         }
 
-        // Sort order: one less than the minimum unpinned sort_order
-        int minUnpinnedSort = _tabs.Where(t => !t.Pinned)
-            .Select(t => t.SortOrder).DefaultIfEmpty(0).Min();
-        int newSortOrder = minUnpinnedSort - 1;
-
         long newId = await DatabaseService.InsertNoteAsync(
-            _desktopGuid, null, "", false, newSortOrder);
+            _desktopGuid, null, "", false, sortOrder);
 
         var newTab = new NoteTab
         {
@@ -692,12 +673,12 @@ public partial class MainWindow
             DesktopGuid = _desktopGuid,
             Content = "",
             Pinned = false,
-            SortOrder = newSortOrder,
+            SortOrder = sortOrder,
             CreatedAt = DateTime.Now,
             UpdatedAt = DateTime.Now
         };
 
-        _tabs.Insert(pinnedCount, newTab);
+        ViewModel.InsertNewTab(newTab, insertIndex);
         RebuildTabList();
         SelectTabByNote(newTab);
         Keyboard.Focus(ContentEditor);
@@ -731,18 +712,11 @@ public partial class MainWindow
         tab.Pinned = !tab.Pinned;
         await DatabaseService.UpdateNotePinnedAsync(tab.Id, tab.Pinned);
 
-        // Re-sort: pinned to top, then by sort_order
-        var sorted = _tabs.OrderByDescending(t => t.Pinned).ThenBy(t => t.SortOrder).ToList();
-        _tabs.Clear();
-        foreach (var t in sorted) _tabs.Add(t);
-
-        // Reassign sort_order to match new positions
-        for (int i = 0; i < _tabs.Count; i++)
-            _tabs[i].SortOrder = i;
+        ViewModel.ReorderAfterPinToggle();
         await DatabaseService.UpdateNoteSortOrdersAsync(_tabs.Select(t => (t.Id, t.SortOrder)));
 
         RebuildTabList();
-        UpdateToolbarState(); // refresh pin icon
+        UpdateToolbarState();
     }
 
     // ─── Clone Tab ────────────────────────────────────────────────
@@ -754,15 +728,11 @@ public partial class MainWindow
     {
         SaveCurrentTabContent();
 
-        int newSortOrder = source.SortOrder + 1;
-
-        // Shift sort_order of all tabs after the clone position
-        foreach (var tab in _tabs.Where(t => t.SortOrder >= newSortOrder))
-            tab.SortOrder++;
+        var (insertIndex, sortOrder) = ViewModel.GetClonePosition(source);
 
         long newId = await DatabaseService.InsertNoteAsync(
             _desktopGuid, source.Name, source.Content,
-            source.Pinned, newSortOrder);
+            source.Pinned, sortOrder);
 
         var clone = new NoteTab
         {
@@ -771,19 +741,12 @@ public partial class MainWindow
             Name = source.Name,
             Content = source.Content,
             Pinned = source.Pinned,
-            SortOrder = newSortOrder,
+            SortOrder = sortOrder,
             CreatedAt = DateTime.Now,
             UpdatedAt = DateTime.Now
         };
 
-        // Insert into collection at correct position
-        int insertIndex = _tabs.IndexOf(source) + 1;
-        if (insertIndex >= _tabs.Count)
-            _tabs.Add(clone);
-        else
-            _tabs.Insert(insertIndex, clone);
-
-        // Persist sort orders
+        ViewModel.InsertNewTab(clone, insertIndex);
         await DatabaseService.UpdateNoteSortOrdersAsync(_tabs.Select(t => (t.Id, t.SortOrder)));
 
         RebuildTabList();
