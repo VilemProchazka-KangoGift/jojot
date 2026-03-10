@@ -36,6 +36,11 @@ public partial class MainWindow
                 HideCleanupPanel();
             }
 
+            if (_findPanelOpen)
+            {
+                HideFindPanel();
+            }
+
             var orphanGuids = VirtualDesktopService.OrphanedSessionGuids;
             if (orphanGuids.Count == 0)
             {

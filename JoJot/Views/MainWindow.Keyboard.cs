@@ -119,10 +119,10 @@ public partial class MainWindow
             return;
         }
 
-        // Escape closes editor find bar if visible
-        if (e.Key == Key.Escape && EditorFindBar.Visibility == Visibility.Visible)
+        // Escape closes find panel if open
+        if (e.Key == Key.Escape && _findPanelOpen)
         {
-            HideEditorFindBar();
+            HideFindPanel();
             e.Handled = true;
             return;
         }
@@ -237,19 +237,18 @@ public partial class MainWindow
             return;
         }
 
-        // Ctrl+F: Context-dependent
-        // If editor is focused → show in-editor find bar; otherwise → focus tab search
+        // Ctrl+F: Open find panel (find mode)
         if (e.Key == Key.F && Keyboard.Modifiers == ModifierKeys.Control)
         {
-            if (ContentEditor.IsFocused)
-            {
-                ShowEditorFindBar();
-            }
-            else
-            {
-                SearchBox.Focus();
-                SearchBox.SelectAll();
-            }
+            ShowFindPanel(showReplace: false);
+            e.Handled = true;
+            return;
+        }
+
+        // Ctrl+H: Open find+replace panel
+        if (e.Key == Key.H && Keyboard.Modifiers == ModifierKeys.Control)
+        {
+            ShowFindPanel(showReplace: true);
             e.Handled = true;
             return;
         }

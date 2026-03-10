@@ -29,6 +29,7 @@ public partial class MainWindow
     {
         if (_recoveryPanelOpen) HideRecoveryPanel();
         if (_cleanupPanelOpen) HideCleanupPanel();
+        if (_findPanelOpen) HideFindPanel();
 
         _preferencesOpen = true;
         PreferencesPanel.RefreshValues(_currentFontSize, ThemeService.CurrentSetting, HotkeyService.GetHotkeyDisplayString());

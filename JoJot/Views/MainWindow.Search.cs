@@ -4,6 +4,7 @@ using System.Windows.Documents;
 using System.Windows.Input;
 using JoJot.Controls;
 using JoJot.Models;
+using JoJot.Services;
 
 namespace JoJot;
 
@@ -45,9 +46,13 @@ public partial class MainWindow
     /// </summary>
     private bool MatchesSearch(NoteTab tab) => ViewModel.MatchesSearch(tab);
 
-    // ─── In-Editor Find Bar ────────────────────────────────────────
+    // ─── Find & Replace Panel ────────────────────────────────────────────────
 
-    // ─── Highlight adorner ────────────────────────────────────────
+    private List<int> _findMatches = [];
+    private int _currentFindIndex = -1;
+    private int _findQueryLength;
+
+    // ─── Highlight adorner ────────────────────────────────────────────────────
 
     private TextBoxHighlightAdorner? _highlightAdorner;
 
@@ -79,11 +84,19 @@ public partial class MainWindow
     }
 
     /// <summary>
-    /// Wires scroll and theme-change events for adorner invalidation.
+    /// Wires FindReplacePanel events, scroll tracking, and theme-change invalidation for the adorner.
     /// Called from MainWindow constructor after InitializeComponent.
     /// </summary>
-    internal void WireAdornerEvents()
+    internal void WireUpFindPanelEvents()
     {
+        // Subscribe to FindReplacePanel events
+        FindReplacePanel.CloseRequested += (_, _) => HideFindPanel();
+        FindReplacePanel.FindTextChanged += OnFindTextChanged;
+        FindReplacePanel.FindNextRequested += (_, _) => CycleFindMatch(forward: true);
+        FindReplacePanel.FindPreviousRequested += (_, _) => CycleFindMatch(forward: false);
+        FindReplacePanel.ReplaceRequested += (_, _) => PerformReplace();
+        FindReplacePanel.ReplaceAllRequested += (_, _) => PerformReplaceAll();
+
         // Re-render adorner when TextBox scrolls so highlights track content position
         ContentEditor.AddHandler(ScrollViewer.ScrollChangedEvent, new ScrollChangedEventHandler((_, _) =>
         {
@@ -91,110 +104,175 @@ public partial class MainWindow
         }));
 
         // Re-render adorner when theme changes so brush colors update immediately
-        Services.ThemeService.ThemeChanged += (_, _) =>
+        ThemeService.ThemeChanged += (_, _) =>
         {
             _highlightAdorner?.InvalidateVisual();
         };
     }
 
-    private void ShowEditorFindBar()
+    // ─── Panel show/hide ────────────────────────────────────────────────────
+
+    private void ShowFindPanel(bool showReplace = false)
     {
-        EditorFindBar.Visibility = Visibility.Visible;
-        EditorFindInput.Focus();
-        EditorFindInput.SelectAll();
+        // Close other side panels first (preferences, cleanup, recovery)
+        ViewModel.CloseAllSidePanels();
+
+        _findPanelOpen = true;
+
+        // Auto-populate find input from editor selection
+        if (ContentEditor.SelectionLength > 0)
+        {
+            FindReplacePanel.SetFindText(ContentEditor.SelectedText);
+        }
+
+        FindReplacePanel.Show(showReplace);
+
+        // If panel already has query text, trigger re-search now
+        var query = FindReplacePanel.GetFindText();
+        if (!string.IsNullOrEmpty(query))
+        {
+            RunSearch(query, FindReplacePanel.CaseSensitive, FindReplacePanel.WholeWord);
+        }
     }
 
-    private void HideEditorFindBar()
+    private void HideFindPanel()
     {
-        EditorFindBar.Visibility = Visibility.Collapsed;
+        _findPanelOpen = false;
+        FindReplacePanel.Hide();
         _findMatches.Clear();
         _currentFindIndex = -1;
         _findQueryLength = 0;
-        EditorFindCount.Text = "";
         RemoveHighlightAdorner();
         ContentEditor.Focus();
     }
 
-    private void EditorFindInput_TextChanged(object sender, TextChangedEventArgs e)
-    {
-        string query = EditorFindInput.Text;
-        _currentFindIndex = -1;
+    // ─── Find operations ────────────────────────────────────────────────────
 
-        if (string.IsNullOrEmpty(query) || _activeTab is null)
+    private void OnFindTextChanged(object? sender, FindChangedEventArgs e)
+    {
+        if (string.IsNullOrEmpty(e.Query) || _activeTab is null)
         {
             _findMatches.Clear();
             _findQueryLength = 0;
-            EditorFindCount.Text = "";
+            _currentFindIndex = -1;
+            FindReplacePanel.UpdateMatches(_findMatches, _currentFindIndex);
             _highlightAdorner?.Clear();
             return;
         }
 
-        _findMatches = ViewModels.MainWindowViewModel.FindAllMatches(ContentEditor.Text, query);
+        RunSearch(e.Query, e.CaseSensitive, e.WholeWord);
+    }
+
+    /// <summary>
+    /// Runs a search on the current editor content and updates matches, adorner, and panel counter.
+    /// </summary>
+    private void RunSearch(string query, bool caseSensitive, bool wholeWord)
+    {
+        _findMatches = ViewModels.MainWindowViewModel.FindAllMatches(
+            ContentEditor.Text, query, caseSensitive, wholeWord);
         _findQueryLength = query.Length;
+        _currentFindIndex = _findMatches.Count > 0 ? 0 : -1;
+
+        FindReplacePanel.UpdateMatches(_findMatches, _currentFindIndex);
 
         if (_findMatches.Count > 0)
         {
-            _currentFindIndex = 0;
-            // Scroll and select the first match
+            // Scroll to and select first match
             int pos = _findMatches[0];
             ContentEditor.Select(pos, _findQueryLength);
             var lineIndex = ContentEditor.GetLineIndexFromCharacterIndex(pos);
             if (lineIndex >= 0) ContentEditor.ScrollToLine(lineIndex);
         }
 
-        // Update adorner with all match positions (single call, covers both match and no-match case)
+        // Update adorner with all match positions
         EnsureHighlightAdorner().Update(_findMatches, _currentFindIndex, _findQueryLength);
-
-        EditorFindCount.Text = ViewModels.MainWindowViewModel.FormatFindCountText(_currentFindIndex, _findMatches.Count);
     }
 
-    private void HighlightFindMatch()
+    private void CycleFindMatch(bool forward)
     {
-        if (_currentFindIndex < 0 || _currentFindIndex >= _findMatches.Count) return;
+        if (_findMatches.Count == 0) return;
+
+        _currentFindIndex = ViewModels.MainWindowViewModel.CycleIndex(
+            _currentFindIndex, _findMatches.Count, forward);
 
         int pos = _findMatches[_currentFindIndex];
-        ContentEditor.Select(pos, _findQueryLength > 0 ? _findQueryLength : EditorFindInput.Text.Length);
+        ContentEditor.Select(pos, _findQueryLength);
         var lineIndex = ContentEditor.GetLineIndexFromCharacterIndex(pos);
         if (lineIndex >= 0) ContentEditor.ScrollToLine(lineIndex);
 
-        // Refresh active-match highlight
+        FindReplacePanel.UpdateMatches(_findMatches, _currentFindIndex);
         _highlightAdorner?.Update(_findMatches, _currentFindIndex, _findQueryLength);
-
-        EditorFindCount.Text = ViewModels.MainWindowViewModel.FormatFindCountText(_currentFindIndex, _findMatches.Count);
     }
 
-    private void EditorFindNext_Click(object sender, MouseButtonEventArgs e)
-    {
-        if (_findMatches.Count == 0) return;
-        _currentFindIndex = ViewModels.MainWindowViewModel.CycleIndex(_currentFindIndex, _findMatches.Count, forward: true);
-        HighlightFindMatch();
-    }
+    // ─── Replace operations ────────────────────────────────────────────────
 
-    private void EditorFindPrevious_Click(object sender, MouseButtonEventArgs e)
+    private void PerformReplace()
     {
-        if (_findMatches.Count == 0) return;
-        _currentFindIndex = ViewModels.MainWindowViewModel.CycleIndex(_currentFindIndex, _findMatches.Count, forward: false);
-        HighlightFindMatch();
-    }
+        if (_findMatches.Count == 0 || _currentFindIndex < 0 || _activeTab is null) return;
 
-    private void EditorFindClose_Click(object sender, MouseButtonEventArgs e) => HideEditorFindBar();
+        string replacement = FindReplacePanel.GetReplaceText();
+        int matchPos = _findMatches[_currentFindIndex];
 
-    private void EditorFindInput_PreviewKeyDown(object sender, KeyEventArgs e)
-    {
-        if (e.Key == Key.Escape)
+        string newContent = ViewModels.MainWindowViewModel.ReplaceSingle(
+            ContentEditor.Text, matchPos, _findQueryLength, replacement);
+
+        // Assign via ContentEditor.Text — triggers autosave and TextChanged handler
+        _suppressTextChanged = true;
+        ContentEditor.Text = newContent;
+        _activeTab.Content = newContent;
+        _suppressTextChanged = false;
+
+        // Re-run search to update match positions after replacement
+        var query = FindReplacePanel.GetFindText();
+        if (!string.IsNullOrEmpty(query))
         {
-            HideEditorFindBar();
-            e.Handled = true;
+            RunSearch(query, FindReplacePanel.CaseSensitive, FindReplacePanel.WholeWord);
         }
-        else if (e.Key == Key.Enter)
+    }
+
+    private void PerformReplaceAll()
+    {
+        if (_findMatches.Count == 0 || _activeTab is null) return;
+
+        string query = FindReplacePanel.GetFindText();
+        string replacement = FindReplacePanel.GetReplaceText();
+
+        // Push undo snapshot BEFORE replacement so Replace All is a single undo action
+        var stack = UndoManager.Instance.GetOrCreateStack(_activeTab.Id);
+        stack.PushSnapshot(ContentEditor.Text);
+
+        var (newContent, count) = ViewModels.MainWindowViewModel.ReplaceAll(
+            ContentEditor.Text, query, replacement,
+            FindReplacePanel.CaseSensitive, FindReplacePanel.WholeWord);
+
+        // Assign via ContentEditor.Text — triggers autosave
+        _suppressTextChanged = true;
+        ContentEditor.Text = newContent;
+        _activeTab.Content = newContent;
+        _suppressTextChanged = false;
+
+        // Show replacement count feedback
+        FindReplacePanel.ShowReplaceCount(count);
+
+        // Re-run search to refresh (should find 0 if all replaced)
+        if (!string.IsNullOrEmpty(query))
         {
-            if (_findMatches.Count > 0)
-            {
-                bool forward = Keyboard.Modifiers != ModifierKeys.Shift;
-                _currentFindIndex = ViewModels.MainWindowViewModel.CycleIndex(_currentFindIndex, _findMatches.Count, forward);
-                HighlightFindMatch();
-            }
-            e.Handled = true;
+            RunSearch(query, FindReplacePanel.CaseSensitive, FindReplacePanel.WholeWord);
+        }
+    }
+
+    /// <summary>
+    /// Re-searches in the new active tab content when the find panel is open.
+    /// Call this from tab switch logic after loading new tab content.
+    /// </summary>
+    internal void RefreshFindIfPanelOpen()
+    {
+        if (!_findPanelOpen) return;
+
+        var query = FindReplacePanel.GetFindText();
+        if (!string.IsNullOrEmpty(query))
+        {
+            RunSearch(query, FindReplacePanel.CaseSensitive, FindReplacePanel.WholeWord);
         }
     }
 }

@@ -397,6 +397,9 @@ public partial class MainWindow
 
             // Update toolbar enabled states after tab selection change
             UpdateToolbarState();
+
+            // Re-search in new tab content if find panel is open
+            RefreshFindIfPanelOpen();
         }
         catch (Exception ex)
         {

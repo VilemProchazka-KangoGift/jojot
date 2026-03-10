@@ -130,6 +130,29 @@ public partial class FindReplacePanel : UserControl
     /// <summary>Returns the current text in the replace input.</summary>
     public string GetReplaceText() => ReplaceInput.Text;
 
+    /// <summary>
+    /// Shows a brief replacement count message (auto-clears after 3 seconds).
+    /// Called after Replace All completes.
+    /// </summary>
+    public void ShowReplaceCount(int count)
+    {
+        ReplaceCountText.Text = count == 0
+            ? "No replacements made"
+            : $"{count} replacement{(count == 1 ? "" : "s")} made";
+        ReplaceCountText.Visibility = Visibility.Visible;
+
+        var timer = new System.Windows.Threading.DispatcherTimer
+        {
+            Interval = TimeSpan.FromSeconds(3)
+        };
+        timer.Tick += (_, _) =>
+        {
+            timer.Stop();
+            ReplaceCountText.Visibility = Visibility.Collapsed;
+        };
+        timer.Start();
+    }
+
     // ── Private helpers ──
 
     private void UpdateReplaceRowVisibility()

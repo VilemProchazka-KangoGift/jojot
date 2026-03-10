@@ -18,6 +18,7 @@ public partial class MainWindow
         // One-panel-at-a-time
         if (_preferencesOpen) HidePreferencesPanel();
         if (_recoveryPanelOpen) HideRecoveryPanel();
+        if (_findPanelOpen) HideFindPanel();
 
         CleanupPanel.ResetFilters();
         _cleanupPanelOpen = true;
