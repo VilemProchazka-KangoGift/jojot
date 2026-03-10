@@ -174,45 +174,48 @@
 
         <!-- Tab Panel (Column 0) — wrapped in Grid to allow recovery flyout overlay -->
         <Grid Grid.Column="0">
-        <DockPanel Background="{DynamicResource c-sidebar-bg}">
-            <!-- Header: Hamburger + Search + New Tab button -->
-            <Border DockPanel.Dock="Top" BorderThickness="0,0,0,1" BorderBrush="{DynamicResource c-border}" Padding="6">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto"/>   <!-- Hamburger button (MENU-01) -->
-                        <ColumnDefinition Width="*"/>      <!-- Search box -->
-                        <ColumnDefinition Width="Auto"/>   <!-- New tab button -->
-                    </Grid.ColumnDefinitions>
-                    <!-- Hamburger menu button (MENU-01) -->
-                    <Grid Grid.Column="0" Margin="0,0,4,0">
-                        <Button x:Name="HamburgerButton" Style="{StaticResource ToolbarButtonStyle}"
+            <DockPanel Background="{DynamicResource c-sidebar-bg}">
+                <!-- Header: Hamburger + Search + New Tab button -->
+                <Border DockPanel.Dock="Top" BorderThickness="0,0,0,1" BorderBrush="{DynamicResource c-border}" Padding="6">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <!-- Hamburger button (MENU-01) -->
+                            <ColumnDefinition Width="*"/>
+                            <!-- Search box -->
+                            <ColumnDefinition Width="Auto"/>
+                            <!-- New tab button -->
+                        </Grid.ColumnDefinitions>
+                        <!-- Hamburger menu button (MENU-01) -->
+                        <Grid Grid.Column="0" Margin="0,0,4,0">
+                            <Button x:Name="HamburgerButton" Style="{StaticResource ToolbarButtonStyle}"
                                 Click="HamburgerButton_Click"
                                 ToolTip="Menu" ToolTipService.InitialShowDelay="600">
-                            <TextBlock Text="&#xE700;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                <TextBlock Text="&#xE700;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
                                        FontSize="14" Foreground="{DynamicResource c-toolbar-icon}"
                                        HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        </Button>
-                        <!-- Badge dot for orphaned sessions (ORPH-04) — wired in Plan 03 -->
-                        <Ellipse x:Name="OrphanBadge" Width="7" Height="7"
+                            </Button>
+                            <!-- Badge dot for orphaned sessions (ORPH-04) — wired in Plan 03 -->
+                            <Ellipse x:Name="OrphanBadge" Width="7" Height="7"
                                  Fill="{DynamicResource c-accent}"
                                  HorizontalAlignment="Right" VerticalAlignment="Top"
                                  Margin="0,-1,-1,0" IsHitTestVisible="False"
                                  Visibility="Collapsed"/>
-                    </Grid>
-                    <!-- Search box with placeholder -->
-                    <Grid Grid.Column="1">
-                        <TextBox x:Name="SearchBox" FontSize="12" Padding="4,2"
+                        </Grid>
+                        <!-- Search box with placeholder -->
+                        <Grid Grid.Column="1">
+                            <TextBox x:Name="SearchBox" FontSize="12" Padding="4,2"
                                  VerticalContentAlignment="Center"
                                  Background="{DynamicResource c-sidebar-bg}"
                                  Foreground="{DynamicResource c-text-primary}"
                                  TextChanged="SearchBox_TextChanged"
                                  PreviewKeyDown="SearchBox_PreviewKeyDown"/>
-                        <TextBlock x:Name="SearchPlaceholder" Text="Search tabs..."
+                            <TextBlock x:Name="SearchPlaceholder" Text="Search tabs..."
                                    IsHitTestVisible="False" Foreground="{DynamicResource c-text-muted}" FontSize="12"
                                    Padding="6,3" VerticalAlignment="Center"/>
-                    </Grid>
-                    <!-- New tab button -->
-                    <Button x:Name="NewTabButton" Grid.Column="2" Content="+"
+                        </Grid>
+                        <!-- New tab button -->
+                        <Button x:Name="NewTabButton" Grid.Column="2" Content="+"
                             Width="28" Height="28" Margin="4,0,0,0"
                             FontSize="16" FontWeight="Bold"
                             Foreground="{DynamicResource c-text-muted}"
@@ -220,20 +223,20 @@
                             BorderBrush="{DynamicResource c-border}" Cursor="Hand"
                             Click="NewTabButton_Click"
                             ToolTip="New tab (Ctrl+T)"/>
-                </Grid>
-            </Border>
+                    </Grid>
+                </Border>
 
-            <!-- Tab list -->
-            <ListBox x:Name="TabList" BorderThickness="0" Background="Transparent"
+                <!-- Tab list -->
+                <ListBox x:Name="TabList" BorderThickness="0" Background="Transparent"
                      HorizontalContentAlignment="Stretch"
                      VirtualizingStackPanel.IsVirtualizing="False"
                      SelectionChanged="TabList_SelectionChanged"
                      PreviewKeyDown="TabList_PreviewKeyDown"
                      PreviewMouseDoubleClick="TabList_PreviewMouseDoubleClick"
                      ScrollViewer.HorizontalScrollBarVisibility="Disabled"/>
-        </DockPanel>
+            </DockPanel>
 
-        <!-- Recovery panel placeholder (modal is in the root Grid) -->
+            <!-- Recovery panel placeholder (modal is in the root Grid) -->
         </Grid>
 
         <!-- Resizable separator (Column 1) — Phase 12: TABUX-04 -->
@@ -262,7 +265,7 @@
                             ToolTip="Delete (Ctrl+W)" ToolTipService.InitialShowDelay="600">
                         <TextBlock x:Name="DeleteIconText" Text="&#xE74D;"
                                    FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
-                                   FontSize="14" Foreground="#e74c3c" Opacity="0.7"
+                                   FontSize="14" Foreground="{DynamicResource c-toolbar-icon}" Opacity="0.7"
                                    HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     </Button>
 
@@ -289,44 +292,46 @@
                         <!-- Separator -->
                         <Border Width="1" Margin="4,4" Background="{DynamicResource c-border}"/>
 
-                        <!-- Pin -->
-                        <Button x:Name="ToolbarPin" Style="{StaticResource ToolbarButtonStyle}"
-                                Click="ToolbarPin_Click"
-                                ToolTip="Pin (Ctrl+P)" ToolTipService.InitialShowDelay="600">
-                            <TextBlock x:Name="PinIconText" Text="&#xE718;"
-                                       FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
-                                       FontSize="14" Foreground="{DynamicResource c-toolbar-icon}"
-                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+
+                        <!-- Copy -->
+                        <Button x:Name="ToolbarCopy" Style="{StaticResource ToolbarButtonStyle}"
+                         Click="ToolbarCopy_Click"
+                         ToolTip="Copy (Ctrl+C)" ToolTipService.InitialShowDelay="600">
+                            <TextBlock Text="&#xE8C8;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                            FontSize="14" Foreground="{DynamicResource c-toolbar-icon}"
+                            HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Button>
+
+                        <!-- Paste -->
+                        <Button x:Name="ToolbarPaste" Style="{StaticResource ToolbarButtonStyle}"
+                         Click="ToolbarPaste_Click"
+                         ToolTip="Paste (Ctrl+V)" ToolTipService.InitialShowDelay="600">
+                            <TextBlock Text="&#xE77F;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                            FontSize="14" Foreground="{DynamicResource c-toolbar-icon}"
+                            HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Button>
 
-                        <!-- Clone -->
-                        <Button x:Name="ToolbarClone" Style="{StaticResource ToolbarButtonStyle}"
-                                Click="ToolbarClone_Click"
-                                ToolTip="Clone to new tab (Ctrl+K)" ToolTipService.InitialShowDelay="600">
-                            <TextBlock Text="&#xF413;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
-                                       FontSize="14" Foreground="{DynamicResource c-toolbar-icon}"
-                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        </Button>
 
                         <!-- Separator -->
                         <Border Width="1" Margin="4,4" Background="{DynamicResource c-border}"/>
 
-                        <!-- Copy -->
-                        <Button x:Name="ToolbarCopy" Style="{StaticResource ToolbarButtonStyle}"
-                                Click="ToolbarCopy_Click"
-                                ToolTip="Copy (Ctrl+C)" ToolTipService.InitialShowDelay="600">
-                            <TextBlock Text="&#xE8C8;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
-                                       FontSize="14" Foreground="{DynamicResource c-toolbar-icon}"
-                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        <!-- Pin -->
+                        <Button x:Name="ToolbarPin" Style="{StaticResource ToolbarButtonStyle}"
+                          Click="ToolbarPin_Click"
+                          ToolTip="Pin (Ctrl+P)" ToolTipService.InitialShowDelay="600">
+                            <TextBlock x:Name="PinIconText" Text="&#xE718;"
+                             FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                             FontSize="14" Foreground="{DynamicResource c-toolbar-icon}"
+                             HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Button>
 
-                        <!-- Paste -->
-                        <Button x:Name="ToolbarPaste" Style="{StaticResource ToolbarButtonStyle}"
-                                Click="ToolbarPaste_Click"
-                                ToolTip="Paste (Ctrl+V)" ToolTipService.InitialShowDelay="600">
-                            <TextBlock Text="&#xE77F;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
-                                       FontSize="14" Foreground="{DynamicResource c-toolbar-icon}"
-                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        <!-- Clone -->
+                        <Button x:Name="ToolbarClone" Style="{StaticResource ToolbarButtonStyle}"
+                          Click="ToolbarClone_Click"
+                          ToolTip="Clone to new tab (Ctrl+K)" ToolTipService.InitialShowDelay="600">
+                            <TextBlock Text="&#xF413;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                             FontSize="14" Foreground="{DynamicResource c-toolbar-icon}"
+                             HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Button>
 
                         <!-- Separator -->
