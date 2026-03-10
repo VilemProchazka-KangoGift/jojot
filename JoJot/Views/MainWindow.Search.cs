@@ -203,8 +203,8 @@ public partial class MainWindow
         FindReplacePanel.UpdateMatches(_findMatches, _currentFindIndex);
         _highlightAdorner?.Update(_findMatches, _currentFindIndex, _findQueryLength);
 
-        // Keep focus in the find input so Enter/Shift+Enter continues cycling
-        FindReplacePanel.FocusFindInput();
+        // ContentEditor.Select() steals focus — defer restoration to after WPF processes the selection change
+        Dispatcher.BeginInvoke(FindReplacePanel.FocusFindInput, System.Windows.Threading.DispatcherPriority.Input);
     }
 
     // ─── Replace operations ────────────────────────────────────────────────
@@ -297,8 +297,8 @@ public partial class MainWindow
     }
 
     /// <summary>
-    /// Re-runs find search when editor content changes (typing).
-    /// Called from ContentEditor_TextChanged when the find panel is open.
+    /// Re-runs find search when editor content changes (typing, undo/redo).
+    /// Called from ContentEditor_TextChanged and PerformUndo/PerformRedo.
     /// </summary>
     internal void RefreshFindOnTextChange()
     {
@@ -308,6 +308,7 @@ public partial class MainWindow
         if (string.IsNullOrEmpty(query))
         {
             _highlightAdorner?.Clear();
+            FindReplacePanel.UpdateMatches([], -1);
             return;
         }
 
@@ -330,6 +331,11 @@ public partial class MainWindow
         }
 
         FindReplacePanel.UpdateMatches(_findMatches, _currentFindIndex);
-        EnsureHighlightAdorner().Update(_findMatches, _currentFindIndex, _findQueryLength);
+
+        // Defer adorner update to after WPF layout pass (GetRectFromCharacterIndex needs updated layout)
+        Dispatcher.BeginInvoke(() =>
+        {
+            EnsureHighlightAdorner().Update(_findMatches, _currentFindIndex, _findQueryLength);
+        }, System.Windows.Threading.DispatcherPriority.Loaded);
     }
 }

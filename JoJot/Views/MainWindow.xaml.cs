@@ -555,6 +555,7 @@ public partial class MainWindow : Window
         _suppressTextChanged = false;
 
         UpdateToolbarState(); // refresh undo/redo button states
+        RefreshFindOnTextChange(); // update find highlights after undo
     }
 
     /// <summary>
@@ -573,6 +574,7 @@ public partial class MainWindow : Window
         _suppressTextChanged = false;
 
         UpdateToolbarState(); // refresh undo/redo button states
+        RefreshFindOnTextChange(); // update find highlights after redo
     }
 
     /// <summary>
