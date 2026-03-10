@@ -204,5 +204,5 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
 | 13. Theme, Display & Menu Polish | v1.1 | 2/2 | Complete | 2026-03-04 |
 | 15.1. Recovery, Rename, Reorder | v1.1 | Complete    | 2026-03-06 | 2026-03-06 |
 | 16. Tab Cleanup Panel | v1.1 | 2/2 | Complete | 2026-03-07 |
-| 14. Installer | v1.1 | 2/2 | Complete | 2026-03-10 |
+| 14. Installer | v1.1 | Complete    | 2026-03-10 | 2026-03-10 |
 | 15. Review Round 2 UI/UX | v1.1 | 11/11 | Complete | 2026-03-05 |
