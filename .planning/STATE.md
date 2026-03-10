@@ -24,7 +24,7 @@ See: .planning/PROJECT.md (updated 2026-03-10)
 
 Milestone: v1.1 Polish & Stability -- ARCHIVED
 Status: All 7 phases (26 plans) shipped, milestone archived to .planning/milestones/
-Last activity: 2026-03-10 - Completed quick task 5: fix tab title not updating live as user types
+Last activity: 2026-03-10 - Completed quick task 6: strip newlines from auto-generated tab titles
 
 ## Accumulated Context
 
@@ -48,9 +48,10 @@ None.
 | 3 | fix drag-and-drop reorder visual indicators regression | 2026-03-10 | b4b5497 | [3-the-drag-and-drop-reorder-feature-regres](./quick/3-the-drag-and-drop-reorder-feature-regres/) |
 | 4 | drag-reorder fade-in animation | 2026-03-10 | 96c7f8e | [4-during-drag-and-drop-reorder-when-the-ta](./quick/4-during-drag-and-drop-reorder-when-the-ta/) |
 | 5 | fix tab title not updating live as user types | 2026-03-10 | 98b526c | [5-fix-tab-title-not-updating-live-as-user-](./quick/5-fix-tab-title-not-updating-live-as-user-/) |
+| 6 | strip newlines from auto-generated tab titles | 2026-03-10 | 1482d2d | [6-strip-newlines-from-auto-generated-tab-t](./quick/6-strip-newlines-from-auto-generated-tab-t/) |
 
 ## Session Continuity
 
 Last session: 2026-03-10
-Stopped at: Completed quick-5 plan (fix tab title not updating live as user types)
+Stopped at: Completed quick-6 plan (strip newlines from auto-generated tab titles)
 Resume file: None
