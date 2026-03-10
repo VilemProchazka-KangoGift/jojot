@@ -50,10 +50,19 @@ Instant note capture tied to your virtual desktop context — switch desktops, s
 - ✓ Post-delete focus rules (next below, then last, then new empty tab) — v1.0
 - ✓ Window close: flush content, delete empty tabs, save geometry, keep process alive — v1.0
 - ✓ Exit: flush all windows, delete all empty tabs, terminate process — v1.0
+- ✓ Windows installer via Inno Setup with self-contained .NET 10 runtime — v1.1
+- ✓ CalVer versioning (2026.3.0) with publisher metadata in EXE — v1.1
+- ✓ Tab cleanup side panel with age-based filtering and confirmation — v1.1
+- ✓ Recovery sidebar with full-width rows, tab excerpts, and adopt/delete — v1.1
+- ✓ In-place drag fade (replaces ghost adorner) — v1.1
+- ✓ Pin/close button hit targets and layout on all tabs — v1.1
+- ✓ Full-window file drop coverage — v1.1
 
 ### Active
 
-## Current Milestone: v1.1 Polish & Stability
+(No active requirements — v1.1 complete)
+
+## Completed Milestone: v1.1 Polish & Stability
 
 **Goal:** Fix critical bugs (crashes/freezes), improve UI polish, and add installer support based on first round of manual review.
 
@@ -112,6 +121,9 @@ Key technical state:
 | Custom Popup for menus | WPF ContextMenu can't use DynamicResource for themed backgrounds | ✓ Good — instant theme switching works across all menus |
 | SemaphoreSlim(1,1) for DB writes | Async-compatible unlike lock; all writes serialized through single path | ✓ Good — no data races, clean async code |
 | Destroy windows on close (not hide) | WPF cannot reopen after Close(); fresh instances via IPC | ✓ Good — clean lifecycle, no stale window state |
+| Inno Setup for installer | Standard Windows installer tooling, free for open-source | ✓ Good — 57MB self-contained installer, minimal wizard |
+| CalVer versioning (Year.Month.Build) | Communicates release timeline, no semver overhead | ✓ Good — 2026.3.0 in EXE properties |
+| ASCII publisher name in PE metadata | Diacritics cause encoding issues in PE metadata | ✓ Good — "Vilem Prochazka" displays correctly everywhere |
 
 ---
-*Last updated: 2026-03-03 after v1.0 milestone*
+*Last updated: 2026-03-10 after v1.1 milestone*
