@@ -42,9 +42,10 @@ public partial class MainWindow
 
         // Fade original item to 50% opacity in-place (no ghost adorner)
         // Set on content Border (not ListBoxItem) to avoid WPF internal Opacity resets
-        if (_dragItem.Content is FrameworkElement dragContent)
+        var dragBorder = FindNamedDescendant<Border>(_dragItem, "OuterBorder");
+        if (dragBorder is not null)
         {
-            dragContent.Opacity = 0.5;
+            dragBorder.Opacity = 0.5;
         }
 
         // SubTree mode keeps events routing to children within TabList
@@ -131,23 +132,31 @@ public partial class MainWindow
         if (_dragInsertIndex < TabList.Items.Count)
         {
             // Handle separator items by scanning to nearest Border item
-            if (TabList.Items[_dragInsertIndex] is ListBoxItem targetItem && targetItem.Content is Border targetBorder)
+            if (TabList.Items[_dragInsertIndex] is ListBoxItem targetItem)
             {
-                targetBorder.BorderThickness = new Thickness(0, 2, 0, 0);
-                targetBorder.BorderBrush = GetBrush("c-accent");
-                _dropIndicatorBorder = targetBorder;
+                var targetBorder = FindNamedDescendant<Border>(targetItem, "OuterBorder");
+                if (targetBorder is not null)
+                {
+                    targetBorder.BorderThickness = new Thickness(0, 2, 0, 0);
+                    targetBorder.BorderBrush = GetBrush("c-accent");
+                    _dropIndicatorBorder = targetBorder;
+                }
             }
             else
             {
                 // Separator or non-Border: look forward for next real tab item
                 for (int j = _dragInsertIndex + 1; j < TabList.Items.Count; j++)
                 {
-                    if (TabList.Items[j] is ListBoxItem nextItem && nextItem.Content is Border nextBorder)
+                    if (TabList.Items[j] is ListBoxItem nextItem)
                     {
-                        nextBorder.BorderThickness = new Thickness(0, 2, 0, 0);
-                        nextBorder.BorderBrush = GetBrush("c-accent");
-                        _dropIndicatorBorder = nextBorder;
-                        break;
+                        var nextBorder = FindNamedDescendant<Border>(nextItem, "OuterBorder");
+                        if (nextBorder is not null)
+                        {
+                            nextBorder.BorderThickness = new Thickness(0, 2, 0, 0);
+                            nextBorder.BorderBrush = GetBrush("c-accent");
+                            _dropIndicatorBorder = nextBorder;
+                            break;
+                        }
                     }
                 }
 
@@ -156,12 +165,16 @@ public partial class MainWindow
                 {
                     for (int j = _dragInsertIndex - 1; j >= 0; j--)
                     {
-                        if (TabList.Items[j] is ListBoxItem prevItem && prevItem.Content is Border prevBorder)
+                        if (TabList.Items[j] is ListBoxItem prevItem)
                         {
-                            prevBorder.BorderThickness = new Thickness(0, 0, 0, 2);
-                            prevBorder.BorderBrush = GetBrush("c-accent");
-                            _dropIndicatorBorder = prevBorder;
-                            break;
+                            var prevBorder = FindNamedDescendant<Border>(prevItem, "OuterBorder");
+                            if (prevBorder is not null)
+                            {
+                                prevBorder.BorderThickness = new Thickness(0, 0, 0, 2);
+                                prevBorder.BorderBrush = GetBrush("c-accent");
+                                _dropIndicatorBorder = prevBorder;
+                                break;
+                            }
                         }
                     }
                 }
@@ -170,11 +183,15 @@ public partial class MainWindow
         else if (lastSameZoneIndex >= 0)
         {
             // Inserting after the last item -- show bottom border on the last same-zone item
-            if (TabList.Items[lastSameZoneIndex] is ListBoxItem lastItem && lastItem.Content is Border lastBorder)
+            if (TabList.Items[lastSameZoneIndex] is ListBoxItem lastItem)
             {
-                lastBorder.BorderThickness = new Thickness(0, 0, 0, 2);
-                lastBorder.BorderBrush = GetBrush("c-accent");
-                _dropIndicatorBorder = lastBorder;
+                var lastBorder = FindNamedDescendant<Border>(lastItem, "OuterBorder");
+                if (lastBorder is not null)
+                {
+                    lastBorder.BorderThickness = new Thickness(0, 0, 0, 2);
+                    lastBorder.BorderBrush = GetBrush("c-accent");
+                    _dropIndicatorBorder = lastBorder;
+                }
             }
         }
     }
@@ -194,7 +211,11 @@ public partial class MainWindow
             RemoveDropIndicator();
 
             // Restore old item opacity (no-move path)
-            if (_dragItem?.Content is FrameworkElement oldContent) oldContent.Opacity = 1.0;
+            if (_dragItem is not null)
+            {
+                var oldBorder = FindNamedDescendant<Border>(_dragItem, "OuterBorder");
+                if (oldBorder is not null) oldBorder.Opacity = 1.0;
+            }
 
             if (_dragInsertIndex >= 0 && _dragTab is not null)
             {
@@ -215,20 +236,23 @@ public partial class MainWindow
                     {
                         foreach (var obj in TabList.Items)
                         {
-                            if (obj is ListBoxItem item && item.Tag == _dragTab
-                                && item.Content is FrameworkElement content)
+                            if (obj is ListBoxItem item && item.Tag == _dragTab)
                             {
-                                // Set initial opacity before animation to prevent flash of full opacity
-                                content.Opacity = 0.5;
-                                var fadeIn = new DoubleAnimation
+                                var content = FindNamedDescendant<Border>(item, "OuterBorder");
+                                if (content is not null)
                                 {
-                                    From = 0.5, To = 1.0,
-                                    Duration = TimeSpan.FromMilliseconds(200),
-                                    EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
-                                };
-                                fadeIn.Completed += (_, _) => { content.Opacity = 1.0; content.BeginAnimation(OpacityProperty, null); };
-                                content.BeginAnimation(OpacityProperty, fadeIn);
-                                break;
+                                    // Set initial opacity before animation to prevent flash of full opacity
+                                    content.Opacity = 0.5;
+                                    var fadeIn = new DoubleAnimation
+                                    {
+                                        From = 0.5, To = 1.0,
+                                        Duration = TimeSpan.FromMilliseconds(200),
+                                        EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+                                    };
+                                    fadeIn.Completed += (_, _) => { content.Opacity = 1.0; content.BeginAnimation(OpacityProperty, null); };
+                                    content.BeginAnimation(OpacityProperty, fadeIn);
+                                    break;
+                                }
                             }
                         }
                     }
@@ -273,7 +297,11 @@ public partial class MainWindow
     private void ResetDragState()
     {
         _isDragging = false;
-        if (_dragItem?.Content is FrameworkElement resetContent) resetContent.Opacity = 1.0;
+        if (_dragItem is not null)
+        {
+            var resetBorder = FindNamedDescendant<Border>(_dragItem, "OuterBorder");
+            if (resetBorder is not null) resetBorder.Opacity = 1.0;
+        }
         _dragItem = null;
         _dragTab = null;
         _dragInsertIndex = -1;

@@ -242,7 +242,11 @@ public partial class MainWindow : Window
                     return;
                 }
                 RemoveDropIndicator();
-                if (_dragItem?.Content is FrameworkElement abortContent) abortContent.Opacity = 1.0;
+                if (_dragItem is not null)
+                {
+                    var abortBorder = FindNamedDescendant<Border>(_dragItem, "OuterBorder");
+                    if (abortBorder is not null) abortBorder.Opacity = 1.0;
+                }
                 CompleteDrag();
             }
         };
