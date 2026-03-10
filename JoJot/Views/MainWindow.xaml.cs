@@ -495,6 +495,10 @@ public partial class MainWindow : Window
     private void ContentEditor_TextChanged(object sender, TextChangedEventArgs e)
     {
         if (_suppressTextChanged || _activeTab is null) return;
+
+        // Sync editor text to model so DisplayLabel binding updates live
+        _activeTab.Content = ContentEditor.Text;
+
         _autosaveService.NotifyTextChanged();
 
         // Start/reset checkpoint timer on user input
