@@ -24,7 +24,7 @@ See: .planning/PROJECT.md (updated 2026-03-10)
 
 Milestone: v1.1 Polish & Stability -- ARCHIVED
 Status: All 7 phases (26 plans) shipped, milestone archived to .planning/milestones/
-Last activity: 2026-03-10 - Completed quick task 4: drag-reorder fade-in animation
+Last activity: 2026-03-10 - Completed quick task 5: fix tab title not updating live as user types
 
 ## Accumulated Context
 
@@ -47,9 +47,10 @@ None.
 | 2 | do not share notes db between debug and production installed app | 2026-03-10 | 1a61e93 | [2-do-not-share-notes-db-between-debug-and-](./quick/2-do-not-share-notes-db-between-debug-and-/) |
 | 3 | fix drag-and-drop reorder visual indicators regression | 2026-03-10 | b4b5497 | [3-the-drag-and-drop-reorder-feature-regres](./quick/3-the-drag-and-drop-reorder-feature-regres/) |
 | 4 | drag-reorder fade-in animation | 2026-03-10 | 96c7f8e | [4-during-drag-and-drop-reorder-when-the-ta](./quick/4-during-drag-and-drop-reorder-when-the-ta/) |
+| 5 | fix tab title not updating live as user types | 2026-03-10 | 98b526c | [5-fix-tab-title-not-updating-live-as-user-](./quick/5-fix-tab-title-not-updating-live-as-user-/) |
 
 ## Session Continuity
 
 Last session: 2026-03-10
-Stopped at: Completed quick-3 plan (drag-and-drop visual indicators fix)
+Stopped at: Completed quick-5 plan (fix tab title not updating live as user types)
 Resume file: None
