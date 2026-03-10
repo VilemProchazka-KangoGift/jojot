@@ -36,7 +36,7 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
 - [x] **Phase 11: Critical Bug Fixes** — Eliminate stack overflow crashes on pin/unpin and delete, and fix tab rename freeze (completed 2026-03-03)
 - [x] **Phase 12: Tab Panel UX** — Replace border highlight with background highlight, add pin icon, improve title sizing, make panel user-resizable, and verify drag-to-reorder (completed 2026-03-04)
 - [x] **Phase 13: Theme, Display & Menu Polish** — Fix dark mode tab legibility, change font size display to percentages, verify window title shows desktop name, and fix hamburger menu dismiss behavior (completed 2026-03-04)
-- [ ] **Phase 14: Installer** — Produce a Windows MSI or MSIX installer for distribution
+- [ ] **Phase 14: Installer** — Produce a Windows installer (Inno Setup) for distribution
 - [x] **Phase 15: Review Round 2 — UI/UX Bug Fixes & Polish** — Fix note persistence bug, improve tab interactions, enhance drag-and-drop, refine preferences panel, redesign session recovery, and polish startup/move-to-desktop flows (completed 2026-03-05)
 - [x] **Phase 15.1: Recovery Panel, Tab Rename & Reorder Fixes** — Make recovery items full-width with tab info, fix escape-to-cancel rename, replace drag ghost with fade-out (completed 2026-03-06)
 - [x] **Phase 16: Tab Cleanup Panel** — Replace Delete menu options with a dedicated cleanup side panel featuring age-based filtering, pinned inclusion toggle, and preview list with confirmation (completed 2026-03-07)
@@ -154,7 +154,7 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
   - **CLEANUP-02**: Add new "Clean up tabs" menu item to the hamburger menu
   - **CLEANUP-03**: Side panel with age-based filter: "clean up older than [input; default 2] [dropdown days/hours; default days]"
   - **CLEANUP-04**: Checkbox for "include pinned" (default unchecked)
-  - **CLEANUP-05**: Delete button in the panel controls area
+  - **CLEANUP-05**: Delete button in the panel controls areas
   - **CLEANUP-06**: Scrollable preview list of tabs matching the filter criteria (same display style as recovery panel)
   - **CLEANUP-07**: Confirmation dialog before executing deletion
 **Success Criteria** (what must be TRUE):
@@ -174,10 +174,12 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
 **Depends on**: Phase 13 (all fixes applied before packaging)
 **Requirements**: DIST-01
 **Success Criteria** (what must be TRUE):
-  1. A Windows MSI or MSIX file exists that installs JoJot without requiring manual file placement
+  1. An Inno Setup installer .exe exists that installs JoJot without requiring manual file placement
   2. The installed app launches correctly and all v1.1 behaviors are intact post-install
-  3. The installer can be run on a machine that does not have .NET 10 installed (self-contained or runtime bundled)
-**Plans**: TBD
+  3. The installer can be run on a machine that does not have .NET 10 installed (self-contained runtime bundled)
+**Plans**: 2 plans
+- [ ] 14-01-PLAN.md — Project metadata (CalVer, publisher), app icon creation, and Inno Setup script authoring (DIST-01)
+- [ ] 14-02-PLAN.md — Build installer (dotnet publish + ISCC compile) and human verification of install/launch/uninstall (DIST-01)
 
 ## Progress
 
@@ -201,6 +203,6 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
 | 12. Tab Panel UX | v1.1 | 2/2 | Complete | 2026-03-04 |
 | 13. Theme, Display & Menu Polish | v1.1 | 2/2 | Complete | 2026-03-04 |
 | 15.1. Recovery, Rename, Reorder | v1.1 | Complete    | 2026-03-06 | 2026-03-06 |
-| 16. Tab Cleanup Panel | v1.1 | 1/2 | In progress | - |
-| 14. Installer | v1.1 | 0/? | Not started | - |
+| 16. Tab Cleanup Panel | v1.1 | 2/2 | Complete | 2026-03-07 |
+| 14. Installer | v1.1 | 0/2 | Not started | - |
 | 15. Review Round 2 UI/UX | v1.1 | 11/11 | Complete | 2026-03-05 |
