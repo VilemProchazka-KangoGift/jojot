@@ -159,6 +159,9 @@ public partial class MainWindow : Window
 
         InitializeComponent();
         InitializeInputBindings();
+
+        // Register with ThemeService for title bar dark mode tracking
+        ThemeService.RegisterWindow(this);
         HelpOverlay.CloseRequested += (_, _) => ViewModel.IsHelpOpen = false;
         CleanupPanel.CloseRequested += (_, _) => HideCleanupPanel();
         RecoveryPanel.CloseRequested += (_, _) => HideRecoveryPanel();
