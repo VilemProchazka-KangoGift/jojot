@@ -119,13 +119,19 @@ public class NoteTab : ObservableObject
 
             if (!string.IsNullOrWhiteSpace(Content))
             {
-                var trimmed = Content.Trim();
-                if (trimmed.Length <= DisplayLabelMaxLength)
+                var cleaned = Content.Trim()
+                    .Replace("\r\n", " ")
+                    .Replace('\r', ' ')
+                    .Replace('\n', ' ');
+                while (cleaned.Contains("  "))
+                    cleaned = cleaned.Replace("  ", " ");
+
+                if (cleaned.Length <= DisplayLabelMaxLength)
                 {
-                    return trimmed;
+                    return cleaned;
                 }
 
-                return trimmed[..DisplayLabelMaxLength];
+                return cleaned[..DisplayLabelMaxLength];
             }
 
             return PlaceholderLabel;

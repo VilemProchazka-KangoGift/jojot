@@ -59,6 +59,44 @@ public class NoteTabTests
         tab.DisplayLabel.Should().Be("Named");
     }
 
+    [Fact]
+    public void DisplayLabel_ReplacesNewlines_InContentFallback()
+    {
+        var tab = new NoteTab { Name = null, Content = "Hello\nWorld" };
+        tab.DisplayLabel.Should().Be("Hello World");
+    }
+
+    [Fact]
+    public void DisplayLabel_ReplacesCRLF_InContentFallback()
+    {
+        var tab = new NoteTab { Name = null, Content = "Line1\r\nLine2" };
+        tab.DisplayLabel.Should().Be("Line1 Line2");
+    }
+
+    [Fact]
+    public void DisplayLabel_CollapsesMultipleNewlines()
+    {
+        var tab = new NoteTab { Name = null, Content = "A\n\n\nB" };
+        tab.DisplayLabel.Should().Be("A B");
+    }
+
+    [Fact]
+    public void DisplayLabel_TruncatesAfterNewlineStripping()
+    {
+        // Content with newlines where the cleaned text exceeds 30 chars
+        // "AAAAAAAAAA\nBBBBBBBBBB\nCCCCCCCCCC\nDDDDDDDDDD" -> "AAAAAAAAAA BBBBBBBBBB CCCCCCCCCC" (31 chars) -> truncated to 30
+        var tab = new NoteTab { Name = null, Content = "AAAAAAAAAA\nBBBBBBBBBB\nCCCCCCCCCC\nDDDDDDDDDD" };
+        tab.DisplayLabel.Should().HaveLength(30);
+        tab.DisplayLabel.Should().Be("AAAAAAAAAA BBBBBBBBBB CCCCCCCC");
+    }
+
+    [Fact]
+    public void DisplayLabel_PreservesNewlinesInCustomName()
+    {
+        var tab = new NoteTab { Name = "Has\nNewline", Content = "whatever" };
+        tab.DisplayLabel.Should().Be("Has\nNewline");
+    }
+
     // ─── IsPlaceholder ─────────────────────────────────────────────────
 
     [Fact]
