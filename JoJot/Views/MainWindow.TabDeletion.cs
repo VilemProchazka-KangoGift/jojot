@@ -182,21 +182,15 @@ public partial class MainWindow
     }
 
     /// <summary>
-    /// Shows the toast with a slide-up animation.
-    /// If toast is already visible: only updates content — no re-animation.
+    /// Slides the toast in if not already visible.
+    /// Returns true if the toast was newly shown, false if it was already visible (content-only update).
+    /// Caller must set ToastMessageBlock content and UndoButton visibility before calling.
     /// </summary>
-    private void ShowToast(bool isBulk, string? label = null, int count = 0)
+    private bool AnimateToastIn()
     {
-        if (isBulk)
-            UpdateToastContentBulk(count);
-        else
-            UpdateToastContent(label ?? "");
-
-        // If already visible, content swap only — do not re-animate
         if (ToastBorder.Visibility == Visibility.Visible)
-            return;
+            return false;
 
-        // Slide up from bottom: Y from 36 to 0 over 150ms with cubic ease-out
         ToastTranslate.BeginAnimation(TranslateTransform.YProperty, null);
         ToastTranslate.Y = 36;
         ToastBorder.Visibility = Visibility.Visible;
@@ -209,6 +203,23 @@ public partial class MainWindow
             EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
         };
         ToastTranslate.BeginAnimation(TranslateTransform.YProperty, anim);
+        return true;
+    }
+
+    /// <summary>
+    /// Shows the toast with a slide-up animation.
+    /// If toast is already visible: only updates content — no re-animation.
+    /// </summary>
+    private void ShowToast(bool isBulk, string? label = null, int count = 0)
+    {
+        _pendingToastUndoAction = null;
+
+        if (isBulk)
+            UpdateToastContentBulk(count);
+        else
+            UpdateToastContent(label ?? "");
+
+        AnimateToastIn();
     }
 
     /// <summary>
@@ -262,20 +273,7 @@ public partial class MainWindow
         ToastMessageBlock.Inlines.Add(new System.Windows.Documents.Run(message));
         UndoButton.Visibility = Visibility.Visible;
 
-        if (ToastBorder.Visibility == Visibility.Visible)
-            return;
-
-        ToastTranslate.BeginAnimation(TranslateTransform.YProperty, null);
-        ToastTranslate.Y = 36;
-        ToastBorder.Visibility = Visibility.Visible;
-
-        var anim = new DoubleAnimation
-        {
-            From = 36, To = 0,
-            Duration = TimeSpan.FromMilliseconds(150),
-            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
-        };
-        ToastTranslate.BeginAnimation(TranslateTransform.YProperty, anim);
+        if (!AnimateToastIn()) return;
 
         _ = Task.Delay(4000).ContinueWith(_ =>
         {

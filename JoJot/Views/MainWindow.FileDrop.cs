@@ -1,6 +1,4 @@
 using System.Windows;
-using System.Windows.Media;
-using System.Windows.Media.Animation;
 using JoJot.Models;
 using JoJot.Services;
 
@@ -137,26 +135,13 @@ public partial class MainWindow
     /// </summary>
     public void ShowInfoToast(string message)
     {
+        _pendingToastUndoAction = null;
+
         ToastMessageBlock.Text = message;
         UndoButton.Visibility = Visibility.Collapsed;
 
-        // If toast already visible, just update content
-        if (ToastBorder.Visibility == Visibility.Visible)
-            return;
+        if (!AnimateToastIn()) return;
 
-        ToastTranslate.BeginAnimation(TranslateTransform.YProperty, null);
-        ToastTranslate.Y = 36;
-        ToastBorder.Visibility = Visibility.Visible;
-
-        var anim = new DoubleAnimation
-        {
-            From = 36, To = 0,
-            Duration = TimeSpan.FromMilliseconds(150),
-            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
-        };
-        ToastTranslate.BeginAnimation(TranslateTransform.YProperty, anim);
-
-        // Auto-dismiss after 4 seconds
         _ = Task.Delay(4000).ContinueWith(_ =>
         {
             Dispatcher.Invoke(() =>
