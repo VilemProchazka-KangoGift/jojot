@@ -230,18 +230,18 @@ public partial class MainWindow
                     RebuildTabList();
                     SelectTabByNote(_dragTab);
 
-                    // Fade-in the moved tab at its new position (150ms)
-                    // Animate on content Border to avoid WPF ListBoxItem Opacity interference
-                    if (_dragTab is not null)
+                    // Fade-in the moved tab at its new position
+                    // Deferred to Loaded priority so the visual tree from RebuildTabList is fully realized
+                    var movedTab = _dragTab;
+                    Dispatcher.InvokeAsync(() =>
                     {
                         foreach (var obj in TabList.Items)
                         {
-                            if (obj is ListBoxItem item && item.Tag == _dragTab)
+                            if (obj is ListBoxItem item && item.Tag == movedTab)
                             {
                                 var content = FindNamedDescendant<Border>(item, "OuterBorder");
                                 if (content is not null)
                                 {
-                                    // Set initial opacity before animation to prevent flash of full opacity
                                     content.Opacity = 0.5;
                                     var fadeIn = new DoubleAnimation
                                     {
@@ -251,11 +251,11 @@ public partial class MainWindow
                                     };
                                     fadeIn.Completed += (_, _) => { content.Opacity = 1.0; content.BeginAnimation(OpacityProperty, null); };
                                     content.BeginAnimation(OpacityProperty, fadeIn);
-                                    break;
                                 }
+                                break;
                             }
                         }
-                    }
+                    }, System.Windows.Threading.DispatcherPriority.Loaded);
                 }
             }
 
