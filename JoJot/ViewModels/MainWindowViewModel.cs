@@ -303,22 +303,72 @@ public class MainWindowViewModel : ObservableObject
     // ─── Find Engine ────────────────────────────────────────────────
 
     /// <summary>
-    /// Finds all case-insensitive occurrences of <paramref name="query"/> in <paramref name="content"/>.
+    /// Finds all occurrences of <paramref name="query"/> in <paramref name="content"/>.
     /// Returns a list of starting indices. Non-overlapping matches only.
+    /// Default behavior is case-insensitive with no word-boundary enforcement.
     /// </summary>
-    internal static List<int> FindAllMatches(string content, string query)
+    internal static List<int> FindAllMatches(string content, string query, bool caseSensitive = false, bool wholeWord = false)
     {
         var matches = new List<int>();
         if (string.IsNullOrEmpty(query) || string.IsNullOrEmpty(content))
             return matches;
 
+        var comparison = caseSensitive ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
+
         int index = 0;
-        while ((index = content.IndexOf(query, index, StringComparison.OrdinalIgnoreCase)) != -1)
+        while ((index = content.IndexOf(query, index, comparison)) != -1)
         {
-            matches.Add(index);
+            if (!wholeWord || IsWholeWordMatch(content, index, query.Length))
+                matches.Add(index);
+
             index += query.Length;
         }
         return matches;
+    }
+
+    /// <summary>
+    /// Tests whether a match at <paramref name="matchIndex"/> of <paramref name="matchLength"/> characters
+    /// in <paramref name="content"/> falls on word boundaries (non-alphanumeric or string edge on both sides).
+    /// </summary>
+    private static bool IsWholeWordMatch(string content, int matchIndex, int matchLength)
+    {
+        bool startOk = matchIndex == 0 || !char.IsLetterOrDigit(content[matchIndex - 1]);
+        bool endOk = (matchIndex + matchLength) >= content.Length || !char.IsLetterOrDigit(content[matchIndex + matchLength]);
+        return startOk && endOk;
+    }
+
+    /// <summary>
+    /// Replaces all occurrences of <paramref name="query"/> in <paramref name="content"/> with
+    /// <paramref name="replacement"/>. Supports case-sensitive and whole-word options.
+    /// Returns the new content and the number of replacements made.
+    /// </summary>
+    internal static (string NewContent, int Count) ReplaceAll(string content, string query, string replacement, bool caseSensitive = false, bool wholeWord = false)
+    {
+        var positions = FindAllMatches(content, query, caseSensitive, wholeWord);
+        if (positions.Count == 0)
+            return (content, 0);
+
+        // Build result by iterating forward through positions
+        var sb = new System.Text.StringBuilder(content.Length);
+        int lastEnd = 0;
+        foreach (int pos in positions)
+        {
+            sb.Append(content, lastEnd, pos - lastEnd);
+            sb.Append(replacement);
+            lastEnd = pos + query.Length;
+        }
+        sb.Append(content, lastEnd, content.Length - lastEnd);
+
+        return (sb.ToString(), positions.Count);
+    }
+
+    /// <summary>
+    /// Replaces the match at the given index with <paramref name="replacement"/>.
+    /// Simple string surgery: content[..matchIndex] + replacement + content[(matchIndex + queryLength)..].
+    /// </summary>
+    internal static string ReplaceSingle(string content, int matchIndex, int queryLength, string replacement)
+    {
+        return content[..matchIndex] + replacement + content[(matchIndex + queryLength)..];
     }
 
     /// <summary>
