@@ -66,7 +66,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | THEME-02 | Phase 13 | Pending |
 | WIN-01 | Phase 13 | Complete |
 | WIN-02 | Phase 13 | Complete |
-| DIST-01 | Phase 14 | Pending |
+| DIST-01 | Phase 14 | In progress — script authored in 14-01, build/verify in 14-02 |
 
 **Coverage:**
 - v1.1 requirements: 13 total

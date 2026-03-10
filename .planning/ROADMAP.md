@@ -178,7 +178,7 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
   2. The installed app launches correctly and all v1.1 behaviors are intact post-install
   3. The installer can be run on a machine that does not have .NET 10 installed (self-contained runtime bundled)
 **Plans**: 2 plans
-- [ ] 14-01-PLAN.md — Project metadata (CalVer, publisher), app icon creation, and Inno Setup script authoring (DIST-01)
+- [x] 14-01-PLAN.md — Project metadata (CalVer, publisher), app icon creation, and Inno Setup script authoring (DIST-01)
 - [ ] 14-02-PLAN.md — Build installer (dotnet publish + ISCC compile) and human verification of install/launch/uninstall (DIST-01)
 
 ## Progress
@@ -204,5 +204,5 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
 | 13. Theme, Display & Menu Polish | v1.1 | 2/2 | Complete | 2026-03-04 |
 | 15.1. Recovery, Rename, Reorder | v1.1 | Complete    | 2026-03-06 | 2026-03-06 |
 | 16. Tab Cleanup Panel | v1.1 | 2/2 | Complete | 2026-03-07 |
-| 14. Installer | v1.1 | 0/2 | Not started | - |
+| 14. Installer | v1.1 | 1/2 | In progress | - |
 | 15. Review Round 2 UI/UX | v1.1 | 11/11 | Complete | 2026-03-05 |

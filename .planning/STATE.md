@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Polish & Stability
 status: in_progress
-last_updated: "2026-03-07T21:54:03Z"
+last_updated: "2026-03-10T08:31:34Z"
 progress:
   total_phases: 7
   completed_phases: 7
-  total_plans: 25
-  completed_plans: 25
+  total_plans: 26
+  completed_plans: 26
 ---
 
 # Project State
@@ -18,16 +18,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-03)
 
 **Core value:** Instant note capture tied to your virtual desktop context -- switch desktops, switch notes, zero friction.
-**Current focus:** v1.1 Polish & Stability -- Phase 16 complete (Tab Cleanup Panel), Phase 14 (Installer) remaining
+**Current focus:** v1.1 Polish & Stability -- Phase 14 (Installer) plan 01 complete, plan 02 remaining
 
 ## Current Position
 
-Phase: 16 (Tab Cleanup Panel) -- COMPLETE
-Plan: 2 of 2 (16-02 complete -- cleanup delete action with confirmation)
-Status: Phase 16 fully complete, Phase 14 (Installer) remaining
-Last activity: 2026-03-07 -- Completed 16-02 (cleanup delete with confirmation and hard-delete)
+Phase: 14 (Installer) -- IN PROGRESS
+Plan: 1 of 2 (14-01 complete -- metadata, icon, and Inno Setup script)
+Status: Phase 14 plan 01 complete, plan 02 (build and verify installer) remaining
+Last activity: 2026-03-10 -- Completed 14-01 (CalVer metadata, app icon, Inno Setup script)
 
-Progress: [█████████░] 98% (25 plans complete across 7 phases; Phase 14 remaining)
+Progress: [█████████░] 99% (26 plans complete across 8 phases; 14-02 remaining)
 
 ## Performance Metrics
 
@@ -36,12 +36,13 @@ Progress: [█████████░] 98% (25 plans complete across 7 phase
 - Average duration: ~15 min
 - Total execution time: ~7.5 hours
 
-**v1.1 plans:** 25 completed (1 in Phase 11, 2 in Phase 12, 2 in Phase 13, 0 in Phase 14, 12 in Phase 15, 6 in Phase 15.1, 2 in Phase 16)
+**v1.1 plans:** 26 completed (1 in Phase 11, 2 in Phase 12, 2 in Phase 13, 1 in Phase 14, 12 in Phase 15, 6 in Phase 15.1, 2 in Phase 16)
 
 | Phase | Plan | Duration | Tasks | Files |
 |-------|------|----------|-------|-------|
 | 16-tab-cleanup-panel | 01 | 7min | 2 | 2 |
 | 16-tab-cleanup-panel | 02 | 3min | 1 | 1 |
+| 14-installer | 01 | 3min | 2 | 3 |
 
 *Updated after each plan completion*
 
@@ -155,6 +156,12 @@ Phase 16-02 decisions:
 - UndoManager stacks removed for deleted tabs during cleanup (mirrors CommitPendingDeletionAsync pattern)
 - SaveCurrentTabContent + CommitPendingDeletionAsync called before cleanup deletion to ensure data consistency
 
+Phase 14-01 decisions:
+- ASCII-safe publisher name (Vilem Prochazka) in .csproj to avoid PE metadata encoding issues
+- PNG-compressed ICO entries for all sizes (Vista+ compatible, simpler than BMP)
+- Stable AppId GUID {B7E45A2C-8D31-4F6A-9E52-1C3D7A8B9F04} for upgrade detection across versions
+- Segoe UI Bold for J lettermark in app icon (Windows system font, always available)
+
 ### Pending Todos
 
 None.
@@ -179,11 +186,11 @@ None.
 
 ### Blockers/Concerns
 
-- DIST-01 (installer) requires deciding MSI vs MSIX and whether to bundle .NET 10 runtime
+- DIST-01 (installer) -- RESOLVED: Inno Setup chosen, self-contained .NET 10 runtime bundled, script authored in 14-01
 - R2-BUG-01 (note persistence) -- RESOLVED: Content saved before FlushAsync in SelectionChanged
 
 ## Session Continuity
 
-Last session: 2026-03-07
-Stopped at: Completed 16-02-PLAN.md (cleanup delete action with confirmation)
-Next: Phase 14 (Installer) -- last remaining phase in v1.1
+Last session: 2026-03-10
+Stopped at: Completed 14-01-PLAN.md (CalVer metadata, app icon, Inno Setup script)
+Next: 14-02-PLAN.md (build installer and human verification of install/launch/uninstall)
