@@ -1,4 +1,6 @@
+using System.Runtime.InteropServices;
 using System.Windows;
+using System.Windows.Interop;
 
 namespace JoJot.Services;
 
@@ -9,6 +11,14 @@ namespace JoJot.Services;
 /// </summary>
 public static class ThemeService
 {
+    // ─── DWM interop for title bar dark mode ─────────────────────────────
+    [DllImport("dwmapi.dll", PreserveSig = true)]
+    private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attribute, ref int value, int size);
+
+    private const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
+
+    private static readonly List<WeakReference<Window>> _trackedWindows = [];
+
     /// <summary>
     /// Available application theme settings.
     /// </summary>
@@ -89,6 +99,8 @@ public static class ThemeService
             : new Uri("Themes/LightTheme.xaml", UriKind.Relative);
 
         dictionaries.Insert(0, new ResourceDictionary { Source = uri });
+
+        ApplyTitleBarToAllWindows();
     }
 
     /// <summary>
@@ -135,6 +147,60 @@ public static class ThemeService
             _currentSetting == AppTheme.System)
         {
             Application.Current.Dispatcher.InvokeAsync(() => ApplyTheme(AppTheme.System));
+        }
+    }
+
+    // ─── Title bar dark mode ────────────────────────────────────────────────
+
+    /// <summary>
+    /// Registers a window for title bar dark mode tracking. Applies the current theme
+    /// to the title bar immediately (or deferred via SourceInitialized if the HWND
+    /// is not yet available).
+    /// </summary>
+    public static void RegisterWindow(Window window)
+    {
+        _trackedWindows.Add(new WeakReference<Window>(window));
+
+        var helper = new WindowInteropHelper(window);
+        if (helper.Handle == IntPtr.Zero)
+        {
+            // HWND not yet created — defer until the native window is initialized
+            window.SourceInitialized += (_, _) => ApplyTitleBarToWindow(window);
+        }
+        else
+        {
+            ApplyTitleBarToWindow(window);
+        }
+    }
+
+    /// <summary>
+    /// Applies the DWM immersive dark mode attribute to a single window's title bar.
+    /// </summary>
+    private static void ApplyTitleBarToWindow(Window window)
+    {
+        var hwnd = new WindowInteropHelper(window).Handle;
+        if (hwnd == IntPtr.Zero) return;
+
+        var effective = _currentSetting == AppTheme.System ? DetectSystemTheme() : _currentSetting;
+        int useDarkMode = effective == AppTheme.Dark ? 1 : 0;
+        DwmSetWindowAttribute(hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, ref useDarkMode, sizeof(int));
+    }
+
+    /// <summary>
+    /// Applies the current title bar theme to all tracked windows, pruning dead references.
+    /// </summary>
+    private static void ApplyTitleBarToAllWindows()
+    {
+        for (int i = _trackedWindows.Count - 1; i >= 0; i--)
+        {
+            if (_trackedWindows[i].TryGetTarget(out var window))
+            {
+                ApplyTitleBarToWindow(window);
+            }
+            else
+            {
+                _trackedWindows.RemoveAt(i);
+            }
         }
     }
 
