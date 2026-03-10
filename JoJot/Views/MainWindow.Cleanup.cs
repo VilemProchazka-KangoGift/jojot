@@ -55,7 +55,7 @@ public partial class MainWindow
     private List<NoteTab> GetCleanupCandidates()
     {
         var cutoff = GetCleanupCutoffDate();
-        if (cutoff is null) return new List<NoteTab>();
+        if (cutoff is null) return [];
 
         return ViewModel.GetCleanupCandidates(cutoff.Value, CleanupPanel.IncludePinned);
     }

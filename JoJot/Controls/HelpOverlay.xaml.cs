@@ -36,18 +36,16 @@ public partial class HelpOverlay : UserControl
     {
         var shortcuts = new (string section, (string key, string desc)[] items)[]
         {
-            ("TABS", new[]
-            {
+            ("TABS", [
                 ("Ctrl+T", "New tab"),
                 ("Ctrl+W", "Delete tab"),
                 ("Ctrl+Tab", "Next tab"),
                 ("Ctrl+Shift+Tab", "Previous tab"),
                 ("F2", "Rename tab"),
                 ("Ctrl+P", "Pin / Unpin"),
-                ("Ctrl+K", "Clone tab"),
-            }),
-            ("EDITOR", new[]
-            {
+                ("Ctrl+K", "Clone tab")
+            ]),
+            ("EDITOR", [
                 ("Ctrl+Z", "Undo"),
                 ("Ctrl+Y", "Redo"),
                 ("Ctrl+Shift+Z", "Redo (alt)"),
@@ -56,20 +54,18 @@ public partial class HelpOverlay : UserControl
                 ("Ctrl+X", "Cut"),
                 ("Ctrl+A", "Select all"),
                 ("Ctrl+S", "Save as TXT"),
-                ("Ctrl+F", "Find in editor / Search tabs"),
-            }),
-            ("VIEW", new[]
-            {
+                ("Ctrl+F", "Find in editor / Search tabs")
+            ]),
+            ("VIEW", [
                 ("Ctrl+=", "Increase font size"),
                 ("Ctrl+-", "Decrease font size"),
                 ("Ctrl+0", "Reset font size (100%)"),
-                ("Ctrl+Scroll", "Zoom (over editor)"),
-            }),
-            ("GLOBAL", new[]
-            {
+                ("Ctrl+Scroll", "Zoom (over editor)")
+            ]),
+            ("GLOBAL", [
                 (HotkeyService.GetHotkeyDisplayString(), "Focus / minimize JoJot"),
-                ("Ctrl+Shift+/", "Show this help"),
-            }),
+                ("Ctrl+Shift+/", "Show this help")
+            ]),
         };
 
         foreach (var (section, items) in shortcuts)

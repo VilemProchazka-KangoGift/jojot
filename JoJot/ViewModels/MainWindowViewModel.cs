@@ -25,7 +25,7 @@ public class MainWindowViewModel : ObservableObject
     /// <summary>
     /// All tabs for this desktop, ordered by pinned-first then sort_order.
     /// </summary>
-    public ObservableCollection<NoteTab> Tabs { get; } = new();
+    public ObservableCollection<NoteTab> Tabs { get; } = [];
 
     /// <summary>
     /// The currently selected tab, or null if none.
