@@ -75,6 +75,19 @@ public partial class MainWindow
     /// </summary>
     private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
     {
+        // Find panel: Enter/Shift+Enter cycle matches — must be first to prevent
+        // WPF keyboard navigation from stealing Shift+Enter as focus-backward
+        var realKey = e.Key == Key.System ? e.SystemKey : e.Key;
+        if ((realKey == Key.Enter || realKey == Key.Return) && _findPanelOpen && !ConfirmationOverlay.IsOpen)
+        {
+            if ((Keyboard.Modifiers & ModifierKeys.Shift) != 0)
+                CycleFindMatch(forward: false);
+            else
+                CycleFindMatch(forward: true);
+            e.Handled = true;
+            return;
+        }
+
         // Block all keyboard shortcuts while drag overlay is active
         if (_isDragOverlayActive)
         {
@@ -115,17 +128,6 @@ public partial class MainWindow
         if (e.Key == Key.Escape && ViewModel.IsHelpOpen)
         {
             HideHelpOverlay();
-            e.Handled = true;
-            return;
-        }
-
-        // Find panel: Enter cycles forward, Shift+Enter cycles backward
-        if (e.Key == Key.Enter && _findPanelOpen)
-        {
-            if ((Keyboard.Modifiers & ModifierKeys.Shift) != 0)
-                CycleFindMatch(forward: false);
-            else
-                CycleFindMatch(forward: true);
             e.Handled = true;
             return;
         }
