@@ -14,7 +14,8 @@ public sealed class AsyncRelayCommand : ICommand
 
     public AsyncRelayCommand(Func<Task> execute, Func<bool>? canExecute = null)
     {
-        _execute = execute ?? throw new ArgumentNullException(nameof(execute));
+        ArgumentNullException.ThrowIfNull(execute);
+        _execute = execute;
         _canExecute = canExecute;
     }
 
@@ -56,7 +57,8 @@ public sealed class AsyncRelayCommand<T> : ICommand
 
     public AsyncRelayCommand(Func<T?, Task> execute, Func<T?, bool>? canExecute = null)
     {
-        _execute = execute ?? throw new ArgumentNullException(nameof(execute));
+        ArgumentNullException.ThrowIfNull(execute);
+        _execute = execute;
         _canExecute = canExecute;
     }
 

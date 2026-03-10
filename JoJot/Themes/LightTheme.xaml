@@ -21,6 +21,9 @@
     <SolidColorBrush x:Key="c-toolbar-icon" Color="#666666"/>
     <SolidColorBrush x:Key="c-toolbar-icon-hover" Color="#333333"/>
 
+    <!-- Containers (find bar, buttons, hotkey badge) -->
+    <SolidColorBrush x:Key="c-tab-bg" Color="#EEEEEE"/>
+
     <!-- Supplementary -->
     <SolidColorBrush x:Key="c-toast-bg" Color="#333333"/>
     <SolidColorBrush x:Key="c-toast-fg" Color="#FFFFFF"/>

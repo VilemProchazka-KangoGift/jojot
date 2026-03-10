@@ -101,7 +101,7 @@ public partial class MainWindow
     /// <summary>
     /// Creates a ListBoxItem for a NoteTab using the XAML DataTemplate.
     /// Tag stores the NoteTab reference for later retrieval.
-    /// Hover/click behavior is wired in TabItemBorder_Loaded (Phase 8).
+    /// Hover/click behavior is wired in the TabItemBorder_Loaded handler.
     /// </summary>
     private ListBoxItem CreateTabListItem(NoteTab tab)
     {

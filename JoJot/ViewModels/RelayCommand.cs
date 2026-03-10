@@ -12,7 +12,8 @@ public sealed class RelayCommand : ICommand
 
     public RelayCommand(Action execute, Func<bool>? canExecute = null)
     {
-        _execute = execute ?? throw new ArgumentNullException(nameof(execute));
+        ArgumentNullException.ThrowIfNull(execute);
+        _execute = execute;
         _canExecute = canExecute;
     }
 
@@ -35,7 +36,8 @@ public sealed class RelayCommand<T> : ICommand
 
     public RelayCommand(Action<T?> execute, Func<T?, bool>? canExecute = null)
     {
-        _execute = execute ?? throw new ArgumentNullException(nameof(execute));
+        ArgumentNullException.ThrowIfNull(execute);
+        _execute = execute;
         _canExecute = canExecute;
     }
 

@@ -31,7 +31,7 @@
             </Setter>
         </Style>
 
-        <!-- Phase 8: Tab item DataTemplate — replaces code-behind CreateTabListItem visual tree -->
+        <!-- Tab item DataTemplate -->
         <DataTemplate x:Key="TabItemTemplate" DataType="{x:Type models:NoteTab}">
             <Border x:Name="OuterBorder" Padding="8,6,8,6" BorderThickness="0"
                     Background="Transparent" Loaded="TabItemBorder_Loaded">
@@ -135,7 +135,7 @@
             </DataTemplate.Triggers>
         </DataTemplate>
 
-        <!-- Phase 7: Toolbar button style — rounded-rectangle hover background, disabled opacity -->
+        <!-- Toolbar button style — rounded-rectangle hover background, disabled opacity -->
         <Style x:Key="ToolbarButtonStyle" TargetType="Button">
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderThickness" Value="0"/>
@@ -239,7 +239,7 @@
             <!-- Recovery panel placeholder (modal is in the root Grid) -->
         </Grid>
 
-        <!-- Resizable separator (Column 1) — Phase 12: TABUX-04 -->
+        <!-- Resizable separator (Column 1) -->
         <GridSplitter Grid.Column="1" Width="4" HorizontalAlignment="Center"
                       VerticalAlignment="Stretch" Background="{DynamicResource c-border}"
                       Cursor="SizeWE" ResizeBehavior="PreviousAndNext"
@@ -369,14 +369,14 @@
                          IsUndoEnabled="False"
                          IsEnabled="False"/>
 
-                <!-- Phase 9: Font size tooltip (KEYS-02) — auto-dismissing overlay -->
+                <!-- Font size tooltip — auto-dismissing overlay -->
                 <Border x:Name="FontSizeTooltip" Visibility="Collapsed" Background="#CC333333"
                         CornerRadius="4" Padding="8,4" HorizontalAlignment="Right" VerticalAlignment="Top"
                         Margin="0,8,8,0" Panel.ZIndex="60" IsHitTestVisible="False">
                     <TextBlock x:Name="FontSizeTooltipText" FontSize="12" Foreground="White"/>
                 </Border>
 
-                <!-- Phase 9: In-editor find bar (Ctrl+F when editor focused) -->
+                <!-- In-editor find bar (Ctrl+F when editor focused) -->
                 <Grid x:Name="EditorFindBar" Grid.Row="1" Visibility="Collapsed"
                       Background="{DynamicResource c-tab-bg}">
                     <Grid.ColumnDefinitions>
@@ -410,7 +410,7 @@
                     </Border>
                 </Grid>
 
-                <!-- Toast notification overlay (Phase 5: soft-delete undo) -->
+                <!-- Toast notification overlay (soft-delete undo) -->
                 <Border x:Name="ToastBorder" Grid.Row="0"
                         VerticalAlignment="Bottom" Height="36"
                         Background="{DynamicResource c-toast-bg}" Visibility="Collapsed"
@@ -485,7 +485,7 @@
                     <!-- Separator -->
                     <Separator Margin="4,2" Background="{DynamicResource c-border}"/>
 
-                    <!-- Phase 16: Clean up tabs (replaces Delete older than, Delete all except pinned, Delete all) -->
+                    <!-- Clean up tabs -->
                     <Border x:Name="MenuCleanup" Padding="8,6" Cursor="Hand" Background="Transparent"
                             MouseEnter="MenuItem_MouseEnter" MouseLeave="MenuItem_MouseLeave"
                             MouseLeftButtonDown="MenuCleanup_Click">

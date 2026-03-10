@@ -9,7 +9,7 @@ namespace JoJot;
 
 public partial class MainWindow
 {
-    // ─── Input Binding Commands (Phase 9) ────────────────────────────────────
+    // ─── Input Binding Commands ────────────────────────────────────────────────
 
     internal ICommand NewTabCommand { get; private set; } = null!;
     internal ICommand CloseTabCommand { get; private set; } = null!;

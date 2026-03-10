@@ -65,16 +65,23 @@ public partial class MainWindow
         FontSizeTooltipText.Text = PreferencesPanel.FontSizeToPercent(size);
         FontSizeTooltip.Visibility = System.Windows.Visibility.Visible;
 
-        _fontSizeTooltipTimer?.Stop();
-        _fontSizeTooltipTimer = new System.Windows.Threading.DispatcherTimer
+        if (_fontSizeTooltipTimer is null)
         {
-            Interval = TimeSpan.FromSeconds(1)
-        };
-        _fontSizeTooltipTimer.Tick += (_, _) =>
+            _fontSizeTooltipTimer = new System.Windows.Threading.DispatcherTimer
+            {
+                Interval = TimeSpan.FromSeconds(1)
+            };
+            _fontSizeTooltipTimer.Tick += (_, _) =>
+            {
+                FontSizeTooltip.Visibility = System.Windows.Visibility.Collapsed;
+                _fontSizeTooltipTimer.Stop();
+            };
+        }
+        else
         {
-            FontSizeTooltip.Visibility = System.Windows.Visibility.Collapsed;
             _fontSizeTooltipTimer.Stop();
-        };
+        }
+
         _fontSizeTooltipTimer.Start();
     }
 }

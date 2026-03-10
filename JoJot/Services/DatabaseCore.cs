@@ -105,7 +105,7 @@ public static class DatabaseCore
     /// </summary>
     public static async Task<bool> VerifyIntegrityAsync(CancellationToken ct = default)
     {
-        var required = new[] { "notes", "app_state", "pending_moves", "preferences" };
+        string[] required = ["notes", "app_state", "pending_moves", "preferences"];
         foreach (var table in required)
         {
             long count = await ExecuteScalarAsync<long>(

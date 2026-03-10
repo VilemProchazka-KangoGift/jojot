@@ -206,7 +206,7 @@ public static class SessionStore
                 .Select(a => new { a.WindowLeft, a.WindowTop, a.WindowWidth, a.WindowHeight, a.WindowState })
                 .FirstOrDefaultAsync(ct).ConfigureAwait(false);
 
-            if (state == null) return null;
+            if (state is null) return null;
 
             return new WindowGeometry(
                 state.WindowLeft!.Value,
