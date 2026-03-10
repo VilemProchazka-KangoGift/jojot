@@ -70,9 +70,7 @@ public partial class App : Application
             var sw = Stopwatch.StartNew();
 
             // Initialize logging
-            var appDir = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "JoJot");
+            var appDir = AppEnvironment.AppDataDirectory;
             Directory.CreateDirectory(appDir);
             LogService.Initialize(appDir);
             LogService.Info("JoJot starting...");
@@ -107,7 +105,7 @@ public partial class App : Application
             ShutdownMode = ShutdownMode.OnExplicitShutdown;
 
             // Open database and ensure schema
-            var dbPath = Path.Combine(appDir, "jojot.db");
+            var dbPath = AppEnvironment.DatabasePath;
             await DatabaseCore.OpenAsync(dbPath);
             await DatabaseCore.EnsureSchemaAsync();
 

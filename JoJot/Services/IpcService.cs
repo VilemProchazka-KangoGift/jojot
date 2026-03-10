@@ -14,10 +14,10 @@ namespace JoJot.Services;
 public static class IpcService
 {
     /// <summary>Named pipe name for IPC communication.</summary>
-    public const string PipeName = "JoJot_IPC";
+    public static string PipeName => AppEnvironment.PipeName;
 
     /// <summary>Global mutex name for single-instance enforcement.</summary>
-    public const string MutexName = "Global\\JoJot_SingleInstance";
+    public static string MutexName => AppEnvironment.MutexName;
 
     private static CancellationTokenSource? _cts;
     private static Action<IpcMessage>? _commandHandler;
