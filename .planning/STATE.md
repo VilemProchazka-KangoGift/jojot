@@ -1,14 +1,14 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.1
-milestone_name: Polish & Stability
-status: archived
+milestone: v1.2
+milestone_name: Find & Replace
+status: in-progress
 last_updated: "2026-03-10"
 progress:
-  total_phases: 7
-  completed_phases: 7
-  total_plans: 26
-  completed_plans: 26
+  total_phases: 1
+  completed_phases: 0
+  total_plans: 3
+  completed_plans: 1
 ---
 
 # Project State
@@ -18,23 +18,31 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-10)
 
 **Core value:** Instant note capture tied to your virtual desktop context -- switch desktops, switch notes, zero friction.
-**Current focus:** Planning next milestone
+**Current focus:** Phase 01 - Add in-editor find panel with Ctrl+F (plan 1/3 complete)
 
 ## Current Position
 
-Milestone: v1.1 Polish & Stability -- ARCHIVED
-Status: All 7 phases (26 plans) shipped, milestone archived to .planning/milestones/
-Last activity: 2026-03-10 - Completed quick task 6: strip newlines from auto-generated tab titles
+Milestone: v1.2 Find & Replace -- IN PROGRESS
+Phase: 01-add-in-editor-find-panel-with-ctrl-f (1/3 plans complete)
+Current plan: 01-02-PLAN.md (next)
+Last activity: 2026-03-10 - Completed 01-01: enhanced find engine + FindReplacePanel UserControl + theme colors
 
 ## Accumulated Context
 
 ### Decisions
 
-All decisions logged in PROJECT.md Key Decisions table with outcomes.
+- Extended FindAllMatches with default params (caseSensitive=false, wholeWord=false) for full backward compatibility
+- Word boundary check uses IsLetterOrDigit — underscore is not a word character, matching common editor behavior
+- FindReplacePanel raises typed FindChangedEventArgs carrying Query + options for single-event delivery to parent
+- Used System.Windows.Media.Brush explicitly to resolve ambiguity in WPF+WinForms project
 
 ### Pending Todos
 
 None.
+
+### Roadmap Evolution
+
+- Phase 1 added: Add in-editor find panel with Ctrl+F
 
 ### Blockers/Concerns
 
@@ -53,5 +61,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-10
-Stopped at: Completed quick-6 plan (strip newlines from auto-generated tab titles)
+Stopped at: Completed 01-01-PLAN.md (enhanced find engine + FindReplacePanel UserControl)
 Resume file: None

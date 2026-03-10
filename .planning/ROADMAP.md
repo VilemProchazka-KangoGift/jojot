@@ -78,6 +78,6 @@ Full details: `.planning/milestones/v1.1-ROADMAP.md`
 **Plans:** 3 plans
 
 Plans:
-- [ ] 01-01-PLAN.md — Enhanced find engine + FindReplacePanel UserControl + theme colors
+- [x] 01-01-PLAN.md — Enhanced find engine + FindReplacePanel UserControl + theme colors (completed 2026-03-10)
 - [ ] 01-02-PLAN.md — MainWindow integration, keyboard shortcuts, replace operations, cleanup
 - [ ] 01-03-PLAN.md — TextBoxHighlightAdorner + end-to-end visual verification
