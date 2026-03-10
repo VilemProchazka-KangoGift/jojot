@@ -69,6 +69,7 @@ Full details: `.planning/milestones/v1.1-ROADMAP.md`
 | 15. Review Round 2 UI/UX | v1.1 | 11/11 | Complete | 2026-03-05 |
 | 15.1. Recovery, Rename, Reorder | v1.1 | 6/6 | Complete | 2026-03-06 |
 | 16. Tab Cleanup Panel | v1.1 | 2/2 | Complete | 2026-03-07 |
+| 01. In-editor find panel with Ctrl+F | v1.2 | 3/3 | Complete (verification pending) | 2026-03-10 |
 
 ### Phase 1: Add in-editor find panel with Ctrl+F
 
@@ -79,5 +80,5 @@ Full details: `.planning/milestones/v1.1-ROADMAP.md`
 
 Plans:
 - [x] 01-01-PLAN.md — Enhanced find engine + FindReplacePanel UserControl + theme colors (completed 2026-03-10)
-- [ ] 01-02-PLAN.md — MainWindow integration, keyboard shortcuts, replace operations, cleanup
-- [ ] 01-03-PLAN.md — TextBoxHighlightAdorner + end-to-end visual verification
+- [x] 01-02-PLAN.md — MainWindow integration, keyboard shortcuts, replace operations, cleanup (completed 2026-03-10)
+- [x] 01-03-PLAN.md — TextBoxHighlightAdorner + end-to-end visual verification (completed 2026-03-10)

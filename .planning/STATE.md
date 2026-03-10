@@ -8,7 +8,7 @@ progress:
   total_phases: 1
   completed_phases: 0
   total_plans: 3
-  completed_plans: 1
+  completed_plans: 3
 ---
 
 # Project State
@@ -18,14 +18,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-10)
 
 **Core value:** Instant note capture tied to your virtual desktop context -- switch desktops, switch notes, zero friction.
-**Current focus:** Phase 01 - Add in-editor find panel with Ctrl+F (plan 1/3 complete)
+**Current focus:** Phase 01 - Add in-editor find panel with Ctrl+F (3/3 plans complete, awaiting human verification)
 
 ## Current Position
 
-Milestone: v1.2 Find & Replace -- IN PROGRESS
-Phase: 01-add-in-editor-find-panel-with-ctrl-f (1/3 plans complete)
-Current plan: 01-02-PLAN.md (next)
-Last activity: 2026-03-10 - Completed 01-01: enhanced find engine + FindReplacePanel UserControl + theme colors
+Milestone: v1.2 Find & Replace -- AWAITING VERIFICATION
+Phase: 01-add-in-editor-find-panel-with-ctrl-f (3/3 plans complete)
+Current plan: 01-03-PLAN.md (checkpoint:human-verify pending)
+Last activity: 2026-03-10 - Completed 01-03: TextBoxHighlightAdorner + complete find/replace wiring
 
 ## Accumulated Context
 
@@ -35,6 +35,9 @@ Last activity: 2026-03-10 - Completed 01-01: enhanced find engine + FindReplaceP
 - Word boundary check uses IsLetterOrDigit — underscore is not a word character, matching common editor behavior
 - FindReplacePanel raises typed FindChangedEventArgs carrying Query + options for single-event delivery to parent
 - Used System.Windows.Media.Brush explicitly to resolve ambiguity in WPF+WinForms project
+- Adorner resolves brushes via FindResource on each OnRender (not cached) for always-current theme colors
+- Added ThemeService.ThemeChanged event (not just PreferencesPanel hook) to also cover system auto-follow
+- Single RunSearch entry point updates matches, adorner, and panel counter in one consistent call
 
 ### Pending Todos
 
@@ -61,5 +64,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-10
-Stopped at: Completed 01-01-PLAN.md (enhanced find engine + FindReplacePanel UserControl)
+Stopped at: Completed 01-03-PLAN.md Task 1 — awaiting checkpoint:human-verify for complete find/replace visual verification
 Resume file: None
