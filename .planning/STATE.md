@@ -24,7 +24,7 @@ See: .planning/PROJECT.md (updated 2026-03-10)
 
 Milestone: v1.1 Polish & Stability -- ARCHIVED
 Status: All 7 phases (26 plans) shipped, milestone archived to .planning/milestones/
-Last activity: 2026-03-10 -- v1.1 milestone completion and archival
+Last activity: 2026-03-10 - Completed quick task 2: do not share notes db between debug and production installed app
 
 ## Accumulated Context
 
@@ -39,6 +39,12 @@ None.
 ### Blockers/Concerns
 
 None.
+
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 2 | do not share notes db between debug and production installed app | 2026-03-10 | 1a61e93 | [2-do-not-share-notes-db-between-debug-and-](./quick/2-do-not-share-notes-db-between-debug-and-/) |
 
 ## Session Continuity
 
