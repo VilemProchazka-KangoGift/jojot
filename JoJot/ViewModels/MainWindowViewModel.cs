@@ -493,6 +493,7 @@ public class MainWindowViewModel : ObservableObject
     private bool _isCleanupOpen;
     private bool _isRecoveryOpen;
     private bool _isHelpOpen;
+    private bool _isFindPanelOpen;
 
     /// <summary>
     /// Whether the preferences side panel is open.
@@ -531,7 +532,16 @@ public class MainWindowViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Closes all side panels (preferences, cleanup, recovery).
+    /// Whether the find/replace side panel is open.
+    /// </summary>
+    public bool IsFindPanelOpen
+    {
+        get => _isFindPanelOpen;
+        set => SetProperty(ref _isFindPanelOpen, value);
+    }
+
+    /// <summary>
+    /// Closes all side panels (preferences, cleanup, recovery, find).
     /// Help overlay is not a side panel and is excluded.
     /// </summary>
     internal void CloseAllSidePanels()
@@ -539,6 +549,7 @@ public class MainWindowViewModel : ObservableObject
         IsPreferencesOpen = false;
         IsCleanupOpen = false;
         IsRecoveryOpen = false;
+        IsFindPanelOpen = false;
     }
 
     // ─── Cleanup Logic ──────────────────────────────────────────────

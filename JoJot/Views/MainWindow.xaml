@@ -345,16 +345,24 @@
                                        FontSize="14" Foreground="{DynamicResource c-toolbar-icon}"
                                        HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Button>
+
+                        <!-- Separator -->
+                        <Border Width="1" Margin="4,4" Background="{DynamicResource c-border}"/>
+
+                        <!-- Find -->
+                        <Button x:Name="ToolbarFind" Style="{StaticResource ToolbarButtonStyle}"
+                                Click="ToolbarFind_Click"
+                                ToolTip="Find (Ctrl+F)" ToolTipService.InitialShowDelay="600">
+                            <TextBlock Text="&#xE721;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                       FontSize="14" Foreground="{DynamicResource c-toolbar-icon}"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Button>
                     </StackPanel>
                 </DockPanel>
             </Border>
 
-            <!-- Editor + Find Bar + Toast (Row 1) -->
+            <!-- Editor + Toast (Row 1) -->
             <Grid Grid.Row="1">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="*"/>
-                    <RowDefinition Height="Auto"/>
-                </Grid.RowDefinitions>
 
                 <TextBox x:Name="ContentEditor" Grid.Row="0"
                          AcceptsReturn="True" AcceptsTab="True"
@@ -375,40 +383,6 @@
                         Margin="0,8,8,0" Panel.ZIndex="60" IsHitTestVisible="False">
                     <TextBlock x:Name="FontSizeTooltipText" FontSize="12" Foreground="White"/>
                 </Border>
-
-                <!-- In-editor find bar (Ctrl+F when editor focused) -->
-                <Grid x:Name="EditorFindBar" Grid.Row="1" Visibility="Collapsed"
-                      Background="{DynamicResource c-tab-bg}">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
-                    <TextBox x:Name="EditorFindInput" Grid.Column="0" FontSize="13" Padding="6,4"
-                             Background="{DynamicResource c-win-bg}" Foreground="{DynamicResource c-text-primary}"
-                             BorderBrush="{DynamicResource c-text-muted}" BorderThickness="1" Margin="8,4"
-                             TextChanged="EditorFindInput_TextChanged"
-                             PreviewKeyDown="EditorFindInput_PreviewKeyDown"/>
-                    <TextBlock x:Name="EditorFindCount" Grid.Column="1" FontSize="11" VerticalAlignment="Center"
-                               Foreground="{DynamicResource c-text-muted}" Margin="0,0,8,0"/>
-                    <Border Grid.Column="2" Cursor="Hand" Padding="4,2" Margin="2" CornerRadius="3"
-                            MouseLeftButtonDown="EditorFindPrevious_Click">
-                        <TextBlock Text="&#xE70E;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="12"
-                                   Foreground="{DynamicResource c-text-primary}"/>
-                    </Border>
-                    <Border Grid.Column="3" Cursor="Hand" Padding="4,2" Margin="2" CornerRadius="3"
-                            MouseLeftButtonDown="EditorFindNext_Click">
-                        <TextBlock Text="&#xE70D;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="12"
-                                   Foreground="{DynamicResource c-text-primary}"/>
-                    </Border>
-                    <Border Grid.Column="4" Cursor="Hand" Padding="4,2" Margin="2,0,8,0" CornerRadius="3"
-                            MouseLeftButtonDown="EditorFindClose_Click">
-                        <TextBlock Text="&#xE711;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="12"
-                                   Foreground="{DynamicResource c-text-muted}"/>
-                    </Border>
-                </Grid>
 
                 <!-- Toast notification overlay (soft-delete undo) -->
                 <Border x:Name="ToastBorder" Grid.Row="0"
@@ -557,5 +531,9 @@
         <!-- Cleanup panel — slide-in from right -->
         <controls:CleanupPanel x:Name="CleanupPanel" Width="320" HorizontalAlignment="Right"
                                 Grid.ColumnSpan="3" Panel.ZIndex="85"/>
+
+        <!-- Find & Replace panel — slide-in from right -->
+        <controls:FindReplacePanel x:Name="FindReplacePanel" Width="320" HorizontalAlignment="Right"
+                                    Grid.ColumnSpan="3" Panel.ZIndex="85"/>
     </Grid>
 </Window>

@@ -86,9 +86,13 @@ public partial class MainWindow : Window
     }
     private int _currentFontSize = 13;
     private System.Windows.Threading.DispatcherTimer? _fontSizeTooltipTimer;
-    private List<int> _findMatches = [];
-    private int _currentFindIndex = -1;
-    private int _findQueryLength;
+
+    // ─── Find panel state (forwarded to ViewModel) ─────────────────
+    private bool _findPanelOpen
+    {
+        get => ViewModel.IsFindPanelOpen;
+        set => ViewModel.IsFindPanelOpen = value;
+    }
 
     // ─── Window Drag Detection (forwarded to ViewModel) ────────
     private bool _isDragOverlayActive
@@ -161,7 +165,6 @@ public partial class MainWindow : Window
 
         InitializeComponent();
         InitializeInputBindings();
-        WireAdornerEvents();
 
         // Register with ThemeService for title bar dark mode tracking
         ThemeService.RegisterWindow(this);
@@ -188,6 +191,7 @@ public partial class MainWindow : Window
             if (isRecording) HotkeyService.PauseHotkey();
             else HotkeyService.ResumeHotkey();
         };
+        WireUpFindPanelEvents();
 
         // Configure autosave service
         _autosaveService.Configure(
