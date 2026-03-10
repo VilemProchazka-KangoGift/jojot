@@ -51,6 +51,52 @@
 - Sessions: ~15 total
 - Notable: Entire v1.0 built in 2 days; sonnet agents handled most execution; opus for planning and complex integration
 
+## Milestone: v1.1 — Polish & Stability
+
+**Shipped:** 2026-03-10
+**Phases:** 7 | **Plans:** 26 | **Sessions:** ~20
+
+### What Was Built
+- Crash/freeze elimination: stack overflow on pin/unpin/delete, rename freeze (event cascade guards)
+- Tab panel UX overhaul: background highlight, Fluent pin icon, adaptive title width, resizable panel (GridSplitter)
+- Dark mode tab legibility, font size percentage display, hamburger menu dismiss fix
+- Full UI/UX polish pass: note persistence fix, tab button layout redesign, in-place drag fade, full-window file drop
+- Recovery sidebar with flat rows, tab name + excerpt previews, desktop name context
+- Tab cleanup panel with age-based filtering, pinned toggle, preview list, and confirmation dialog
+- 57MB self-contained Windows installer via Inno Setup with CalVer versioning (2026.3.0)
+
+### What Worked
+- **User-driven requirements** — all v1.1 requirements came from manual review of v1.0, so every change was a real user need
+- **Side panel pattern reuse** — preferences, recovery, and cleanup panels share Width=320, slide animation, one-panel-at-a-time; third panel (cleanup) built in 2 plans
+- **MVVM migration (between milestones)** — forwarding properties pattern enabled incremental migration without breaking any partial classes; 302 tests added
+- **Gap closure workflow** — Phase 15 needed 6 gap closure rounds (15-06 through 15-11), but each was scoped and fast; 11 plans total in 5 days
+- **Decimal phase insertion** — Phase 15.1 inserted cleanly between 15 and 16 for urgent fixes discovered during UAT
+
+### What Was Inefficient
+- **Phase 15 estimation** — originally scoped at 5 plans, actually required 11 (6 gap closure rounds); 18 requirements was too many for one phase
+- **Drag ghost → drag fade iteration** — Phase 15 implemented ghost adorner (DragAdorner + RenderTargetBitmap), then Phase 15.1 replaced it entirely with in-place opacity fade; wasted effort on the ghost approach
+- **Registry fallback discovery** — Windows 25H2 desktop name issue (COM GetName() returning empty) only found in gap closure round 6 (15-11); earlier testing on 25H2 would have caught it sooner
+- **No v1.1 milestone audit** — skipped audit before archival; v1.0's audit caught 3 bugs, so skipping was a calculated risk
+
+### Patterns Established
+- **One-panel-at-a-time** — `CloseAllSidePanels()` before opening any panel; shared pattern for future panels
+- **In-place drag fade** — 50% opacity on drag start, 150ms animated recovery on drop; simpler than ghost adorner
+- **Event cascade guard** — `_isRebuildingTabList` class-level field prevents SelectionChanged stack overflow during collection rebuild
+- **Registry fallback for COM** — HKCU VirtualDesktops\Desktops\{GUID}\Name when COM GetName() returns empty
+- **MinHeight on hover containers** — prevents vertical jitter when icon visibility toggles
+
+### Key Lessons
+1. **Limit phases to ~5 requirements max** — Phase 15 with 18 requirements needed 6 gap closure rounds; breaking into 3-4 phases would have reduced rework
+2. **Test on all target OS versions early** — Windows 25H2 desktop name issue could have been found in Phase 11, not Phase 15 gap closure round 6
+3. **Prefer simpler UI approaches first** — drag fade (opacity change) was simpler and better than drag ghost (adorner + bitmap capture); try simple first
+4. **Side panel pattern scales well** — once established, adding a new panel (cleanup) is a 2-plan task with predictable effort
+5. **MVVM migration pays off for testing** — 302 tests enabled confident refactoring; forwarding properties make migration incremental and safe
+
+### Cost Observations
+- Model mix: ~30% opus, ~55% sonnet, ~15% haiku
+- Sessions: ~20 total
+- Notable: Gap closure rounds were fast (~10min each) but added up; 6 rounds on Phase 15 suggests initial planning underestimated WPF visual edge cases
+
 ---
 
 ## Cross-Milestone Trends
@@ -60,14 +106,19 @@
 | Milestone | Sessions | Phases | Key Change |
 |-----------|----------|--------|------------|
 | v1.0 | ~15 | 14 | Baseline — established phase/plan/verify/audit cycle |
+| v1.1 | ~20 | 7 | Gap closure workflow matured; side panel pattern established; MVVM + 302 tests added |
 
 ### Cumulative Quality
 
-| Milestone | Requirements | Coverage | Tech Debt Items |
-|-----------|-------------|----------|-----------------|
-| v1.0 | 120 | 100% | 4 (minor) |
+| Milestone | Requirements | Coverage | Tech Debt Items | Tests |
+|-----------|-------------|----------|-----------------|-------|
+| v1.0 | 120 | 100% | 4 (minor) | 0 |
+| v1.1 | 13 | 100% | 3 (minor) | 302 |
 
 ### Top Lessons (Verified Across Milestones)
 
 1. Audit-before-ship catches integration bugs that per-phase testing misses
 2. Bottom-up dependency ordering prevents rework
+3. Keep phases under 5 requirements — both v1.0 Phase 9 (3 subsystems) and v1.1 Phase 15 (18 requirements) were too broad
+4. Reusable UI patterns (toast, side panel) pay off exponentially in later phases
+5. Test on all target OS versions early — Windows build differences cause late-discovery bugs

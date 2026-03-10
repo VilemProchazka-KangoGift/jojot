@@ -60,18 +60,7 @@ Instant note capture tied to your virtual desktop context — switch desktops, s
 
 ### Active
 
-(No active requirements — v1.1 complete)
-
-## Completed Milestone: v1.1 Polish & Stability
-
-**Goal:** Fix critical bugs (crashes/freezes), improve UI polish, and add installer support based on first round of manual review.
-
-**Target features:**
-- Fix stack overflow on pin/unpin and delete
-- Fix tab rename freeze
-- Fix dark mode tab legibility, tab highlight style, tab panel sizing
-- Add pin icon to tabs, resize percentages, menu dismiss behavior
-- Windows installer support
+(No active requirements — planning next milestone)
 
 ### Out of Scope
 
@@ -87,10 +76,13 @@ Instant note capture tied to your virtual desktop context — switch desktops, s
 
 ## Context
 
-Shipped v1.0 with 13,995 LOC across 31 C# and XAML files.
-Tech stack: WPF, .NET 10, C#, SQLite (Microsoft.Data.Sqlite), PublishReadyToRun.
-14 phases executed in 2 days (2026-03-02 → 2026-03-03), 31 plans total.
-All 120 requirements verified against codebase with code evidence.
+Shipped v1.1 with 22,223 LOC across ~50 C# and XAML files.
+Tech stack: WPF, .NET 10, C#, SQLite (EF Core), Serilog, PublishReadyToRun.
+v1.0: 14 phases, 31 plans in 2 days (2026-03-02 → 2026-03-03).
+v1.1: 7 phases, 26 plans in 7 days (2026-03-03 → 2026-03-10).
+Total: 21 phases, 57 plans across both milestones.
+
+Between v1.0 and v1.1, significant internal improvements were made: MVVM migration (ViewModel + ObservableObject), 302 unit tests (xUnit + AwesomeAssertions + NSubstitute), DatabaseService split into 5 domain stores, 6 UserControls extracted from MainWindow.xaml, structured logging via Serilog.
 
 Spec documents in `resources/` remain the definitive reference for v1.0 behavior.
 
@@ -99,6 +91,9 @@ Key technical state:
 - Single SQLite connection per process, WAL mode, SemaphoreSlim write serialization
 - Custom two-tier undo/redo (WPF native TextBox undo unsuitable)
 - Custom Popup-based menus (WPF ContextMenu incompatible with DynamicResource theming)
+- Hand-rolled MVVM with forwarding properties for incremental migration
+- Side panels (preferences, recovery, cleanup) share one-panel-at-a-time pattern
+- Registry fallback for virtual desktop names on Windows 25H2
 
 ## Constraints
 
@@ -124,6 +119,12 @@ Key technical state:
 | Inno Setup for installer | Standard Windows installer tooling, free for open-source | ✓ Good — 57MB self-contained installer, minimal wizard |
 | CalVer versioning (Year.Month.Build) | Communicates release timeline, no semver overhead | ✓ Good — 2026.3.0 in EXE properties |
 | ASCII publisher name in PE metadata | Diacritics cause encoding issues in PE metadata | ✓ Good — "Vilem Prochazka" displays correctly everywhere |
+| Event cascade guard (_isRebuildingTabList) | WPF SelectionChanged fires during collection rebuild, causing stack overflow | ✓ Good — eliminated all crash/freeze bugs |
+| In-place drag fade over ghost adorner | Ghost adorner had CaptureMode/opacity issues; fade is simpler | ✓ Good — clean drag UX with 150ms animated recovery |
+| Recovery sidebar over modal dialog | Consistent with preferences panel pattern; better UX | ✓ Good — flat rows with tab excerpts, one-panel-at-a-time |
+| Tab cleanup panel over delete menu | Side panel with preview list gives user control before bulk delete | ✓ Good — age filter + pinned toggle + confirmation |
+| Registry fallback for desktop names | COM GetName() returns empty on Windows 25H2 | ✓ Good — HKCU VirtualDesktops\Desktops\{GUID}\Name works |
+| Forwarding properties for MVVM | Enables incremental migration without breaking 16 partial classes | ✓ Good — all code-behind works unchanged while state moves to ViewModel |
 
 ---
-*Last updated: 2026-03-10 after v1.1 milestone*
+*Last updated: 2026-03-10 after v1.1 milestone completion*
