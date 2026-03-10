@@ -119,6 +119,17 @@ public partial class MainWindow
             return;
         }
 
+        // Find panel: Enter cycles forward, Shift+Enter cycles backward
+        if (e.Key == Key.Enter && _findPanelOpen)
+        {
+            if ((Keyboard.Modifiers & ModifierKeys.Shift) != 0)
+                CycleFindMatch(forward: false);
+            else
+                CycleFindMatch(forward: true);
+            e.Handled = true;
+            return;
+        }
+
         // Escape closes find panel if open
         if (e.Key == Key.Escape && _findPanelOpen)
         {
