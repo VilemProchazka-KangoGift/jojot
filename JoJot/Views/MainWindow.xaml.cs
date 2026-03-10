@@ -142,6 +142,9 @@ public partial class MainWindow : Window
     }
     private string? _lastSaveDirectory;
 
+    // ─── Toast undo action (for Replace All) ────────────────────────
+    private Action? _pendingToastUndoAction;
+
     // ─── Theme-aware brush helper ──
     // Use SetResourceReference for element properties that should auto-update on theme switch.
     // Use GetBrush for one-time assignments or comparisons.
@@ -510,6 +513,9 @@ public partial class MainWindow : Window
         // Start/reset checkpoint timer on user input
         _checkpointTimer.Stop();
         _checkpointTimer.Start();
+
+        // Re-run find highlights if panel is open
+        RefreshFindOnTextChange();
     }
 
     /// <summary>

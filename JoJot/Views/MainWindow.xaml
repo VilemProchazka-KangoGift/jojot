@@ -361,10 +361,17 @@
                 </DockPanel>
             </Border>
 
-            <!-- Editor + Toast (Row 1) -->
+            <!-- Editor + Find Panel (Row 1) -->
             <Grid Grid.Row="1">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
 
-                <TextBox x:Name="ContentEditor" Grid.Row="0"
+                <!-- Editor + Toast (Col 0) -->
+                <Grid Grid.Column="0">
+
+                <TextBox x:Name="ContentEditor"
                          AcceptsReturn="True" AcceptsTab="True"
                          AllowDrop="True"
                          TextWrapping="Wrap" FontFamily="Consolas" FontSize="13"
@@ -410,6 +417,10 @@
                     </Grid>
                 </Border>
 
+                </Grid>
+
+                <!-- Find & Replace panel (Col 1) — inline, shrinks editor -->
+                <controls:FindReplacePanel x:Name="FindReplacePanel" Grid.Column="1" Width="280"/>
             </Grid>
         </Grid>
 
@@ -532,8 +543,5 @@
         <controls:CleanupPanel x:Name="CleanupPanel" Width="320" HorizontalAlignment="Right"
                                 Grid.ColumnSpan="3" Panel.ZIndex="85"/>
 
-        <!-- Find & Replace panel — slide-in from right -->
-        <controls:FindReplacePanel x:Name="FindReplacePanel" Width="320" HorizontalAlignment="Right"
-                                    Grid.ColumnSpan="3" Panel.ZIndex="85"/>
     </Grid>
 </Window>

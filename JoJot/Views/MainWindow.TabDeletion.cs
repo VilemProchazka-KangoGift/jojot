@@ -236,10 +236,54 @@ public partial class MainWindow
     }
 
     /// <summary>
-    /// Undo button click handler — restores the pending deletion.
+    /// Undo button click handler — handles both deletion undo and replace-all undo.
     /// </summary>
     private void UndoToast_Click(object sender, MouseButtonEventArgs e)
     {
+        if (_pendingToastUndoAction is not null)
+        {
+            var action = _pendingToastUndoAction;
+            _pendingToastUndoAction = null;
+            HideToast();
+            action();
+            return;
+        }
+
         _ = UndoDeleteAsync();
+    }
+
+    /// <summary>
+    /// Shows a toast with a message and an undo button that invokes the pending undo action.
+    /// Auto-dismisses after 4 seconds.
+    /// </summary>
+    private void ShowUndoableToast(string message)
+    {
+        ToastMessageBlock.Inlines.Clear();
+        ToastMessageBlock.Inlines.Add(new System.Windows.Documents.Run(message));
+        UndoButton.Visibility = Visibility.Visible;
+
+        if (ToastBorder.Visibility == Visibility.Visible)
+            return;
+
+        ToastTranslate.BeginAnimation(TranslateTransform.YProperty, null);
+        ToastTranslate.Y = 36;
+        ToastBorder.Visibility = Visibility.Visible;
+
+        var anim = new DoubleAnimation
+        {
+            From = 36, To = 0,
+            Duration = TimeSpan.FromMilliseconds(150),
+            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+        };
+        ToastTranslate.BeginAnimation(TranslateTransform.YProperty, anim);
+
+        _ = Task.Delay(4000).ContinueWith(_ =>
+        {
+            Dispatcher.Invoke(() =>
+            {
+                _pendingToastUndoAction = null;
+                HideToast();
+            });
+        });
     }
 }

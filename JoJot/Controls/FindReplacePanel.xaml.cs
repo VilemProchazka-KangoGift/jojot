@@ -2,7 +2,6 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Media.Animation;
 
 namespace JoJot.Controls;
 
@@ -17,14 +16,13 @@ public class FindChangedEventArgs : EventArgs
 }
 
 /// <summary>
-/// Side panel providing find and optional find/replace functionality.
-/// Follows the PreferencesPanel show/hide animation pattern.
+/// Side panel providing find and replace functionality.
+/// Displayed inline (shrinks editor area) rather than overlaying it.
 /// </summary>
 public partial class FindReplacePanel : UserControl
 {
     private bool _caseSensitive;
     private bool _wholeWord;
-    private bool _replaceVisible;
     private List<int> _matches = [];
     private int _currentMatchIndex = -1;
 
@@ -41,7 +39,6 @@ public partial class FindReplacePanel : UserControl
 
     public bool CaseSensitive => _caseSensitive;
     public bool WholeWord => _wholeWord;
-    public bool IsReplaceVisible => _replaceVisible;
 
     public FindReplacePanel()
     {
@@ -60,48 +57,21 @@ public partial class FindReplacePanel : UserControl
     // ── Public methods ──
 
     /// <summary>
-    /// Shows the panel, optionally revealing the replace row.
-    /// Runs slide-in animation (320 -> 0, 250ms, CubicEase EaseOut) and focuses the find input.
+    /// Shows the panel and focuses the find input.
     /// </summary>
-    public void Show(bool showReplace = false)
+    public void Show()
     {
-        _replaceVisible = showReplace;
-        UpdateReplaceRowVisibility();
-
-        PanelTitle.Text = showReplace ? "Find & Replace" : "Find";
-
         Visibility = Visibility.Visible;
-
-        var anim = new DoubleAnimation
-        {
-            From = 320, To = 0,
-            Duration = TimeSpan.FromMilliseconds(250),
-            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
-        };
-        PanelTransform.BeginAnimation(TranslateTransform.XProperty, anim);
-
         FindInput.Focus();
         FindInput.SelectAll();
     }
 
     /// <summary>
-    /// Slides the panel out (0 -> 320, 200ms, CubicEase EaseIn), then collapses it.
+    /// Hides the panel.
     /// </summary>
     public void Hide()
     {
-        var anim = new DoubleAnimation
-        {
-            From = 0, To = 320,
-            Duration = TimeSpan.FromMilliseconds(200),
-            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn }
-        };
-        anim.Completed += (_, _) =>
-        {
-            Visibility = Visibility.Collapsed;
-            PanelTransform.BeginAnimation(TranslateTransform.XProperty, null);
-            PanelTransform.X = 320;
-        };
-        PanelTransform.BeginAnimation(TranslateTransform.XProperty, anim);
+        Visibility = Visibility.Collapsed;
     }
 
     /// <summary>
@@ -130,37 +100,10 @@ public partial class FindReplacePanel : UserControl
     /// <summary>Returns the current text in the replace input.</summary>
     public string GetReplaceText() => ReplaceInput.Text;
 
-    /// <summary>
-    /// Shows a brief replacement count message (auto-clears after 3 seconds).
-    /// Called after Replace All completes.
-    /// </summary>
-    public void ShowReplaceCount(int count)
-    {
-        ReplaceCountText.Text = count == 0
-            ? "No replacements made"
-            : $"{count} replacement{(count == 1 ? "" : "s")} made";
-        ReplaceCountText.Visibility = Visibility.Visible;
-
-        var timer = new System.Windows.Threading.DispatcherTimer
-        {
-            Interval = TimeSpan.FromSeconds(3)
-        };
-        timer.Tick += (_, _) =>
-        {
-            timer.Stop();
-            ReplaceCountText.Visibility = Visibility.Collapsed;
-        };
-        timer.Start();
-    }
+    /// <summary>Moves focus to the find input.</summary>
+    public void FocusFindInput() => FindInput.Focus();
 
     // ── Private helpers ──
-
-    private void UpdateReplaceRowVisibility()
-    {
-        var vis = _replaceVisible ? Visibility.Visible : Visibility.Collapsed;
-        ReplaceInputRow.Visibility = vis;
-        ReplaceButtonsRow.Visibility = vis;
-    }
 
     private void UpdateMatchCountDisplay()
     {

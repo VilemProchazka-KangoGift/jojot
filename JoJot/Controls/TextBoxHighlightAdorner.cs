@@ -3,7 +3,6 @@ using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Media;
 using Brush = System.Windows.Media.Brush;
-using Point = System.Windows.Point;
 
 namespace JoJot.Controls;
 
@@ -45,6 +44,10 @@ public class TextBoxHighlightAdorner : Adorner
     {
         if (_matches.Count == 0 || _queryLength <= 0) return;
 
+        // Clip to TextBox bounds so highlights don't bleed over toolbar
+        var clipRect = new Rect(0, 0, _textBox.ActualWidth, _textBox.ActualHeight);
+        drawingContext.PushClip(new RectangleGeometry(clipRect));
+
         var matchBrush = (Brush)_textBox.FindResource("c-find-match-bg");
         var activeBrush = (Brush)_textBox.FindResource("c-find-match-active-bg");
 
@@ -55,31 +58,14 @@ public class TextBoxHighlightAdorner : Adorner
 
             try
             {
-                // GetRectFromCharacterIndex can throw if index is out of range
-                // (e.g., content changed between search and render)
+                // Use leading edge of first char and trailing edge of last char
+                // to avoid multi-line false positives at line wrap boundaries
                 var startRect = _textBox.GetRectFromCharacterIndex(pos);
-                var endRect = _textBox.GetRectFromCharacterIndex(pos + _queryLength);
+                var endRect = _textBox.GetRectFromCharacterIndex(pos + _queryLength - 1, true);
 
-                if (startRect.Top == endRect.Top)
-                {
-                    // Single-line match — one rectangle
-                    var rect = new Rect(startRect.TopLeft, endRect.BottomRight);
-                    drawingContext.DrawRectangle(brush, null, rect);
-                }
-                else
-                {
-                    // Multi-line match: draw start to end-of-line for first line,
-                    // then start-of-line to end position for last line.
-                    var firstLineRect = new Rect(
-                        startRect.TopLeft,
-                        new Point(_textBox.ActualWidth - _textBox.Padding.Right, startRect.Bottom));
-                    drawingContext.DrawRectangle(brush, null, firstLineRect);
-
-                    var lastLineRect = new Rect(
-                        new Point(_textBox.Padding.Left, endRect.Top),
-                        endRect.BottomRight);
-                    drawingContext.DrawRectangle(brush, null, lastLineRect);
-                }
+                // Single rectangle from start leading edge to end trailing edge
+                var rect = new Rect(startRect.TopLeft, endRect.BottomRight);
+                drawingContext.DrawRectangle(brush, null, rect);
             }
             catch
             {
@@ -87,5 +73,7 @@ public class TextBoxHighlightAdorner : Adorner
                 // (can happen during rapid text changes)
             }
         }
+
+        drawingContext.Pop();
     }
 }

@@ -29,6 +29,6 @@
     <SolidColorBrush x:Key="c-toast-fg" Color="#D4D4D4"/>
 
     <!-- Find match highlights -->
-    <SolidColorBrush x:Key="c-find-match-bg" Color="#5A5A00"/>
-    <SolidColorBrush x:Key="c-find-match-active-bg" Color="#C87820"/>
+    <SolidColorBrush x:Key="c-find-match-bg" Color="#50CCCC00"/>
+    <SolidColorBrush x:Key="c-find-match-active-bg" Color="#70FF9632"/>
 </ResourceDictionary>

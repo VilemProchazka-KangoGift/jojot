@@ -48,7 +48,7 @@ public partial class MainWindow
 
     private void ToolbarSave_Click(object sender, RoutedEventArgs e) => SaveAsTxt();
 
-    private void ToolbarFind_Click(object sender, RoutedEventArgs e) => ShowFindPanel(showReplace: false);
+    private void ToolbarFind_Click(object sender, RoutedEventArgs e) => ShowFindPanel();
 
     private void ToolbarDelete_Click(object sender, RoutedEventArgs e)
     {

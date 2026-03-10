@@ -4,9 +4,6 @@
              Visibility="Collapsed">
     <Border Background="{DynamicResource c-win-bg}" BorderBrush="{DynamicResource c-border}"
             BorderThickness="1,0,0,0">
-        <Border.RenderTransform>
-            <TranslateTransform x:Name="PanelTransform" X="320"/>
-        </Border.RenderTransform>
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
@@ -15,7 +12,7 @@
 
             <!-- Header -->
             <Grid Grid.Row="0" Margin="16,16,16,8">
-                <TextBlock x:Name="PanelTitle" Text="Find" FontSize="18" FontWeight="SemiBold"
+                <TextBlock Text="Find" FontSize="18" FontWeight="SemiBold"
                            Foreground="{DynamicResource c-text-primary}"/>
                 <TextBlock Text="&#xE711;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="14"
                            HorizontalAlignment="Right" Cursor="Hand"
@@ -99,8 +96,8 @@
                     </Border>
                 </Grid>
 
-                <!-- Replace input row -->
-                <Grid x:Name="ReplaceInputRow" Margin="0,0,0,8" Visibility="Collapsed">
+                <!-- Replace input row (always visible) -->
+                <Grid Margin="0,0,0,8">
                     <TextBox x:Name="ReplaceInput"
                              FontSize="13" Padding="6,5"
                              Background="{DynamicResource c-tab-bg}"
@@ -112,8 +109,8 @@
                                IsHitTestVisible="False"/>
                 </Grid>
 
-                <!-- Replace buttons row -->
-                <Grid x:Name="ReplaceButtonsRow" Margin="0,0,0,8" Visibility="Collapsed">
+                <!-- Replace buttons row (always visible) -->
+                <Grid Margin="0,0,0,8">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
@@ -135,11 +132,6 @@
                                    Foreground="{DynamicResource c-text-primary}"/>
                     </Border>
                 </Grid>
-
-                <!-- Replace count feedback -->
-                <TextBlock x:Name="ReplaceCountText" FontSize="12"
-                           Foreground="{DynamicResource c-text-muted}"
-                           Visibility="Collapsed"/>
 
             </StackPanel>
         </Grid>

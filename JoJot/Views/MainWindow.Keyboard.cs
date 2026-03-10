@@ -237,18 +237,10 @@ public partial class MainWindow
             return;
         }
 
-        // Ctrl+F: Open find panel (find mode)
-        if (e.Key == Key.F && Keyboard.Modifiers == ModifierKeys.Control)
+        // Ctrl+F or Ctrl+H: Open find panel (replace always visible)
+        if ((e.Key == Key.F || e.Key == Key.H) && Keyboard.Modifiers == ModifierKeys.Control)
         {
-            ShowFindPanel(showReplace: false);
-            e.Handled = true;
-            return;
-        }
-
-        // Ctrl+H: Open find+replace panel
-        if (e.Key == Key.H && Keyboard.Modifiers == ModifierKeys.Control)
-        {
-            ShowFindPanel(showReplace: true);
+            ShowFindPanel();
             e.Handled = true;
             return;
         }

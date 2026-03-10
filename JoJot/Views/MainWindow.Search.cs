@@ -112,7 +112,7 @@ public partial class MainWindow
 
     // ─── Panel show/hide ────────────────────────────────────────────────────
 
-    private void ShowFindPanel(bool showReplace = false)
+    private void ShowFindPanel()
     {
         // Close other side panels first (preferences, cleanup, recovery)
         ViewModel.CloseAllSidePanels();
@@ -125,7 +125,7 @@ public partial class MainWindow
             FindReplacePanel.SetFindText(ContentEditor.SelectedText);
         }
 
-        FindReplacePanel.Show(showReplace);
+        FindReplacePanel.Show();
 
         // If panel already has query text, trigger re-search now
         var query = FindReplacePanel.GetFindText();
@@ -202,6 +202,9 @@ public partial class MainWindow
 
         FindReplacePanel.UpdateMatches(_findMatches, _currentFindIndex);
         _highlightAdorner?.Update(_findMatches, _currentFindIndex, _findQueryLength);
+
+        // Keep focus in the find input so Enter/Shift+Enter continues cycling
+        FindReplacePanel.FocusFindInput();
     }
 
     // ─── Replace operations ────────────────────────────────────────────────
@@ -212,6 +215,10 @@ public partial class MainWindow
 
         string replacement = FindReplacePanel.GetReplaceText();
         int matchPos = _findMatches[_currentFindIndex];
+
+        // Push undo snapshot before replacement
+        var stack = UndoManager.Instance.GetOrCreateStack(_activeTab.Id);
+        stack.PushSnapshot(ContentEditor.Text);
 
         string newContent = ViewModels.MainWindowViewModel.ReplaceSingle(
             ContentEditor.Text, matchPos, _findQueryLength, replacement);
@@ -251,14 +258,27 @@ public partial class MainWindow
         _activeTab.Content = newContent;
         _suppressTextChanged = false;
 
-        // Show replacement count feedback
-        FindReplacePanel.ShowReplaceCount(count);
+        // Show replacement count via toast with undo
+        if (count > 0)
+        {
+            ShowReplaceAllToast(count);
+        }
 
         // Re-run search to refresh (should find 0 if all replaced)
         if (!string.IsNullOrEmpty(query))
         {
             RunSearch(query, FindReplacePanel.CaseSensitive, FindReplacePanel.WholeWord);
         }
+    }
+
+    /// <summary>
+    /// Shows a toast with replacement count and an undo button.
+    /// </summary>
+    private void ShowReplaceAllToast(int count)
+    {
+        string msg = $"{count} replacement{(count == 1 ? "" : "s")} made";
+        _pendingToastUndoAction = () => PerformUndo();
+        ShowUndoableToast(msg);
     }
 
     /// <summary>
@@ -274,5 +294,42 @@ public partial class MainWindow
         {
             RunSearch(query, FindReplacePanel.CaseSensitive, FindReplacePanel.WholeWord);
         }
+    }
+
+    /// <summary>
+    /// Re-runs find search when editor content changes (typing).
+    /// Called from ContentEditor_TextChanged when the find panel is open.
+    /// </summary>
+    internal void RefreshFindOnTextChange()
+    {
+        if (!_findPanelOpen) return;
+
+        var query = FindReplacePanel.GetFindText();
+        if (string.IsNullOrEmpty(query))
+        {
+            _highlightAdorner?.Clear();
+            return;
+        }
+
+        // Re-search but preserve current match index position as best we can
+        _findMatches = ViewModels.MainWindowViewModel.FindAllMatches(
+            ContentEditor.Text, query, FindReplacePanel.CaseSensitive, FindReplacePanel.WholeWord);
+        _findQueryLength = query.Length;
+
+        if (_findMatches.Count == 0)
+        {
+            _currentFindIndex = -1;
+        }
+        else if (_currentFindIndex >= _findMatches.Count)
+        {
+            _currentFindIndex = _findMatches.Count - 1;
+        }
+        else if (_currentFindIndex < 0)
+        {
+            _currentFindIndex = 0;
+        }
+
+        FindReplacePanel.UpdateMatches(_findMatches, _currentFindIndex);
+        EnsureHighlightAdorner().Update(_findMatches, _currentFindIndex, _findQueryLength);
     }
 }
