@@ -88,6 +88,7 @@ public partial class MainWindow : Window
     private System.Windows.Threading.DispatcherTimer? _fontSizeTooltipTimer;
     private List<int> _findMatches = [];
     private int _currentFindIndex = -1;
+    private int _findQueryLength;
 
     // ─── Window Drag Detection (forwarded to ViewModel) ────────
     private bool _isDragOverlayActive
@@ -160,6 +161,7 @@ public partial class MainWindow : Window
 
         InitializeComponent();
         InitializeInputBindings();
+        WireAdornerEvents();
 
         // Register with ThemeService for title bar dark mode tracking
         ThemeService.RegisterWindow(this);

@@ -35,6 +35,12 @@ public static class ThemeService
     private static AppTheme _currentSetting = AppTheme.System;
     private static bool _initialized;
 
+    /// <summary>
+    /// Raised after a theme is applied (user-initiated or system auto-follow).
+    /// Subscribers should invalidate any cached theme-dependent visuals.
+    /// </summary>
+    public static event EventHandler? ThemeChanged;
+
     /// <summary>The user's chosen theme setting (Light, Dark, or System).</summary>
     public static AppTheme CurrentSetting => _currentSetting;
 
@@ -101,6 +107,7 @@ public static class ThemeService
         dictionaries.Insert(0, new ResourceDictionary { Source = uri });
 
         ApplyTitleBarToAllWindows();
+        ThemeChanged?.Invoke(null, EventArgs.Empty);
     }
 
     /// <summary>
