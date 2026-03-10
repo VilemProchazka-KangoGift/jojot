@@ -8,6 +8,21 @@
     <UseWPF>true</UseWPF>
     <UseWindowsForms>true</UseWindowsForms>
     <PublishReadyToRun>true</PublishReadyToRun>
+
+    <!-- Version metadata (CalVer) -->
+    <Version>2026.3.0</Version>
+    <AssemblyVersion>2026.3.0.0</AssemblyVersion>
+    <FileVersion>2026.3.0.0</FileVersion>
+
+    <!-- Publisher and product info -->
+    <Company>Vilem Prochazka</Company>
+    <Authors>Vilem Prochazka</Authors>
+    <Product>JoJot</Product>
+    <Description>Per-virtual-desktop notepad for Windows</Description>
+    <Copyright>Copyright 2026 Vilem Prochazka</Copyright>
+
+    <!-- Application icon -->
+    <ApplicationIcon>Assets\jojot.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
