@@ -1,4 +1,3 @@
-using JoJot.Models;
 using JoJot.ViewModels;
 
 namespace JoJot.Tests.ViewModels;

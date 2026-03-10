@@ -1,8 +1,5 @@
-using JoJot.Data;
-using JoJot.Models;
 using JoJot.Services;
 using JoJot.Tests.Helpers;
-using Microsoft.EntityFrameworkCore;
 
 namespace JoJot.Tests.Models;
 

@@ -1,5 +1,4 @@
 using JoJot.Services;
-using Serilog;
 
 namespace JoJot.Tests.Services;
 

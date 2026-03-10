@@ -1,4 +1,3 @@
-using System.Windows;
 using JoJot.Models;
 using JoJot.Services;
 
