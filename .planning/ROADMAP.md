@@ -69,3 +69,15 @@ Full details: `.planning/milestones/v1.1-ROADMAP.md`
 | 15. Review Round 2 UI/UX | v1.1 | 11/11 | Complete | 2026-03-05 |
 | 15.1. Recovery, Rename, Reorder | v1.1 | 6/6 | Complete | 2026-03-06 |
 | 16. Tab Cleanup Panel | v1.1 | 2/2 | Complete | 2026-03-07 |
+
+### Phase 1: Add in-editor find panel with Ctrl+F
+
+**Goal:** Replace the inline EditorFindBar with a full-featured find-and-replace side panel, including real-time search, match highlighting via adorner overlay, case/whole-word toggles, and replace operations
+**Requirements:** FIND-01 (panel UI), FIND-02 (replace), FIND-03 (highlighting), FIND-04 (keyboard shortcuts), FIND-05 (cleanup old find bar)
+**Depends on:** None (standalone feature)
+**Plans:** 3 plans
+
+Plans:
+- [ ] 01-01-PLAN.md — Enhanced find engine + FindReplacePanel UserControl + theme colors
+- [ ] 01-02-PLAN.md — MainWindow integration, keyboard shortcuts, replace operations, cleanup
+- [ ] 01-03-PLAN.md — TextBoxHighlightAdorner + end-to-end visual verification
