@@ -1,0 +1,147 @@
+<UserControl x:Class="JoJot.Controls.FindReplacePanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Visibility="Collapsed">
+    <Border Background="{DynamicResource c-win-bg}" BorderBrush="{DynamicResource c-border}"
+            BorderThickness="1,0,0,0">
+        <Border.RenderTransform>
+            <TranslateTransform x:Name="PanelTransform" X="320"/>
+        </Border.RenderTransform>
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <!-- Header -->
+            <Grid Grid.Row="0" Margin="16,16,16,8">
+                <TextBlock x:Name="PanelTitle" Text="Find" FontSize="18" FontWeight="SemiBold"
+                           Foreground="{DynamicResource c-text-primary}"/>
+                <TextBlock Text="&#xE711;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="14"
+                           HorizontalAlignment="Right" Cursor="Hand"
+                           Foreground="{DynamicResource c-text-muted}"
+                           MouseLeftButtonDown="Close_Click"/>
+            </Grid>
+
+            <!-- Content -->
+            <StackPanel Grid.Row="1" Margin="16,0,16,16">
+
+                <!-- Find input row -->
+                <Grid Margin="0,0,0,8">
+                    <TextBox x:Name="FindInput"
+                             FontSize="13" Padding="6,5"
+                             Background="{DynamicResource c-tab-bg}"
+                             Foreground="{DynamicResource c-text-primary}"
+                             BorderBrush="{DynamicResource c-border}"
+                             BorderThickness="1"
+                             TextChanged="FindInput_TextChanged"
+                             PreviewKeyDown="FindInput_PreviewKeyDown"/>
+                    <TextBlock x:Name="FindPlaceholder" Text="Find" FontSize="13" Padding="8,6"
+                               Foreground="{DynamicResource c-text-muted}"
+                               IsHitTestVisible="False"/>
+                </Grid>
+
+                <!-- Options + counter row -->
+                <Grid Margin="0,0,0,8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Case-sensitive toggle -->
+                    <Border x:Name="CaseToggle" Grid.Column="0"
+                            CornerRadius="3" Padding="4,2" Margin="0,0,6,0"
+                            BorderBrush="{DynamicResource c-border}" BorderThickness="1"
+                            Background="Transparent" Cursor="Hand"
+                            MouseLeftButtonDown="CaseToggle_Click">
+                        <TextBlock Text="Aa" FontSize="12"
+                                   Foreground="{DynamicResource c-text-primary}"/>
+                    </Border>
+
+                    <!-- Whole-word toggle -->
+                    <Border x:Name="WholeWordToggle" Grid.Column="1"
+                            CornerRadius="3" Padding="4,2"
+                            BorderBrush="{DynamicResource c-border}" BorderThickness="1"
+                            Background="Transparent" Cursor="Hand"
+                            MouseLeftButtonDown="WholeWordToggle_Click">
+                        <TextBlock Text="W" FontSize="12"
+                                   Foreground="{DynamicResource c-text-primary}"/>
+                    </Border>
+
+                    <!-- Match counter -->
+                    <TextBlock x:Name="MatchCountText" Grid.Column="2"
+                               FontSize="12" HorizontalAlignment="Right" VerticalAlignment="Center"
+                               Foreground="{DynamicResource c-text-muted}"/>
+                </Grid>
+
+                <!-- Navigation row -->
+                <Grid Margin="0,0,0,12">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Previous match -->
+                    <Border Grid.Column="0" CornerRadius="3" Padding="6,4" Margin="0,0,6,0"
+                            BorderBrush="{DynamicResource c-border}" BorderThickness="1"
+                            Cursor="Hand" MouseLeftButtonDown="PreviousMatch_Click">
+                        <TextBlock Text="&#xE70E;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                   FontSize="12" Foreground="{DynamicResource c-text-primary}"/>
+                    </Border>
+
+                    <!-- Next match -->
+                    <Border Grid.Column="1" CornerRadius="3" Padding="6,4"
+                            BorderBrush="{DynamicResource c-border}" BorderThickness="1"
+                            Cursor="Hand" MouseLeftButtonDown="NextMatch_Click">
+                        <TextBlock Text="&#xE70D;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                   FontSize="12" Foreground="{DynamicResource c-text-primary}"/>
+                    </Border>
+                </Grid>
+
+                <!-- Replace input row -->
+                <Grid x:Name="ReplaceInputRow" Margin="0,0,0,8" Visibility="Collapsed">
+                    <TextBox x:Name="ReplaceInput"
+                             FontSize="13" Padding="6,5"
+                             Background="{DynamicResource c-tab-bg}"
+                             Foreground="{DynamicResource c-text-primary}"
+                             BorderBrush="{DynamicResource c-border}"
+                             BorderThickness="1"/>
+                    <TextBlock x:Name="ReplacePlaceholder" Text="Replace" FontSize="13" Padding="8,6"
+                               Foreground="{DynamicResource c-text-muted}"
+                               IsHitTestVisible="False"/>
+                </Grid>
+
+                <!-- Replace buttons row -->
+                <Grid x:Name="ReplaceButtonsRow" Margin="0,0,0,8" Visibility="Collapsed">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Replace single -->
+                    <Border Grid.Column="0" CornerRadius="3" Padding="8,5" Margin="0,0,6,0"
+                            BorderBrush="{DynamicResource c-border}" BorderThickness="1"
+                            Cursor="Hand" MouseLeftButtonDown="Replace_Click">
+                        <TextBlock Text="Replace" FontSize="12"
+                                   Foreground="{DynamicResource c-text-primary}"/>
+                    </Border>
+
+                    <!-- Replace all -->
+                    <Border Grid.Column="1" CornerRadius="3" Padding="8,5"
+                            BorderBrush="{DynamicResource c-border}" BorderThickness="1"
+                            Cursor="Hand" MouseLeftButtonDown="ReplaceAll_Click">
+                        <TextBlock Text="Replace All" FontSize="12"
+                                   Foreground="{DynamicResource c-text-primary}"/>
+                    </Border>
+                </Grid>
+
+                <!-- Replace count feedback -->
+                <TextBlock x:Name="ReplaceCountText" FontSize="12"
+                           Foreground="{DynamicResource c-text-muted}"
+                           Visibility="Collapsed"/>
+
+            </StackPanel>
+        </Grid>
+    </Border>
+</UserControl>
