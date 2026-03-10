@@ -59,6 +59,7 @@ public partial class MainWindow : Window
     private int _dragInsertIndex = -1;
     private int _dragOriginalListIndex = -1; // Track original position for indicator suppression
     private Border? _dropIndicatorBorder;
+    private NoteTab? _fadeInTab; // Tab to fade in after drag-reorder rebuild
 
     // ─── Context menu state ─────────────────────────────────────────
     private Popup? _activeContextMenu;

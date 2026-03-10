@@ -1,7 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
-using System.Windows.Media.Animation;
 using JoJot.Models;
 using JoJot.Services;
 
@@ -227,35 +226,10 @@ public partial class MainWindow
                     _ = NoteStore.UpdateNoteSortOrdersAsync(
                         _tabs.Select(t => (t.Id, t.SortOrder)));
 
+                    // Mark tab for fade-in animation (handled in TabItemBorder_Loaded)
+                    _fadeInTab = _dragTab;
                     RebuildTabList();
                     SelectTabByNote(_dragTab);
-
-                    // Fade-in the moved tab at its new position
-                    // Deferred to Loaded priority so the visual tree from RebuildTabList is fully realized
-                    var movedTab = _dragTab;
-                    Dispatcher.InvokeAsync(() =>
-                    {
-                        foreach (var obj in TabList.Items)
-                        {
-                            if (obj is ListBoxItem item && item.Tag == movedTab)
-                            {
-                                var content = FindNamedDescendant<Border>(item, "OuterBorder");
-                                if (content is not null)
-                                {
-                                    content.Opacity = 0.5;
-                                    var fadeIn = new DoubleAnimation
-                                    {
-                                        From = 0.5, To = 1.0,
-                                        Duration = TimeSpan.FromMilliseconds(200),
-                                        EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
-                                    };
-                                    fadeIn.Completed += (_, _) => { content.Opacity = 1.0; content.BeginAnimation(OpacityProperty, null); };
-                                    content.BeginAnimation(OpacityProperty, fadeIn);
-                                }
-                                break;
-                            }
-                        }
-                    }, System.Windows.Threading.DispatcherPriority.Loaded);
                 }
             }
 

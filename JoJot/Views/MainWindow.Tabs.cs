@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 using JoJot.Models;
 using JoJot.Services;
 
@@ -146,6 +147,29 @@ public partial class MainWindow
     {
         var outerBorder = (Border)sender;
         if (outerBorder.DataContext is not NoteTab tab) return;
+
+        // Fade-in animation after drag-reorder drop
+        if (_fadeInTab is not null && tab.Id == _fadeInTab.Id)
+        {
+            _fadeInTab = null;
+            outerBorder.Opacity = 0.5;
+            var target = outerBorder;
+            Dispatcher.BeginInvoke(() =>
+            {
+                var fadeIn = new DoubleAnimation
+                {
+                    From = 0.5, To = 1.0,
+                    Duration = TimeSpan.FromMilliseconds(400),
+                    EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn }
+                };
+                fadeIn.Completed += (_, _) =>
+                {
+                    target.Opacity = 1.0;
+                    target.BeginAnimation(UIElement.OpacityProperty, null);
+                };
+                target.BeginAnimation(UIElement.OpacityProperty, fadeIn);
+            }, System.Windows.Threading.DispatcherPriority.Input);
+        }
 
         var pinBtn = FindNamedDescendant<Border>(outerBorder, "PinBtn");
         var pinIcon = FindNamedDescendant<TextBlock>(outerBorder, "PinIcon");
