@@ -24,7 +24,7 @@ See: .planning/PROJECT.md (updated 2026-03-10)
 
 Milestone: v1.1 Polish & Stability -- ARCHIVED
 Status: All 7 phases (26 plans) shipped, milestone archived to .planning/milestones/
-Last activity: 2026-03-10 - Completed quick task 2: do not share notes db between debug and production installed app
+Last activity: 2026-03-10 - Completed quick task 3: fix drag-and-drop reorder visual indicators regression
 
 ## Accumulated Context
 
@@ -45,9 +45,10 @@ None.
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
 | 2 | do not share notes db between debug and production installed app | 2026-03-10 | 1a61e93 | [2-do-not-share-notes-db-between-debug-and-](./quick/2-do-not-share-notes-db-between-debug-and-/) |
+| 3 | fix drag-and-drop reorder visual indicators regression | 2026-03-10 | b4b5497 | [3-the-drag-and-drop-reorder-feature-regres](./quick/3-the-drag-and-drop-reorder-feature-regres/) |
 
 ## Session Continuity
 
 Last session: 2026-03-10
-Stopped at: v1.1 milestone archived, ready for next milestone
+Stopped at: Completed quick-3 plan (drag-and-drop visual indicators fix)
 Resume file: None
