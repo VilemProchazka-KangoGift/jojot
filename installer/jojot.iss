@@ -34,7 +34,6 @@ Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
 ArchitecturesAllowed=x64compatible
-ArchitecturesInstallMode=x64compatible
 PrivilegesRequired=admin
 CloseApplications=force
 CloseApplicationsFilter=JoJot.exe

@@ -7,6 +7,9 @@
 bin/
 obj/
 
+# Installer output
+installer/output/
+
 # OS files
 Thumbs.db
 desktop.ini
