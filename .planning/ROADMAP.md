@@ -3,7 +3,7 @@
 ## Milestones
 
 - ✅ **v1.0 MVP** — Phases 1-10 (shipped 2026-03-03)
-- 🚧 **v1.1 Polish & Stability** — Phases 11-15 (in progress)
+- ✅ **v1.1 Polish & Stability** — Phases 11-16 (shipped 2026-03-10)
 
 ## Phases
 
@@ -29,14 +29,14 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
 
 </details>
 
-### 🚧 v1.1 Polish & Stability (In Progress)
+### ✅ v1.1 Polish & Stability (Shipped 2026-03-10)
 
 **Milestone Goal:** Fix critical crashes and freezes, polish the tab panel and UI, and ship a Windows installer — based on first-round manual review of v1.0.
 
 - [x] **Phase 11: Critical Bug Fixes** — Eliminate stack overflow crashes on pin/unpin and delete, and fix tab rename freeze (completed 2026-03-03)
 - [x] **Phase 12: Tab Panel UX** — Replace border highlight with background highlight, add pin icon, improve title sizing, make panel user-resizable, and verify drag-to-reorder (completed 2026-03-04)
 - [x] **Phase 13: Theme, Display & Menu Polish** — Fix dark mode tab legibility, change font size display to percentages, verify window title shows desktop name, and fix hamburger menu dismiss behavior (completed 2026-03-04)
-- [ ] **Phase 14: Installer** — Produce a Windows installer (Inno Setup) for distribution
+- [x] **Phase 14: Installer** — Produce a Windows installer (Inno Setup) for distribution (completed 2026-03-10)
 - [x] **Phase 15: Review Round 2 — UI/UX Bug Fixes & Polish** — Fix note persistence bug, improve tab interactions, enhance drag-and-drop, refine preferences panel, redesign session recovery, and polish startup/move-to-desktop flows (completed 2026-03-05)
 - [x] **Phase 15.1: Recovery Panel, Tab Rename & Reorder Fixes** — Make recovery items full-width with tab info, fix escape-to-cancel rename, replace drag ghost with fade-out (completed 2026-03-06)
 - [x] **Phase 16: Tab Cleanup Panel** — Replace Delete menu options with a dedicated cleanup side panel featuring age-based filtering, pinned inclusion toggle, and preview list with confirmation (completed 2026-03-07)
@@ -179,7 +179,7 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
   3. The installer can be run on a machine that does not have .NET 10 installed (self-contained runtime bundled)
 **Plans**: 2 plans
 - [x] 14-01-PLAN.md — Project metadata (CalVer, publisher), app icon creation, and Inno Setup script authoring (DIST-01)
-- [ ] 14-02-PLAN.md — Build installer (dotnet publish + ISCC compile) and human verification of install/launch/uninstall (DIST-01)
+- [x] 14-02-PLAN.md — Build installer (dotnet publish + ISCC compile) and human verification of install/launch/uninstall (DIST-01)
 
 ## Progress
 
@@ -204,5 +204,5 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
 | 13. Theme, Display & Menu Polish | v1.1 | 2/2 | Complete | 2026-03-04 |
 | 15.1. Recovery, Rename, Reorder | v1.1 | Complete    | 2026-03-06 | 2026-03-06 |
 | 16. Tab Cleanup Panel | v1.1 | 2/2 | Complete | 2026-03-07 |
-| 14. Installer | v1.1 | 1/2 | In progress | - |
+| 14. Installer | v1.1 | 2/2 | Complete | 2026-03-10 |
 | 15. Review Round 2 UI/UX | v1.1 | 11/11 | Complete | 2026-03-05 |

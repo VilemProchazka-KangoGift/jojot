@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Polish & Stability
-status: in_progress
-last_updated: "2026-03-10T08:31:34Z"
+status: complete
+last_updated: "2026-03-10T08:40:55Z"
 progress:
-  total_phases: 7
-  completed_phases: 7
-  total_plans: 26
-  completed_plans: 26
+  total_phases: 8
+  completed_phases: 8
+  total_plans: 27
+  completed_plans: 27
 ---
 
 # Project State
@@ -18,16 +18,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-03)
 
 **Core value:** Instant note capture tied to your virtual desktop context -- switch desktops, switch notes, zero friction.
-**Current focus:** v1.1 Polish & Stability -- Phase 14 (Installer) plan 01 complete, plan 02 remaining
+**Current focus:** v1.1 Polish & Stability -- COMPLETE. All phases finished including Phase 14 (Installer).
 
 ## Current Position
 
-Phase: 14 (Installer) -- IN PROGRESS
-Plan: 1 of 2 (14-01 complete -- metadata, icon, and Inno Setup script)
-Status: Phase 14 plan 01 complete, plan 02 (build and verify installer) remaining
-Last activity: 2026-03-10 -- Completed 14-01 (CalVer metadata, app icon, Inno Setup script)
+Phase: 14 (Installer) -- COMPLETE
+Plan: 2 of 2 (all plans complete)
+Status: v1.1 milestone complete -- all 27 plans across 8 phases executed
+Last activity: 2026-03-10 -- Completed 14-02 (installer build and verification)
 
-Progress: [█████████░] 99% (26 plans complete across 8 phases; 14-02 remaining)
+Progress: [██████████] 100% (27 plans complete across 8 phases)
 
 ## Performance Metrics
 
@@ -36,13 +36,14 @@ Progress: [█████████░] 99% (26 plans complete across 8 phase
 - Average duration: ~15 min
 - Total execution time: ~7.5 hours
 
-**v1.1 plans:** 26 completed (1 in Phase 11, 2 in Phase 12, 2 in Phase 13, 1 in Phase 14, 12 in Phase 15, 6 in Phase 15.1, 2 in Phase 16)
+**v1.1 plans:** 27 completed (1 in Phase 11, 2 in Phase 12, 2 in Phase 13, 2 in Phase 14, 12 in Phase 15, 6 in Phase 15.1, 2 in Phase 16)
 
 | Phase | Plan | Duration | Tasks | Files |
 |-------|------|----------|-------|-------|
 | 16-tab-cleanup-panel | 01 | 7min | 2 | 2 |
 | 16-tab-cleanup-panel | 02 | 3min | 1 | 1 |
 | 14-installer | 01 | 3min | 2 | 3 |
+| 14-installer | 02 | 6min | 2 | 2 |
 
 *Updated after each plan completion*
 
@@ -162,6 +163,10 @@ Phase 14-01 decisions:
 - Stable AppId GUID {B7E45A2C-8D31-4F6A-9E52-1C3D7A8B9F04} for upgrade detection across versions
 - Segoe UI Bold for J lettermark in app icon (Windows system font, always available)
 
+Phase 14-02 decisions:
+- Removed ArchitecturesInstallMode directive (unsupported in Inno Setup 6.7.1 non-commercial edition)
+- Inno Setup installed to user-local path via winget (not Program Files x86)
+
 ### Pending Todos
 
 None.
@@ -192,5 +197,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-10
-Stopped at: Completed 14-01-PLAN.md (CalVer metadata, app icon, Inno Setup script)
-Next: 14-02-PLAN.md (build installer and human verification of install/launch/uninstall)
+Stopped at: Completed 14-02-PLAN.md (installer build and verification)
+Next: v1.1 milestone complete -- all plans executed. Manual installer verification recommended.

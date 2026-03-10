@@ -23,8 +23,8 @@ Requirements for v1.1 Polish & Stability release. Each maps to roadmap phases.
 
 ### Theme & Display
 
-- [ ] **THEME-01**: Dark mode tab names are legible (proper contrast)
-- [ ] **THEME-02**: Text resize shows percentages instead of pt and affects tab labels too
+- [x] **THEME-01**: Dark mode tab names are legible (proper contrast)
+- [x] **THEME-02**: Text resize shows percentages instead of pt and affects tab labels too
 
 ### Window & Menu
 
@@ -33,7 +33,7 @@ Requirements for v1.1 Polish & Stability release. Each maps to roadmap phases.
 
 ### Distribution
 
-- [ ] **DIST-01**: Windows installer (MSI or MSIX) support
+- [x] **DIST-01**: Windows installer (MSI or MSIX) support
 
 ## v2 Requirements
 
@@ -62,11 +62,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | TABUX-03 | Phase 12 | Complete — verified 2026-03-04 |
 | TABUX-04 | Phase 12 | Complete — verified 2026-03-04 |
 | TABUX-05 | Phase 12 | Complete — verified 2026-03-04 |
-| THEME-01 | Phase 13 | Pending |
-| THEME-02 | Phase 13 | Pending |
+| THEME-01 | Phase 13 | Complete — verified 2026-03-04 |
+| THEME-02 | Phase 13 | Complete — verified 2026-03-04 |
 | WIN-01 | Phase 13 | Complete |
 | WIN-02 | Phase 13 | Complete |
-| DIST-01 | Phase 14 | In progress — script authored in 14-01, build/verify in 14-02 |
+| DIST-01 | Phase 14 | Complete — installer built and verified 2026-03-10 |
 
 **Coverage:**
 - v1.1 requirements: 13 total
@@ -75,4 +75,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-03-03*
-*Last updated: 2026-03-04 — TABUX-01/02/03/04/05 complete and verified in Phase 12*
+*Last updated: 2026-03-10 — DIST-01 complete, all v1.1 requirements resolved*
