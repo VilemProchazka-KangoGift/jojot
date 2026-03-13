@@ -38,7 +38,7 @@ See: .planning/PROJECT.md (updated 2026-03-10)
 Milestone: v1.2 Find & Replace -- AWAITING VERIFICATION
 Phase: 01-add-in-editor-find-panel-with-ctrl-f (3/3 plans complete)
 Current plan: 01-03-PLAN.md (checkpoint:human-verify pending)
-Last activity: 2026-03-10 - Completed 01-03: TextBoxHighlightAdorner + complete find/replace wiring
+Last activity: 2026-03-13 - Completed quick task 7: when pinning a tab, it should appear on top of the pinned tabs
 
 ## Accumulated Context
 
