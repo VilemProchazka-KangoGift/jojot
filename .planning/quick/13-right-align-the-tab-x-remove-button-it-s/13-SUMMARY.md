@@ -8,6 +8,7 @@ tags: [wpf, xaml, tab-template, alignment]
 requires: []
 provides:
   - Tab close button X glyph visually right-aligned with updated timestamp below it
+  - Pin icon tightened closer to close button
 affects: []
 
 # Tech tracking
@@ -21,57 +22,49 @@ key-files:
     - JoJot/Views/MainWindow.xaml
 
 key-decisions:
-  - "Changed CloseIcon HorizontalAlignment from Center to Right with Margin 0,0,1,0 to align X glyph with timestamp right edge without changing 22x22 hit target"
+  - "Changed CloseIcon HorizontalAlignment from Center to Right, removed margins on CloseBtn and PinBtn to align X glyph with timestamp right edge and tighten pin/close gap"
 
 patterns-established: []
 
 requirements-completed: [QUICK-13]
 
 # Metrics
-duration: 3min
-completed: 2026-03-13
+duration: 5min
+completed: 2026-03-14
 ---
 
 # Quick Task 13: Right-align Tab Close Button Summary
 
-**Tab close button X glyph shifted to right-align with the updated timestamp text below it by changing HorizontalAlignment to Right with 1px optical margin**
+**Tab close button X glyph right-aligned with the updated timestamp text below it; pin icon tightened closer to close button.**
 
 ## Performance
 
-- **Duration:** ~3 min
+- **Duration:** ~5 min
 - **Started:** 2026-03-13
-- **Completed:** 2026-03-13
-- **Tasks:** 1 of 1 (awaiting human verify checkpoint)
+- **Completed:** 2026-03-14
+- **Tasks:** 1 of 1 (verified by user)
 - **Files modified:** 1
 
 ## Accomplishments
 - CloseIcon glyph now right-aligns within its 22x22 Border hit target
 - Visual right edge of X icon matches the right edge of the UpdatedDisplay timestamp in row below
+- Pin icon gap tightened (PinBtn right margin 4→0px, CloseBtn left margin 4→0px)
 - Hit target size and position unchanged — clickability preserved
 
 ## Task Commits
 
-1. **Task 1: Right-align close button glyph to match timestamp right edge** - `0e34c9d` (feat)
+1. **Task 1: Right-align close button glyph** - `0e34c9d` (initial)
+2. **Task 2: Fine-tune alignment + tighten pin/close gap** - `28407a3` (final)
 
 ## Files Created/Modified
-- `JoJot/Views/MainWindow.xaml` - CloseIcon TextBlock: HorizontalAlignment Center→Right, added Margin="0,0,1,0"
-
-## Decisions Made
-- Used `HorizontalAlignment="Right"` + `Margin="0,0,1,0"` on the CloseIcon TextBlock rather than adjusting the outer Border margin, keeping the 22x22 hit target intact while moving only the visible glyph rightward for optical alignment.
+- `JoJot/Views/MainWindow.xaml` - CloseIcon: HorizontalAlignment Center→Right; CloseBtn Margin 4,0,0,0→0,0,0,0; PinBtn Margin 0,0,4,0→0,0,0,0
 
 ## Deviations from Plan
-None - plan executed exactly as written.
+User requested iterative fine-tuning: 2 additional pixel adjustments to X position and tighter pin icon spacing.
 
 ## Issues Encountered
 None.
 
-## User Setup Required
-None - no external service configuration required.
-
-## Next Phase Readiness
-- Awaiting human visual verification that X aligns with timestamp right edge
-- No blockers
-
 ---
 *Phase: quick-13*
-*Completed: 2026-03-13*
+*Completed: 2026-03-14*
