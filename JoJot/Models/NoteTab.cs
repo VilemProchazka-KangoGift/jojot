@@ -131,7 +131,7 @@ public class NoteTab : ObservableObject
                     return cleaned;
                 }
 
-                return cleaned[..DisplayLabelMaxLength];
+                return cleaned[..DisplayLabelMaxLength] + "...";
             }
 
             return PlaceholderLabel;
