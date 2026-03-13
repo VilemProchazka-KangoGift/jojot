@@ -22,18 +22,18 @@ public class NoteTabTests
     }
 
     [Fact]
-    public void DisplayLabel_TruncatesAt30Chars_WhenContentIsLong()
+    public void DisplayLabel_TruncatesAt45Chars_WhenContentIsLong()
     {
-        var longContent = new string('A', 50);
+        var longContent = new string('A', 60);
         var tab = new NoteTab { Name = null, Content = longContent };
-        tab.DisplayLabel.Should().HaveLength(30);
-        tab.DisplayLabel.Should().Be(new string('A', 30));
+        tab.DisplayLabel.Should().HaveLength(45);
+        tab.DisplayLabel.Should().Be(new string('A', 45));
     }
 
     [Fact]
-    public void DisplayLabel_ReturnsFullContent_WhenContentIs30CharsOrLess()
+    public void DisplayLabel_ReturnsFullContent_WhenContentIs45CharsOrLess()
     {
-        var content = new string('B', 30);
+        var content = new string('B', 45);
         var tab = new NoteTab { Name = null, Content = content };
         tab.DisplayLabel.Should().Be(content);
     }
@@ -83,11 +83,11 @@ public class NoteTabTests
     [Fact]
     public void DisplayLabel_TruncatesAfterNewlineStripping()
     {
-        // Content with newlines where the cleaned text exceeds 30 chars
-        // "AAAAAAAAAA\nBBBBBBBBBB\nCCCCCCCCCC\nDDDDDDDDDD" -> "AAAAAAAAAA BBBBBBBBBB CCCCCCCCCC" (31 chars) -> truncated to 30
-        var tab = new NoteTab { Name = null, Content = "AAAAAAAAAA\nBBBBBBBBBB\nCCCCCCCCCC\nDDDDDDDDDD" };
-        tab.DisplayLabel.Should().HaveLength(30);
-        tab.DisplayLabel.Should().Be("AAAAAAAAAA BBBBBBBBBB CCCCCCCC");
+        // Content with newlines where the cleaned text exceeds 45 chars
+        // 4 groups of 15 chars separated by newlines -> 63 chars after cleaning -> truncated to 45
+        var tab = new NoteTab { Name = null, Content = new string('A', 15) + "\n" + new string('B', 15) + "\n" + new string('C', 15) + "\n" + new string('D', 15) };
+        tab.DisplayLabel.Should().HaveLength(45);
+        tab.DisplayLabel.Should().Be("AAAAAAAAAAAAAAA BBBBBBBBBBBBBBB CCCCCCCCCCCCC");
     }
 
     [Fact]

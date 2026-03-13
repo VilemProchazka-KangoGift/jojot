@@ -376,7 +376,7 @@ public class ViewModelCoverage2Tests
     {
         var tab = MakeTab(1, content: new string('A', 60));
         var filename = MainWindowViewModel.GetDefaultFilename(tab);
-        filename.Should().Be(new string('A', 30) + ".txt");
+        filename.Should().Be(new string('A', 45) + ".txt");
     }
 
     // ─── SanitizeFilename ───────────────────────────────────────────

@@ -136,7 +136,7 @@ public class EditorStateTests
 
         var filename = MainWindowViewModel.GetDefaultFilename(tab);
 
-        filename.Should().Be(new string('a', 30) + ".txt");
+        filename.Should().Be(new string('a', 45) + ".txt");
     }
 
     [Fact]

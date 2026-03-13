@@ -12,29 +12,29 @@ public class NoteTabBoundaryTests
     // ─── DisplayLabel truncation boundary ──────────────────────────
 
     [Fact]
-    public void DisplayLabel_Content30Chars_NoTruncation()
+    public void DisplayLabel_Content45Chars_NoTruncation()
     {
-        var content = new string('X', 30);
+        var content = new string('X', 45);
         var tab = new NoteTab { Content = content };
         tab.DisplayLabel.Should().Be(content);
-        tab.DisplayLabel.Length.Should().Be(30);
+        tab.DisplayLabel.Length.Should().Be(45);
     }
 
     [Fact]
-    public void DisplayLabel_Content31Chars_Truncated()
+    public void DisplayLabel_Content46Chars_Truncated()
     {
-        var content = new string('Y', 31);
+        var content = new string('Y', 46);
         var tab = new NoteTab { Content = content };
-        tab.DisplayLabel.Length.Should().Be(30);
-        tab.DisplayLabel.Should().Be(new string('Y', 30));
+        tab.DisplayLabel.Length.Should().Be(45);
+        tab.DisplayLabel.Should().Be(new string('Y', 45));
     }
 
     [Fact]
-    public void DisplayLabel_Content29Chars_NoTruncation()
+    public void DisplayLabel_Content44Chars_NoTruncation()
     {
-        var content = new string('Z', 29);
+        var content = new string('Z', 44);
         var tab = new NoteTab { Content = content };
-        tab.DisplayLabel.Length.Should().Be(29);
+        tab.DisplayLabel.Length.Should().Be(44);
     }
 
     // ─── DisplayLabel whitespace variants ──────────────────────────
