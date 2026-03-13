@@ -78,9 +78,10 @@ None.
 | 9 | recovery panel should disappear after acting on orphaned sessions | 2026-03-13 | d389c0e | [9-recovery-panel-should-disappear-after-ac](./quick/9-recovery-panel-should-disappear-after-ac/) |
 | 11 | capture editor content before undo so redo restores unsaved typing | 2026-03-13 | 2734181 | [11-autosave-editor-state-before-undo-so-red](./quick/11-autosave-editor-state-before-undo-so-red/) |
 | 12 | fix global hotkey recording: Win key suppression, same-combo detection, Escape cancel | 2026-03-13 | 3fbaf75 | [12-fix-global-hotkey-record-shortcut-loses-](./quick/12-fix-global-hotkey-record-shortcut-loses-/) |
+| 13 | right-align tab close (X) button glyph to match updated timestamp right edge | 2026-03-13 | 0e34c9d | [13-right-align-the-tab-x-remove-button-it-s](./quick/13-right-align-the-tab-x-remove-button-it-s/) |
 
 ## Session Continuity
 
 Last session: 2026-03-13
-Stopped at: Completed quick task 12 — hotkey recording LL hook and same-combo fix
+Stopped at: Completed quick task 13 — right-align tab close button X glyph with timestamp edge
 Resume file: None
