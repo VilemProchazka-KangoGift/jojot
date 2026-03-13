@@ -25,8 +25,8 @@ public class NoteTabBoundaryTests
     {
         var content = new string('Y', 46);
         var tab = new NoteTab { Content = content };
-        tab.DisplayLabel.Length.Should().Be(45);
-        tab.DisplayLabel.Should().Be(new string('Y', 45));
+        tab.DisplayLabel.Length.Should().Be(48);
+        tab.DisplayLabel.Should().Be(new string('Y', 45) + "...");
     }
 
     [Fact]

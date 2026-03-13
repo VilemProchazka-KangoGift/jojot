@@ -26,8 +26,8 @@ public class NoteTabTests
     {
         var longContent = new string('A', 60);
         var tab = new NoteTab { Name = null, Content = longContent };
-        tab.DisplayLabel.Should().HaveLength(45);
-        tab.DisplayLabel.Should().Be(new string('A', 45));
+        tab.DisplayLabel.Should().HaveLength(48);
+        tab.DisplayLabel.Should().Be(new string('A', 45) + "...");
     }
 
     [Fact]
@@ -84,10 +84,10 @@ public class NoteTabTests
     public void DisplayLabel_TruncatesAfterNewlineStripping()
     {
         // Content with newlines where the cleaned text exceeds 45 chars
-        // 4 groups of 15 chars separated by newlines -> 63 chars after cleaning -> truncated to 45
+        // 4 groups of 15 chars separated by newlines -> 63 chars after cleaning -> truncated to 45 + "..."
         var tab = new NoteTab { Name = null, Content = new string('A', 15) + "\n" + new string('B', 15) + "\n" + new string('C', 15) + "\n" + new string('D', 15) };
-        tab.DisplayLabel.Should().HaveLength(45);
-        tab.DisplayLabel.Should().Be("AAAAAAAAAAAAAAA BBBBBBBBBBBBBBB CCCCCCCCCCCCC");
+        tab.DisplayLabel.Should().HaveLength(48);
+        tab.DisplayLabel.Should().Be("AAAAAAAAAAAAAAA BBBBBBBBBBBBBBB CCCCCCCCCCCCC...");
     }
 
     [Fact]
