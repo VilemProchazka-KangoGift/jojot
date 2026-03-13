@@ -42,6 +42,7 @@ public partial class PreferencesPanel : UserControl
         {
             _recordingHotkey = false;
             HotkeyRecordText.Text = "Record";
+            HotkeyService.StopRecordingMode();
         }
 
         var anim = new DoubleAnimation
@@ -84,6 +85,7 @@ public partial class PreferencesPanel : UserControl
     {
         _recordingHotkey = false;
         HotkeyRecordText.Text = "Record";
+        HotkeyService.StopRecordingMode();
     }
 
     internal static string FontSizeToPercent(int size) => $"{Math.Round(size * 100.0 / 13)}%";
@@ -144,12 +146,14 @@ public partial class PreferencesPanel : UserControl
         {
             _recordingHotkey = false;
             HotkeyRecordText.Text = "Record";
+            HotkeyService.StopRecordingMode();
             HotkeyRecordingChanged?.Invoke(this, false);
         }
         else
         {
             _recordingHotkey = true;
             HotkeyRecordText.Text = "Press keys...";
+            HotkeyService.StartRecordingMode();
             HotkeyRecordingChanged?.Invoke(this, true);
         }
     }

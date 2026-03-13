@@ -170,6 +170,15 @@ public partial class MainWindow
             var mods = Keyboard.Modifiers;
             var key = e.Key == Key.System ? e.SystemKey : e.Key;
 
+            // Escape cancels recording
+            if (key == Key.Escape)
+            {
+                PreferencesPanel.StopRecording();
+                HotkeyService.ResumeHotkey();
+                e.Handled = true;
+                return;
+            }
+
             // Ignore lone modifier presses
             if (key == Key.LeftCtrl || key == Key.RightCtrl || key == Key.LeftShift ||
                 key == Key.RightShift || key == Key.LeftAlt || key == Key.RightAlt ||
@@ -188,6 +197,10 @@ public partial class MainWindow
 
             uint win32Mods = HotkeyService.ModifierKeysToWin32(mods);
             uint vk = (uint)KeyInterop.VirtualKeyFromKey(key);
+
+            // Stop the LL hook BEFORE attempting registration so the Win key
+            // is no longer suppressed when we call RegisterHotKey
+            HotkeyService.StopRecordingMode();
 
             _ = Task.Run(async () =>
             {
