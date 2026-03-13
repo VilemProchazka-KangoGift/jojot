@@ -19,8 +19,31 @@ public static class HotkeyService
     [DllImport("user32.dll", SetLastError = true)]
     private static extern bool UnregisterHotKey(IntPtr hWnd, int id);
 
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern IntPtr SetWindowsHookEx(int idHook, LowLevelKeyboardProc lpfn, IntPtr hMod, uint dwThreadId);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool UnhookWindowsHookEx(IntPtr hhk);
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr CallNextHookEx(IntPtr hhk, int nCode, IntPtr wParam, IntPtr lParam);
+
+    [DllImport("kernel32.dll")]
+    private static extern IntPtr GetModuleHandle(string? lpModuleName);
+
+    private delegate IntPtr LowLevelKeyboardProc(int nCode, IntPtr wParam, IntPtr lParam);
+
     private const int WM_HOTKEY = 0x0312;
     private const int HOTKEY_ID = 0x9001;
+
+    private const int WH_KEYBOARD_LL = 13;
+    private const int WM_KEYDOWN = 0x0100;
+    private const int WM_KEYUP = 0x0101;
+    private const int WM_SYSKEYDOWN = 0x0104;
+    private const int WM_SYSKEYUP = 0x0105;
+    private const int VK_LWIN = 0x5B;
+    private const int VK_RWIN = 0x5C;
 
     private const uint MOD_ALT = 0x0001;
     private const uint MOD_CONTROL = 0x0002;
@@ -36,6 +59,10 @@ public static class HotkeyService
     private static HwndSource? _source;
     private static Action? _onHotkeyPressed;
     private static bool _isRegistered;
+
+    private static IntPtr _llKeyboardHook;
+    private static LowLevelKeyboardProc? _llKeyboardProc; // prevent GC collection of delegate
+    private static bool _isRecording;
 
     /// <summary>
     /// Initializes the global hotkey service. Must be called after the window has a valid HWND.
@@ -88,6 +115,22 @@ public static class HotkeyService
     /// <param name="vk">Virtual key code.</param>
     public static async Task<bool> UpdateHotkeyAsync(uint modifiers, uint vk)
     {
+        // If recording the same combo that's already set, just re-register it
+        if (modifiers == _modifiers && vk == _vk)
+        {
+            if (!_isRegistered)
+            {
+                bool reRegSuccess = RegisterHotKey(_hwnd, HOTKEY_ID, _modifiers | MOD_NOREPEAT, _vk);
+                _isRegistered = reRegSuccess;
+                if (reRegSuccess)
+                {
+                    LogService.Info("Global hotkey re-registered (same combo): {HotkeyDisplay}", GetHotkeyDisplayString());
+                }
+                return reRegSuccess;
+            }
+            return true; // Already registered with same combo
+        }
+
         if (_isRegistered)
         {
             UnregisterHotKey(_hwnd, HOTKEY_ID);
@@ -238,11 +281,62 @@ public static class HotkeyService
     }
 
     /// <summary>
+    /// Installs a low-level keyboard hook that suppresses the Win key's default
+    /// Start Menu behavior during hotkey recording. This prevents the OS from
+    /// stealing focus when the user presses Win as part of a hotkey combo.
+    /// Must be called on the UI thread.
+    /// </summary>
+    public static void StartRecordingMode()
+    {
+        if (_llKeyboardHook != IntPtr.Zero) return;
+        _isRecording = true;
+        _llKeyboardProc = LowLevelKeyboardHookProc;
+        _llKeyboardHook = SetWindowsHookEx(WH_KEYBOARD_LL, _llKeyboardProc, GetModuleHandle(null), 0);
+        if (_llKeyboardHook == IntPtr.Zero)
+        {
+            LogService.Warn("Failed to install low-level keyboard hook for recording");
+        }
+    }
+
+    /// <summary>
+    /// Removes the low-level keyboard hook installed for recording.
+    /// Must be called on the UI thread.
+    /// </summary>
+    public static void StopRecordingMode()
+    {
+        _isRecording = false;
+        if (_llKeyboardHook != IntPtr.Zero)
+        {
+            UnhookWindowsHookEx(_llKeyboardHook);
+            _llKeyboardHook = IntPtr.Zero;
+            _llKeyboardProc = null;
+        }
+    }
+
+    private static IntPtr LowLevelKeyboardHookProc(int nCode, IntPtr wParam, IntPtr lParam)
+    {
+        if (nCode >= 0 && _isRecording)
+        {
+            int vkCode = Marshal.ReadInt32(lParam);
+            if (vkCode == VK_LWIN || vkCode == VK_RWIN)
+            {
+                // Suppress Win key default behavior (Start Menu) but allow WPF to see it as a modifier.
+                // We swallow the key message entirely -- WPF's Keyboard.Modifiers still tracks
+                // the Win key state via GetKeyState, which is unaffected by the hook suppression.
+                return (IntPtr)1;
+            }
+        }
+        return CallNextHookEx(_llKeyboardHook, nCode, wParam, lParam);
+    }
+
+    /// <summary>
     /// Cleans up: unregisters the global hotkey and removes the message hook.
     /// Called from App.OnExit.
     /// </summary>
     public static void Shutdown()
     {
+        StopRecordingMode();
+
         if (_isRegistered && _hwnd != IntPtr.Zero)
         {
             UnregisterHotKey(_hwnd, HOTKEY_ID);
