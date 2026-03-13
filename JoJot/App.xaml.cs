@@ -104,6 +104,9 @@ public partial class App : Application
             // Explicit shutdown mode — process stays alive when all windows are closed
             ShutdownMode = ShutdownMode.OnExplicitShutdown;
 
+            // Handle OS shutdown/logoff so JoJot does not block Windows session end
+            SessionEnding += OnSessionEnding;
+
             // Open database and ensure schema
             var dbPath = AppEnvironment.DatabasePath;
             await DatabaseCore.OpenAsync(dbPath);
@@ -543,6 +546,26 @@ public partial class App : Application
             _pendingRecoveryToast = true;
         }
         LogService.Info("Pending moves check: recovery complete");
+    }
+
+    /// <summary>
+    /// Handles Windows OS shutdown or user logoff.
+    /// Flushes all open windows synchronously and calls Shutdown() so OnExit
+    /// can clean up IPC, hotkeys, VirtualDesktop, ThemeService, database, and mutex.
+    /// Does NOT cancel the session (e.Cancel remains false) — Windows must proceed.
+    /// </summary>
+    private void OnSessionEnding(object sender, SessionEndingCancelEventArgs e)
+    {
+        LogService.Info("Windows session ending (reason: {Reason}) -- flushing and shutting down...", e.ReasonSessionEnding);
+
+        // Snapshot the window list — FlushAndClose triggers Closed which removes entries from _windows
+        var windows = _windows.Values.ToList();
+        foreach (var window in windows)
+        {
+            window.FlushAndClose();
+        }
+
+        Shutdown();
     }
 
     /// <summary>
