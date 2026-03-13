@@ -44,7 +44,7 @@ public static class NoteStore
         try
         {
             await using var context = DatabaseCore.CreateContext();
-            var now = DatabaseCore.Clock.UtcNow;
+            var now = DatabaseCore.Clock.Now;
             var note = new NoteTab
             {
                 DesktopGuid = desktopGuid,
@@ -79,7 +79,7 @@ public static class NoteStore
         try
         {
             await using var context = DatabaseCore.CreateContext();
-            var now = DatabaseCore.Clock.UtcNow;
+            var now = DatabaseCore.Clock.Now;
             await context.Notes
                 .Where(n => n.Id == noteId)
                 .ExecuteUpdateAsync(s => s
@@ -106,7 +106,7 @@ public static class NoteStore
         try
         {
             await using var context = DatabaseCore.CreateContext();
-            var now = DatabaseCore.Clock.UtcNow;
+            var now = DatabaseCore.Clock.Now;
             await context.Notes
                 .Where(n => n.Id == noteId)
                 .ExecuteUpdateAsync(s => s
@@ -133,7 +133,7 @@ public static class NoteStore
         try
         {
             await using var context = DatabaseCore.CreateContext();
-            var now = DatabaseCore.Clock.UtcNow;
+            var now = DatabaseCore.Clock.Now;
             await context.Notes
                 .Where(n => n.Id == noteId)
                 .ExecuteUpdateAsync(s => s

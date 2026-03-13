@@ -236,8 +236,8 @@ public class CoverageBoostTests : IAsyncLifetime
 
             var previews = await NoteStore.GetNotePreviewsForDesktopAsync("prev-ts");
             previews.Should().ContainSingle();
-            previews[0].CreatedAt.Should().Be(clock.UtcNow);
-            previews[0].UpdatedAt.Should().Be(clock.UtcNow);
+            previews[0].CreatedAt.Should().Be(clock.Now);
+            previews[0].UpdatedAt.Should().Be(clock.Now);
         }
         finally
         {
