@@ -232,14 +232,42 @@ public class MainWindowViewModel : ObservableObject
 
     /// <summary>
     /// Re-sorts the collection after toggling a tab's pin state.
-    /// Pinned tabs sort to top, then by sort_order.
+    /// When <paramref name="justToggled"/> is provided, places it at the top of its group
+    /// (pinned tabs → top of pinned group; unpinned tabs → top of unpinned group).
+    /// When <paramref name="justToggled"/> is null, falls back to sorting both groups by SortOrder.
     /// Reassigns sort_order values to match new positions.
     /// </summary>
-    internal void ReorderAfterPinToggle()
+    internal void ReorderAfterPinToggle(NoteTab? justToggled = null)
     {
-        var sorted = Tabs.OrderByDescending(t => t.Pinned).ThenBy(t => t.SortOrder).ToList();
+        var pinned = Tabs.Where(t => t.Pinned).ToList();
+        var unpinned = Tabs.Where(t => !t.Pinned).ToList();
+
+        if (justToggled is not null)
+        {
+            if (justToggled.Pinned)
+            {
+                pinned.Remove(justToggled);
+                pinned.Sort((a, b) => a.SortOrder.CompareTo(b.SortOrder));
+                pinned.Insert(0, justToggled);
+                unpinned.Sort((a, b) => a.SortOrder.CompareTo(b.SortOrder));
+            }
+            else
+            {
+                unpinned.Remove(justToggled);
+                unpinned.Sort((a, b) => a.SortOrder.CompareTo(b.SortOrder));
+                unpinned.Insert(0, justToggled);
+                pinned.Sort((a, b) => a.SortOrder.CompareTo(b.SortOrder));
+            }
+        }
+        else
+        {
+            pinned.Sort((a, b) => a.SortOrder.CompareTo(b.SortOrder));
+            unpinned.Sort((a, b) => a.SortOrder.CompareTo(b.SortOrder));
+        }
+
         Tabs.Clear();
-        foreach (var t in sorted) Tabs.Add(t);
+        foreach (var t in pinned) Tabs.Add(t);
+        foreach (var t in unpinned) Tabs.Add(t);
 
         for (int i = 0; i < Tabs.Count; i++)
             Tabs[i].SortOrder = i;

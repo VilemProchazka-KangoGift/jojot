@@ -583,7 +583,7 @@ public partial class MainWindow
         tab.Pinned = !tab.Pinned;
         await NoteStore.UpdateNotePinnedAsync(tab.Id, tab.Pinned);
 
-        ViewModel.ReorderAfterPinToggle();
+        ViewModel.ReorderAfterPinToggle(tab);
         await NoteStore.UpdateNoteSortOrdersAsync(_tabs.Select(t => (t.Id, t.SortOrder)));
 
         RebuildTabList();
