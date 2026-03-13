@@ -257,8 +257,8 @@ public class NoteStoreTests : IAsyncLifetime
 
             var notes = await NoteStore.GetNotesForDesktopAsync("ts-desk");
             var note = notes.Single();
-            note.CreatedAt.Should().Be(clock.UtcNow);
-            note.UpdatedAt.Should().Be(clock.UtcNow);
+            note.CreatedAt.Should().Be(clock.Now);
+            note.UpdatedAt.Should().Be(clock.Now);
         }
         finally
         {
@@ -274,7 +274,7 @@ public class NoteStoreTests : IAsyncLifetime
         try
         {
             var id = await NoteStore.InsertNoteAsync("ts-update", "Note", "Old", false, 0);
-            var originalTime = clock.UtcNow;
+            var originalTime = clock.Now;
 
             clock.Advance(TimeSpan.FromMinutes(5));
             await NoteStore.UpdateNoteContentAsync(id, "New");
