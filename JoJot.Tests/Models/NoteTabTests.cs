@@ -227,4 +227,114 @@ public class NoteTabTests
         var dt = new DateTime(2025, 6, 15, 14, 30, 0);
         NoteTab.UpdatedTooltip(dt).Should().Be("Last updated: Jun 15, 2025 2:30 PM");
     }
+
+    // ─── StalenessOpacity ───────────────────────────────────────────
+
+    [Fact]
+    public void StalenessOpacity_FullWhenJustUpdated()
+    {
+        var clock = new TestClock { Now = new DateTime(2025, 6, 15, 10, 30, 0) };
+        var result = NoteTab.CalculateStalenessOpacity(clock.Now, clock);
+        result.Should().Be(1.0);
+    }
+
+    [Fact]
+    public void StalenessOpacity_99PercentAfter15Minutes()
+    {
+        var clock = new TestClock { Now = new DateTime(2025, 6, 15, 10, 45, 0) };
+        var updatedAt = new DateTime(2025, 6, 15, 10, 30, 0);
+        var result = NoteTab.CalculateStalenessOpacity(updatedAt, clock);
+        result.Should().BeApproximately(0.99, 0.0001);
+    }
+
+    [Fact]
+    public void StalenessOpacity_98PercentAfter30Minutes()
+    {
+        var clock = new TestClock { Now = new DateTime(2025, 6, 15, 11, 0, 0) };
+        var updatedAt = new DateTime(2025, 6, 15, 10, 30, 0);
+        var result = NoteTab.CalculateStalenessOpacity(updatedAt, clock);
+        result.Should().BeApproximately(0.98, 0.0001);
+    }
+
+    [Fact]
+    public void StalenessOpacity_DecreasesLinearlyWithTime()
+    {
+        var clock = new TestClock { Now = new DateTime(2025, 6, 15, 14, 30, 0) };
+        var updatedAt = new DateTime(2025, 6, 15, 10, 30, 0); // 4 hours = 240 min = 16 intervals
+        var result = NoteTab.CalculateStalenessOpacity(updatedAt, clock);
+        result.Should().BeApproximately(0.84, 0.0001);
+    }
+
+    [Fact]
+    public void StalenessOpacity_At24Hours_Returns4Percent()
+    {
+        var clock = new TestClock { Now = new DateTime(2025, 6, 16, 10, 30, 0) };
+        var updatedAt = new DateTime(2025, 6, 15, 10, 30, 0); // exactly 24h = 96 intervals
+        var result = NoteTab.CalculateStalenessOpacity(updatedAt, clock);
+        result.Should().BeApproximately(0.04, 0.0001);
+    }
+
+    [Fact]
+    public void StalenessOpacity_JustBefore25Hours_StillVisible()
+    {
+        var clock = new TestClock { Now = new DateTime(2025, 6, 16, 11, 29, 0) };
+        var updatedAt = new DateTime(2025, 6, 15, 10, 30, 0); // 24h 59min
+        var result = NoteTab.CalculateStalenessOpacity(updatedAt, clock);
+        result.Should().BeGreaterThan(0.0);
+    }
+
+    [Fact]
+    public void StalenessOpacity_At25Hours_Disappears()
+    {
+        var clock = new TestClock { Now = new DateTime(2025, 6, 16, 11, 30, 0) };
+        var updatedAt = new DateTime(2025, 6, 15, 10, 30, 0); // exactly 25h = 1500 min → 0
+        var result = NoteTab.CalculateStalenessOpacity(updatedAt, clock);
+        result.Should().Be(0.0);
+    }
+
+    [Fact]
+    public void StalenessOpacity_Beyond25Hours_ReturnsZero()
+    {
+        var clock = new TestClock { Now = new DateTime(2025, 6, 17, 10, 30, 0) };
+        var updatedAt = new DateTime(2025, 6, 15, 10, 30, 0); // 48h
+        var result = NoteTab.CalculateStalenessOpacity(updatedAt, clock);
+        result.Should().Be(0.0);
+    }
+
+    [Fact]
+    public void StalenessOpacity_FutureDate_ReturnsFull()
+    {
+        var clock = new TestClock { Now = new DateTime(2025, 6, 15, 10, 30, 0) };
+        var updatedAt = new DateTime(2025, 6, 15, 11, 0, 0); // 30 min in the future
+        var result = NoteTab.CalculateStalenessOpacity(updatedAt, clock);
+        result.Should().Be(1.0);
+    }
+
+    [Fact]
+    public void StalenessOpacity_PropertyRaisesChangedOnUpdatedAtChange()
+    {
+        var tab = new NoteTab { UpdatedAt = DateTime.Now };
+        var changedProperties = new List<string>();
+        tab.PropertyChanged += (_, e) => changedProperties.Add(e.PropertyName!);
+
+        tab.UpdatedAt = DateTime.Now.AddMinutes(-30);
+
+        changedProperties.Should().Contain(nameof(NoteTab.StalenessOpacity));
+    }
+
+    [Fact]
+    public void RefreshStaleness_RaisesPropertyChanged()
+    {
+        var tab = new NoteTab { UpdatedAt = DateTime.Now.AddHours(-1) };
+        var raised = false;
+        tab.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(NoteTab.StalenessOpacity))
+                raised = true;
+        };
+
+        tab.RefreshStaleness();
+
+        raised.Should().BeTrue();
+    }
 }

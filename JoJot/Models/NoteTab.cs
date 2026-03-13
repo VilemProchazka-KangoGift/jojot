@@ -27,7 +27,7 @@ public class NoteTab : ObservableObject
 
     private static readonly string[] NameDependents = [nameof(DisplayLabel), nameof(IsPlaceholder)];
     private static readonly string[] ContentDependents = [nameof(DisplayLabel), nameof(IsPlaceholder)];
-    private static readonly string[] UpdatedAtDependents = [nameof(UpdatedDisplay), nameof(UpdatedTooltipText)];
+    private static readonly string[] UpdatedAtDependents = [nameof(UpdatedDisplay), nameof(UpdatedTooltipText), nameof(StalenessOpacity)];
 
     private string? _name;
     private string _content = "";
@@ -219,6 +219,34 @@ public class NoteTab : ObservableObject
 
         return dt.ToString("MMM d, yyyy h:mm tt");
     }
+
+    /// <summary>
+    /// Opacity of the staleness indicator circle.
+    /// Starts at 1.0 when freshly updated, decreases by 1% per 15 minutes.
+    /// Disappears completely once it would reach 0.
+    /// </summary>
+    public double StalenessOpacity => CalculateStalenessOpacity(UpdatedAt, null);
+
+    /// <summary>
+    /// Calculates staleness indicator opacity: starts at 1.0, loses 1% per 15 minutes.
+    /// </summary>
+    internal static double CalculateStalenessOpacity(DateTime updatedAt, IClock? clock)
+    {
+        var now = (clock ?? SystemClock.Instance).Now;
+        var minutes = (now - updatedAt).TotalMinutes;
+
+        if (minutes <= 0)
+            return 1.0;
+
+        var opacity = 1.0 - minutes / 15.0 * 0.01;
+        return opacity <= 0.0 ? 0.0 : opacity;
+    }
+
+    /// <summary>
+    /// Raises PropertyChanged for StalenessOpacity so the UI refreshes the indicator.
+    /// Called on window activation and by the hourly refresh timer.
+    /// </summary>
+    public void RefreshStaleness() => OnPropertyChanged(nameof(StalenessOpacity));
 
     /// <summary>
     /// Tooltip text for the created-at date, bound in the tab DataTemplate.

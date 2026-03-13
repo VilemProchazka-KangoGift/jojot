@@ -106,11 +106,16 @@
                                    Foreground="{DynamicResource c-text-muted}"
                                    HorizontalAlignment="Left"
                                    ToolTip="{Binding CreatedTooltipText}"/>
-                        <TextBlock Text="{Binding UpdatedDisplay}"
-                                   FontSize="10"
-                                   Foreground="{DynamicResource c-text-muted}"
-                                   HorizontalAlignment="Right"
-                                   ToolTip="{Binding UpdatedTooltipText}"/>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right"
+                                    ToolTip="{Binding UpdatedTooltipText}">
+                            <Ellipse Width="6" Height="6"
+                                     Fill="{DynamicResource c-text-muted}"
+                                     Opacity="{Binding StalenessOpacity}"
+                                     VerticalAlignment="Center" Margin="0,0,4,0"/>
+                            <TextBlock Text="{Binding UpdatedDisplay}"
+                                       FontSize="10"
+                                       Foreground="{DynamicResource c-text-muted}"/>
+                        </StackPanel>
                     </Grid>
                 </Grid>
             </Border>

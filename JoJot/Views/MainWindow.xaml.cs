@@ -135,6 +135,7 @@ public partial class MainWindow : Window
     // ─── Autosave & Undo ─────────────────────────────────────────
     private readonly AutosaveService _autosaveService = new();
     private readonly System.Windows.Threading.DispatcherTimer _checkpointTimer;
+    private readonly System.Windows.Threading.DispatcherTimer _stalenessTimer;
     private bool _suppressTextChanged
     {
         get => ViewModel.IsRestoringContent;
@@ -165,6 +166,13 @@ public partial class MainWindow : Window
             Interval = TimeSpan.FromMinutes(5)
         };
         _checkpointTimer.Tick += CheckpointTimer_Tick;
+
+        _stalenessTimer = new System.Windows.Threading.DispatcherTimer
+        {
+            Interval = TimeSpan.FromHours(1)
+        };
+        _stalenessTimer.Tick += (_, _) => RefreshStalenessIndicators();
+        _stalenessTimer.Start();
 
         InitializeComponent();
         InitializeInputBindings();
@@ -333,6 +341,7 @@ public partial class MainWindow : Window
         // Window drag detection and misplaced check
         VirtualDesktopService.WindowMovedToDesktop += OnWindowMovedToDesktop;
         Activated += OnWindowActivated_CheckMisplaced;
+        Activated += (_, _) => RefreshStalenessIndicators();
     }
 
     /// <summary>
@@ -340,6 +349,18 @@ public partial class MainWindow : Window
     /// Used by App for registry keying and event routing.
     /// </summary>
     public string DesktopGuid => ViewModel.DesktopGuid;
+
+    // ─── Staleness Refresh ─────────────────────────────────────────────────
+
+    /// <summary>
+    /// Notifies all tabs to recalculate their staleness indicator opacity.
+    /// Called on window activation and by the hourly timer.
+    /// </summary>
+    private void RefreshStalenessIndicators()
+    {
+        foreach (var tab in _tabs)
+            tab.RefreshStaleness();
+    }
 
     // ─── Visual Tree Helper ─────────────────────────────────────────────────
 
