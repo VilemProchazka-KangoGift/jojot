@@ -82,6 +82,16 @@ public partial class MainWindow
     }
 
     /// <summary>
+    /// Called by other windows after an orphan recovery action.
+    /// Updates the badge and closes the recovery panel (which would show stale data).
+    /// </summary>
+    public void NotifyOrphansChanged()
+    {
+        UpdateOrphanBadge();
+        HideRecoveryPanel();
+    }
+
+    /// <summary>
     /// Creates a flat row for an orphaned session in the recovery panel.
     /// Shows desktop name (bold), tab count + date (muted), individual tab previews
     /// (name + excerpt), "+N more" if excess, and Adopt/Delete buttons.
@@ -299,10 +309,21 @@ public partial class MainWindow
     /// <summary>
     /// Refreshes recovery panel and badge after an orphan action.
     /// Closes the panel if no orphans remain. Always reloads tabs.
+    /// Broadcasts badge/panel updates to all other JoJot windows.
     /// </summary>
     private async Task RefreshAfterOrphanAction()
     {
         UpdateOrphanBadge();
+
+        // Notify all other windows to update their badge and close stale recovery panels
+        if (Application.Current is App app)
+        {
+            foreach (var window in app.GetAllWindows())
+            {
+                if (window == this) continue;
+                window.NotifyOrphansChanged();
+            }
+        }
 
         if (VirtualDesktopService.OrphanedSessionGuids.Count == 0)
         {
