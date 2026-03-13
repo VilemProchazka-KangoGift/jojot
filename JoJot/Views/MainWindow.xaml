@@ -95,7 +95,8 @@
                                        FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
                                        FontSize="12"
                                        Foreground="{DynamicResource c-text-muted}"
-                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                       HorizontalAlignment="Right" VerticalAlignment="Center"
+                                       Margin="0,0,1,0"/>
                         </Border>
                     </Grid>
 
