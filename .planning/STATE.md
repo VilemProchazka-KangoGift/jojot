@@ -73,9 +73,10 @@ None.
 | 4 | drag-reorder fade-in animation | 2026-03-10 | 96c7f8e | [4-during-drag-and-drop-reorder-when-the-ta](./quick/4-during-drag-and-drop-reorder-when-the-ta/) |
 | 5 | fix tab title not updating live as user types | 2026-03-10 | 98b526c | [5-fix-tab-title-not-updating-live-as-user-](./quick/5-fix-tab-title-not-updating-live-as-user-/) |
 | 6 | strip newlines from auto-generated tab titles | 2026-03-10 | 1482d2d | [6-strip-newlines-from-auto-generated-tab-t](./quick/6-strip-newlines-from-auto-generated-tab-t/) |
+| 7 | when pinning a tab it should appear at the top of the pinned group | 2026-03-13 | 51369f9 | [7-when-pinning-a-tab-it-should-appear-on-t](./quick/7-when-pinning-a-tab-it-should-appear-on-t/) |
 
 ## Session Continuity
 
-Last session: 2026-03-10
-Stopped at: Completed 01-03-PLAN.md Task 1 — awaiting checkpoint:human-verify for complete find/replace visual verification
+Last session: 2026-03-13
+Stopped at: Completed quick task 7 — pin-to-top UX improvement with TDD
 Resume file: None
