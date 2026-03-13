@@ -79,9 +79,10 @@ None.
 | 11 | capture editor content before undo so redo restores unsaved typing | 2026-03-13 | 2734181 | [11-autosave-editor-state-before-undo-so-red](./quick/11-autosave-editor-state-before-undo-so-red/) |
 | 12 | fix global hotkey recording: Win key suppression, same-combo detection, Escape cancel | 2026-03-13 | 3fbaf75 | [12-fix-global-hotkey-record-shortcut-loses-](./quick/12-fix-global-hotkey-record-shortcut-loses-/) |
 | 13 | right-align tab close (X) button glyph to match updated timestamp right edge | 2026-03-14 | 28407a3 | [13-right-align-the-tab-x-remove-button-it-s](./quick/13-right-align-the-tab-x-remove-button-it-s/) |
+| 14 | fix tab highlight missing on window open and after pin toggle | 2026-03-14 | 3a49f9f | [14-fix-tab-highlight-missing-on-window-open](./quick/14-fix-tab-highlight-missing-on-window-open/) |
 
 ## Session Continuity
 
-Last session: 2026-03-13
-Stopped at: Completed quick task 13 — right-align tab close button X glyph with timestamp edge
+Last session: 2026-03-14
+Stopped at: Completed quick task 14 — fix tab highlight missing on window open and after pin toggle
 Resume file: None
