@@ -38,7 +38,7 @@ See: .planning/PROJECT.md (updated 2026-03-10)
 Milestone: v1.2 Find & Replace -- AWAITING VERIFICATION
 Phase: 01-add-in-editor-find-panel-with-ctrl-f (3/3 plans complete)
 Current plan: 01-03-PLAN.md (checkpoint:human-verify pending)
-Last activity: 2026-03-13 - Completed quick task 9: recovery panel broadcast to all windows after orphan action
+Last activity: 2026-03-13 - Completed quick task 11: capture editor content before undo to fix redo
 
 ## Accumulated Context
 
@@ -76,9 +76,10 @@ None.
 | 7 | when pinning a tab it should appear at the top of the pinned group | 2026-03-13 | 51369f9 | [7-when-pinning-a-tab-it-should-appear-on-t](./quick/7-when-pinning-a-tab-it-should-appear-on-t/) |
 | 8 | handle OS shutdown/logoff so JoJot does not block Windows session end | 2026-03-13 | ec90b1e | [8-when-shutting-down-windows-os-all-jojot-](./quick/8-when-shutting-down-windows-os-all-jojot-/) |
 | 9 | recovery panel should disappear after acting on orphaned sessions | 2026-03-13 | d389c0e | [9-recovery-panel-should-disappear-after-ac](./quick/9-recovery-panel-should-disappear-after-ac/) |
+| 11 | capture editor content before undo so redo restores unsaved typing | 2026-03-13 | 2734181 | [11-autosave-editor-state-before-undo-so-red](./quick/11-autosave-editor-state-before-undo-so-red/) |
 
 ## Session Continuity
 
 Last session: 2026-03-13
-Stopped at: Completed quick task 9 — recovery panel cross-window broadcast
+Stopped at: Completed quick task 11 — PerformUndo push-before-undo fix
 Resume file: None
