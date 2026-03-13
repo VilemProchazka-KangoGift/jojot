@@ -38,7 +38,7 @@ See: .planning/PROJECT.md (updated 2026-03-10)
 Milestone: v1.2 Find & Replace -- AWAITING VERIFICATION
 Phase: 01-add-in-editor-find-panel-with-ctrl-f (3/3 plans complete)
 Current plan: 01-03-PLAN.md (checkpoint:human-verify pending)
-Last activity: 2026-03-14 - Completed quick task 13: right-align tab X button with timestamp edge
+Last activity: 2026-03-14 - Completed quick task 14: fix tab highlight missing on window open and after pin toggle
 
 ## Accumulated Context
 
