@@ -410,11 +410,22 @@ public partial class MainWindow
     /// <summary>
     /// Applies the background highlight to a selected tab item.
     /// Uses FindNamedDescendant to locate pin/close buttons in the DataTemplate.
+    /// If the DataTemplate visual tree is not yet applied (e.g. on window open or after
+    /// RebuildTabList), defers a single retry to DispatcherPriority.Loaded.
     /// </summary>
-    private void ApplyActiveHighlight(ListBoxItem item)
+    private void ApplyActiveHighlight(ListBoxItem item, bool isDeferred = false)
     {
         var outerBorder = FindNamedDescendant<Border>(item, "OuterBorder");
-        if (outerBorder is null) return;
+        if (outerBorder is null)
+        {
+            if (!isDeferred)
+            {
+                // DataTemplate not yet applied — defer until layout pass completes
+                Dispatcher.BeginInvoke(() => ApplyActiveHighlight(item, isDeferred: true),
+                    System.Windows.Threading.DispatcherPriority.Loaded);
+            }
+            return;
+        }
 
         outerBorder.Background = GetBrush("c-selected-bg");
 
