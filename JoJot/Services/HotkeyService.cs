@@ -63,6 +63,14 @@ public static class HotkeyService
     private static IntPtr _llKeyboardHook;
     private static LowLevelKeyboardProc? _llKeyboardProc; // prevent GC collection of delegate
     private static bool _isRecording;
+    private static bool _winKeyHeldDuringRecording;
+
+    /// <summary>
+    /// Returns true if the Win key is currently held during recording mode.
+    /// The LL hook suppresses Win key messages from reaching WPF, so the
+    /// recording handler must check this flag to include Win in the modifier set.
+    /// </summary>
+    public static bool IsWinKeyHeld => _winKeyHeldDuringRecording;
 
     /// <summary>
     /// Initializes the global hotkey service. Must be called after the window has a valid HWND.
@@ -305,6 +313,7 @@ public static class HotkeyService
     public static void StopRecordingMode()
     {
         _isRecording = false;
+        _winKeyHeldDuringRecording = false;
         if (_llKeyboardHook != IntPtr.Zero)
         {
             UnhookWindowsHookEx(_llKeyboardHook);
@@ -320,9 +329,14 @@ public static class HotkeyService
             int vkCode = Marshal.ReadInt32(lParam);
             if (vkCode == VK_LWIN || vkCode == VK_RWIN)
             {
-                // Suppress Win key default behavior (Start Menu) but allow WPF to see it as a modifier.
-                // We swallow the key message entirely -- WPF's Keyboard.Modifiers still tracks
-                // the Win key state via GetKeyState, which is unaffected by the hook suppression.
+                // Suppress Win key to prevent Start Menu from activating.
+                // Track press/release manually via _winKeyHeldDuringRecording since
+                // swallowing the message prevents WPF's Keyboard.Modifiers from seeing it.
+                int msg = wParam.ToInt32();
+                if (msg == WM_KEYDOWN || msg == WM_SYSKEYDOWN)
+                    _winKeyHeldDuringRecording = true;
+                else if (msg == WM_KEYUP || msg == WM_SYSKEYUP)
+                    _winKeyHeldDuringRecording = false;
                 return (IntPtr)1;
             }
         }

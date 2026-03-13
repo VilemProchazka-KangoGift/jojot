@@ -170,6 +170,10 @@ public partial class MainWindow
             var mods = Keyboard.Modifiers;
             var key = e.Key == Key.System ? e.SystemKey : e.Key;
 
+            // LL hook suppresses Win key from reaching WPF — check manual tracking
+            if (HotkeyService.IsWinKeyHeld)
+                mods |= ModifierKeys.Windows;
+
             // Escape cancels recording
             if (key == Key.Escape)
             {
@@ -202,19 +206,9 @@ public partial class MainWindow
             // is no longer suppressed when we call RegisterHotKey
             HotkeyService.StopRecordingMode();
 
-            _ = Task.Run(async () =>
-            {
-                bool success = await HotkeyService.UpdateHotkeyAsync(win32Mods, vk);
-                await Dispatcher.InvokeAsync(() =>
-                {
-                    PreferencesPanel.StopRecording();
-                    PreferencesPanel.UpdateHotkeyDisplay(HotkeyService.GetHotkeyDisplayString());
-                    if (!success)
-                    {
-                        ShowInfoToast("Hotkey already in use by another app");
-                    }
-                });
-            });
+            // Call on UI thread (not Task.Run) — RegisterHotKey requires a
+            // thread with a message queue, which thread pool threads lack
+            _ = ApplyRecordedHotkeyAsync(win32Mods, vk);
 
             e.Handled = true;
             return;
@@ -307,6 +301,21 @@ public partial class MainWindow
 
             e.Handled = true;
             return;
+        }
+    }
+
+    /// <summary>
+    /// Registers the recorded hotkey combination and updates the UI.
+    /// Runs on the UI thread so RegisterHotKey has access to a message queue.
+    /// </summary>
+    private async Task ApplyRecordedHotkeyAsync(uint modifiers, uint vk)
+    {
+        bool success = await HotkeyService.UpdateHotkeyAsync(modifiers, vk);
+        PreferencesPanel.StopRecording();
+        PreferencesPanel.UpdateHotkeyDisplay(HotkeyService.GetHotkeyDisplayString());
+        if (!success)
+        {
+            ShowInfoToast("Hotkey already in use by another app");
         }
     }
 

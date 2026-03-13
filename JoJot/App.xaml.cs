@@ -296,24 +296,17 @@ public partial class App : Application
                 {
                     try
                     {
-                        // Global hotkey action: toggle focus/minimize
+                        // Global hotkey action: activate window and create a new note
                         var currentGuid = VirtualDesktopService.CurrentDesktopGuid;
                         if (_windows.TryGetValue(currentGuid, out var w))
                         {
-                            // Toggle: if foreground and not minimized -> minimize; otherwise -> activate
-                            if (w.IsActive && w.WindowState != WindowState.Minimized)
-                            {
-                                w.WindowState = WindowState.Minimized;
-                            }
-                            else
-                            {
-                                w.WindowState = WindowState.Normal;
-                                WindowActivationHelper.ActivateWindow(w);
-                            }
+                            w.WindowState = WindowState.Normal;
+                            WindowActivationHelper.ActivateWindow(w);
+                            _ = w.CreateNewTabAsync();
                         }
                         else
                         {
-                            // No window for this desktop — create one
+                            // No window for this desktop — create one (auto-creates first tab)
                             _ = CreateWindowForDesktop(currentGuid);
                         }
                     }
