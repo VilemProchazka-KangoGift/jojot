@@ -349,6 +349,133 @@ public class TabCrudTests
         vm.Tabs[1].SortOrder.Should().Be(1);
     }
 
+    // ─── ReorderAfterPinToggle (justToggled) ─────────────────────────
+
+    [Fact]
+    public void ReorderAfterPinToggle_WithJustPinned_PlacesTabAtTopOfPinnedGroup()
+    {
+        var vm = CreateVm();
+        var existingPin1 = MakeTab(1, pinned: true, sortOrder: 0, content: "a");
+        var existingPin2 = MakeTab(2, pinned: true, sortOrder: 1, content: "b");
+        var justPinned   = MakeTab(3, pinned: true, sortOrder: 2, content: "c");
+        vm.Tabs.Add(existingPin1);
+        vm.Tabs.Add(existingPin2);
+        vm.Tabs.Add(justPinned);
+
+        vm.ReorderAfterPinToggle(justPinned);
+
+        vm.Tabs[0].Id.Should().Be(3); // just-pinned goes to top
+        vm.Tabs[1].Id.Should().Be(1); // existing pins shift down, preserve relative order
+        vm.Tabs[2].Id.Should().Be(2);
+    }
+
+    [Fact]
+    public void ReorderAfterPinToggle_WithJustPinned_NoOtherPins_PlacesAtIndex0()
+    {
+        var vm = CreateVm();
+        var unpinned1  = MakeTab(1, pinned: false, sortOrder: 0, content: "a");
+        var justPinned = MakeTab(2, pinned: true,  sortOrder: 1, content: "b");
+        vm.Tabs.Add(unpinned1);
+        vm.Tabs.Add(justPinned);
+
+        vm.ReorderAfterPinToggle(justPinned);
+
+        vm.Tabs[0].Id.Should().Be(2); // only pinned tab — goes to top
+        vm.Tabs[1].Id.Should().Be(1);
+    }
+
+    [Fact]
+    public void ReorderAfterPinToggle_WithJustUnpinned_PlacesTabAtTopOfUnpinnedGroup()
+    {
+        var vm = CreateVm();
+        var pinned       = MakeTab(1, pinned: true,  sortOrder: 0, content: "a");
+        var justUnpinned = MakeTab(2, pinned: false, sortOrder: 1, content: "b");
+        var unpinned2    = MakeTab(3, pinned: false, sortOrder: 2, content: "c");
+        vm.Tabs.Add(pinned);
+        vm.Tabs.Add(justUnpinned);
+        vm.Tabs.Add(unpinned2);
+
+        vm.ReorderAfterPinToggle(justUnpinned);
+
+        vm.Tabs[0].Id.Should().Be(1); // pinned stays at top
+        vm.Tabs[1].Id.Should().Be(2); // just-unpinned goes to first unpinned position
+        vm.Tabs[2].Id.Should().Be(3); // remaining unpinned tabs shift down
+    }
+
+    [Fact]
+    public void ReorderAfterPinToggle_WithJustPinned_ExistingPinsPreserveRelativeOrder()
+    {
+        var vm = CreateVm();
+        // Three existing pins with sort orders 0, 1, 2 — and a tab being pinned at sort 10
+        var pin1      = MakeTab(1, pinned: true, sortOrder: 0, content: "a");
+        var pin2      = MakeTab(2, pinned: true, sortOrder: 1, content: "b");
+        var pin3      = MakeTab(3, pinned: true, sortOrder: 2, content: "c");
+        var newPin    = MakeTab(4, pinned: true, sortOrder: 10, content: "d");
+        var unpinned  = MakeTab(5, pinned: false, sortOrder: 11, content: "e");
+        vm.Tabs.Add(pin1);
+        vm.Tabs.Add(pin2);
+        vm.Tabs.Add(pin3);
+        vm.Tabs.Add(newPin);
+        vm.Tabs.Add(unpinned);
+
+        vm.ReorderAfterPinToggle(newPin);
+
+        vm.Tabs[0].Id.Should().Be(4); // new pin at top
+        vm.Tabs[1].Id.Should().Be(1); // existing relative order preserved
+        vm.Tabs[2].Id.Should().Be(2);
+        vm.Tabs[3].Id.Should().Be(3);
+        vm.Tabs[4].Id.Should().Be(5); // unpinned unchanged
+    }
+
+    [Fact]
+    public void ReorderAfterPinToggle_WithJustPinned_ExistingUnpinnedPreserveRelativeOrder()
+    {
+        var vm = CreateVm();
+        var unpinned1  = MakeTab(1, pinned: false, sortOrder: 0, content: "a");
+        var unpinned2  = MakeTab(2, pinned: false, sortOrder: 1, content: "b");
+        var justPinned = MakeTab(3, pinned: true,  sortOrder: 2, content: "c");
+        vm.Tabs.Add(unpinned1);
+        vm.Tabs.Add(unpinned2);
+        vm.Tabs.Add(justPinned);
+
+        vm.ReorderAfterPinToggle(justPinned);
+
+        vm.Tabs[0].Id.Should().Be(3); // just-pinned at top
+        vm.Tabs[1].Id.Should().Be(1); // unpinned preserve their sort-by-SortOrder order
+        vm.Tabs[2].Id.Should().Be(2);
+    }
+
+    [Fact]
+    public void ReorderAfterPinToggle_WithNull_PreservesExistingSortBySortOrderBehavior()
+    {
+        var vm = CreateVm();
+        vm.Tabs.Add(MakeTab(1, pinned: false, sortOrder: 0, content: "a"));
+        vm.Tabs.Add(MakeTab(2, pinned: true,  sortOrder: 1, content: "b"));
+        vm.Tabs.Add(MakeTab(3, pinned: false, sortOrder: 2, content: "c"));
+
+        vm.ReorderAfterPinToggle(null);
+
+        // Same as calling with no argument — pinned first, then by SortOrder
+        vm.Tabs[0].Id.Should().Be(2);
+        vm.Tabs[1].Id.Should().Be(1);
+        vm.Tabs[2].Id.Should().Be(3);
+    }
+
+    [Fact]
+    public void ReorderAfterPinToggle_WithJustToggled_ReassignsSortOrders()
+    {
+        var vm = CreateVm();
+        var justPinned = MakeTab(1, pinned: true,  sortOrder: 5, content: "a");
+        var unpinned   = MakeTab(2, pinned: false, sortOrder: 10, content: "b");
+        vm.Tabs.Add(justPinned);
+        vm.Tabs.Add(unpinned);
+
+        vm.ReorderAfterPinToggle(justPinned);
+
+        vm.Tabs[0].SortOrder.Should().Be(0);
+        vm.Tabs[1].SortOrder.Should().Be(1);
+    }
+
     // ─── GetClonePosition ────────────────────────────────────────────
 
     [Fact]
