@@ -38,7 +38,7 @@ See: .planning/PROJECT.md (updated 2026-03-10)
 Milestone: v1.2 Find & Replace -- AWAITING VERIFICATION
 Phase: 01-add-in-editor-find-panel-with-ctrl-f (3/3 plans complete)
 Current plan: 01-03-PLAN.md (checkpoint:human-verify pending)
-Last activity: 2026-03-13 - Completed quick task 8: handle OS shutdown/logoff gracefully via SessionEnding
+Last activity: 2026-03-13 - Completed quick task 9: recovery panel broadcast to all windows after orphan action
 
 ## Accumulated Context
 
@@ -75,9 +75,10 @@ None.
 | 6 | strip newlines from auto-generated tab titles | 2026-03-10 | 1482d2d | [6-strip-newlines-from-auto-generated-tab-t](./quick/6-strip-newlines-from-auto-generated-tab-t/) |
 | 7 | when pinning a tab it should appear at the top of the pinned group | 2026-03-13 | 51369f9 | [7-when-pinning-a-tab-it-should-appear-on-t](./quick/7-when-pinning-a-tab-it-should-appear-on-t/) |
 | 8 | handle OS shutdown/logoff so JoJot does not block Windows session end | 2026-03-13 | ec90b1e | [8-when-shutting-down-windows-os-all-jojot-](./quick/8-when-shutting-down-windows-os-all-jojot-/) |
+| 9 | recovery panel should disappear after acting on orphaned sessions | 2026-03-13 | d389c0e | [9-recovery-panel-should-disappear-after-ac](./quick/9-recovery-panel-should-disappear-after-ac/) |
 
 ## Session Continuity
 
 Last session: 2026-03-13
-Stopped at: Completed quick task 8 — graceful OS shutdown via SessionEnding handler
+Stopped at: Completed quick task 9 — recovery panel cross-window broadcast
 Resume file: None
