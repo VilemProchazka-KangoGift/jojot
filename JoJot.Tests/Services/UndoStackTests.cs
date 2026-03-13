@@ -312,4 +312,55 @@ public class UndoStackTests
         stack.Redo();
         stack.LastAccessTime.Should().Be(_clock.Now);
     }
+
+    // ─── Undo captures current content for redo ────────────────────────
+
+    [Fact]
+    public void PushSnapshotBeforeUndo_EnablesRedoToUnsavedContent()
+    {
+        // Simulates: autosave pushed "a" and "b", user typed "c" (not yet autosaved),
+        // then called PushSnapshot("c") before Undo — redo should restore "c".
+        var stack = CreateStack();
+        stack.PushSnapshot("a");
+        stack.PushSnapshot("b");
+
+        // Simulate PerformUndo: push current content before calling Undo
+        stack.PushSnapshot("c"); // unsaved typing captured before undo
+        stack.Undo();            // moves back to "b"
+
+        stack.Redo().Should().Be("c");
+    }
+
+    [Fact]
+    public void PushSnapshot_IsNoop_WhenContentMatchesCurrentIndex()
+    {
+        // Dedup: pushing the same content as the current snapshot is a no-op.
+        // Undo/Redo should still return correct values with no duplicate entries.
+        var stack = CreateStack();
+        stack.PushSnapshot("a");
+        stack.PushSnapshot("b");
+        stack.PushSnapshot("b"); // duplicate — should be ignored
+
+        stack.Undo().Should().Be("a");
+        stack.Redo().Should().Be("b");
+        stack.CanRedo.Should().BeFalse(); // no extra entries were created
+    }
+
+    [Fact]
+    public void PushSnapshotBeforeUndo_FullRoundTrip()
+    {
+        // Full cycle: PushInitialContent("a"), PushSnapshot("b"), then unsaved content "c_unsaved".
+        // Two undos return "b" then "a". Two redos return "b" then "c_unsaved".
+        var stack = CreateStack();
+        stack.PushInitialContent("a");
+        stack.PushSnapshot("b");
+
+        // Simulate PerformUndo capturing unsaved typing "c_unsaved" before first undo
+        stack.PushSnapshot("c_unsaved");
+        stack.Undo().Should().Be("b");  // first undo
+        stack.Undo().Should().Be("a");  // second undo
+
+        stack.Redo().Should().Be("b");          // first redo
+        stack.Redo().Should().Be("c_unsaved");  // second redo — restores unsaved typing
+    }
 }

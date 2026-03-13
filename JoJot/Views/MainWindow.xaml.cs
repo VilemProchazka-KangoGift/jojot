@@ -545,6 +545,11 @@ public partial class MainWindow : Window
     private void PerformUndo()
     {
         if (_activeTab is null) return;
+
+        // Capture current editor content so redo can restore it.
+        // PushSnapshot deduplicates if content matches the current index.
+        UndoManager.Instance.PushSnapshot(_activeTab.Id, ContentEditor.Text);
+
         var content = UndoManager.Instance.Undo(_activeTab.Id);
         if (content is null) return;
 
