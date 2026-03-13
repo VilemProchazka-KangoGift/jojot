@@ -13,7 +13,7 @@ public class NoteTab : ObservableObject
     /// <summary>
     /// Maximum number of characters shown in the display label before truncation.
     /// </summary>
-    private const int DisplayLabelMaxLength = 30;
+    private const int DisplayLabelMaxLength = 45;
 
     /// <summary>
     /// Placeholder text shown when a note has no name and no content.
@@ -106,7 +106,7 @@ public class NoteTab : ObservableObject
     public int CursorPosition { get; set; }
 
     /// <summary>
-    /// Three-tier label fallback: custom name, first ~30 chars of content, or "New note" placeholder.
+    /// Three-tier label fallback: custom name, first ~45 chars of content, or "New note" placeholder.
     /// </summary>
     public string DisplayLabel
     {

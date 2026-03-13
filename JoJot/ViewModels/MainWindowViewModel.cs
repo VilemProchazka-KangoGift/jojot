@@ -474,7 +474,7 @@ public class MainWindowViewModel : ObservableObject
 
     /// <summary>
     /// Generates a default filename for Save As.
-    /// Priority: tab name → first 30 chars of content → "JoJot note YYYY-MM-DD".
+    /// Priority: tab name → first 45 chars of content → "JoJot note YYYY-MM-DD".
     /// </summary>
     internal static string GetDefaultFilename(NoteTab tab)
     {
@@ -484,8 +484,8 @@ public class MainWindowViewModel : ObservableObject
         if (!string.IsNullOrWhiteSpace(tab.Content))
         {
             string preview = tab.Content.Trim();
-            if (preview.Length > 30)
-                preview = preview[..30];
+            if (preview.Length > 45)
+                preview = preview[..45];
             return SanitizeFilename(preview) + ".txt";
         }
 
@@ -632,7 +632,7 @@ public class MainWindowViewModel : ObservableObject
             return content.Length > 50 ? content[..50] + "..." : content;
         }
 
-        // No custom name — DisplayLabel already shows first 30 chars of content
+        // No custom name — DisplayLabel already shows first 45 chars of content
         return "";
     }
 

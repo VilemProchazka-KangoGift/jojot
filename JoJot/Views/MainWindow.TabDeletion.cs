@@ -159,11 +159,11 @@ public partial class MainWindow
 
     /// <summary>
     /// Sets toast text for a single-tab deletion: e.g. "Note name" deleted
-    /// with the name portion in italic. Truncates raw label to 30 chars.
+    /// with the name portion in italic. Truncates raw label to 45 chars.
     /// </summary>
     private void UpdateToastContent(string rawLabel)
     {
-        string truncated = rawLabel.Length > 30 ? rawLabel[..30] : rawLabel;
+        string truncated = rawLabel.Length > 45 ? rawLabel[..45] : rawLabel;
 
         ToastMessageBlock.Inlines.Clear();
         ToastMessageBlock.Inlines.Add(new System.Windows.Documents.Run("\u201C"));
