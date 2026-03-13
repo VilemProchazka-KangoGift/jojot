@@ -29,6 +29,10 @@
     <InternalsVisibleTo Include="JoJot.Tests" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Resource Include="Assets\jojot.ico" />
+  </ItemGroup>
+
   <!-- Exclude WinForms global using to avoid ambiguity with WPF (Application, etc.) -->
   <ItemGroup>
     <Using Remove="System.Windows.Forms" />

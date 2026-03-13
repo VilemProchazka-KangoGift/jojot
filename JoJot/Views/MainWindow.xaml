@@ -13,7 +13,7 @@
         PreviewKeyDown="Window_PreviewKeyDown"
         PreviewMouseWheel="Window_PreviewMouseWheel"
         AllowDrop="True"
-        Icon="Assets/jojot.ico"
+        Icon="/Assets/jojot.ico"
         PreviewDragEnter="OnFileDragEnter" PreviewDragOver="OnFileDragOver"
         PreviewDragLeave="OnFileDragLeave" Drop="OnFileDrop">
     <Window.Resources>
