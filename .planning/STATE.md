@@ -59,6 +59,7 @@ None.
 ### Roadmap Evolution
 
 - Phase 1 added: Add in-editor find panel with Ctrl+F
+- Phase 2 added: Create a marketing README for GitHub homepage for the app
 
 ### Blockers/Concerns
 
@@ -87,5 +88,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-14
-Stopped at: Completed quick task 17 — fix timestamps to use local time zone in NoteStore
-Resume file: None
+Stopped at: Phase 2 context gathered
+Resume file: .planning/phases/02-create-a-marketing-readme-for-github-homepage-for-the-app/02-CONTEXT.md
