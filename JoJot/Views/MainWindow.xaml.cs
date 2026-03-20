@@ -484,6 +484,9 @@ public partial class MainWindow : Window
     {
         base.OnClosing(e);
 
+        // Remove WndProc hook before HWND is destroyed
+        RemoveDesktopActivationHook();
+
         // Stop autosave timer and flush synchronously
         _autosaveService.Stop();
         _checkpointTimer.Stop();

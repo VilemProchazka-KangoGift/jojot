@@ -82,3 +82,13 @@ Plans:
 - [x] 01-01-PLAN.md — Enhanced find engine + FindReplacePanel UserControl + theme colors (completed 2026-03-10)
 - [x] 01-02-PLAN.md — MainWindow integration, keyboard shortcuts, replace operations, cleanup (completed 2026-03-10)
 - [x] 01-03-PLAN.md — TextBoxHighlightAdorner + end-to-end visual verification (completed 2026-03-10)
+
+### Phase 2: Create a marketing README for GitHub homepage for the app
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 1
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 2 to break down)

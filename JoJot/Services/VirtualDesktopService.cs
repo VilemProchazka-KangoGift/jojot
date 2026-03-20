@@ -53,8 +53,10 @@ public static class VirtualDesktopService
     /// <summary>
     /// The GUID of the current virtual desktop as a string.
     /// Returns "default" in fallback mode.
+    /// Uses Volatile.Read for cross-thread visibility (read from WndProc hook on UI thread,
+    /// written from COM callback thread).
     /// </summary>
-    public static string CurrentDesktopGuid => _currentDesktopGuid;
+    public static string CurrentDesktopGuid => Volatile.Read(ref _currentDesktopGuid);
 
     /// <summary>
     /// The name of the current virtual desktop.
@@ -85,7 +87,7 @@ public static class VirtualDesktopService
             VirtualDesktopInterop.Initialize();
 
             var (id, name, index) = VirtualDesktopInterop.GetCurrentDesktop();
-            _currentDesktopGuid = id.ToString();
+            Volatile.Write(ref _currentDesktopGuid, id.ToString());
             _currentDesktopName = name;
             _currentDesktopIndex = index;
             _isAvailable = true;
@@ -98,7 +100,7 @@ public static class VirtualDesktopService
         {
             LogService.Warn("Virtual desktop API unavailable — fallback mode: {ErrorMessage}", ex.Message);
             _isAvailable = false;
-            _currentDesktopGuid = DefaultDesktopGuid;
+            Volatile.Write(ref _currentDesktopGuid, DefaultDesktopGuid);
             _currentDesktopName = "";
             _currentDesktopIndex = 0;
         }
@@ -190,10 +192,26 @@ public static class VirtualDesktopService
 
             // Fallback orphan detection: any session that isn't the default is orphaned
             var fallbackSessions = await SessionStore.GetAllSessionsAsync().ConfigureAwait(false);
-            var fallbackOrphans = fallbackSessions
+            var fallbackOrphanCandidates = fallbackSessions
                 .Where(s => !s.DesktopGuid.Equals(DefaultDesktopGuid, StringComparison.OrdinalIgnoreCase))
                 .Select(s => s.DesktopGuid)
                 .ToList();
+
+            // Auto-delete empty orphans (no tabs) — no point offering recovery
+            var fallbackOrphans = new List<string>();
+            foreach (var guid in fallbackOrphanCandidates)
+            {
+                int tabCount = await NoteStore.GetNoteCountForDesktopAsync(guid, cancellationToken).ConfigureAwait(false);
+                if (tabCount == 0)
+                {
+                    await SessionStore.DeleteSessionAndNotesAsync(guid).ConfigureAwait(false);
+                    LogService.Info("Auto-deleted empty orphaned session {DesktopGuid}", guid);
+                }
+                else
+                {
+                    fallbackOrphans.Add(guid);
+                }
+            }
             OrphanedSessionGuids = fallbackOrphans;
             if (fallbackOrphans.Count > 0)
             {
@@ -336,8 +354,24 @@ public static class VirtualDesktopService
             .Where(s => !matchedSessionGuids.Contains(s.DesktopGuid))
             .Select(s => s.DesktopGuid)
             .ToList();
-        OrphanedSessionGuids = orphanedGuids;
-        int orphanedCount = orphanedGuids.Count;
+
+        // Auto-delete empty orphans (no tabs) — no point offering recovery
+        var nonEmptyOrphans = new List<string>();
+        foreach (var guid in orphanedGuids)
+        {
+            int tabCount = await NoteStore.GetNoteCountForDesktopAsync(guid, cancellationToken).ConfigureAwait(false);
+            if (tabCount == 0)
+            {
+                await SessionStore.DeleteSessionAndNotesAsync(guid).ConfigureAwait(false);
+                LogService.Info("Auto-deleted empty orphaned session {DesktopGuid}", guid);
+            }
+            else
+            {
+                nonEmptyOrphans.Add(guid);
+            }
+        }
+        OrphanedSessionGuids = nonEmptyOrphans;
+        int orphanedCount = nonEmptyOrphans.Count;
 
         LogService.Info(
             "Session matching complete: Tier 1 (GUID): {Tier1}, Tier 2 (Name): {Tier2}, Tier 3 (Index): {Tier3}, Orphaned: {Orphaned}, New: {New}",
@@ -428,10 +462,11 @@ public static class VirtualDesktopService
             string newGuid = id.ToString();
             if (!newGuid.Equals(_currentDesktopGuid, StringComparison.OrdinalIgnoreCase))
             {
-                string oldGuid = _currentDesktopGuid;
+                string oldGuid = Volatile.Read(ref _currentDesktopGuid);
                 _previousDesktopGuid = oldGuid;
                 _lastDesktopSwitchTime = DateTime.UtcNow;
-                _currentDesktopGuid = newGuid;
+                Volatile.Write(ref _currentDesktopGuid, newGuid);
+                DesktopSwitchDetector.NotifyDesktopSwitch();
                 _currentDesktopName = name;
                 _currentDesktopIndex = index;
                 LogService.Info("Poll: desktop switched {OldGuid} -> {NewGuid}", oldGuid, newGuid);
@@ -528,7 +563,10 @@ public static class VirtualDesktopService
         _lastDesktopSwitchTime = DateTime.UtcNow;
 
         // Update internal state to reflect the new current desktop
-        _currentDesktopGuid = newGuid;
+        Volatile.Write(ref _currentDesktopGuid, newGuid);
+
+        // Record desktop switch timestamp for cross-desktop activation detection
+        DesktopSwitchDetector.NotifyDesktopSwitch();
 
         // Try to update name and index from the new desktop
         try

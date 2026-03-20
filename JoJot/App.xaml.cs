@@ -143,6 +143,9 @@ public partial class App : Application
                 LogService.Info("Virtual desktop: fallback mode (single-notepad)");
             }
 
+            // Desktop switch detection (keyboard hook for deliberate-switch filtering)
+            DesktopSwitchDetector.Initialize();
+
             // Subscribe to desktop notifications (must happen on UI thread for COM callbacks)
             VirtualDesktopService.SubscribeNotifications();
 
@@ -205,7 +208,9 @@ public partial class App : Application
                     try
                     {
                         if (!ShouldRedirect(DateTime.UtcNow, _redirectCooldownUntil,
-                            _windows.ContainsKey(oldGuid), _windows.ContainsKey(newGuid)))
+                            _windows.ContainsKey(oldGuid), _windows.ContainsKey(newGuid),
+                            DesktopSwitchDetector.WasCrossDesktopActivation(newGuid),
+                            DesktopSwitchDetector.IsRecentKeyboardNavigation))
                         {
                             return;
                         }
@@ -415,12 +420,22 @@ public partial class App : Application
 
     /// <summary>
     /// Determines whether a desktop-switch redirect should occur.
-    /// Redirect fires only when switching FROM a desktop without a JoJot window
-    /// TO a desktop with one, and the cooldown has expired.
+    /// Requires ALL conditions:
+    ///   1. Cooldown expired
+    ///   2. Cross-desktop activation detected (positive signal from WM_ACTIVATE)
+    ///   3. No recent keyboard navigation (Alt+Tab, Ctrl+Win+Arrow, Win+Tab)
+    ///   4. Switching FROM no-window TO has-window
+    /// The cross-desktop activation requirement prevents redirecting on deliberate
+    /// desktop switches (Task View, Ctrl+Win+Arrow, touchpad gestures) where the
+    /// COM callback fires before WM_ACTIVATE.
     /// </summary>
-    internal static bool ShouldRedirect(DateTime now, DateTime cooldownUntil, bool hasOldWindow, bool hasNewWindow)
+    internal static bool ShouldRedirect(DateTime now, DateTime cooldownUntil,
+        bool hasOldWindow, bool hasNewWindow,
+        bool crossDesktopActivation, bool isKeyboardNavigation)
     {
         if (now < cooldownUntil) return false;
+        if (!crossDesktopActivation) return false;
+        if (isKeyboardNavigation) return false;
         return !hasOldWindow && hasNewWindow;
     }
 
@@ -572,6 +587,7 @@ public partial class App : Application
         _appShutdownCts.Cancel();
         IpcService.StopServer();
         HotkeyService.Shutdown();
+        DesktopSwitchDetector.Shutdown();
         VirtualDesktopService.Shutdown();
         ThemeService.Shutdown();
 

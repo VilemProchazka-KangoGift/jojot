@@ -317,7 +317,20 @@ public partial class MainWindow
                 {
                     var oldBorder = FindNamedDescendant<Border>(oldItem, "OuterBorder");
                     if (oldBorder is not null)
+                    {
                         oldBorder.Background = System.Windows.Media.Brushes.Transparent;
+                    }
+                    else
+                    {
+                        // Template not yet applied — defer clear to match deferred highlight
+                        var itemToClean = oldItem;
+                        Dispatcher.BeginInvoke(() =>
+                        {
+                            var border = FindNamedDescendant<Border>(itemToClean, "OuterBorder");
+                            if (border is not null)
+                                border.Background = System.Windows.Media.Brushes.Transparent;
+                        }, System.Windows.Threading.DispatcherPriority.Loaded);
+                    }
 
                     var oldPinBtn = FindNamedDescendant<Border>(oldItem, "PinBtn");
                     var oldCloseBtn = FindNamedDescendant<Border>(oldItem, "CloseBtn");
@@ -415,6 +428,10 @@ public partial class MainWindow
     /// </summary>
     private void ApplyActiveHighlight(ListBoxItem item, bool isDeferred = false)
     {
+        // Guard against stale deferred calls — if selection changed since
+        // the original call, this item should no longer be highlighted.
+        if (item != TabList.SelectedItem) return;
+
         var outerBorder = FindNamedDescendant<Border>(item, "OuterBorder");
         if (outerBorder is null)
         {

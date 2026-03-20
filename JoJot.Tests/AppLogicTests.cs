@@ -64,7 +64,8 @@ public class AppLogicTests
         var now = DateTime.UtcNow;
         var cooldownExpired = now.AddSeconds(-1);
 
-        App.ShouldRedirect(now, cooldownExpired, hasOldWindow: false, hasNewWindow: true)
+        App.ShouldRedirect(now, cooldownExpired, hasOldWindow: false, hasNewWindow: true,
+            crossDesktopActivation: true, isKeyboardNavigation: false)
             .Should().BeTrue();
     }
 
@@ -74,7 +75,8 @@ public class AppLogicTests
         var now = DateTime.UtcNow;
         var cooldownActive = now.AddSeconds(3);
 
-        App.ShouldRedirect(now, cooldownActive, hasOldWindow: false, hasNewWindow: true)
+        App.ShouldRedirect(now, cooldownActive, hasOldWindow: false, hasNewWindow: true,
+            crossDesktopActivation: true, isKeyboardNavigation: false)
             .Should().BeFalse();
     }
 
@@ -84,7 +86,8 @@ public class AppLogicTests
         var now = DateTime.UtcNow;
         var cooldownExpired = DateTime.MinValue;
 
-        App.ShouldRedirect(now, cooldownExpired, hasOldWindow: true, hasNewWindow: true)
+        App.ShouldRedirect(now, cooldownExpired, hasOldWindow: true, hasNewWindow: true,
+            crossDesktopActivation: true, isKeyboardNavigation: false)
             .Should().BeFalse();
     }
 
@@ -94,7 +97,8 @@ public class AppLogicTests
         var now = DateTime.UtcNow;
         var cooldownExpired = DateTime.MinValue;
 
-        App.ShouldRedirect(now, cooldownExpired, hasOldWindow: false, hasNewWindow: false)
+        App.ShouldRedirect(now, cooldownExpired, hasOldWindow: false, hasNewWindow: false,
+            crossDesktopActivation: true, isKeyboardNavigation: false)
             .Should().BeFalse();
     }
 
@@ -104,7 +108,41 @@ public class AppLogicTests
         var now = DateTime.UtcNow;
         var cooldownExpired = DateTime.MinValue;
 
-        App.ShouldRedirect(now, cooldownExpired, hasOldWindow: true, hasNewWindow: false)
+        App.ShouldRedirect(now, cooldownExpired, hasOldWindow: true, hasNewWindow: false,
+            crossDesktopActivation: true, isKeyboardNavigation: false)
+            .Should().BeFalse();
+    }
+
+    [Fact]
+    public void ShouldRedirect_NoCrossDesktopActivation_ReturnsFalse()
+    {
+        var now = DateTime.UtcNow;
+        var cooldownExpired = DateTime.MinValue;
+
+        App.ShouldRedirect(now, cooldownExpired, hasOldWindow: false, hasNewWindow: true,
+            crossDesktopActivation: false, isKeyboardNavigation: false)
+            .Should().BeFalse();
+    }
+
+    [Fact]
+    public void ShouldRedirect_KeyboardNavigation_ReturnsFalse()
+    {
+        var now = DateTime.UtcNow;
+        var cooldownExpired = DateTime.MinValue;
+
+        App.ShouldRedirect(now, cooldownExpired, hasOldWindow: false, hasNewWindow: true,
+            crossDesktopActivation: true, isKeyboardNavigation: true)
+            .Should().BeFalse();
+    }
+
+    [Fact]
+    public void ShouldRedirect_BothCrossDesktopAndKeyboard_ReturnsFalse()
+    {
+        var now = DateTime.UtcNow;
+        var cooldownExpired = DateTime.MinValue;
+
+        App.ShouldRedirect(now, cooldownExpired, hasOldWindow: false, hasNewWindow: true,
+            crossDesktopActivation: true, isKeyboardNavigation: true)
             .Should().BeFalse();
     }
 
