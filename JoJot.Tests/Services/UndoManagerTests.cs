@@ -86,7 +86,7 @@ public class UndoManagerTests
         stack.PushInitialContent("a");
         stack.PushSnapshot("b");
 
-        mgr.Undo(1).Should().Be("a");
+        mgr.Undo(1)!.Value.Content.Should().Be("a");
     }
 
     [Fact]
@@ -105,7 +105,7 @@ public class UndoManagerTests
         stack.PushSnapshot("b");
         mgr.Undo(1);
 
-        mgr.Redo(1).Should().Be("b");
+        mgr.Redo(1)!.Value.Content.Should().Be("b");
     }
 
     [Fact]
@@ -171,5 +171,19 @@ public class UndoManagerTests
         // After collapse, total should be reduced
         // (exact amount depends on collapse logic, just verify it doesn't crash)
         mgr.TotalEstimatedBytes.Should().BeGreaterThan(0);
+    }
+
+    [Fact]
+    public void PushSnapshot_WithCursorPosition_PassesToStack()
+    {
+        var mgr = CreateManager();
+        var stack = mgr.GetOrCreateStack(1);
+        stack.PushInitialContent("hello", cursorPosition: 0);
+
+        mgr.PushSnapshot(1, "hello world", cursorPosition: 11);
+
+        var entry = mgr.Undo(1)!.Value;
+        entry.Content.Should().Be("hello");
+        entry.CursorPosition.Should().Be(0);
     }
 }

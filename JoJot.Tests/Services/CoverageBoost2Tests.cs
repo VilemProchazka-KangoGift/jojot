@@ -242,12 +242,12 @@ public class UndoStackCoverageBoostTests
         stack.PushSnapshot("v2");
         stack.PushSnapshot("v3");
 
-        stack.Undo().Should().Be("v2");
-        stack.Undo().Should().Be("v1");
+        stack.Undo()!.Value.Content.Should().Be("v2");
+        stack.Undo()!.Value.Content.Should().Be("v1");
         stack.Undo().Should().BeNull(); // At beginning
 
-        stack.Redo().Should().Be("v2");
-        stack.Redo().Should().Be("v3");
+        stack.Redo()!.Value.Content.Should().Be("v2");
+        stack.Redo()!.Value.Content.Should().Be("v3");
         stack.Redo().Should().BeNull(); // At end
     }
 
@@ -263,8 +263,8 @@ public class UndoStackCoverageBoostTests
         stack.PushSnapshot("v2b"); // Destroys v3
 
         stack.CanRedo.Should().BeFalse();
-        stack.Undo().Should().Be("v2");
-        stack.Undo().Should().Be("v1");
+        stack.Undo()!.Value.Content.Should().Be("v2");
+        stack.Undo()!.Value.Content.Should().Be("v1");
     }
 
     [Fact]
@@ -346,9 +346,9 @@ public class UndoManagerCoverageBoostTests
         mgr.PushSnapshot(1, "v2");
 
         mgr.CanUndo(1).Should().BeTrue();
-        mgr.Undo(1).Should().Be("v1");
+        mgr.Undo(1)!.Value.Content.Should().Be("v1");
         mgr.CanRedo(1).Should().BeTrue();
-        mgr.Redo(1).Should().Be("v2");
+        mgr.Redo(1)!.Value.Content.Should().Be("v2");
     }
 
     [Fact]

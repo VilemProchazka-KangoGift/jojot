@@ -6,7 +6,7 @@ namespace JoJot.Tests.Services;
 /// <summary>
 /// Additional UndoStack tests targeting uncovered branches:
 /// PushCheckpoint overflow, EvictOldestTier2 edge cases, TruncateAfterCurrent cross-tier,
-/// CollapseTier1IntoTier2 when tier-2 is full, and GetContentAtIndex boundary.
+/// CollapseTier1IntoTier2 when tier-2 is full, and GetEntryAtIndex boundary.
 /// </summary>
 public class UndoStackCoverageTests
 {
@@ -171,8 +171,8 @@ public class UndoStackCoverageTests
         stack.CanRedo.Should().BeFalse();
 
         // Undo through remaining history
-        stack.Undo().Should().Be("new_2");
-        stack.Undo().Should().Be("new_1");
+        stack.Undo()!.Value.Content.Should().Be("new_2");
+        stack.Undo()!.Value.Content.Should().Be("new_1");
         // Now we should reach tier-2 entries
         var tier2Content = stack.Undo();
         tier2Content.Should().NotBeNull();
@@ -212,7 +212,7 @@ public class UndoStackCoverageTests
         }
     }
 
-    // ─── GetContentAtIndex — boundary conditions ────────────────────
+    // ─── GetEntryAtIndex — boundary conditions ────────────────────
 
     [Fact]
     public void Undo_ReturnsNull_OnEmptyStack()
@@ -264,8 +264,8 @@ public class UndoStackCoverageTests
         // tier2 has sampled entries, tier1 has [new_1, new_2, new_3]
 
         // Undo through tier-1 into tier-2
-        stack.Undo().Should().Be("new_2");
-        stack.Undo().Should().Be("new_1");
+        stack.Undo()!.Value.Content.Should().Be("new_2");
+        stack.Undo()!.Value.Content.Should().Be("new_1");
 
         // Next undo crosses into tier-2
         var tier2Content = stack.Undo();

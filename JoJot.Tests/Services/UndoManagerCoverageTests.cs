@@ -39,7 +39,8 @@ public class UndoManagerCoverageTests
     public void Redo_ReturnsNull_WhenNoStack()
     {
         var mgr = CreateManager();
-        mgr.Redo(999).Should().BeNull();
+        var result = mgr.Redo(999);
+        result.Should().BeNull();
     }
 
     [Fact]

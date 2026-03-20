@@ -77,10 +77,11 @@ public class UndoManager
     /// </summary>
     /// <param name="tabId">The tab identifier.</param>
     /// <param name="content">The content snapshot to push.</param>
-    public void PushSnapshot(long tabId, string content)
+    /// <param name="cursorPosition">The cursor position at the time of the snapshot.</param>
+    public void PushSnapshot(long tabId, string content, int cursorPosition = 0)
     {
         var stack = GetOrCreateStack(tabId);
-        stack.PushSnapshot(content);
+        stack.PushSnapshot(content, cursorPosition);
 
         if (TotalEstimatedBytes > (long)(MaxBudgetBytes * CollapseThreshold))
         {
@@ -89,20 +90,20 @@ public class UndoManager
     }
 
     /// <summary>
-    /// Undoes one step. Returns the previous content, or <c>null</c> if at the beginning.
+    /// Undoes one step. Returns the previous entry, or <c>null</c> if at the beginning.
     /// </summary>
     /// <param name="tabId">The tab identifier.</param>
-    public string? Undo(long tabId)
+    public UndoStack.UndoEntry? Undo(long tabId)
     {
         var stack = GetStack(tabId);
         return stack?.Undo();
     }
 
     /// <summary>
-    /// Redoes one step. Returns the next content, or <c>null</c> if at the end.
+    /// Redoes one step. Returns the next entry, or <c>null</c> if at the end.
     /// </summary>
     /// <param name="tabId">The tab identifier.</param>
-    public string? Redo(long tabId)
+    public UndoStack.UndoEntry? Redo(long tabId)
     {
         var stack = GetStack(tabId);
         return stack?.Redo();

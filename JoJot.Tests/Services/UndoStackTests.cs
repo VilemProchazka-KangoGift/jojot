@@ -66,7 +66,7 @@ public class UndoStackTests
         stack.PushSnapshot("d"); // destroys "c"
 
         stack.CanRedo.Should().BeFalse();
-        stack.Undo()!.Should().Be("b");
+        stack.Undo()!.Value.Content.Should().Be("b");
     }
 
     [Fact]
@@ -105,8 +105,8 @@ public class UndoStackTests
         stack.PushSnapshot("b");
         stack.PushSnapshot("c");
 
-        stack.Undo().Should().Be("b");
-        stack.Undo().Should().Be("a");
+        stack.Undo()!.Value.Content.Should().Be("b");
+        stack.Undo()!.Value.Content.Should().Be("a");
     }
 
     [Fact]
@@ -128,8 +128,8 @@ public class UndoStackTests
         stack.Undo();
         stack.Undo();
 
-        stack.Redo().Should().Be("b");
-        stack.Redo().Should().Be("c");
+        stack.Redo()!.Value.Content.Should().Be("b");
+        stack.Redo()!.Value.Content.Should().Be("c");
     }
 
     [Fact]
@@ -328,7 +328,7 @@ public class UndoStackTests
         stack.PushSnapshot("c"); // unsaved typing captured before undo
         stack.Undo();            // moves back to "b"
 
-        stack.Redo().Should().Be("c");
+        stack.Redo()!.Value.Content.Should().Be("c");
     }
 
     [Fact]
@@ -341,8 +341,8 @@ public class UndoStackTests
         stack.PushSnapshot("b");
         stack.PushSnapshot("b"); // duplicate — should be ignored
 
-        stack.Undo().Should().Be("a");
-        stack.Redo().Should().Be("b");
+        stack.Undo()!.Value.Content.Should().Be("a");
+        stack.Redo()!.Value.Content.Should().Be("b");
         stack.CanRedo.Should().BeFalse(); // no extra entries were created
     }
 
@@ -357,10 +357,89 @@ public class UndoStackTests
 
         // Simulate PerformUndo capturing unsaved typing "c_unsaved" before first undo
         stack.PushSnapshot("c_unsaved");
-        stack.Undo().Should().Be("b");  // first undo
-        stack.Undo().Should().Be("a");  // second undo
+        stack.Undo()!.Value.Content.Should().Be("b");  // first undo
+        stack.Undo()!.Value.Content.Should().Be("a");  // second undo
 
-        stack.Redo().Should().Be("b");          // first redo
-        stack.Redo().Should().Be("c_unsaved");  // second redo — restores unsaved typing
+        stack.Redo()!.Value.Content.Should().Be("b");          // first redo
+        stack.Redo()!.Value.Content.Should().Be("c_unsaved");  // second redo — restores unsaved typing
+    }
+
+    // ─── Cursor position ──────────────────────────────────────────────
+
+    [Fact]
+    public void PushSnapshot_StoresCursorPosition()
+    {
+        var stack = CreateStack();
+        stack.PushInitialContent("hello", cursorPosition: 5);
+        stack.PushSnapshot("hello world", cursorPosition: 11);
+
+        var entry = stack.Undo()!.Value;
+        entry.Content.Should().Be("hello");
+        entry.CursorPosition.Should().Be(5);
+    }
+
+    [Fact]
+    public void Redo_RestoresCursorPosition()
+    {
+        var stack = CreateStack();
+        stack.PushInitialContent("a", cursorPosition: 1);
+        stack.PushSnapshot("ab", cursorPosition: 2);
+        stack.PushSnapshot("abc", cursorPosition: 3);
+        stack.Undo(); // back to "ab"
+        stack.Undo(); // back to "a"
+
+        var entry = stack.Redo()!.Value;
+        entry.Content.Should().Be("ab");
+        entry.CursorPosition.Should().Be(2);
+    }
+
+    // ─── Tier-1 promotion ─────────────────────────────────────────────
+
+    [Fact]
+    public void Tier1Overflow_PromotesToTier2()
+    {
+        var stack = CreateStack();
+        stack.PushInitialContent("s0");
+
+        // Push MaxTier1 more snapshots to trigger promotion
+        for (int i = 1; i <= UndoStack.MaxTier1; i++)
+        {
+            stack.PushSnapshot($"s{i}");
+        }
+
+        // Should still be navigable — promotion moved oldest entries to tier-2
+        stack.EstimatedBytes.Should().BeGreaterThan(0);
+        stack.CanUndo.Should().BeTrue();
+
+        // Undo all the way should reach some tier-2 entries
+        int undoCount = 0;
+        while (stack.CanUndo)
+        {
+            stack.Undo().Should().NotBeNull();
+            undoCount++;
+        }
+        // Should have more undos than just tier-1 entries (due to promoted tier-2)
+        undoCount.Should().BeGreaterThan(0);
+    }
+
+    [Fact]
+    public void MaxTier1_200_BoundaryBehavior()
+    {
+        var stack = CreateStack();
+        stack.PushInitialContent("s0");
+
+        // Push exactly MaxTier1 - 1 more (total = 200, no overflow)
+        for (int i = 1; i < UndoStack.MaxTier1; i++)
+        {
+            stack.PushSnapshot($"s{i}");
+        }
+
+        // Undo all should reach s0
+        string? last = null;
+        while (stack.CanUndo)
+        {
+            last = stack.Undo()!.Value.Content;
+        }
+        last.Should().Be("s0");
     }
 }

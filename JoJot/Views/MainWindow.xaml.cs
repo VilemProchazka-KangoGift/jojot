@@ -204,11 +204,10 @@ public partial class MainWindow : Window
         };
         WireUpFindPanelEvents();
 
-        // Configure autosave service
+        // Configure autosave service (undo snapshots are pushed per-keystroke in ContentEditor_TextChanged)
         _autosaveService.Configure(
             contentProvider: () => _activeTab is not null ? (_activeTab.Id, ContentEditor.Text) : (0L, ""),
             saveFunc: NoteStore.UpdateNoteContentAsync,
-            onSnapshot: (tabId, content) => UndoManager.Instance.PushSnapshot(tabId, content),
             onSaveCompleted: (tabId) =>
             {
                 var tab = _tabs.FirstOrDefault(t => t.Id == tabId);
@@ -522,7 +521,7 @@ public partial class MainWindow : Window
     // ─── Autosave & Undo Helpers ────────────────────────────────────
 
     /// <summary>
-    /// TextChanged handler for autosave debounce trigger.
+    /// TextChanged handler for autosave debounce trigger and per-keystroke undo snapshots.
     /// Only fires for user-initiated changes (suppressed during programmatic text assignment).
     /// </summary>
     private void ContentEditor_TextChanged(object sender, TextChangedEventArgs e)
@@ -531,6 +530,9 @@ public partial class MainWindow : Window
 
         // Sync editor text to model so DisplayLabel binding updates live
         _activeTab.Content = ContentEditor.Text;
+
+        // Push per-keystroke undo snapshot (decoupled from autosave)
+        UndoManager.Instance.PushSnapshot(_activeTab.Id, _activeTab.Content, ContentEditor.CaretIndex);
 
         _autosaveService.NotifyTextChanged();
 
@@ -572,15 +574,15 @@ public partial class MainWindow : Window
 
         // Capture current editor content so redo can restore it.
         // PushSnapshot deduplicates if content matches the current index.
-        UndoManager.Instance.PushSnapshot(_activeTab.Id, ContentEditor.Text);
+        UndoManager.Instance.PushSnapshot(_activeTab.Id, ContentEditor.Text, ContentEditor.CaretIndex);
 
-        var content = UndoManager.Instance.Undo(_activeTab.Id);
-        if (content is null) return;
+        var entry = UndoManager.Instance.Undo(_activeTab.Id);
+        if (entry is null) return;
 
         _suppressTextChanged = true;
-        _activeTab.Content = content;
-        ContentEditor.Text = content;
-        ContentEditor.CaretIndex = Math.Min(_activeTab.CursorPosition, content.Length);
+        _activeTab.Content = entry.Value.Content;
+        ContentEditor.Text = entry.Value.Content;
+        ContentEditor.CaretIndex = Math.Min(entry.Value.CursorPosition, entry.Value.Content.Length);
         _suppressTextChanged = false;
 
         UpdateToolbarState(); // refresh undo/redo button states
@@ -593,13 +595,13 @@ public partial class MainWindow : Window
     private void PerformRedo()
     {
         if (_activeTab is null) return;
-        var content = UndoManager.Instance.Redo(_activeTab.Id);
-        if (content is null) return;
+        var entry = UndoManager.Instance.Redo(_activeTab.Id);
+        if (entry is null) return;
 
         _suppressTextChanged = true;
-        _activeTab.Content = content;
-        ContentEditor.Text = content;
-        ContentEditor.CaretIndex = Math.Min(_activeTab.CursorPosition, content.Length);
+        _activeTab.Content = entry.Value.Content;
+        ContentEditor.Text = entry.Value.Content;
+        ContentEditor.CaretIndex = Math.Min(entry.Value.CursorPosition, entry.Value.Content.Length);
         _suppressTextChanged = false;
 
         UpdateToolbarState(); // refresh undo/redo button states
