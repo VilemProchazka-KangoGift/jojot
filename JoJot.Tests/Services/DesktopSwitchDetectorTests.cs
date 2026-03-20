@@ -134,10 +134,30 @@ public class DesktopSwitchDetectorTests
     }
 
     [Fact]
-    public void IsActivationBeforeSwitch_JustBefore_ReturnsTrue()
+    public void IsActivationBeforeSwitch_BelowMinGap_ReturnsFalse()
     {
         long activationTicks = 50000;
-        long switchTicks = activationTicks + 1; // 1 tick later
+        long switchTicks = activationTicks + Frequency / 200; // 5ms — deliberate switch race
+
+        DesktopSwitchDetector.IsActivationBeforeSwitch(activationTicks, switchTicks, Frequency)
+            .Should().BeFalse();
+    }
+
+    [Fact]
+    public void IsActivationBeforeSwitch_AtMinGap_ReturnsFalse()
+    {
+        long activationTicks = 50000;
+        long switchTicks = activationTicks + Frequency / 20; // Exactly 50ms (boundary, not above)
+
+        DesktopSwitchDetector.IsActivationBeforeSwitch(activationTicks, switchTicks, Frequency)
+            .Should().BeFalse();
+    }
+
+    [Fact]
+    public void IsActivationBeforeSwitch_AboveMinGap_ReturnsTrue()
+    {
+        long activationTicks = 50000;
+        long switchTicks = activationTicks + Frequency / 10; // 100ms — taskbar click pattern
 
         DesktopSwitchDetector.IsActivationBeforeSwitch(activationTicks, switchTicks, Frequency)
             .Should().BeTrue();

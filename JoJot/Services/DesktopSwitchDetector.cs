@@ -56,6 +56,10 @@ public static class DesktopSwitchDetector
     private static string? _lastActivatedDesktopGuid;   // desktop GUID of the activated window
     private static long _lastDesktopSwitchTicks;        // Stopwatch ticks when COM callback fired
 
+    // Snapshot of cross-desktop detection result, set by NotifyDesktopSwitch
+    private static bool _lastSwitchWasCrossDesktop;
+    private static string? _lastCrossDesktopTargetGuid;
+
     /// <summary>
     /// Called from MainWindow WndProc on EVERY WM_ACTIVATE (not WA_INACTIVE).
     /// Records the activation timestamp and which window's desktop was activated.
@@ -70,35 +74,59 @@ public static class DesktopSwitchDetector
 
     /// <summary>
     /// Called from VirtualDesktopService when the COM desktop-changed callback fires
-    /// (or from PollDesktopChange in fallback mode). Records the desktop switch timestamp.
+    /// (or from PollDesktopChange in fallback mode). Snapshots the activation state,
+    /// evaluates cross-desktop detection, stores the result, then clears activation
+    /// timestamps to prevent stale values from triggering on the next switch.
+    /// <paramref name="newDesktopGuid"/> is the desktop being switched TO — used to verify
+    /// the activation was for a window on the destination desktop (taskbar click pattern)
+    /// rather than a window on the source desktop (normal interaction before a deliberate switch).
     /// </summary>
-    public static void NotifyDesktopSwitch()
+    public static void NotifyDesktopSwitch(string newDesktopGuid)
     {
-        Volatile.Write(ref _lastDesktopSwitchTicks, Stopwatch.GetTimestamp());
+        long switchTicks = Stopwatch.GetTimestamp();
+
+        // Snapshot activation state before clearing
+        long activationTicks = Volatile.Read(ref _lastActivationTicks);
+        string? activatedGuid = Volatile.Read(ref _lastActivatedDesktopGuid);
+
+        // Cross-desktop activation requires:
+        // 1. An activation was recorded
+        // 2. The activated window is on the DESTINATION desktop (taskbar click activates
+        //    a window on the desktop being switched to; normal interaction activates a
+        //    window on the source desktop — filtering this out prevents false positives
+        //    when the user interacts with JoJot then deliberately switches away)
+        // 3. The activation-to-switch gap is in the taskbar click range (50ms–2s)
+        bool wasCross = activationTicks != 0
+            && activatedGuid is not null
+            && activatedGuid.Equals(newDesktopGuid, StringComparison.OrdinalIgnoreCase)
+            && IsActivationBeforeSwitch(activationTicks, switchTicks, Stopwatch.Frequency);
+
+        // Store result for WasCrossDesktopActivation queries
+        Volatile.Write(ref _lastSwitchWasCrossDesktop, wasCross);
+        Volatile.Write(ref _lastCrossDesktopTargetGuid, activatedGuid);
+
+        // Clear activation state — prevents stale timestamps from triggering on next switch
+        Volatile.Write(ref _lastActivationTicks, 0L);
+        Volatile.Write(ref _lastActivatedDesktopGuid, null);
+
+        Volatile.Write(ref _lastDesktopSwitchTicks, switchTicks);
     }
 
     /// <summary>
-    /// Returns true if a JoJot window on <paramref name="targetDesktopGuid"/> was activated
-    /// BEFORE the last desktop switch — indicating the shell activated the window cross-desktop
-    /// (e.g. taskbar click) and then switched desktops as a side effect.
-    /// For deliberate switches (Task View, Ctrl+Win+Arrow, touchpad), the desktop switch
-    /// happens first and the window is activated after, so activation > switch → returns false.
+    /// Returns true if the last desktop switch was preceded by a cross-desktop window
+    /// activation on <paramref name="targetDesktopGuid"/> — indicating a taskbar click.
+    /// Uses the snapshot computed by <see cref="NotifyDesktopSwitch"/> rather than
+    /// re-reading raw timestamps, which prevents stale activation data from causing
+    /// false positives on subsequent switches.
     /// </summary>
     public static bool WasCrossDesktopActivation(string targetDesktopGuid)
     {
-        long activationTicks = Volatile.Read(ref _lastActivationTicks);
-        string? activatedGuid = Volatile.Read(ref _lastActivatedDesktopGuid);
-        long switchTicks = Volatile.Read(ref _lastDesktopSwitchTicks);
-
-        // No activation or no switch recorded
-        if (activationTicks == 0 || switchTicks == 0 || activatedGuid is null)
+        if (!Volatile.Read(ref _lastSwitchWasCrossDesktop))
             return false;
 
-        // Activation must be for a window on the target desktop
-        if (!activatedGuid.Equals(targetDesktopGuid, StringComparison.OrdinalIgnoreCase))
-            return false;
-
-        return IsActivationBeforeSwitch(activationTicks, switchTicks, Stopwatch.Frequency);
+        string? guid = Volatile.Read(ref _lastCrossDesktopTargetGuid);
+        return guid is not null
+            && guid.Equals(targetDesktopGuid, StringComparison.OrdinalIgnoreCase);
     }
 
     // ─── Keyboard hook ───────────────────────────────────────────────────
@@ -235,16 +263,18 @@ public static class DesktopSwitchDetector
 
     /// <summary>
     /// Returns true if <paramref name="activationTicks"/> occurred BEFORE
-    /// <paramref name="switchTicks"/> and the gap is less than 2 seconds.
+    /// <paramref name="switchTicks"/> with a gap between 50ms and 2 seconds.
     /// This indicates the window was activated cross-desktop before the shell
-    /// switched desktops (taskbar click pattern).
-    /// Returns false if either timestamp is 0 or activation came after the switch
-    /// (deliberate switch pattern).
+    /// switched desktops (taskbar click pattern, typically 50-200ms gap).
+    /// Returns false if either timestamp is 0, activation came after the switch
+    /// (deliberate switch pattern), or the gap is under 50ms (near-simultaneous
+    /// events from WM_ACTIVATE racing the COM callback during deliberate switches).
     /// </summary>
     internal static bool IsActivationBeforeSwitch(long activationTicks, long switchTicks, long frequency)
     {
         if (activationTicks == 0 || switchTicks == 0) return false;
         long gap = switchTicks - activationTicks;
-        return gap > 0 && gap < frequency * 2; // activation before switch, within 2 seconds
+        long minGap = frequency / 20; // 50ms — filters near-simultaneous events
+        return gap > minGap && gap < frequency * 2;
     }
 }

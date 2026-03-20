@@ -265,6 +265,13 @@ public partial class MainWindow
             return;
         }
 
+        // Insert key: suppress overwrite mode toggle
+        if (e.Key == Key.Insert && Keyboard.Modifiers == ModifierKeys.None)
+        {
+            e.Handled = true;
+            return;
+        }
+
         // F2: Rename active tab
         if (e.Key == Key.F2 && TabList.SelectedItem is ListBoxItem f2Item && f2Item.Tag is NoteTab f2Tab)
         {

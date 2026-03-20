@@ -466,7 +466,7 @@ public static class VirtualDesktopService
                 _previousDesktopGuid = oldGuid;
                 _lastDesktopSwitchTime = DateTime.UtcNow;
                 Volatile.Write(ref _currentDesktopGuid, newGuid);
-                DesktopSwitchDetector.NotifyDesktopSwitch();
+                DesktopSwitchDetector.NotifyDesktopSwitch(newGuid);
                 _currentDesktopName = name;
                 _currentDesktopIndex = index;
                 LogService.Info("Poll: desktop switched {OldGuid} -> {NewGuid}", oldGuid, newGuid);
@@ -566,7 +566,7 @@ public static class VirtualDesktopService
         Volatile.Write(ref _currentDesktopGuid, newGuid);
 
         // Record desktop switch timestamp for cross-desktop activation detection
-        DesktopSwitchDetector.NotifyDesktopSwitch();
+        DesktopSwitchDetector.NotifyDesktopSwitch(newGuid);
 
         // Try to update name and index from the new desktop
         try
