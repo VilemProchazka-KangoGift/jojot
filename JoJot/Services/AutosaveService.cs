@@ -13,6 +13,7 @@ public class AutosaveService
     private readonly IDebounceTimer _timer;
     private readonly IClock _clock;
     private int _debounceMs = 500;
+    private TimeSpan _debounceInterval = TimeSpan.FromMilliseconds(500);
     private DateTime _lastWriteCompleted;
     private bool _isDirty;
     private Func<(long TabId, string Content)>? _contentProvider;
@@ -44,7 +45,8 @@ public class AutosaveService
         set
         {
             _debounceMs = value;
-            _timer.Interval = TimeSpan.FromMilliseconds(value);
+            _debounceInterval = TimeSpan.FromMilliseconds(value);
+            _timer.Interval = _debounceInterval;
         }
     }
 
@@ -85,7 +87,7 @@ public class AutosaveService
 
         _isDirty = true;
         _timer.Stop();
-        _timer.Interval = TimeSpan.FromMilliseconds(_debounceMs);
+        _timer.Interval = _debounceInterval;
         _timer.Start();
     }
 

@@ -16,6 +16,7 @@ public partial class PreferencesPanel : UserControl
     public event EventHandler<int>? FontSizeChangeRequested;
     public event EventHandler? FontSizeResetRequested;
     public event EventHandler<bool>? HotkeyRecordingChanged;
+    public event EventHandler<string>? AutoDeleteDaysChanged;
 
     public bool IsRecordingHotkey => _recordingHotkey;
 
@@ -60,12 +61,17 @@ public partial class PreferencesPanel : UserControl
         PanelTransform.BeginAnimation(TranslateTransform.XProperty, anim);
     }
 
-    public void RefreshValues(int fontSize, ThemeService.AppTheme theme, string hotkeyDisplay)
+    public void RefreshValues(int fontSize, ThemeService.AppTheme theme, string hotkeyDisplay, string? autoDeleteDays = null)
     {
         FontSizeDisplay.Text = FontSizeToPercent(fontSize);
         UpdateThemeToggleHighlight(theme);
         HotkeyDisplay.Text = hotkeyDisplay;
+        _suppressAutoDeleteEvent = true;
+        AutoDeleteDaysInput.Text = autoDeleteDays ?? "";
+        _suppressAutoDeleteEvent = false;
     }
+
+    private bool _suppressAutoDeleteEvent;
 
     public void UpdateFontSizeDisplay(int fontSize)
     {
@@ -156,5 +162,19 @@ public partial class PreferencesPanel : UserControl
             HotkeyService.StartRecordingMode();
             HotkeyRecordingChanged?.Invoke(this, true);
         }
+    }
+
+    private void AutoDeleteDays_PreviewTextInput(object sender, TextCompositionEventArgs e)
+    {
+        foreach (char c in e.Text)
+        {
+            if (!char.IsDigit(c)) { e.Handled = true; return; }
+        }
+    }
+
+    private void AutoDeleteDays_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        if (_suppressAutoDeleteEvent) return;
+        AutoDeleteDaysChanged?.Invoke(this, AutoDeleteDaysInput.Text);
     }
 }

@@ -7,10 +7,25 @@ namespace JoJot.Data;
 /// <summary>
 /// EF Core DbContext for the JoJot SQLite database.
 /// Configured via Fluent API to match the existing snake_case schema.
+/// Supports both direct construction (string) and pooled construction (options).
 /// </summary>
-/// <param name="connectionString">SQLite connection string used by the provider.</param>
-public class JoJotDbContext(string connectionString) : DbContext
+public class JoJotDbContext : DbContext
 {
+    private readonly string? _connectionString;
+
+    /// <summary>
+    /// Creates a context using pre-built options (used by <see cref="PooledDbContextFactory{TContext}"/>).
+    /// </summary>
+    public JoJotDbContext(DbContextOptions<JoJotDbContext> options) : base(options) { }
+
+    /// <summary>
+    /// Creates a context from a connection string (fallback when pool is not initialized, e.g. tests).
+    /// </summary>
+    internal JoJotDbContext(string connectionString)
+    {
+        _connectionString = connectionString;
+    }
+
     /// <summary>
     /// Notes table — one row per tab/note.
     /// </summary>
@@ -37,8 +52,11 @@ public class JoJotDbContext(string connectionString) : DbContext
     /// <param name="optionsBuilder">The options builder provided by EF Core.</param>
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
-        optionsBuilder.UseSqlite(connectionString);
-        optionsBuilder.AddInterceptors(new SqlitePragmaInterceptor());
+        if (!optionsBuilder.IsConfigured && _connectionString is not null)
+        {
+            optionsBuilder.UseSqlite(_connectionString);
+            optionsBuilder.AddInterceptors(new SqlitePragmaInterceptor());
+        }
     }
 
     /// <summary>

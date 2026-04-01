@@ -1,4 +1,6 @@
 using Microsoft.Data.Sqlite;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using System.IO;
 using JoJot.Data;
 
@@ -16,6 +18,7 @@ public static class DatabaseCore
     private static string _dbPath = string.Empty;
     private static string _connectionString = string.Empty;
     private static IClock _clock = SystemClock.Instance;
+    private static PooledDbContextFactory<JoJotDbContext>? _contextFactory;
 
     /// <summary>Replaces the clock used for timestamps. For testing only.</summary>
     internal static void SetClock(IClock clock) => _clock = clock;
@@ -24,6 +27,15 @@ public static class DatabaseCore
 
     internal static async Task AcquireWriteLockAsync(CancellationToken ct = default)
     {
+        // Fast path: no external cancellation token — skip linked CTS allocation
+        if (ct == default)
+        {
+            if (!await _writeLock.WaitAsync(WriteLockTimeout).ConfigureAwait(false))
+                throw new TimeoutException(
+                    $"Failed to acquire database write lock within {WriteLockTimeout.TotalSeconds}s");
+            return;
+        }
+
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
         cts.CancelAfter(WriteLockTimeout);
         try
@@ -39,7 +51,8 @@ public static class DatabaseCore
 
     internal static void ReleaseWriteLock() => _writeLock.Release();
 
-    internal static JoJotDbContext CreateContext() => new(_connectionString);
+    internal static JoJotDbContext CreateContext() =>
+        _contextFactory?.CreateDbContext() ?? new JoJotDbContext(_connectionString);
 
     /// <summary>The current connection string. Exposed for test verification only.</summary>
     internal static string ConnectionString => _connectionString;
@@ -71,6 +84,8 @@ public static class DatabaseCore
         await ExecuteRawPragmaAsync("PRAGMA synchronous=NORMAL;").ConfigureAwait(false);
         await ExecuteRawPragmaAsync("PRAGMA foreign_keys=ON;").ConfigureAwait(false);
 
+        InitializeContextPool();
+
         LogService.Info("Database opened: {DbPath}", dbPath);
     }
 
@@ -87,6 +102,8 @@ public static class DatabaseCore
         await _rawConnection.OpenAsync().ConfigureAwait(false);
 
         await ExecuteRawPragmaAsync("PRAGMA foreign_keys=ON;").ConfigureAwait(false);
+
+        InitializeContextPool();
     }
 
     /// <summary>
@@ -212,6 +229,12 @@ public static class DatabaseCore
     /// </summary>
     public static async Task CloseAsync()
     {
+        if (_contextFactory is not null)
+        {
+            // IDisposable not available on PooledDbContextFactory; null the reference
+            _contextFactory = null;
+        }
+
         if (_rawConnection is not null)
         {
             await _rawConnection.CloseAsync().ConfigureAwait(false);
@@ -219,6 +242,32 @@ public static class DatabaseCore
             _rawConnection = null;
             LogService.Info("Database connection closed.");
         }
+    }
+
+    /// <summary>
+    /// Creates the pooled context factory. Call after _connectionString is set.
+    /// </summary>
+    private static void InitializeContextPool()
+    {
+        var options = new DbContextOptionsBuilder<JoJotDbContext>()
+            .UseSqlite(_connectionString)
+            .AddInterceptors(new SqlitePragmaInterceptor())
+            .Options;
+        _contextFactory = new PooledDbContextFactory<JoJotDbContext>(options, poolSize: 4);
+    }
+
+    /// <summary>
+    /// Warms up the EF Core model on a background thread so the first real query is fast.
+    /// Call from startup after <see cref="OpenAsync"/> but before the first query.
+    /// </summary>
+    public static Task WarmupModelAsync()
+    {
+        if (_contextFactory is null) return Task.CompletedTask;
+        return Task.Run(() =>
+        {
+            // Creating and disposing a context triggers model compilation + caches it for the pool.
+            using var ctx = _contextFactory.CreateDbContext();
+        });
     }
 
     // ─── Private helpers ─────────────────────────────────────────────────────

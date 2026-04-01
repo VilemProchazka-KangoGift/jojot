@@ -82,21 +82,9 @@ public partial class App : Application
 
             if (!createdNew)
             {
-                // Second instance detected — query current desktop and send command
-                string? senderDesktop = null;
-                try
-                {
-                    VirtualDesktopInterop.Initialize();
-                    var (id, _, _) = VirtualDesktopInterop.GetCurrentDesktop();
-                    senderDesktop = id.ToString();
-                    LogService.Info("Second instance detected — sender desktop {SenderDesktop}", senderDesktop);
-                }
-                catch (Exception ex)
-                {
-                    LogService.Warn("Second instance COM query failed: {ErrorMessage}", ex.Message);
-                }
-
-                await IpcService.SendCommandAsync(new NewTabCommand(DesktopGuid: senderDesktop));
+                // Second instance detected — skip COM init, first instance already tracks current desktop
+                LogService.Info("Second instance detected — sending new-tab command");
+                await IpcService.SendCommandAsync(new NewTabCommand(DesktopGuid: null));
                 Environment.Exit(0);
                 return;
             }
@@ -112,13 +100,16 @@ public partial class App : Application
             await DatabaseCore.OpenAsync(dbPath);
             await DatabaseCore.EnsureSchemaAsync();
 
-            // Integrity check with corruption recovery
+            // Integrity check with corruption recovery (before EF warmup to avoid wasted work)
             bool healthy = await DatabaseCore.VerifyIntegrityAsync();
             if (!healthy)
             {
                 LogService.Error("Database integrity check failed — initiating corruption recovery");
                 await DatabaseCore.HandleCorruptionAsync(dbPath);
             }
+
+            // Warm up EF model after integrity is confirmed (must complete before first real query)
+            await DatabaseCore.WarmupModelAsync();
 
             // Restore log level from preferences
             var savedLogLevel = await PreferenceStore.GetPreferenceAsync("log_level").ConfigureAwait(false);
@@ -129,11 +120,10 @@ public partial class App : Application
                 LogService.Info("Log level restored from preferences: {LogLevel}", parsedLevel.Value);
             }
 
-            // Initialize theme
-            await ThemeService.InitializeAsync();
-
-            // Virtual desktop detection
+            // Initialize theme and virtual desktop detection in parallel (independent of each other)
+            var themeTask = ThemeService.InitializeAsync();
             await VirtualDesktopService.InitializeAsync();
+            await themeTask;
             if (VirtualDesktopService.IsAvailable)
             {
                 LogService.Info("Virtual desktop: {DesktopGuid} ({DesktopName})", VirtualDesktopService.CurrentDesktopGuid, VirtualDesktopService.CurrentDesktopName);
@@ -155,6 +145,9 @@ public partial class App : Application
 
             // Resolve pending moves from crash recovery
             await ResolvePendingMovesAsync();
+
+            // Auto-delete old notes if configured
+            await RunAutoDeleteAsync();
 
             // Welcome tab on first launch
             await StartupService.CreateWelcomeTabIfFirstLaunch();
@@ -554,6 +547,22 @@ public partial class App : Application
             _pendingRecoveryToast = true;
         }
         LogService.Info("Pending moves check: recovery complete");
+    }
+
+    /// <summary>
+    /// Reads the auto_delete_days preference and deletes unpinned notes older than that many days.
+    /// Called once during startup before windows are created.
+    /// </summary>
+    private static async Task RunAutoDeleteAsync()
+    {
+        var saved = await PreferenceStore.GetPreferenceAsync("auto_delete_days").ConfigureAwait(false);
+        if (string.IsNullOrWhiteSpace(saved) || !int.TryParse(saved, out int days) || days <= 0)
+            return;
+
+        var cutoff = DateTime.Now.AddDays(-days);
+        int deleted = await NoteStore.DeleteOldNotesAsync(cutoff);
+        if (deleted > 0)
+            LogService.Info("Startup auto-delete: {DeletedCount} note(s) older than {Days} days removed", deleted, days);
     }
 
     /// <summary>

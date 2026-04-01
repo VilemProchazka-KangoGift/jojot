@@ -9,11 +9,11 @@ namespace JoJot.Services;
 /// Reads/writes the "theme" key in the preferences table for persistence.
 /// System mode auto-follows Windows dark/light via SystemEvents.UserPreferenceChanged.
 /// </summary>
-public static class ThemeService
+public static partial class ThemeService
 {
     // ─── DWM interop for title bar dark mode ─────────────────────────────
-    [DllImport("dwmapi.dll", PreserveSig = true)]
-    private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attribute, ref int value, int size);
+    [LibraryImport("dwmapi.dll")]
+    private static partial int DwmSetWindowAttribute(IntPtr hwnd, int attribute, ref int value, int size);
 
     private const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
 

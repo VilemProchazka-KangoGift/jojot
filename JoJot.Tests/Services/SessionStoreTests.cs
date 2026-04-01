@@ -212,6 +212,81 @@ public class SessionStoreTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task GetOrphanedSessionInfo_MultipleOrphans_BatchedInTwoQueries()
+    {
+        // Setup 3 orphan sessions with varying note counts
+        await SessionStore.CreateSessionAsync("batch-1", "Desktop A", 0);
+        await NoteStore.InsertNoteAsync("batch-1", "Tab A1", "content", false, 0);
+        await NoteStore.InsertNoteAsync("batch-1", "Tab A2", "content", false, 1);
+        await NoteStore.InsertNoteAsync("batch-1", "Tab A3", "content", false, 2);
+
+        await SessionStore.CreateSessionAsync("batch-2", "Desktop B", 1);
+        await NoteStore.InsertNoteAsync("batch-2", "Tab B1", "content", false, 0);
+
+        await SessionStore.CreateSessionAsync("batch-3", null, 2); // No name
+
+        var results = await SessionStore.GetOrphanedSessionInfoAsync(["batch-1", "batch-2", "batch-3"]);
+
+        results.Should().HaveCount(3);
+
+        var r1 = results.Single(r => r.DesktopGuid == "batch-1");
+        r1.DesktopName.Should().Be("Desktop A");
+        r1.TabCount.Should().Be(3);
+
+        var r2 = results.Single(r => r.DesktopGuid == "batch-2");
+        r2.DesktopName.Should().Be("Desktop B");
+        r2.TabCount.Should().Be(1);
+
+        var r3 = results.Single(r => r.DesktopGuid == "batch-3");
+        r3.DesktopName.Should().BeNull();
+        r3.TabCount.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task GetOrphanedSessionInfo_PreservesInputOrder()
+    {
+        await SessionStore.CreateSessionAsync("order-z", "Z", 0);
+        await SessionStore.CreateSessionAsync("order-a", "A", 1);
+        await NoteStore.InsertNoteAsync("order-z", "Note", "c", false, 0);
+        await NoteStore.InsertNoteAsync("order-a", "Note", "c", false, 0);
+
+        // Request in z, a order — results should preserve that order
+        var results = await SessionStore.GetOrphanedSessionInfoAsync(["order-z", "order-a"]);
+
+        results.Should().HaveCount(2);
+        results[0].DesktopGuid.Should().Be("order-z");
+        results[1].DesktopGuid.Should().Be("order-a");
+    }
+
+    [Fact]
+    public async Task GetOrphanedSessionInfo_UnknownGuid_ReturnsNullNameZeroCount()
+    {
+        // GUID with no session or notes at all
+        var results = await SessionStore.GetOrphanedSessionInfoAsync(["nonexistent-guid"]);
+
+        results.Should().ContainSingle();
+        results[0].DesktopGuid.Should().Be("nonexistent-guid");
+        results[0].DesktopName.Should().BeNull();
+        results[0].TabCount.Should().Be(0);
+        results[0].LastUpdated.Should().Be(new DateTime(2000, 1, 1));
+    }
+
+    [Fact]
+    public async Task GetOrphanedSessionInfo_LastUpdated_ReturnsMaxAcrossNotes()
+    {
+        await SessionStore.CreateSessionAsync("lu-test", "LU", 0);
+        // Insert notes — the one with the latest UpdatedAt should be returned
+        await NoteStore.InsertNoteAsync("lu-test", "Old", "old content", false, 0);
+        await NoteStore.InsertNoteAsync("lu-test", "New", "new content", false, 1);
+
+        var results = await SessionStore.GetOrphanedSessionInfoAsync(["lu-test"]);
+        var notes = await NoteStore.GetNotesForDesktopAsync("lu-test");
+        var expectedMax = notes.Max(n => n.UpdatedAt);
+
+        results[0].LastUpdated.Should().Be(expectedMax);
+    }
+
+    [Fact]
     public async Task DeleteSessionAndNotes_RemovesBoth()
     {
         await SessionStore.CreateSessionAsync("del-sess", "Delete Me", 0);

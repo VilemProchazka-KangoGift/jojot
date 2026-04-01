@@ -11,6 +11,14 @@ namespace JoJot;
 
 public partial class MainWindow
 {
+    private static readonly SolidColorBrush DangerBrush =
+        new(System.Windows.Media.Color.FromRgb(0xe7, 0x4c, 0x3c));
+
+    static MainWindow()
+    {
+        DangerBrush.Freeze(); // frozen brushes are cheaper to render and thread-safe
+    }
+
     // ─── Tab Loading ────────────────────────────────────────────────────────
 
     /// <summary>
@@ -194,8 +202,7 @@ public partial class MainWindow
             {
                 if (_isDragging) return;
                 pinIcon.Text = "\uE77A"; // Unpin glyph
-                pinIcon.Foreground = new SolidColorBrush(
-                    System.Windows.Media.Color.FromRgb(0xe7, 0x4c, 0x3c));
+                pinIcon.Foreground = DangerBrush;
             };
             pinBtn.MouseLeave += (s, ev) =>
             {
@@ -209,7 +216,7 @@ public partial class MainWindow
             pinBtn.MouseEnter += (s, ev) =>
             {
                 if (_isDragging) return;
-                pinIcon.Foreground = (SolidColorBrush)FindResource("c-accent");
+                pinIcon.SetResourceReference(TextBlock.ForegroundProperty, "c-accent");
             };
             pinBtn.MouseLeave += (s, ev) =>
             {
@@ -227,8 +234,7 @@ public partial class MainWindow
         closeBtn.MouseEnter += (s, ev) =>
         {
             if (_isDragging) return;
-            closeIcon.Foreground = new SolidColorBrush(
-                System.Windows.Media.Color.FromRgb(0xe7, 0x4c, 0x3c));
+            closeIcon.Foreground = DangerBrush;
         };
         closeBtn.MouseLeave += (s, ev) =>
         {
@@ -242,7 +248,7 @@ public partial class MainWindow
             if (_isDragging) return;
 
             if (item is not null && item != TabList.SelectedItem)
-                outerBorder.Background = GetBrush("c-hover-bg");
+                outerBorder.SetResourceReference(Border.BackgroundProperty, "c-hover-bg");
 
             if (!tab.Pinned)
             {
@@ -301,6 +307,7 @@ public partial class MainWindow
             // Save current editor content to active tab BEFORE flushing or switching
             if (_activeTab is not null)
             {
+                FlushContentSync();
                 bool contentChanged = _activeTab.Content != ContentEditor.Text;
                 _activeTab.Content = ContentEditor.Text;
                 _activeTab.CursorPosition = ContentEditor.CaretIndex;
@@ -324,7 +331,7 @@ public partial class MainWindow
                     {
                         // Template not yet applied — defer clear to match deferred highlight
                         var itemToClean = oldItem;
-                        Dispatcher.BeginInvoke(() =>
+                        _ = Dispatcher.BeginInvoke(() =>
                         {
                             var border = FindNamedDescendant<Border>(itemToClean, "OuterBorder");
                             if (border is not null)
@@ -358,7 +365,7 @@ public partial class MainWindow
             // Save scroll offset for outgoing tab
             if (_activeTab is not null)
             {
-                var scrollViewer = GetScrollViewer(ContentEditor);
+                var scrollViewer = GetContentScrollViewer();
                 if (scrollViewer is not null)
                 {
                     _activeTab.EditorScrollOffset = (int)scrollViewer.VerticalOffset;
@@ -385,8 +392,7 @@ public partial class MainWindow
                 // Restore scroll offset after layout completes
                 _ = ContentEditor.Dispatcher.BeginInvoke(() =>
                 {
-                    var sv = GetScrollViewer(ContentEditor);
-                    sv?.ScrollToVerticalOffset(tab.EditorScrollOffset);
+                    GetContentScrollViewer()?.ScrollToVerticalOffset(tab.EditorScrollOffset);
                 }, System.Windows.Threading.DispatcherPriority.Loaded);
 
                 // Bind this tab's UndoStack
@@ -444,7 +450,7 @@ public partial class MainWindow
             return;
         }
 
-        outerBorder.Background = GetBrush("c-selected-bg");
+        outerBorder.SetResourceReference(Border.BackgroundProperty, "c-selected-bg");
 
         var pinBtn = FindNamedDescendant<Border>(item, "PinBtn");
         var closeBtn = FindNamedDescendant<Border>(item, "CloseBtn");
@@ -532,10 +538,11 @@ public partial class MainWindow
     private void SaveCurrentTabContent()
     {
         if (_activeTab is null) return;
+        FlushContentSync();
         string currentContent = ContentEditor.Text;
         if (currentContent == _activeTab.Content) return; // No change
 
-        var scrollViewer = GetScrollViewer(ContentEditor);
+        var scrollViewer = GetContentScrollViewer();
         int scrollOffset = scrollViewer is not null ? (int)scrollViewer.VerticalOffset : 0;
 
         ViewModel.SaveEditorStateToTab(currentContent, ContentEditor.CaretIndex, scrollOffset);

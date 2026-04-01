@@ -31,6 +31,7 @@ public class UndoStack(long tabId, IClock? clock = null)
     private readonly List<UndoEntry> _tier2 = []; // Coarse checkpoints
     private int _currentIndex = -1;            // Pointer into the combined logical sequence
     private DateTime _lastCheckpointTime = DateTime.MinValue;
+    private long _estimatedBytes;              // Cached — updated incrementally on add/remove
 
     /// <summary>The <c>NoteTab.Id</c> this stack belongs to.</summary>
     public long TabId { get; } = tabId;
@@ -49,10 +50,11 @@ public class UndoStack(long tabId, IClock? clock = null)
 
     /// <summary>
     /// Estimated memory usage in bytes (UTF-16: 2 bytes per character).
+    /// Tracked incrementally — O(1) per access.
     /// </summary>
-    public long EstimatedBytes =>
-        _tier1.Sum(e => (long)e.Content.Length * 2) +
-        _tier2.Sum(e => (long)e.Content.Length * 2);
+    public long EstimatedBytes => _estimatedBytes;
+
+    private static long EntryBytes(UndoEntry entry) => (long)entry.Content.Length * 2;
 
     /// <summary>
     /// Initializes the stack with the content loaded from the database.
@@ -64,7 +66,10 @@ public class UndoStack(long tabId, IClock? clock = null)
     {
         _tier1.Clear();
         _tier2.Clear();
-        _tier1.Add(new UndoEntry(content, cursorPosition));
+        _estimatedBytes = 0;
+        var entry = new UndoEntry(content, cursorPosition);
+        _tier1.Add(entry);
+        _estimatedBytes += EntryBytes(entry);
         _currentIndex = 0;
         _lastCheckpointTime = _clock.Now;
         LastAccessTime = _clock.Now;
@@ -80,14 +85,18 @@ public class UndoStack(long tabId, IClock? clock = null)
     {
         if (TotalCount == 0)
         {
-            _tier1.Add(new UndoEntry(content, cursorPosition));
+            var entry = new UndoEntry(content, cursorPosition);
+            _tier1.Add(entry);
+            _estimatedBytes += EntryBytes(entry);
             _currentIndex = 0;
             LastAccessTime = _clock.Now;
             return;
         }
 
         var current = GetEntryAtIndex(_currentIndex);
-        if (current is not null && current.Value.Content == content)
+        if (current is not null
+            && current.Value.Content.Length == content.Length
+            && current.Value.Content == content)
         {
             return;
         }
@@ -95,7 +104,9 @@ public class UndoStack(long tabId, IClock? clock = null)
         // Destroy redo future
         TruncateAfterCurrent();
 
-        _tier1.Add(new UndoEntry(content, cursorPosition));
+        var newEntry = new UndoEntry(content, cursorPosition);
+        _tier1.Add(newEntry);
+        _estimatedBytes += EntryBytes(newEntry);
 
         if (_tier1.Count > MaxTier1)
         {
@@ -119,10 +130,13 @@ public class UndoStack(long tabId, IClock? clock = null)
             return;
         }
 
-        _tier2.Add(new UndoEntry(content, cursorPosition));
+        var entry = new UndoEntry(content, cursorPosition);
+        _tier2.Add(entry);
+        _estimatedBytes += EntryBytes(entry);
 
         if (_tier2.Count > MaxTier2)
         {
+            _estimatedBytes -= EntryBytes(_tier2[0]);
             _tier2.RemoveAt(0);
             if (_currentIndex > 0)
             {
@@ -182,11 +196,18 @@ public class UndoStack(long tabId, IClock? clock = null)
             return;
         }
 
+        // Remove all tier-1 bytes from budget
+        long tier1Bytes = 0;
+        foreach (var e in _tier1) tier1Bytes += EntryBytes(e);
+        _estimatedBytes -= tier1Bytes;
+
+        // Sample every 5th entry into tier-2
         for (int i = 0; i < _tier1.Count; i += 5)
         {
             if (_tier2.Count < MaxTier2)
             {
                 _tier2.Add(_tier1[i]);
+                _estimatedBytes += EntryBytes(_tier1[i]);
             }
         }
 
@@ -205,6 +226,9 @@ public class UndoStack(long tabId, IClock? clock = null)
         {
             return;
         }
+
+        for (int i = 0; i < toRemove; i++)
+            _estimatedBytes -= EntryBytes(_tier2[i]);
 
         _tier2.RemoveRange(0, toRemove);
         _currentIndex = Math.Max(0, _currentIndex - toRemove);
@@ -228,12 +252,17 @@ public class UndoStack(long tabId, IClock? clock = null)
             return;
         }
 
+        // Remove batch bytes from budget, then add back sampled entries
+        for (int i = 0; i < batchSize; i++)
+            _estimatedBytes -= EntryBytes(_tier1[i]);
+
         // Sample every Nth entry from the batch into tier-2
         for (int i = 0; i < batchSize; i += PromotionSampleRate)
         {
             if (_tier2.Count < MaxTier2)
             {
                 _tier2.Add(_tier1[i]);
+                _estimatedBytes += EntryBytes(_tier1[i]);
             }
         }
 
@@ -290,16 +319,21 @@ public class UndoStack(long tabId, IClock? clock = null)
             int tier1EntriesAfterCurrent = _tier1.Count - 1 - tier1CurrentPos;
             if (tier1EntriesAfterCurrent > 0)
             {
+                for (int i = tier1CurrentPos + 1; i < _tier1.Count; i++)
+                    _estimatedBytes -= EntryBytes(_tier1[i]);
                 _tier1.RemoveRange(tier1CurrentPos + 1, tier1EntriesAfterCurrent);
             }
         }
         else
         {
             // Current index is in tier-2; remove all tier-1 and truncate tier-2
+            foreach (var e in _tier1) _estimatedBytes -= EntryBytes(e);
             _tier1.Clear();
             int tier2EntriesAfterCurrent = _tier2.Count - 1 - _currentIndex;
             if (tier2EntriesAfterCurrent > 0)
             {
+                for (int i = _currentIndex + 1; i < _tier2.Count; i++)
+                    _estimatedBytes -= EntryBytes(_tier2[i]);
                 _tier2.RemoveRange(_currentIndex + 1, tier2EntriesAfterCurrent);
             }
         }

@@ -27,6 +27,9 @@ public class NoteTab : ObservableObject
 
     private static readonly string[] NameDependents = [nameof(DisplayLabel), nameof(IsPlaceholder)];
     private static readonly string[] ContentDependents = [nameof(DisplayLabel), nameof(IsPlaceholder)];
+
+    /// <summary>Cached DisplayLabel value — invalidated when Name or Content changes.</summary>
+    private string? _cachedDisplayLabel;
     private static readonly string[] UpdatedAtDependents = [nameof(UpdatedDisplay), nameof(UpdatedTooltipText), nameof(StalenessOpacity)];
 
     private string? _name;
@@ -51,7 +54,7 @@ public class NoteTab : ObservableObject
     public string? Name
     {
         get => _name;
-        set => SetProperty(ref _name, value, NameDependents);
+        set { _cachedDisplayLabel = null; SetProperty(ref _name, value, NameDependents); }
     }
 
     /// <summary>
@@ -60,7 +63,20 @@ public class NoteTab : ObservableObject
     public string Content
     {
         get => _content;
-        set => SetProperty(ref _content, value, ContentDependents);
+        set
+        {
+            // Fast path: skip if same reference (covers null==null and interned strings).
+            if (ReferenceEquals(_content, value)) return;
+            // Length check short-circuits most keystroke comparisons (one char added/removed).
+            if (_content is not null && value is not null
+                && _content.Length == value.Length && _content == value) return;
+
+            _cachedDisplayLabel = null;
+            _content = value!;
+            OnPropertyChanged();
+            foreach (var dep in ContentDependents)
+                OnPropertyChanged(dep);
+        }
     }
 
     /// <summary>
@@ -112,30 +128,57 @@ public class NoteTab : ObservableObject
     {
         get
         {
-            if (!string.IsNullOrWhiteSpace(Name))
-            {
-                return Name;
-            }
+            if (_cachedDisplayLabel is not null)
+                return _cachedDisplayLabel;
 
-            if (!string.IsNullOrWhiteSpace(Content))
-            {
-                var cleaned = Content.Trim()
-                    .Replace("\r\n", " ")
-                    .Replace('\r', ' ')
-                    .Replace('\n', ' ');
-                while (cleaned.Contains("  "))
-                    cleaned = cleaned.Replace("  ", " ");
-
-                if (cleaned.Length <= DisplayLabelMaxLength)
-                {
-                    return cleaned;
-                }
-
-                return cleaned[..DisplayLabelMaxLength] + "...";
-            }
-
-            return PlaceholderLabel;
+            _cachedDisplayLabel = ComputeDisplayLabel();
+            return _cachedDisplayLabel;
         }
+    }
+
+    private string ComputeDisplayLabel()
+    {
+        if (!string.IsNullOrWhiteSpace(Name))
+        {
+            return Name;
+        }
+
+        if (!string.IsNullOrWhiteSpace(Content))
+        {
+            // Single-pass: collapse whitespace runs into single spaces, skip leading whitespace
+            int limit = Math.Min(Content.Length, DisplayLabelMaxLength * 2);
+            var sb = new System.Text.StringBuilder(DisplayLabelMaxLength + 3);
+            bool prevSpace = true; // treat start as space to skip leading whitespace
+            for (int i = 0; i < limit && sb.Length <= DisplayLabelMaxLength; i++)
+            {
+                char c = Content[i];
+                if (c is ' ' or '\r' or '\n' or '\t')
+                {
+                    if (!prevSpace) sb.Append(' ');
+                    prevSpace = true;
+                }
+                else
+                {
+                    sb.Append(c);
+                    prevSpace = false;
+                }
+            }
+
+            // Trim trailing space
+            if (sb.Length > 0 && sb[^1] == ' ')
+                sb.Length--;
+
+            if (sb.Length == 0) return PlaceholderLabel;
+
+            if (sb.Length <= DisplayLabelMaxLength)
+                return sb.ToString();
+
+            sb.Length = DisplayLabelMaxLength;
+            sb.Append("...");
+            return sb.ToString();
+        }
+
+        return PlaceholderLabel;
     }
 
     /// <summary>
@@ -220,6 +263,8 @@ public class NoteTab : ObservableObject
         return dt.ToString("MMM d, yyyy h:mm tt");
     }
 
+    private double _lastStalenessOpacity = double.NaN;
+
     /// <summary>
     /// Opacity of the staleness indicator circle.
     /// Starts at 1.0 when freshly updated, decreases by 1% per 15 minutes.
@@ -243,10 +288,17 @@ public class NoteTab : ObservableObject
     }
 
     /// <summary>
-    /// Raises PropertyChanged for StalenessOpacity so the UI refreshes the indicator.
+    /// Raises PropertyChanged for StalenessOpacity only if the value actually changed.
     /// Called on window activation and by the hourly refresh timer.
     /// </summary>
-    public void RefreshStaleness() => OnPropertyChanged(nameof(StalenessOpacity));
+    public void RefreshStaleness()
+    {
+        double current = StalenessOpacity;
+        // ReSharper disable once CompareOfFloatsByEqualityOperator — exact match for cached value
+        if (current == _lastStalenessOpacity) return;
+        _lastStalenessOpacity = current;
+        OnPropertyChanged(nameof(StalenessOpacity));
+    }
 
     /// <summary>
     /// Tooltip text for the created-at date, bound in the tab DataTemplate.

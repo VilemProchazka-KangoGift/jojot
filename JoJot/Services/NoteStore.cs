@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using JoJot.Data;
 using JoJot.Models;
 
 namespace JoJot.Services;
@@ -8,6 +9,28 @@ namespace JoJot.Services;
 /// </summary>
 public static class NoteStore
 {
+    // ─── Compiled queries (expression tree parsed once, reused on every call) ──
+
+    private static readonly Func<JoJotDbContext, string, IAsyncEnumerable<NoteTab>>
+        CompiledGetNotesForDesktop = EF.CompileAsyncQuery<JoJotDbContext, string, NoteTab>(
+            (ctx, guid) =>
+                ctx.Notes.AsNoTracking()
+                    .Where(n => n.DesktopGuid == guid)
+                    .OrderByDescending(n => n.Pinned)
+                    .ThenBy(n => n.SortOrder));
+
+    private static readonly Func<JoJotDbContext, string, Task<int>>
+        CompiledGetNoteCount = EF.CompileAsyncQuery(
+            (JoJotDbContext ctx, string guid) =>
+                ctx.Notes.Count(n => n.DesktopGuid == guid));
+
+    private static readonly Func<JoJotDbContext, string, Task<int?>>
+        CompiledGetMaxSortOrder = EF.CompileAsyncQuery(
+            (JoJotDbContext ctx, string guid) =>
+                ctx.Notes.Where(n => n.DesktopGuid == guid)
+                    .Select(n => (int?)n.SortOrder)
+                    .Max());
+
     /// <summary>
     /// Loads all notes for a desktop, ordered by pinned DESC then sort_order ASC.
     /// </summary>
@@ -17,12 +40,10 @@ public static class NoteStore
         try
         {
             await using var context = DatabaseCore.CreateContext();
-            return await context.Notes
-                .AsNoTracking()
-                .Where(n => n.DesktopGuid == desktopGuid)
-                .OrderByDescending(n => n.Pinned)
-                .ThenBy(n => n.SortOrder)
-                .ToListAsync(ct).ConfigureAwait(false);
+            var results = new List<NoteTab>();
+            await foreach (var note in CompiledGetNotesForDesktop(context, desktopGuid).WithCancellation(ct).ConfigureAwait(false))
+                results.Add(note);
+            return results;
         }
         catch (Exception ex)
         {
@@ -152,21 +173,32 @@ public static class NoteStore
     }
 
     /// <summary>
-    /// Batch-updates sort_order for multiple notes.
+    /// Batch-updates sort_order for multiple notes in a single SQL statement.
     /// </summary>
     public static async Task UpdateNoteSortOrdersAsync(IEnumerable<(long Id, int SortOrder)> updates)
     {
+        var list = updates as IList<(long Id, int SortOrder)> ?? updates.ToList();
+        if (list.Count == 0) return;
+
         await DatabaseCore.AcquireWriteLockAsync().ConfigureAwait(false);
         try
         {
             await using var context = DatabaseCore.CreateContext();
-            foreach (var (id, sortOrder) in updates)
+
+            // Build a single UPDATE ... SET sort_order = CASE ... END WHERE id IN (...)
+            var sb = new System.Text.StringBuilder(64 + list.Count * 32);
+            sb.Append("UPDATE notes SET sort_order = CASE id ");
+            foreach (var (id, sortOrder) in list)
+                sb.Append("WHEN ").Append(id).Append(" THEN ").Append(sortOrder).Append(' ');
+            sb.Append("END WHERE id IN (");
+            for (int i = 0; i < list.Count; i++)
             {
-                await context.Notes
-                    .Where(n => n.Id == id)
-                    .ExecuteUpdateAsync(s => s
-                        .SetProperty(n => n.SortOrder, sortOrder)).ConfigureAwait(false);
+                if (i > 0) sb.Append(',');
+                sb.Append(list[i].Id);
             }
+            sb.Append(')');
+
+            await context.Database.ExecuteSqlRawAsync(sb.ToString()).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -234,6 +266,31 @@ public static class NoteStore
     }
 
     /// <summary>
+    /// Deletes all unpinned notes older than the specified cutoff date across all desktops.
+    /// Returns the number deleted.
+    /// </summary>
+    public static async Task<int> DeleteOldNotesAsync(DateTime cutoff)
+    {
+        await DatabaseCore.AcquireWriteLockAsync().ConfigureAwait(false);
+        try
+        {
+            await using var context = DatabaseCore.CreateContext();
+            return await context.Notes
+                .Where(n => n.UpdatedAt < cutoff && !n.Pinned)
+                .ExecuteDeleteAsync().ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            LogService.Error("DeleteOldNotesAsync failed (cutoff={Cutoff})", cutoff, ex);
+            return 0;
+        }
+        finally
+        {
+            DatabaseCore.ReleaseWriteLock();
+        }
+    }
+
+    /// <summary>
     /// Returns the maximum sort_order for notes in a desktop, or -1 if no notes exist.
     /// </summary>
     public static async Task<int> GetMaxSortOrderAsync(string desktopGuid, CancellationToken ct = default)
@@ -242,11 +299,7 @@ public static class NoteStore
         try
         {
             await using var context = DatabaseCore.CreateContext();
-            var maxOrder = await context.Notes
-                .Where(n => n.DesktopGuid == desktopGuid)
-                .Select(n => (int?)n.SortOrder)
-                .MaxAsync(ct).ConfigureAwait(false);
-            return maxOrder ?? -1;
+            return await CompiledGetMaxSortOrder(context, desktopGuid).ConfigureAwait(false) ?? -1;
         }
         catch (Exception ex)
         {
@@ -331,7 +384,7 @@ public static class NoteStore
         try
         {
             await using var context = DatabaseCore.CreateContext();
-            return await context.Notes.CountAsync(n => n.DesktopGuid == desktopGuid, ct).ConfigureAwait(false);
+            return await CompiledGetNoteCount(context, desktopGuid).ConfigureAwait(false);
         }
         catch (Exception ex)
         {

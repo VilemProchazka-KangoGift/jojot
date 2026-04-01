@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Input;
+using System.Windows.Threading;
 using JoJot.Controls;
 using JoJot.Models;
 using JoJot.Services;
@@ -12,8 +13,11 @@ public partial class MainWindow
 {
     // ─── Tab Search ─────────────────────────────────────────────────────────
 
+    private DispatcherTimer? _searchDebounceTimer;
+
     /// <summary>
-    /// Real-time search filtering. Rebuilds the tab list hiding non-matches.
+    /// Real-time search filtering with 100ms debounce to avoid rebuilding the
+    /// entire tab list on every keystroke.
     /// </summary>
     private void SearchBox_TextChanged(object sender, TextChangedEventArgs e)
     {
@@ -21,7 +25,18 @@ public partial class MainWindow
         SearchPlaceholder.Visibility = SearchBox.Text.Length > 0
             ? Visibility.Collapsed
             : Visibility.Visible;
-        RebuildTabList();
+
+        if (_searchDebounceTimer is null)
+        {
+            _searchDebounceTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(100) };
+            _searchDebounceTimer.Tick += (_, _) =>
+            {
+                _searchDebounceTimer.Stop();
+                RebuildTabList();
+            };
+        }
+        _searchDebounceTimer.Stop();
+        _searchDebounceTimer.Start();
     }
 
     /// <summary>
@@ -31,6 +46,7 @@ public partial class MainWindow
     {
         if (e.Key == Key.Escape)
         {
+            _searchDebounceTimer?.Stop();
             SearchBox.Text = "";
             _searchText = "";
             SearchPlaceholder.Visibility = Visibility.Visible;
@@ -51,10 +67,20 @@ public partial class MainWindow
     private List<int> _findMatches = [];
     private int _currentFindIndex = -1;
     private int _findQueryLength;
+    private DispatcherTimer? _findDebounceTimer;
+    private DispatcherTimer? _findTextChangeDebounce;
+    private CancellationTokenSource? _findCts;
 
     // ─── Highlight adorner ────────────────────────────────────────────────────
 
     private TextBoxHighlightAdorner? _highlightAdorner;
+    private DispatcherTimer? _scrollAdornerThrottle;
+
+    private void OnThemeChangedAdornerRefresh(object? sender, EventArgs e)
+    {
+        _highlightAdorner?.RefreshBrushes();
+        _highlightAdorner?.InvalidateVisual();
+    }
 
     /// <summary>
     /// Returns the existing adorner or creates and attaches a new one to ContentEditor.
@@ -97,17 +123,28 @@ public partial class MainWindow
         FindReplacePanel.ReplaceRequested += (_, _) => PerformReplace();
         FindReplacePanel.ReplaceAllRequested += (_, _) => PerformReplaceAll();
 
-        // Re-render adorner when TextBox scrolls so highlights track content position
+        // Re-render adorner when TextBox scrolls — throttle to ~30fps to avoid expensive
+        // GetRectFromCharacterIndex calls on every frame during rapid scrolling
         ContentEditor.AddHandler(ScrollViewer.ScrollChangedEvent, new ScrollChangedEventHandler((_, _) =>
         {
-            _highlightAdorner?.InvalidateVisual();
+            if (_highlightAdorner is null) return;
+
+            if (_scrollAdornerThrottle is null)
+            {
+                _scrollAdornerThrottle = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(32) };
+                _scrollAdornerThrottle.Tick += (_, _) =>
+                {
+                    _scrollAdornerThrottle!.Stop();
+                    _highlightAdorner?.InvalidateVisual();
+                };
+            }
+
+            if (!_scrollAdornerThrottle.IsEnabled)
+                _scrollAdornerThrottle.Start();
         }));
 
-        // Re-render adorner when theme changes so brush colors update immediately
-        ThemeService.ThemeChanged += (_, _) =>
-        {
-            _highlightAdorner?.InvalidateVisual();
-        };
+        // Refresh cached brushes and re-render adorner when theme changes
+        ThemeService.ThemeChanged += OnThemeChangedAdornerRefresh;
     }
 
     // ─── Panel show/hide ────────────────────────────────────────────────────
@@ -131,12 +168,15 @@ public partial class MainWindow
         var query = FindReplacePanel.GetFindText();
         if (!string.IsNullOrEmpty(query))
         {
-            RunSearch(query, FindReplacePanel.CaseSensitive, FindReplacePanel.WholeWord);
+            _ = RunSearchAsync(query, FindReplacePanel.CaseSensitive, FindReplacePanel.WholeWord);
         }
     }
 
     private void HideFindPanel()
     {
+        _findDebounceTimer?.Stop();
+        _findTextChangeDebounce?.Stop();
+        CancelPendingSearch();
         _findPanelOpen = false;
         FindReplacePanel.Hide();
         _findMatches.Clear();
@@ -150,6 +190,9 @@ public partial class MainWindow
 
     private void OnFindTextChanged(object? sender, FindChangedEventArgs e)
     {
+        _findDebounceTimer?.Stop();
+        CancelPendingSearch();
+
         if (string.IsNullOrEmpty(e.Query) || _activeTab is null)
         {
             _findMatches.Clear();
@@ -160,32 +203,98 @@ public partial class MainWindow
             return;
         }
 
-        RunSearch(e.Query, e.CaseSensitive, e.WholeWord);
+        // Debounce short queries that produce many matches in large texts
+        var delay = e.Query.Length switch
+        {
+            1 => TimeSpan.FromMilliseconds(400),
+            2 => TimeSpan.FromMilliseconds(200),
+            _ => TimeSpan.Zero
+        };
+        if (delay == TimeSpan.Zero)
+        {
+            _ = RunSearchAsync(e.Query, e.CaseSensitive, e.WholeWord);
+            return;
+        }
+
+        if (_findDebounceTimer is null)
+        {
+            _findDebounceTimer = new DispatcherTimer();
+            _findDebounceTimer.Tick += (_, _) =>
+            {
+                _findDebounceTimer.Stop();
+                if (_findPanelOpen && _activeTab is not null)
+                {
+                    var q = FindReplacePanel.GetFindText();
+                    if (!string.IsNullOrEmpty(q))
+                        _ = RunSearchAsync(q, FindReplacePanel.CaseSensitive, FindReplacePanel.WholeWord);
+                }
+            };
+        }
+        _findDebounceTimer.Interval = delay;
+        _findDebounceTimer.Start();
     }
 
     /// <summary>
-    /// Runs a search on the current editor content and updates matches, adorner, and panel counter.
+    /// Cancels any in-flight background search.
     /// </summary>
-    private void RunSearch(string query, bool caseSensitive, bool wholeWord)
+    private void CancelPendingSearch()
     {
-        _findMatches = ViewModels.MainWindowViewModel.FindAllMatches(
-            ContentEditor.Text, query, caseSensitive, wholeWord);
-        _findQueryLength = query.Length;
+        _findCts?.Cancel();
+        _findCts?.Dispose();
+        _findCts = null;
+    }
+
+    /// <summary>
+    /// Runs FindAllMatches on a background thread, then marshals results back to the UI thread.
+    /// Cancels automatically if a newer search is started before this one completes.
+    /// </summary>
+    private async Task RunSearchAsync(string query, bool caseSensitive, bool wholeWord)
+    {
+        CancelPendingSearch();
+        var cts = new CancellationTokenSource();
+        _findCts = cts;
+
+        // Capture text on UI thread before going to background
+        string content = ContentEditor.Text;
+        int queryLength = query.Length;
+
+        List<int> matches;
+        try
+        {
+            matches = await Task.Run(
+                () => ViewModels.MainWindowViewModel.FindAllMatches(content, query, caseSensitive, wholeWord),
+                cts.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+
+        // Check cancellation after await — a newer search may have started
+        if (cts.Token.IsCancellationRequested) return;
+
+        _findMatches = matches;
+        _findQueryLength = queryLength;
         _currentFindIndex = _findMatches.Count > 0 ? 0 : -1;
 
         FindReplacePanel.UpdateMatches(_findMatches, _currentFindIndex);
 
         if (_findMatches.Count > 0)
         {
-            // Scroll to and select first match
             int pos = _findMatches[0];
             ContentEditor.Select(pos, _findQueryLength);
             var lineIndex = ContentEditor.GetLineIndexFromCharacterIndex(pos);
             if (lineIndex >= 0) ContentEditor.ScrollToLine(lineIndex);
         }
 
-        // Update adorner with all match positions
-        EnsureHighlightAdorner().Update(_findMatches, _currentFindIndex, _findQueryLength);
+        // Defer adorner rendering — if user types another char before this fires, the
+        // cancellation token prevents the now-stale render from executing
+        var deferToken = cts.Token;
+        _ = Dispatcher.BeginInvoke(() =>
+        {
+            if (!deferToken.IsCancellationRequested)
+                EnsureHighlightAdorner().Update(_findMatches, _currentFindIndex, _findQueryLength);
+        }, DispatcherPriority.Background);
     }
 
     private void CycleFindMatch(bool forward)
@@ -233,7 +342,7 @@ public partial class MainWindow
         var query = FindReplacePanel.GetFindText();
         if (!string.IsNullOrEmpty(query))
         {
-            RunSearch(query, FindReplacePanel.CaseSensitive, FindReplacePanel.WholeWord);
+            _ = RunSearchAsync(query, FindReplacePanel.CaseSensitive, FindReplacePanel.WholeWord);
         }
     }
 
@@ -267,7 +376,7 @@ public partial class MainWindow
         // Re-run search to refresh (should find 0 if all replaced)
         if (!string.IsNullOrEmpty(query))
         {
-            RunSearch(query, FindReplacePanel.CaseSensitive, FindReplacePanel.WholeWord);
+            _ = RunSearchAsync(query, FindReplacePanel.CaseSensitive, FindReplacePanel.WholeWord);
         }
     }
 
@@ -292,13 +401,14 @@ public partial class MainWindow
         var query = FindReplacePanel.GetFindText();
         if (!string.IsNullOrEmpty(query))
         {
-            RunSearch(query, FindReplacePanel.CaseSensitive, FindReplacePanel.WholeWord);
+            _ = RunSearchAsync(query, FindReplacePanel.CaseSensitive, FindReplacePanel.WholeWord);
         }
     }
 
     /// <summary>
     /// Re-runs find search when editor content changes (typing, undo/redo).
     /// Called from ContentEditor_TextChanged and PerformUndo/PerformRedo.
+    /// Debounces at 150ms to avoid spawning a Task.Run per keystroke.
     /// </summary>
     internal void RefreshFindOnTextChange()
     {
@@ -307,35 +417,75 @@ public partial class MainWindow
         var query = FindReplacePanel.GetFindText();
         if (string.IsNullOrEmpty(query))
         {
+            _findTextChangeDebounce?.Stop();
+            CancelPendingSearch();
             _highlightAdorner?.Clear();
             FindReplacePanel.UpdateMatches([], -1);
             return;
         }
 
-        // Re-search but preserve current match index position as best we can
-        _findMatches = ViewModels.MainWindowViewModel.FindAllMatches(
-            ContentEditor.Text, query, FindReplacePanel.CaseSensitive, FindReplacePanel.WholeWord);
+        if (_findTextChangeDebounce is null)
+        {
+            _findTextChangeDebounce = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(150) };
+            _findTextChangeDebounce.Tick += (_, _) =>
+            {
+                _findTextChangeDebounce.Stop();
+                if (_findPanelOpen && _activeTab is not null)
+                {
+                    var q = FindReplacePanel.GetFindText();
+                    if (!string.IsNullOrEmpty(q))
+                        _ = RefreshFindOnTextChangeAsync(q);
+                }
+            };
+        }
+        _findTextChangeDebounce.Stop();
+        _findTextChangeDebounce.Start();
+    }
+
+    private async Task RefreshFindOnTextChangeAsync(string query)
+    {
+        CancelPendingSearch();
+        var cts = new CancellationTokenSource();
+        _findCts = cts;
+
+        string content = ContentEditor.Text;
+        bool caseSensitive = FindReplacePanel.CaseSensitive;
+        bool wholeWord = FindReplacePanel.WholeWord;
+        int savedIndex = _currentFindIndex;
+
+        List<int> matches;
+        try
+        {
+            matches = await Task.Run(
+                () => ViewModels.MainWindowViewModel.FindAllMatches(content, query, caseSensitive, wholeWord),
+                cts.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+
+        if (cts.Token.IsCancellationRequested) return;
+
+        _findMatches = matches;
         _findQueryLength = query.Length;
 
         if (_findMatches.Count == 0)
-        {
             _currentFindIndex = -1;
-        }
-        else if (_currentFindIndex >= _findMatches.Count)
-        {
+        else if (savedIndex >= _findMatches.Count)
             _currentFindIndex = _findMatches.Count - 1;
-        }
-        else if (_currentFindIndex < 0)
-        {
+        else if (savedIndex < 0)
             _currentFindIndex = 0;
-        }
+        else
+            _currentFindIndex = savedIndex;
 
         FindReplacePanel.UpdateMatches(_findMatches, _currentFindIndex);
 
         // Defer adorner update to after WPF layout pass (GetRectFromCharacterIndex needs updated layout)
-        Dispatcher.BeginInvoke(() =>
+        _ = Dispatcher.BeginInvoke(() =>
         {
-            EnsureHighlightAdorner().Update(_findMatches, _currentFindIndex, _findQueryLength);
-        }, System.Windows.Threading.DispatcherPriority.Loaded);
+            if (!cts.Token.IsCancellationRequested)
+                EnsureHighlightAdorner().Update(_findMatches, _currentFindIndex, _findQueryLength);
+        }, DispatcherPriority.Loaded);
     }
 }

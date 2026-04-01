@@ -18,6 +18,8 @@ public class UndoManager
 
     private readonly IClock _clock;
     private readonly Dictionary<long, UndoStack> _stacks = [];
+    /// <summary>Cached total bytes for fast budget checks in the per-keystroke hot path.</summary>
+    private long _cachedTotalBytes;
 
     /// <summary>Global memory budget (50 MB, not configurable).</summary>
     private const long MaxBudgetBytes = 50L * 1024 * 1024;
@@ -31,6 +33,12 @@ public class UndoManager
     /// <summary>Currently active tab, exempt from collapse.</summary>
     private long? _activeTabId;
 
+    /// <summary>Serializes access between UI-thread pushes and background collapse.</summary>
+    private readonly object _lock = new();
+
+    /// <summary>Prevents overlapping collapse operations.</summary>
+    private volatile bool _collapseInProgress;
+
     /// <summary>Creates a new UndoManager with the specified clock.</summary>
     internal UndoManager(IClock clock) { _clock = clock; }
 
@@ -40,19 +48,25 @@ public class UndoManager
     /// <param name="tabId">The tab identifier.</param>
     public UndoStack GetOrCreateStack(long tabId)
     {
-        if (!_stacks.TryGetValue(tabId, out var stack))
+        lock (_lock)
         {
-            stack = new UndoStack(tabId, _clock);
-            _stacks[tabId] = stack;
+            if (!_stacks.TryGetValue(tabId, out var stack))
+            {
+                stack = new UndoStack(tabId, _clock);
+                _stacks[tabId] = stack;
+            }
+            return stack;
         }
-        return stack;
     }
 
     /// <summary>
     /// Returns the <see cref="UndoStack"/> for <paramref name="tabId"/>, or <c>null</c> if none exists.
     /// </summary>
     /// <param name="tabId">The tab identifier.</param>
-    public UndoStack? GetStack(long tabId) => _stacks.GetValueOrDefault(tabId);
+    public UndoStack? GetStack(long tabId)
+    {
+        lock (_lock) return _stacks.GetValueOrDefault(tabId);
+    }
 
     /// <summary>
     /// Sets the currently active tab. The active tab is never collapsed.
@@ -60,7 +74,7 @@ public class UndoManager
     /// <param name="tabId">The active tab identifier, or <c>null</c> if none.</param>
     public void SetActiveTab(long? tabId)
     {
-        _activeTabId = tabId;
+        lock (_lock) _activeTabId = tabId;
     }
 
     /// <summary>
@@ -69,7 +83,12 @@ public class UndoManager
     /// <param name="tabId">The tab identifier to remove.</param>
     public void RemoveStack(long tabId)
     {
-        _stacks.Remove(tabId);
+        lock (_lock)
+        {
+            if (_stacks.TryGetValue(tabId, out var stack))
+                _cachedTotalBytes -= stack.EstimatedBytes;
+            _stacks.Remove(tabId);
+        }
     }
 
     /// <summary>
@@ -80,12 +99,32 @@ public class UndoManager
     /// <param name="cursorPosition">The cursor position at the time of the snapshot.</param>
     public void PushSnapshot(long tabId, string content, int cursorPosition = 0)
     {
-        var stack = GetOrCreateStack(tabId);
-        stack.PushSnapshot(content, cursorPosition);
-
-        if (TotalEstimatedBytes > (long)(MaxBudgetBytes * CollapseThreshold))
+        bool needsCollapse;
+        lock (_lock)
         {
-            CollapseOldest();
+            if (!_stacks.TryGetValue(tabId, out var stack))
+            {
+                stack = new UndoStack(tabId, _clock);
+                _stacks[tabId] = stack;
+            }
+            long bytesBefore = stack.EstimatedBytes;
+            stack.PushSnapshot(content, cursorPosition);
+            _cachedTotalBytes += stack.EstimatedBytes - bytesBefore;
+            needsCollapse = !_collapseInProgress
+                && _cachedTotalBytes > (long)(MaxBudgetBytes * CollapseThreshold);
+        }
+
+        if (needsCollapse)
+        {
+            _collapseInProgress = true;
+            Task.Run(() =>
+            {
+                try
+                {
+                    lock (_lock) { CollapseOldest(); }
+                }
+                finally { _collapseInProgress = false; }
+            });
         }
     }
 
@@ -95,8 +134,7 @@ public class UndoManager
     /// <param name="tabId">The tab identifier.</param>
     public UndoStack.UndoEntry? Undo(long tabId)
     {
-        var stack = GetStack(tabId);
-        return stack?.Undo();
+        lock (_lock) return _stacks.GetValueOrDefault(tabId)?.Undo();
     }
 
     /// <summary>
@@ -105,28 +143,26 @@ public class UndoManager
     /// <param name="tabId">The tab identifier.</param>
     public UndoStack.UndoEntry? Redo(long tabId)
     {
-        var stack = GetStack(tabId);
-        return stack?.Redo();
+        lock (_lock) return _stacks.GetValueOrDefault(tabId)?.Redo();
     }
 
     /// <summary>Returns <c>true</c> if the tab has a previous state to undo to.</summary>
     /// <param name="tabId">The tab identifier.</param>
     public bool CanUndo(long tabId)
     {
-        var stack = GetStack(tabId);
-        return stack?.CanUndo ?? false;
+        lock (_lock) return _stacks.GetValueOrDefault(tabId)?.CanUndo ?? false;
     }
 
     /// <summary>Returns <c>true</c> if the tab has a forward state to redo to.</summary>
     /// <param name="tabId">The tab identifier.</param>
     public bool CanRedo(long tabId)
     {
-        var stack = GetStack(tabId);
-        return stack?.CanRedo ?? false;
+        lock (_lock) return _stacks.GetValueOrDefault(tabId)?.CanRedo ?? false;
     }
 
     /// <summary>
     /// Total estimated memory usage across all undo stacks, in bytes.
+    /// Recomputed from stack caches — each stack tracks its own bytes incrementally.
     /// </summary>
     public long TotalEstimatedBytes =>
         _stacks.Values.Sum(s => s.EstimatedBytes);
@@ -148,27 +184,25 @@ public class UndoManager
         // Collapse tier-1 into tier-2 for the oldest stacks first
         foreach (var stack in candidates)
         {
-            if (TotalEstimatedBytes <= targetBytes)
-            {
-                break;
-            }
+            if (_cachedTotalBytes <= targetBytes) break;
 
+            long before = stack.EstimatedBytes;
             stack.CollapseTier1IntoTier2();
-            LogService.Info("UndoManager: collapsed tier-1 for tab {TabId}, total={TotalKB}KB", stack.TabId, TotalEstimatedBytes / 1024);
+            _cachedTotalBytes += stack.EstimatedBytes - before;
+            LogService.Info("UndoManager: collapsed tier-1 for tab {TabId}, total={TotalKB}KB", stack.TabId, _cachedTotalBytes / 1024);
         }
 
         // Evict oldest tier-2 entries if still over target
         foreach (var stack in candidates)
         {
-            if (TotalEstimatedBytes <= targetBytes)
-            {
-                break;
-            }
+            if (_cachedTotalBytes <= targetBytes) break;
 
+            long before = stack.EstimatedBytes;
             stack.EvictOldestTier2(5);
-            LogService.Info("UndoManager: evicted tier-2 entries for tab {TabId}, total={TotalKB}KB", stack.TabId, TotalEstimatedBytes / 1024);
+            _cachedTotalBytes += stack.EstimatedBytes - before;
+            LogService.Info("UndoManager: evicted tier-2 entries for tab {TabId}, total={TotalKB}KB", stack.TabId, _cachedTotalBytes / 1024);
         }
 
-        LogService.Info("UndoManager: collapse complete, total={TotalKB}KB (target={TargetKB}KB)", TotalEstimatedBytes / 1024, targetBytes / 1024);
+        LogService.Info("UndoManager: collapse complete, total={TotalKB}KB (target={TargetKB}KB)", _cachedTotalBytes / 1024, targetBytes / 1024);
     }
 }

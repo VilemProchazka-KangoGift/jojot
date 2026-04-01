@@ -257,38 +257,51 @@ public static class SessionStore
 
     // ─── Orphaned Session Operations ─────────────────────────────────────────
 
+    private static readonly DateTime OrphanFallbackDate = new(2000, 1, 1);
+
     /// <summary>
     /// Returns info for each orphaned session: desktop GUID, desktop name, tab count, and last updated date.
     /// </summary>
     public static async Task<List<(string DesktopGuid, string? DesktopName, int TabCount, DateTime LastUpdated)>> GetOrphanedSessionInfoAsync(
         IReadOnlyList<string> orphanGuids, CancellationToken ct = default)
     {
-        List<(string, string?, int, DateTime)> results = [];
-        if (orphanGuids.Count == 0) return results;
+        if (orphanGuids.Count == 0) return [];
 
         await DatabaseCore.AcquireWriteLockAsync(ct).ConfigureAwait(false);
         try
         {
             await using var context = DatabaseCore.CreateContext();
+
+            // Batch query 1: all desktop names for orphan GUIDs (single round-trip)
+            var appStates = await context.AppStates
+                .AsNoTracking()
+                .Where(a => orphanGuids.Contains(a.DesktopGuid))
+                .Select(a => new { a.DesktopGuid, a.DesktopName })
+                .ToDictionaryAsync(a => a.DesktopGuid, a => a.DesktopName, ct).ConfigureAwait(false);
+
+            // Batch query 2: note stats grouped by desktop GUID (single round-trip)
+            var noteStats = await context.Notes
+                .AsNoTracking()
+                .Where(n => orphanGuids.Contains(n.DesktopGuid))
+                .GroupBy(n => n.DesktopGuid)
+                .Select(g => new { DesktopGuid = g.Key, Count = g.Count(), MaxUpdated = g.Max(n => n.UpdatedAt) })
+                .ToDictionaryAsync(g => g.DesktopGuid, ct).ConfigureAwait(false);
+
+            // Combine results
+            var results = new List<(string, string?, int, DateTime)>(orphanGuids.Count);
             foreach (var guid in orphanGuids)
             {
-                var desktopName = await context.AppStates
-                    .AsNoTracking()
-                    .Where(a => a.DesktopGuid == guid)
-                    .Select(a => a.DesktopName)
-                    .FirstOrDefaultAsync(ct).ConfigureAwait(false);
-
-                var noteStats = await context.Notes
-                    .AsNoTracking()
-                    .Where(n => n.DesktopGuid == guid)
-                    .GroupBy(n => 1)
-                    .Select(g => new { Count = g.Count(), MaxUpdated = g.Max(n => n.UpdatedAt) })
-                    .FirstOrDefaultAsync(ct).ConfigureAwait(false);
-
-                int tabCount = noteStats?.Count ?? 0;
-                DateTime lastUpdated = noteStats?.MaxUpdated ?? DateTime.Parse("2000-01-01");
+                appStates.TryGetValue(guid, out var desktopName);
+                int tabCount = 0;
+                DateTime lastUpdated = OrphanFallbackDate;
+                if (noteStats.TryGetValue(guid, out var stats))
+                {
+                    tabCount = stats.Count;
+                    lastUpdated = stats.MaxUpdated;
+                }
                 results.Add((guid, desktopName, tabCount, lastUpdated));
             }
+            return results;
         }
         catch (Exception ex)
         {
@@ -299,8 +312,6 @@ public static class SessionStore
         {
             DatabaseCore.ReleaseWriteLock();
         }
-
-        return results;
     }
 
     /// <summary>

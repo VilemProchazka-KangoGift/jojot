@@ -95,8 +95,9 @@ public class MainWindowViewModel : ObservableObject
     internal bool MatchesSearch(NoteTab tab)
     {
         if (string.IsNullOrEmpty(_searchText)) return true;
-        return tab.DisplayLabel.Contains(_searchText, StringComparison.OrdinalIgnoreCase)
-            || tab.Content.Contains(_searchText, StringComparison.OrdinalIgnoreCase);
+        var needle = _searchText.AsSpan();
+        return tab.DisplayLabel.AsSpan().Contains(needle, StringComparison.OrdinalIgnoreCase)
+            || tab.Content.AsSpan().Contains(needle, StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>
@@ -342,14 +343,21 @@ public class MainWindowViewModel : ObservableObject
             return matches;
 
         var comparison = caseSensitive ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
+        var contentSpan = content.AsSpan();
+        var querySpan = query.AsSpan();
+        int queryLen = query.Length;
 
-        int index = 0;
-        while ((index = content.IndexOf(query, index, comparison)) != -1)
+        int offset = 0;
+        while (offset < contentSpan.Length)
         {
-            if (!wholeWord || IsWholeWordMatch(content, index, query.Length))
+            int rel = contentSpan[offset..].IndexOf(querySpan, comparison);
+            if (rel < 0) break;
+            int index = offset + rel;
+
+            if (!wholeWord || IsWholeWordMatch(contentSpan, index, queryLen))
                 matches.Add(index);
 
-            index += query.Length;
+            offset = index + queryLen;
         }
         return matches;
     }
@@ -358,7 +366,7 @@ public class MainWindowViewModel : ObservableObject
     /// Tests whether a match at <paramref name="matchIndex"/> of <paramref name="matchLength"/> characters
     /// in <paramref name="content"/> falls on word boundaries (non-alphanumeric or string edge on both sides).
     /// </summary>
-    private static bool IsWholeWordMatch(string content, int matchIndex, int matchLength)
+    private static bool IsWholeWordMatch(ReadOnlySpan<char> content, int matchIndex, int matchLength)
     {
         bool startOk = matchIndex == 0 || !char.IsLetterOrDigit(content[matchIndex - 1]);
         bool endOk = (matchIndex + matchLength) >= content.Length || !char.IsLetterOrDigit(content[matchIndex + matchLength]);
@@ -378,14 +386,15 @@ public class MainWindowViewModel : ObservableObject
 
         // Build result by iterating forward through positions
         var sb = new System.Text.StringBuilder(content.Length);
+        var contentSpan = content.AsSpan();
         int lastEnd = 0;
         foreach (int pos in positions)
         {
-            sb.Append(content, lastEnd, pos - lastEnd);
+            sb.Append(contentSpan.Slice(lastEnd, pos - lastEnd));
             sb.Append(replacement);
             lastEnd = pos + query.Length;
         }
-        sb.Append(content, lastEnd, content.Length - lastEnd);
+        sb.Append(contentSpan[lastEnd..]);
 
         return (sb.ToString(), positions.Count);
     }
@@ -396,7 +405,11 @@ public class MainWindowViewModel : ObservableObject
     /// </summary>
     internal static string ReplaceSingle(string content, int matchIndex, int queryLength, string replacement)
     {
-        return content[..matchIndex] + replacement + content[(matchIndex + queryLength)..];
+        var sb = new System.Text.StringBuilder(content.Length - queryLength + replacement.Length);
+        sb.Append(content.AsSpan(0, matchIndex));
+        sb.Append(replacement);
+        sb.Append(content.AsSpan(matchIndex + queryLength));
+        return sb.ToString();
     }
 
     /// <summary>
@@ -506,8 +519,9 @@ public class MainWindowViewModel : ObservableObject
             else
                 sanitized.Append('_');
         }
-        string result = sanitized.ToString().TrimEnd('.', ' ');
-        return string.IsNullOrWhiteSpace(result) ? "JoJot note" : result;
+        while (sanitized.Length > 0 && sanitized[sanitized.Length - 1] is '.' or ' ')
+            sanitized.Length--;
+        return sanitized.Length == 0 ? "JoJot note" : sanitized.ToString();
     }
 
     private void OnTabsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
@@ -621,19 +635,20 @@ public class MainWindowViewModel : ObservableObject
     /// </summary>
     internal static string GetCleanupExcerpt(NoteTab tab)
     {
-        if (string.IsNullOrWhiteSpace(tab.Content))
+        if (string.IsNullOrWhiteSpace(tab.Content) || string.IsNullOrWhiteSpace(tab.Name))
             return "";
 
-        string content = tab.Content.Trim().Replace('\n', ' ').Replace('\r', ' ');
-
-        // If tab has a custom name, show content excerpt
-        if (!string.IsNullOrWhiteSpace(tab.Name))
+        // Single-pass: trim leading whitespace, replace newlines, cap at 50 chars
+        var span = tab.Content.AsSpan().TrimStart();
+        int limit = Math.Min(span.Length, 50);
+        var sb = new System.Text.StringBuilder(limit + 3);
+        for (int i = 0; i < limit; i++)
         {
-            return content.Length > 50 ? content[..50] + "..." : content;
+            char c = span[i];
+            sb.Append(c is '\n' or '\r' ? ' ' : c);
         }
-
-        // No custom name — DisplayLabel already shows first 45 chars of content
-        return "";
+        if (span.Length > 50) sb.Append("...");
+        return sb.ToString();
     }
 
     // ─── Desktop Drag State ─────────────────────────────────────────

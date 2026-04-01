@@ -92,6 +92,34 @@
                                MouseLeftButtonDown="FontSizeReset_Click"
                                TextDecorations="Underline"/>
 
+                    <!-- CLEANUP SECTION -->
+                    <TextBlock Text="CLEANUP" FontSize="11" FontWeight="SemiBold" Margin="0,8,0,8"
+                               Foreground="{DynamicResource c-text-muted}"/>
+
+                    <!-- Auto-delete old tabs -->
+                    <TextBlock Text="Auto-delete after" FontSize="13" Margin="0,0,0,6"
+                               Foreground="{DynamicResource c-text-primary}"/>
+                    <Grid Margin="0,0,0,4">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBox x:Name="AutoDeleteDaysInput" Grid.Column="0"
+                                 Width="60" FontSize="13" Padding="6,4"
+                                 VerticalContentAlignment="Center"
+                                 Background="{DynamicResource c-tab-bg}"
+                                 Foreground="{DynamicResource c-text-primary}"
+                                 BorderBrush="{DynamicResource c-text-muted}"
+                                 BorderThickness="1"
+                                 TextChanged="AutoDeleteDays_TextChanged"
+                                 PreviewTextInput="AutoDeleteDays_PreviewTextInput"/>
+                        <TextBlock Grid.Column="1" Text="days" FontSize="13"
+                                   VerticalAlignment="Center" Margin="8,0,0,0"
+                                   Foreground="{DynamicResource c-text-primary}"/>
+                    </Grid>
+                    <TextBlock Text="Leave blank to disable. Pinned tabs are kept." FontSize="11" Margin="0,2,0,16"
+                               Foreground="{DynamicResource c-text-muted}"/>
+
                     <!-- SHORTCUTS SECTION -->
                     <TextBlock Text="SHORTCUTS" FontSize="11" FontWeight="SemiBold" Margin="0,8,0,8"
                                Foreground="{DynamicResource c-text-muted}"/>

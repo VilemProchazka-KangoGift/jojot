@@ -10,6 +10,9 @@ public partial class MainWindow
 {
     // ─── Tab Context Menu ──────────────────────
 
+    private static readonly System.Windows.Media.FontFamily IconFontFamily =
+        new("Segoe Fluent Icons, Segoe MDL2 Assets");
+
     /// <summary>
     /// Builds a themed context menu Popup for a tab. Matches hamburger menu styling.
     /// Uses Popup instead of WPF ContextMenu for consistent theming.
@@ -65,7 +68,7 @@ public partial class MainWindow
             var iconBlock = new TextBlock
             {
                 Text = icon,
-                FontFamily = new System.Windows.Media.FontFamily("Segoe Fluent Icons, Segoe MDL2 Assets"),
+                FontFamily = IconFontFamily,
                 FontSize = 14,
                 VerticalAlignment = VerticalAlignment.Center
             };

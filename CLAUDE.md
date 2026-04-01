@@ -31,6 +31,10 @@ dotnet test JoJot.Tests/JoJot.Tests.csproj
 
 Test project: `JoJot.Tests/` (xUnit + AwesomeAssertions + NSubstitute). 302 tests. `InternalsVisibleTo("JoJot.Tests")` in JoJot.csproj.
 
+### Versioning
+
+CalVer format: **`YYYY.M.Count`** (e.g. `2026.3.7`). Count increments per release within the month, resets each new month. Update in both `JoJot/JoJot.csproj` (`Version`, `AssemblyVersion`, `FileVersion`) and `installer/jojot.iss` (`AppVersion`, `AppVerName`, `OutputBaseFilename`).
+
 ## Architecture
 
 - **Framework**: WPF (.NET 10), with WinForms enabled only for `SystemEvents` access (ambiguous global usings are removed in `.csproj`)

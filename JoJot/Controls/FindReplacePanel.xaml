@@ -26,7 +26,7 @@
                 <!-- Find input row -->
                 <Grid Margin="0,0,0,8">
                     <TextBox x:Name="FindInput"
-                             FontSize="13" Padding="6,5"
+                             FontSize="13" Padding="6,5,24,5"
                              Background="{DynamicResource c-tab-bg}"
                              Foreground="{DynamicResource c-text-primary}"
                              BorderBrush="{DynamicResource c-border}"
@@ -36,6 +36,13 @@
                     <TextBlock x:Name="FindPlaceholder" Text="Find" FontSize="13" Padding="8,6"
                                Foreground="{DynamicResource c-text-muted}"
                                IsHitTestVisible="False"/>
+                    <TextBlock x:Name="FindClearButton" Text="&#xE711;"
+                               FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="10"
+                               HorizontalAlignment="Right" VerticalAlignment="Center"
+                               Margin="0,0,6,0" Cursor="Hand"
+                               Foreground="{DynamicResource c-text-muted}"
+                               Visibility="Collapsed"
+                               MouseLeftButtonDown="FindClear_Click"/>
                 </Grid>
 
                 <!-- Options + counter row -->
@@ -99,7 +106,7 @@
                 <!-- Replace input row (always visible) -->
                 <Grid Margin="0,0,0,8">
                     <TextBox x:Name="ReplaceInput"
-                             FontSize="13" Padding="6,5"
+                             FontSize="13" Padding="6,5,24,5"
                              Background="{DynamicResource c-tab-bg}"
                              Foreground="{DynamicResource c-text-primary}"
                              BorderBrush="{DynamicResource c-border}"
@@ -107,6 +114,13 @@
                     <TextBlock x:Name="ReplacePlaceholder" Text="Replace" FontSize="13" Padding="8,6"
                                Foreground="{DynamicResource c-text-muted}"
                                IsHitTestVisible="False"/>
+                    <TextBlock x:Name="ReplaceClearButton" Text="&#xE711;"
+                               FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="10"
+                               HorizontalAlignment="Right" VerticalAlignment="Center"
+                               Margin="0,0,6,0" Cursor="Hand"
+                               Foreground="{DynamicResource c-text-muted}"
+                               Visibility="Collapsed"
+                               MouseLeftButtonDown="ReplaceClear_Click"/>
                 </Grid>
 
                 <!-- Replace buttons row (always visible) -->

@@ -44,14 +44,20 @@ public partial class FindReplacePanel : UserControl
     {
         InitializeComponent();
 
-        // Wire placeholder visibility to TextBox text changes
+        // Wire placeholder and clear button visibility to TextBox text changes
         FindInput.TextChanged += (_, _) =>
-            FindPlaceholder.Visibility = string.IsNullOrEmpty(FindInput.Text)
-                ? Visibility.Visible : Visibility.Collapsed;
+        {
+            bool empty = string.IsNullOrEmpty(FindInput.Text);
+            FindPlaceholder.Visibility = empty ? Visibility.Visible : Visibility.Collapsed;
+            FindClearButton.Visibility = empty ? Visibility.Collapsed : Visibility.Visible;
+        };
 
         ReplaceInput.TextChanged += (_, _) =>
-            ReplacePlaceholder.Visibility = string.IsNullOrEmpty(ReplaceInput.Text)
-                ? Visibility.Visible : Visibility.Collapsed;
+        {
+            bool empty = string.IsNullOrEmpty(ReplaceInput.Text);
+            ReplacePlaceholder.Visibility = empty ? Visibility.Visible : Visibility.Collapsed;
+            ReplaceClearButton.Visibility = empty ? Visibility.Collapsed : Visibility.Visible;
+        };
     }
 
     // ── Public methods ──
@@ -193,6 +199,18 @@ public partial class FindReplacePanel : UserControl
     private void ReplaceAll_Click(object sender, MouseButtonEventArgs e)
     {
         ReplaceAllRequested?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void FindClear_Click(object sender, MouseButtonEventArgs e)
+    {
+        FindInput.Text = "";
+        FindInput.Focus();
+    }
+
+    private void ReplaceClear_Click(object sender, MouseButtonEventArgs e)
+    {
+        ReplaceInput.Text = "";
+        ReplaceInput.Focus();
     }
 
     private void RaiseFindChanged()

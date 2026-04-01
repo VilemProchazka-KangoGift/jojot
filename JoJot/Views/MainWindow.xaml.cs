@@ -202,6 +202,13 @@ public partial class MainWindow : Window
             if (isRecording) HotkeyService.PauseHotkey();
             else HotkeyService.ResumeHotkey();
         };
+        PreferencesPanel.AutoDeleteDaysChanged += (_, value) =>
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                _ = PreferenceStore.SetPreferenceAsync("auto_delete_days", "");
+            else if (int.TryParse(value, out int days) && days > 0)
+                _ = PreferenceStore.SetPreferenceAsync("auto_delete_days", days.ToString());
+        };
         WireUpFindPanelEvents();
 
         // Configure autosave service (undo snapshots are pushed per-keystroke in ContentEditor_TextChanged)
@@ -395,47 +402,72 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// Finds the ScrollViewer inside a TextBox visual tree.
-    /// Used for saving/restoring scroll position on tab switch.
+    /// Returns the cached ScrollViewer for ContentEditor, walking the visual tree only once.
     /// </summary>
-    private static ScrollViewer? GetScrollViewer(DependencyObject parent)
+    private ScrollViewer? GetContentScrollViewer()
     {
-        for (int i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
-        {
-            var child = VisualTreeHelper.GetChild(parent, i);
-            if (child is ScrollViewer sv) return sv;
-            var result = GetScrollViewer(child);
-            if (result is not null) return result;
-        }
-        return null;
+        return _cachedContentScrollViewer ??= FindDescendant<ScrollViewer>(ContentEditor);
+    }
+
+    // Cached frozen animations for tab button hover (avoids allocation per hover cycle)
+    private static readonly DoubleAnimation FadeIn100ms = CreateFrozenAnim(0, 1, 100);
+    private static readonly DoubleAnimation FadeOut100ms = CreateFrozenAnim(1, 0, 100);
+
+    private static DoubleAnimation CreateFrozenAnim(double from, double to, int ms)
+    {
+        var a = new DoubleAnimation(from, to, TimeSpan.FromMilliseconds(ms));
+        a.Freeze();
+        return a;
     }
 
     /// <summary>
     /// Animates the Opacity property of a UIElement from one value to another over durationMs.
-    /// Used for the tab x icon fade-in/out on hover.
+    /// Uses cached frozen animations for the common 100ms fade in/out pattern.
     /// </summary>
     private static void AnimateOpacity(UIElement element, double from, double to, int durationMs)
     {
+        // Use cached animation for common hover pattern
+        if (durationMs == 100)
+        {
+            // ReSharper disable CompareOfFloatsByEqualityOperator
+            if (from == 0 && to == 1) { element.BeginAnimation(OpacityProperty, FadeIn100ms); return; }
+            if (from == 1 && to == 0) { element.BeginAnimation(OpacityProperty, FadeOut100ms); return; }
+            // ReSharper restore CompareOfFloatsByEqualityOperator
+        }
         var anim = new DoubleAnimation(from, to, TimeSpan.FromMilliseconds(durationMs));
         element.BeginAnimation(OpacityProperty, anim);
     }
 
+    private System.Windows.Threading.DispatcherTimer? _collapseTimer;
+    private readonly List<UIElement> _pendingCollapses = [];
+
     /// <summary>
     /// Collapses an element after a short delay (allows fade-out animation to complete).
+    /// Reuses a single timer for all pending collapses.
     /// </summary>
-    private static void DelayedCollapse(UIElement element)
+    private void DelayedCollapse(UIElement element)
     {
-        var timer = new System.Windows.Threading.DispatcherTimer
+        _pendingCollapses.Add(element);
+
+        if (_collapseTimer is null)
         {
-            Interval = TimeSpan.FromMilliseconds(100)
-        };
-        timer.Tick += (_, _) =>
-        {
-            timer.Stop();
-            if (element.Opacity == 0)
-                element.Visibility = Visibility.Collapsed;
-        };
-        timer.Start();
+            _collapseTimer = new System.Windows.Threading.DispatcherTimer
+            {
+                Interval = TimeSpan.FromMilliseconds(100)
+            };
+            _collapseTimer.Tick += (_, _) =>
+            {
+                _collapseTimer.Stop();
+                foreach (var el in _pendingCollapses)
+                {
+                    if (el.Opacity == 0)
+                        el.Visibility = Visibility.Collapsed;
+                }
+                _pendingCollapses.Clear();
+            };
+        }
+        _collapseTimer.Stop();
+        _collapseTimer.Start();
     }
 
     // ─── Window Title ───────────────────────────────────────────────────────
@@ -467,6 +499,9 @@ public partial class MainWindow : Window
         // Stop autosave and flush synchronously
         _autosaveService.Stop();
         _checkpointTimer.Stop();
+        _contentSyncTimer?.Stop();
+        _findDebounceTimer?.Stop();
+        CancelPendingSearch();
 
         // Commit pending deletion synchronously before close
         CommitPendingDeletionAsync().GetAwaiter().GetResult();
@@ -483,14 +518,26 @@ public partial class MainWindow : Window
     {
         base.OnClosing(e);
 
+        // Unsubscribe static events to allow GC of this window
+        ThemeService.ThemeChanged -= OnThemeChangedAdornerRefresh;
+        VirtualDesktopService.WindowMovedToDesktop -= OnWindowMovedToDesktop;
+
         // Remove WndProc hook before HWND is destroyed
         RemoveDesktopActivationHook();
 
-        // Stop autosave timer and flush synchronously
+        // Stop all timers
         _autosaveService.Stop();
         _checkpointTimer.Stop();
+        _stalenessTimer.Stop();
+        _contentSyncTimer?.Stop();
+        _findDebounceTimer?.Stop();
+        _findTextChangeDebounce?.Stop();
+        _searchDebounceTimer?.Stop();
+        _collapseTimer?.Stop();
+        CancelPendingSearch();
 
         // Synchronous flush — block until save completes (no data loss)
+        FlushContentSync();
         if (_activeTab is not null)
         {
             string content = ContentEditor.Text;
@@ -528,11 +575,14 @@ public partial class MainWindow : Window
     {
         if (_suppressTextChanged || _activeTab is null) return;
 
-        // Sync editor text to model so DisplayLabel binding updates live
-        _activeTab.Content = ContentEditor.Text;
+        string text = ContentEditor.Text;
+        int cursor = ContentEditor.CaretIndex;
 
-        // Push per-keystroke undo snapshot (decoupled from autosave)
-        UndoManager.Instance.PushSnapshot(_activeTab.Id, _activeTab.Content, ContentEditor.CaretIndex);
+        // Push per-keystroke undo snapshot (O(1) amortized — collapse is offloaded)
+        UndoManager.Instance.PushSnapshot(_activeTab.Id, text, cursor);
+
+        // Throttle model sync — DisplayLabel binding doesn't need per-character updates
+        ThrottleContentSync(text);
 
         _autosaveService.NotifyTextChanged();
 
@@ -542,6 +592,54 @@ public partial class MainWindow : Window
 
         // Re-run find highlights if panel is open
         RefreshFindOnTextChange();
+    }
+
+    private ScrollViewer? _cachedContentScrollViewer;
+    private System.Windows.Threading.DispatcherTimer? _contentSyncTimer;
+    private string? _pendingContentSync;
+
+    /// <summary>
+    /// Defers <c>_activeTab.Content</c> assignment (and its PropertyChanged / DisplayLabel
+    /// recomputation) so it fires at most once per ~100 ms instead of on every keystroke.
+    /// </summary>
+    private void ThrottleContentSync(string text)
+    {
+        _pendingContentSync = text;
+
+        if (_contentSyncTimer is not null && _contentSyncTimer.IsEnabled) return;
+
+        if (_contentSyncTimer is null)
+        {
+            _contentSyncTimer = new System.Windows.Threading.DispatcherTimer
+            {
+                Interval = TimeSpan.FromMilliseconds(100)
+            };
+            _contentSyncTimer.Tick += (_, _) =>
+            {
+                _contentSyncTimer.Stop();
+                if (_activeTab is not null && _pendingContentSync is not null)
+                {
+                    _activeTab.Content = _pendingContentSync;
+                    _pendingContentSync = null;
+                }
+            };
+        }
+        _contentSyncTimer.Start();
+    }
+
+    /// <summary>
+    /// Flushes any pending throttled content sync immediately.
+    /// Call before operations that need <c>_activeTab.Content</c> to be current
+    /// (tab switch, save, export).
+    /// </summary>
+    private void FlushContentSync()
+    {
+        _contentSyncTimer?.Stop();
+        if (_activeTab is not null && _pendingContentSync is not null)
+        {
+            _activeTab.Content = _pendingContentSync;
+            _pendingContentSync = null;
+        }
     }
 
     /// <summary>
@@ -571,6 +669,7 @@ public partial class MainWindow : Window
     private void PerformUndo()
     {
         if (_activeTab is null) return;
+        FlushContentSync();
 
         // Capture current editor content so redo can restore it.
         // PushSnapshot deduplicates if content matches the current index.
@@ -595,6 +694,7 @@ public partial class MainWindow : Window
     private void PerformRedo()
     {
         if (_activeTab is null) return;
+        FlushContentSync();
         var entry = UndoManager.Instance.Redo(_activeTab.Id);
         if (entry is null) return;
 
@@ -615,6 +715,7 @@ public partial class MainWindow : Window
     private void SaveAsTxt()
     {
         if (_activeTab is null) return;
+        FlushContentSync();
 
         var dialog = new Microsoft.Win32.SaveFileDialog
         {

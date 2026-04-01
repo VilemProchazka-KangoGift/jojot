@@ -14,7 +14,7 @@ namespace JoJot.Services;
 /// Never mix these coordinates with WPF <c>Window.Left/Top</c> or <c>SetWindowPos</c>,
 /// which use different coordinate systems.
 /// </summary>
-public static class WindowPlacementHelper
+public static partial class WindowPlacementHelper
 {
     // P/Invoke declarations
 
@@ -48,11 +48,13 @@ public static class WindowPlacementHelper
         public RECT rcNormalPosition;
     }
 
-    [DllImport("user32.dll", SetLastError = true)]
-    private static extern bool GetWindowPlacement(IntPtr hWnd, ref WINDOWPLACEMENT lpwndpl);
+    [LibraryImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static partial bool GetWindowPlacement(IntPtr hWnd, ref WINDOWPLACEMENT lpwndpl);
 
-    [DllImport("user32.dll", SetLastError = true)]
-    private static extern bool SetWindowPlacement(IntPtr hWnd, ref WINDOWPLACEMENT lpwndpl);
+    [LibraryImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static partial bool SetWindowPlacement(IntPtr hWnd, ref WINDOWPLACEMENT lpwndpl);
 
     // Public API
 
