@@ -654,7 +654,7 @@ public static class VirtualDesktopService
                             d.Id.ToString().Equals(currentDesktopGuid, StringComparison.OrdinalIgnoreCase));
                         toDesktopName = targetDesktop?.Name ?? "";
                     }
-                    catch { /* name lookup is best-effort */ }
+                    catch (Exception ex) { LogService.Debug("Desktop name lookup failed (best-effort): {Error}", ex.Message); }
 
                     LogService.Info("Window drag detected: {FromDesktop} -> {ToDesktop} (target: {TargetName})", expectedDesktopGuid, currentDesktopGuid, toDesktopName);
                     WindowMovedToDesktop?.Invoke(hwnd, expectedDesktopGuid, currentDesktopGuid, toDesktopName);

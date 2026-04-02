@@ -223,7 +223,6 @@ public partial class App : Application
             // Log startup timing
             sw.Stop();
             LogService.Info("Startup complete in {ElapsedMs}ms", sw.ElapsedMilliseconds);
-            Debug.WriteLine($"[JoJot] Startup: {sw.ElapsedMilliseconds}ms");
         }
         catch (Exception ex)
         {
