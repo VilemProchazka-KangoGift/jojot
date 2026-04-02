@@ -29,7 +29,7 @@ The solution file uses the `.slnx` format.
 dotnet test JoJot.Tests/JoJot.Tests.csproj
 ```
 
-Test project: `JoJot.Tests/` (xUnit + AwesomeAssertions + NSubstitute). 302 tests. `InternalsVisibleTo("JoJot.Tests")` in JoJot.csproj.
+Test project: `JoJot.Tests/` (xUnit + AwesomeAssertions + NSubstitute). 1110 tests. `InternalsVisibleTo("JoJot.Tests")` in JoJot.csproj.
 
 ### Versioning
 
@@ -64,7 +64,7 @@ SQLite database at `%LocalAppData%\JoJot\jojot.db`. WAL mode, NORMAL synchronous
 
 `App._windows` is a `Dictionary<string, MainWindow>` keyed by desktop GUID. Each `MainWindow` owns an `ObservableCollection<NoteTab>` and manages its own tab panel, text editor, search, drag-reorder, and context menus. `NoteTab` maps 1:1 to the `notes` SQLite table. Tabs support pinning, soft-delete with undo toast, and drag-to-reorder with sort_order persistence.
 
-### Services (all static except `AutosaveService` and `UndoManager`)
+### Services (all static except `AutosaveService`, `UndoManager`, and `UndoStack`)
 
 | Service | Role |
 |---|---|
@@ -84,6 +84,10 @@ SQLite database at `%LocalAppData%\JoJot\jojot.db`. WAL mode, NORMAL synchronous
 | `FileDropService` | File drag-and-drop import |
 | `WindowPlacementHelper` | Win32 `SetWindowPlacement` for geometry save/restore |
 | `WindowActivationHelper` | Win32 `SetForegroundWindow` with `AllowSetForegroundWindow` |
+| `AppEnvironment` | Centralized paths, config flags, and environment detection |
+| `DesktopSwitchDetector` | Polling-based virtual desktop switch detection |
+| `SqlitePragmaInterceptor` | EF Core interceptor for SQLite PRAGMA configuration |
+| `IClock` / `IDebounceTimer` | Testability interfaces for time and debounce abstraction |
 
 ### Theming
 
