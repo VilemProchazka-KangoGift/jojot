@@ -4,6 +4,9 @@ using System.Windows.Media.Animation;
 
 namespace JoJot.Controls;
 
+/// <summary>
+/// Overlay shown when a window is dragged between virtual desktops, presenting keep/merge/cancel options.
+/// </summary>
 public partial class DragOverlay : UserControl
 {
     public event EventHandler? KeepHereClicked;

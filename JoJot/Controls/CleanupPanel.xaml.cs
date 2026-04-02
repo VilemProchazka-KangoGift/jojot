@@ -8,6 +8,9 @@ using JoJot.ViewModels;
 
 namespace JoJot.Controls;
 
+/// <summary>
+/// Side panel for bulk-deleting old or unused tabs based on age and pin-status filters.
+/// </summary>
 public partial class CleanupPanel : UserControl
 {
     private List<NoteTab> _currentCandidates = [];

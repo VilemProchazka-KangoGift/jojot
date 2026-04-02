@@ -4,6 +4,9 @@ using System.Windows.Input;
 
 namespace JoJot.Controls;
 
+/// <summary>
+/// Modal overlay for confirming destructive actions. Supports confirm/cancel and info-only modes.
+/// </summary>
 public partial class ConfirmationOverlay : UserControl
 {
     private Action? _confirmAction;

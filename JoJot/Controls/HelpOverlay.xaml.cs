@@ -5,6 +5,9 @@ using JoJot.Services;
 
 namespace JoJot.Controls;
 
+/// <summary>
+/// Modal overlay displaying all keyboard shortcuts, organized by section.
+/// </summary>
 public partial class HelpOverlay : UserControl
 {
     private bool _built;

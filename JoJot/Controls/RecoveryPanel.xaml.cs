@@ -6,6 +6,9 @@ using System.Windows.Media.Animation;
 
 namespace JoJot.Controls;
 
+/// <summary>
+/// Side panel for restoring orphaned sessions from other virtual desktops.
+/// </summary>
 public partial class RecoveryPanel : UserControl
 {
     public event EventHandler? CloseRequested;
