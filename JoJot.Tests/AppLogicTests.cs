@@ -177,4 +177,36 @@ public class AppLogicTests
     {
         App.ShouldRecoverMove("GUID-B", "guid-a").Should().BeTrue();
     }
+
+    // ─── ResolveTargetDesktop ───────────────────────────────────────
+
+    [Fact]
+    public void ResolveTargetDesktop_SenderGuid_TakesPriorityOverCached()
+    {
+        // Second instance queried COM and found Desktop 2 — use that,
+        // not the first instance's cached Desktop 1
+        App.ResolveTargetDesktop("desktop-2", "desktop-1").Should().Be("desktop-2");
+    }
+
+    [Fact]
+    public void ResolveTargetDesktop_NullSenderGuid_FallsToCached()
+    {
+        // COM query failed in second instance — fall back to first instance's cached GUID
+        App.ResolveTargetDesktop(null, "desktop-1").Should().Be("desktop-1");
+    }
+
+    [Fact]
+    public void ResolveTargetDesktop_SenderGuid_SameAsCached_ReturnsSender()
+    {
+        // Both agree on the same desktop — no conflict
+        App.ResolveTargetDesktop("desktop-1", "desktop-1").Should().Be("desktop-1");
+    }
+
+    [Fact]
+    public void ResolveTargetDesktop_SenderGuid_PreservedExactly()
+    {
+        // Verify the sender's GUID is returned verbatim (e.g., casing preserved)
+        var guid = "A1B2C3D4-E5F6-7890-ABCD-EF1234567890";
+        App.ResolveTargetDesktop(guid, "cached-guid").Should().Be(guid);
+    }
 }

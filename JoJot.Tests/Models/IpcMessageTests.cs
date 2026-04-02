@@ -150,4 +150,41 @@ public class IpcMessageTests
         var b = new ShowDesktopCommand("guid-1");
         a.Should().Be(b);
     }
+
+    // ─── Cross-desktop IPC scenarios ─────────────────────────────────
+
+    [Fact]
+    public void NewTabCommand_WithDesktopGuid_RoundtripsGuid()
+    {
+        // Second instance sends desktop GUID queried from COM
+        var guid = "a1b2c3d4-e5f6-7890-abcd-ef1234567890";
+        IpcMessage original = new NewTabCommand(DesktopGuid: guid);
+        var json = JsonSerializer.Serialize(original, IpcMessageContext.Default.IpcMessage);
+        var deserialized = (NewTabCommand)JsonSerializer.Deserialize(json, IpcMessageContext.Default.IpcMessage)!;
+
+        deserialized.DesktopGuid.Should().Be(guid);
+    }
+
+    [Fact]
+    public void NewTabCommand_WithoutDesktopGuid_DeserializesAsNull()
+    {
+        // COM query failed — second instance sends null
+        IpcMessage original = new NewTabCommand(DesktopGuid: null);
+        var json = JsonSerializer.Serialize(original, IpcMessageContext.Default.IpcMessage);
+        var deserialized = (NewTabCommand)JsonSerializer.Deserialize(json, IpcMessageContext.Default.IpcMessage)!;
+
+        deserialized.DesktopGuid.Should().BeNull();
+    }
+
+    [Fact]
+    public void NewTabCommand_DesktopGuidOnlyNoContent_Roundtrips()
+    {
+        // Common case: second instance sends just the desktop GUID, no content
+        IpcMessage original = new NewTabCommand(InitialContent: null, DesktopGuid: "desktop-2");
+        var json = JsonSerializer.Serialize(original, IpcMessageContext.Default.IpcMessage);
+        var deserialized = (NewTabCommand)JsonSerializer.Deserialize(json, IpcMessageContext.Default.IpcMessage)!;
+
+        deserialized.InitialContent.Should().BeNull();
+        deserialized.DesktopGuid.Should().Be("desktop-2");
+    }
 }

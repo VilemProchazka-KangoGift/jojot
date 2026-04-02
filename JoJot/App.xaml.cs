@@ -82,9 +82,24 @@ public partial class App : Application
 
             if (!createdNew)
             {
-                // Second instance detected — skip COM init, first instance already tracks current desktop
-                LogService.Info("Second instance detected — sending new-tab command");
-                await IpcService.SendCommandAsync(new NewTabCommand(DesktopGuid: null));
+                // Second instance: query current desktop via COM so the first instance
+                // creates a window on the desktop the user is actually on, not wherever
+                // its cached CurrentDesktopGuid points (which may already be stale if
+                // Windows activated the first instance's window on another desktop).
+                string? senderDesktopGuid = null;
+                try
+                {
+                    VirtualDesktopInterop.Initialize();
+                    var (id, _, _) = VirtualDesktopInterop.GetCurrentDesktop();
+                    senderDesktopGuid = id.ToString();
+                }
+                catch (Exception ex)
+                {
+                    LogService.Warn("Second instance: failed to query desktop — first instance will use cached GUID: {Error}", ex.Message);
+                }
+
+                LogService.Info("Second instance detected — sending new-tab command (desktop={DesktopGuid})", senderDesktopGuid);
+                await IpcService.SendCommandAsync(new NewTabCommand(DesktopGuid: senderDesktopGuid));
                 Environment.Exit(0);
                 return;
             }
@@ -360,7 +375,7 @@ public partial class App : Application
 
                 case NewTabCommand ntc:
                     // Prefer the sender's desktop GUID (queried by second instance via COM)
-                    var targetDesktop = ntc.DesktopGuid ?? desktopGuid;
+                    var targetDesktop = ResolveTargetDesktop(ntc.DesktopGuid, desktopGuid);
                     LogService.Info("IPC: new-tab — target desktop {TargetDesktop} (sender={SenderDesktop}, cached={CachedDesktop})", targetDesktop, ntc.DesktopGuid, desktopGuid);
                     if (_windows.TryGetValue(targetDesktop, out var tabWindow))
                     {
@@ -429,6 +444,17 @@ public partial class App : Application
         if (!crossDesktopActivation) return false;
         if (isKeyboardNavigation) return false;
         return !hasOldWindow && hasNewWindow;
+    }
+
+    /// <summary>
+    /// Resolves the target desktop for an IPC new-tab command.
+    /// Prefers the sender's desktop GUID (queried by the second instance via COM at launch time)
+    /// over the first instance's cached GUID (which may be stale if Windows has already activated
+    /// the first instance's window on a different desktop before the IPC arrives).
+    /// </summary>
+    internal static string ResolveTargetDesktop(string? senderDesktopGuid, string cachedDesktopGuid)
+    {
+        return senderDesktopGuid ?? cachedDesktopGuid;
     }
 
     /// <summary>
