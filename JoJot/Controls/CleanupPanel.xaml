@@ -53,7 +53,7 @@
                 <!-- Delete button -->
                 <Border x:Name="DeleteButton" Margin="0,12,0,0" Padding="8,6"
                         CornerRadius="4" Cursor="Hand" HorizontalAlignment="Left"
-                        Background="#e74c3c" IsEnabled="False" Opacity="0.5"
+                        Background="{DynamicResource c-danger}" IsEnabled="False" Opacity="0.5"
                         MouseLeftButtonDown="Delete_Click">
                     <TextBlock x:Name="DeleteText" Text="Delete 0 tabs" FontSize="13" Foreground="White"/>
                 </Border>

@@ -391,7 +391,7 @@
                          IsEnabled="False"/>
 
                 <!-- Font size tooltip — auto-dismissing overlay -->
-                <Border x:Name="FontSizeTooltip" Visibility="Collapsed" Background="#CC333333"
+                <Border x:Name="FontSizeTooltip" Visibility="Collapsed" Background="{DynamicResource c-tooltip-bg}"
                         CornerRadius="4" Padding="8,4" HorizontalAlignment="Right" VerticalAlignment="Top"
                         Margin="0,8,8,0" Panel.ZIndex="60" IsHitTestVisible="False">
                     <TextBlock x:Name="FontSizeTooltipText" FontSize="12" Foreground="White"/>
@@ -432,7 +432,7 @@
 
         <!-- R2-DROP-01: File drop overlay moved to root Grid level for full-window coverage -->
         <Grid x:Name="FileDropOverlay" Grid.ColumnSpan="3" Visibility="Collapsed"
-              Background="#80000000" Panel.ZIndex="50"
+              Background="{DynamicResource c-overlay-bg}" Panel.ZIndex="50"
               AllowDrop="True" DragOver="OnFileDragOver" Drop="OnFileDrop">
             <Border BorderBrush="{DynamicResource c-accent}" BorderThickness="3" CornerRadius="8" Margin="16">
                 <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
@@ -441,7 +441,7 @@
                     <TextBlock Text="Drop file here" FontSize="18" FontWeight="SemiBold"
                                Foreground="White" HorizontalAlignment="Center" Margin="0,12,0,0"/>
                     <TextBlock Text="Text files only, max 500KB" FontSize="12"
-                               Foreground="#AAAAAA" HorizontalAlignment="Center" Margin="0,4,0,0"/>
+                               Foreground="{DynamicResource c-text-muted}" HorizontalAlignment="Center" Margin="0,4,0,0"/>
                 </StackPanel>
             </Border>
         </Grid>

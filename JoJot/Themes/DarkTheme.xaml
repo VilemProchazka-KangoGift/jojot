@@ -28,6 +28,11 @@
     <SolidColorBrush x:Key="c-toast-bg" Color="#3C3C3C"/>
     <SolidColorBrush x:Key="c-toast-fg" Color="#D4D4D4"/>
 
+    <!-- Overlays & Modals -->
+    <SolidColorBrush x:Key="c-overlay-bg" Color="#80000000"/>
+    <SolidColorBrush x:Key="c-tooltip-bg" Color="#CC333333"/>
+    <SolidColorBrush x:Key="c-danger" Color="#E74C3C"/>
+
     <!-- Find match highlights -->
     <SolidColorBrush x:Key="c-find-match-bg" Color="#50CCCC00"/>
     <SolidColorBrush x:Key="c-find-match-active-bg" Color="#70FF9632"/>

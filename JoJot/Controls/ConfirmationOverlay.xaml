@@ -4,7 +4,7 @@
              Visibility="Collapsed">
     <Grid>
         <!-- Semi-transparent backdrop -->
-        <Border Background="#80000000" MouseLeftButtonDown="Backdrop_Click"/>
+        <Border Background="{DynamicResource c-overlay-bg}" MouseLeftButtonDown="Backdrop_Click"/>
 
         <!-- Centered confirmation card -->
         <Border HorizontalAlignment="Center" VerticalAlignment="Center"
@@ -33,7 +33,7 @@
                     <Button x:Name="DeleteButton" Content="Delete"
                             MinWidth="80" Height="30"
                             FontSize="13" FontWeight="SemiBold" Cursor="Hand"
-                            Background="#e74c3c" Foreground="White"
+                            Background="{DynamicResource c-danger}" Foreground="White"
                             BorderThickness="0"
                             Click="DeleteButton_Click"/>
                 </StackPanel>

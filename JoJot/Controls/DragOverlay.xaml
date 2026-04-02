@@ -4,7 +4,7 @@
              Visibility="Collapsed">
     <Grid>
         <!-- Semi-transparent backdrop -->
-        <Border Background="#A6000000"/>
+        <Border Background="{DynamicResource c-overlay-bg}"/>
 
         <!-- Centered card -->
         <Border Background="{DynamicResource c-win-bg}"
