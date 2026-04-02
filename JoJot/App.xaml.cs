@@ -230,7 +230,7 @@ public partial class App : Application
         }
     }
 
-    // ─── Window Factory ─────────────────────────────────────────────────────
+    // ─── Window Factory ─────────────────────────────────────────────────
 
     /// <summary>
     /// Creates a new MainWindow for the given desktop, restores its geometry,
@@ -330,7 +330,7 @@ public partial class App : Application
         return window;
     }
 
-    // ─── IPC Command Routing ─────────────────────────────────────────────────
+    // ─── IPC Command Routing ────────────────────────────────────────────
 
     /// <summary>
     /// Routes incoming IPC commands to the correct desktop's window.
@@ -396,7 +396,7 @@ public partial class App : Application
     /// </summary>
     public List<MainWindow> GetAllWindows() => [.. _windows.Values];
 
-    // ─── Extracted Pure Logic ────────────────────────────────────────────────
+    // ─── Extracted Pure Logic ───────────────────────────────────────────
 
     /// <summary>
     /// Parses a stored log level preference string into a LogEventLevel.
@@ -454,7 +454,7 @@ public partial class App : Application
         await CreateWindowForDesktop(orphanGuid);
     }
 
-    // ─── Window Drag Helper Methods ──────────────────────────────────────────
+    // ─── Window Drag Helper Methods ─────────────────────────────────────
 
     /// <summary>
     /// Whether a recovery toast should be shown on the next window creation.

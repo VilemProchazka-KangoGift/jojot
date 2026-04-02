@@ -5,7 +5,7 @@ namespace JoJot;
 
 public partial class MainWindow
 {
-    // ─── Cleanup Panel ────────────
+    // ─── Cleanup Panel ──────────────────────────────────────────────────
 
     private void ShowCleanupPanel()
     {

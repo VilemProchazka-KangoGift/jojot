@@ -22,7 +22,7 @@ public static class IpcService
     private static CancellationTokenSource? _cts;
     private static Action<IpcMessage>? _commandHandler;
 
-    // ─── Server side (first instance) ────────────────────────────────────
+    // ─── Server side (first instance) ───────────────────────────────────
 
     /// <summary>
     /// Starts the named pipe server loop. Call from the first instance after acquiring the mutex.
@@ -100,7 +100,7 @@ public static class IpcService
         LogService.Info("IpcService: server listen loop exited");
     }
 
-    // ─── Client side (second instance) ───────────────────────────────────
+    // ─── Client side (second instance) ──────────────────────────────────
 
     /// <summary>
     /// Sends a command to the running first instance via named pipe.
@@ -177,7 +177,7 @@ public static class IpcService
         }
     }
 
-    // ─── Mutex helper ─────────────────────────────────────────────────────
+    // ─── Mutex helper ───────────────────────────────────────────────────
 
     /// <summary>
     /// Tries to acquire the global single-instance mutex.

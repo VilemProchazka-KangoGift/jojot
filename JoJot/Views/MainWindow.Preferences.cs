@@ -6,7 +6,7 @@ namespace JoJot;
 
 public partial class MainWindow
 {
-    // ─── Preferences Panel ──────────────
+    // ─── Preferences Panel ──────────────────────────────────────────────
 
     public async Task InitializePreferencesAsync()
     {
@@ -46,7 +46,7 @@ public partial class MainWindow
         PreferencesPanel.Hide();
     }
 
-    // ── Font size logic ──
+    // ─── Font size logic ────────────────────────────────────────────────
 
     private async Task ChangeFontSizeAsync(int delta)
     {

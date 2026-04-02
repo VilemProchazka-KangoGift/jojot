@@ -16,7 +16,7 @@ namespace JoJot.Services;
 /// </summary>
 public static partial class DesktopSwitchDetector
 {
-    // ─── P/Invoke ────────────────────────────────────────────────────────
+    // ─── P/Invoke ───────────────────────────────────────────────────────
 
     [DllImport("user32.dll", SetLastError = true)]
     private static extern IntPtr SetWindowsHookEx(int idHook, LowLevelKeyboardProc lpfn, IntPtr hMod, uint dwThreadId);
@@ -50,7 +50,7 @@ public static partial class DesktopSwitchDetector
     private const int VK_LMENU = 0xA4;  // Left Alt
     private const int VK_RMENU = 0xA5;  // Right Alt
 
-    // ─── Activation / switch timestamp tracking ──────────────────────────
+    // ─── Activation / switch timestamp tracking ─────────────────────────
 
     private static long _lastActivationTicks;           // Stopwatch ticks when WM_ACTIVATE fired
     private static string? _lastActivatedDesktopGuid;   // desktop GUID of the activated window
@@ -129,7 +129,7 @@ public static partial class DesktopSwitchDetector
             && guid.Equals(targetDesktopGuid, StringComparison.OrdinalIgnoreCase);
     }
 
-    // ─── Keyboard hook ───────────────────────────────────────────────────
+    // ─── Keyboard hook ──────────────────────────────────────────────────
 
     private static IntPtr _hookHandle;
     private static LowLevelKeyboardProc? _hookProc; // prevent GC collection of delegate
@@ -247,7 +247,7 @@ public static partial class DesktopSwitchDetector
             || (GetAsyncKeyState(vkRight) & 0x8000) != 0;
     }
 
-    // ─── Pure functions for unit testing ─────────────────────────────────
+    // ─── Pure functions for unit testing ────────────────────────────────
 
     /// <summary>
     /// Returns true if <paramref name="lastNavTicks"/> is within 5 seconds of

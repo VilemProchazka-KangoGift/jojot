@@ -8,7 +8,7 @@ namespace JoJot;
 
 public partial class MainWindow
 {
-    // ─── Inline Rename ──────────────────────────────────
+    // ─── Inline Rename ──────────────────────────────────────────────────
 
     /// <summary>
     /// Starts inline rename for a tab. Hides the label TextBlock and shows a TextBox.

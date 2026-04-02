@@ -114,7 +114,7 @@ public class MainWindowViewModel : ObservableObject
         return "JoJot";
     }
 
-    // ─── Tab CRUD Logic ────────────────────────────────────────────
+    // ─── Tab CRUD Logic ─────────────────────────────────────────────────
 
     /// <summary>
     /// Computes where a new tab should be inserted and what sort_order to use.
@@ -290,7 +290,7 @@ public class MainWindowViewModel : ObservableObject
         return (insertIndex, newSortOrder);
     }
 
-    // ─── Tab Reorder ───────────────────────────────────────────────
+    // ─── Tab Reorder ────────────────────────────────────────────────────
 
     /// <summary>
     /// Moves a tab from oldIndex to newIndex in the collection, respecting pin zones.
@@ -329,7 +329,7 @@ public class MainWindowViewModel : ObservableObject
         return true;
     }
 
-    // ─── Find Engine ────────────────────────────────────────────────
+    // ─── Find Engine ────────────────────────────────────────────────────
 
     /// <summary>
     /// Finds all occurrences of <paramref name="query"/> in <paramref name="content"/>.
@@ -434,7 +434,7 @@ public class MainWindowViewModel : ObservableObject
             : "No matches";
     }
 
-    // ─── Font Size ──────────────────────────────────────────────────
+    // ─── Font Size ──────────────────────────────────────────────────────
 
     internal const int FontSizeMin = 8;
     internal const int FontSizeMax = 32;
@@ -453,7 +453,7 @@ public class MainWindowViewModel : ObservableObject
     internal static int ClampFontSize(int current, int delta) =>
         Math.Clamp(current + delta, FontSizeMin, FontSizeMax);
 
-    // ─── Editor State ──────────────────────────────────────────────
+    // ─── Editor State ───────────────────────────────────────────────────
 
     private bool _isRestoringContent;
 
@@ -529,7 +529,7 @@ public class MainWindowViewModel : ObservableObject
         OnPropertyChanged(nameof(FilteredTabs));
     }
 
-    // ─── Panel State ────────────────────────────────────────────────
+    // ─── Panel State ────────────────────────────────────────────────────
 
     private bool _isPreferencesOpen;
     private bool _isCleanupOpen;
@@ -594,7 +594,7 @@ public class MainWindowViewModel : ObservableObject
         IsFindPanelOpen = false;
     }
 
-    // ─── Cleanup Logic ──────────────────────────────────────────────
+    // ─── Cleanup Logic ──────────────────────────────────────────────────
 
     /// <summary>
     /// Computes the cutoff DateTime for cleanup filtering.
@@ -651,7 +651,7 @@ public class MainWindowViewModel : ObservableObject
         return sb.ToString();
     }
 
-    // ─── Desktop Drag State ─────────────────────────────────────────
+    // ─── Desktop Drag State ─────────────────────────────────────────────
 
     private bool _isDragOverlayActive;
     private string? _dragFromDesktopGuid;

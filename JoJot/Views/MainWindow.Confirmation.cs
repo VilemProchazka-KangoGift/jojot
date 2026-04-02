@@ -2,7 +2,7 @@ namespace JoJot;
 
 public partial class MainWindow
 {
-    // ─── Confirmation Overlay ──
+    // ─── Confirmation Overlay ───────────────────────────────────────────
 
     private void ShowConfirmation(string title, string message, Action? onConfirm)
     {

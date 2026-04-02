@@ -9,7 +9,7 @@ namespace JoJot;
 
 public partial class MainWindow
 {
-    // ─── Drag-to-Reorder ─────────────────────────────────────────
+    // ─── Drag-to-Reorder ────────────────────────────────────────────────
 
     private void TabItem_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {

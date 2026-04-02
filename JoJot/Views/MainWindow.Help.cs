@@ -2,7 +2,7 @@ namespace JoJot;
 
 public partial class MainWindow
 {
-    // ─── Help Overlay (Ctrl+?) ─────────────────────────────────────
+    // ─── Help Overlay (Ctrl+?) ──────────────────────────────────────────
 
     private void ShowHelpOverlay()
     {

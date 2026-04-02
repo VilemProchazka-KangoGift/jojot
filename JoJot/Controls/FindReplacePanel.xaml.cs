@@ -27,7 +27,7 @@ public partial class FindReplacePanel : UserControl
     private List<int> _matches = [];
     private int _currentMatchIndex = -1;
 
-    // ── Public events ──
+    // ─── Public events ──────────────────────────────────────────────────
 
     public event EventHandler? CloseRequested;
     public event EventHandler<FindChangedEventArgs>? FindTextChanged;
@@ -36,7 +36,7 @@ public partial class FindReplacePanel : UserControl
     public event EventHandler? ReplaceRequested;
     public event EventHandler? ReplaceAllRequested;
 
-    // ── Public properties ──
+    // ─── Public properties ──────────────────────────────────────────────
 
     public bool CaseSensitive => _caseSensitive;
     public bool WholeWord => _wholeWord;
@@ -61,7 +61,7 @@ public partial class FindReplacePanel : UserControl
         };
     }
 
-    // ── Public methods ──
+    // ─── Public methods ─────────────────────────────────────────────────
 
     /// <summary>
     /// Shows the panel and focuses the find input.
@@ -110,7 +110,7 @@ public partial class FindReplacePanel : UserControl
     /// <summary>Moves focus to the find input.</summary>
     public void FocusFindInput() => FindInput.Focus();
 
-    // ── Private helpers ──
+    // ─── Private helpers ────────────────────────────────────────────────
 
     private void UpdateMatchCountDisplay()
     {
@@ -137,7 +137,7 @@ public partial class FindReplacePanel : UserControl
             : (System.Windows.Media.Brush)FindResource(ThemeKeys.TextPrimary);
     }
 
-    // ── Click & input handlers ──
+    // ─── Click & input handlers ─────────────────────────────────────────
 
     private void Close_Click(object sender, MouseButtonEventArgs e)
     {

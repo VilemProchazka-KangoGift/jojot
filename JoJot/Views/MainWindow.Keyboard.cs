@@ -9,7 +9,7 @@ namespace JoJot;
 
 public partial class MainWindow
 {
-    // ─── Input Binding Commands ────────────────────────────────────────────────
+    // ─── Input Binding Commands ─────────────────────────────────────────
 
     internal ICommand NewTabCommand { get; private set; } = null!;
     internal ICommand CloseTabCommand { get; private set; } = null!;
@@ -65,7 +65,7 @@ public partial class MainWindow
         InputBindings.Add(new KeyBinding(ResetFontCommand, Key.NumPad0, ModifierKeys.Control));
     }
 
-    // ─── Keyboard Shortcuts ─────────────────────────────────────────────────
+    // ─── Keyboard Shortcuts ─────────────────────────────────────────────
 
     /// <summary>
     /// Window-level keyboard shortcut handler for guards and complex shortcuts.

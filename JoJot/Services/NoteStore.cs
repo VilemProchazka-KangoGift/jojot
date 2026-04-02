@@ -9,7 +9,7 @@ namespace JoJot.Services;
 /// </summary>
 public static class NoteStore
 {
-    // ─── Compiled queries (expression tree parsed once, reused on every call) ──
+    // ─── Compiled queries (expression tree parsed once, reused on every call) ───
 
     private static readonly Func<JoJotDbContext, string, IAsyncEnumerable<NoteTab>>
         CompiledGetNotesForDesktop = EF.CompileAsyncQuery<JoJotDbContext, string, NoteTab>(

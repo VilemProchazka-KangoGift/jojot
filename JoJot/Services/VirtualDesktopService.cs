@@ -229,7 +229,7 @@ public static class VirtualDesktopService
 
         int tier1Count = 0, tier2Count = 0, tier3Count = 0;
 
-        // ── Tier 1: GUID match (exact) ──────────────────────────────────
+        // ─── Tier 1: GUID match (exact) ─────────────────────────────────
         foreach (var session in storedSessions)
         {
             var matchingDesktop = liveDesktops.FirstOrDefault(
@@ -251,7 +251,7 @@ public static class VirtualDesktopService
             }
         }
 
-        // ── Tier 2: Name match (skip ambiguous) ─────────────────────────
+        // ─── Tier 2: Name match (skip ambiguous) ────────────────────────
         var unmatchedSessions = storedSessions
             .Where(s => !matchedSessionGuids.Contains(s.DesktopGuid))
             .ToList();
@@ -291,7 +291,7 @@ public static class VirtualDesktopService
             // 0 or 2+ matches → skip (ambiguous)
         }
 
-        // ── Tier 3: Index match (strict one-to-one) ─────────────────────
+        // ─── Tier 3: Index match (strict one-to-one) ────────────────────
         // Refresh unmatched lists after Tier 2
         unmatchedSessions = storedSessions
             .Where(s => !matchedSessionGuids.Contains(s.DesktopGuid))
@@ -333,7 +333,7 @@ public static class VirtualDesktopService
             }
         }
 
-        // ── Create sessions for new desktops ────────────────────────────
+        // ─── Create sessions for new desktops ───────────────────────────
         int newCount = 0;
         foreach (var desktop in unmatchedDesktops)
         {
@@ -349,7 +349,7 @@ public static class VirtualDesktopService
             newCount++;
         }
 
-        // ── Expose orphaned sessions for recovery ───────────────────────
+        // ─── Expose orphaned sessions for recovery ──────────────────────
         var orphanedGuids = storedSessions
             .Where(s => !matchedSessionGuids.Contains(s.DesktopGuid))
             .Select(s => s.DesktopGuid)

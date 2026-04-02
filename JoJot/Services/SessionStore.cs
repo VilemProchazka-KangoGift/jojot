@@ -188,7 +188,7 @@ public static class SessionStore
         }
     }
 
-    // ─── Window Geometry ─────────────────────────────────────────────────────
+    // ─── Window Geometry ────────────────────────────────────────────────
 
     /// <summary>
     /// Reads the saved window geometry for a desktop session.
@@ -255,7 +255,7 @@ public static class SessionStore
         }
     }
 
-    // ─── Orphaned Session Operations ─────────────────────────────────────────
+    // ─── Orphaned Session Operations ────────────────────────────────────
 
     private static readonly DateTime OrphanFallbackDate = new(2000, 1, 1);
 

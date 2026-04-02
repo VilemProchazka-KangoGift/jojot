@@ -307,7 +307,7 @@ public static class DatabaseCore
         });
     }
 
-    // ─── Private helpers ─────────────────────────────────────────────────────
+    // ─── Private helpers ────────────────────────────────────────────────
 
     private static async Task<bool> RunQuickCheckAsync()
     {

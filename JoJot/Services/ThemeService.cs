@@ -11,7 +11,7 @@ namespace JoJot.Services;
 /// </summary>
 public static partial class ThemeService
 {
-    // ─── DWM interop for title bar dark mode ─────────────────────────────
+    // ─── DWM interop for title bar dark mode ────────────────────────────
     [LibraryImport("dwmapi.dll")]
     private static partial int DwmSetWindowAttribute(IntPtr hwnd, int attribute, ref int value, int size);
 
@@ -157,7 +157,7 @@ public static partial class ThemeService
         }
     }
 
-    // ─── Title bar dark mode ────────────────────────────────────────────────
+    // ─── Title bar dark mode ────────────────────────────────────────────
 
     /// <summary>
     /// Registers a window for title bar dark mode tracking. Applies the current theme

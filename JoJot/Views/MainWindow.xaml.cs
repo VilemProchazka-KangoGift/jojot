@@ -43,15 +43,15 @@ public partial class MainWindow : Window
         set => ViewModel.DesktopGuid = value;
     }
 
-    // ─── Rename state ───────────────────────────────────────────────────────
+    // ─── Rename state ───────────────────────────────────────────────────
     private (ListBoxItem Item, NoteTab Tab, TextBox Box, TextBlock Label)? _activeRename;
 
-    // ─── Drag-to-reorder state ──────────────────────────────────────────────
+    // ─── Drag-to-reorder state ──────────────────────────────────────────
     private bool _isDragging;
     private bool _isCompletingDrag; // Re-entrancy guard for CompleteDrag/LostMouseCapture
     private bool _isTransferringCapture; // Guard for Mouse.Capture transfer during drag start
 
-    // ─── Tab list rebuild guard ────────────────────────
+    // ─── Tab list rebuild guard ─────────────────────────────────────────
     private bool _isRebuildingTabList;
     private System.Windows.Point _dragStartPoint;
     private ListBoxItem? _dragItem;
@@ -61,12 +61,12 @@ public partial class MainWindow : Window
     private Border? _dropIndicatorBorder;
     private NoteTab? _fadeInTab; // Tab to fade in after drag-reorder rebuild
 
-    // ─── Context menu state ─────────────────────────────────────────
+    // ─── Context menu state ─────────────────────────────────────────────
     private Popup? _activeContextMenu;
 
     private DateTime _hamburgerClosedAt;
 
-    // ─── Panel state (forwarded to ViewModel) ──────────────────────
+    // ─── Panel state (forwarded to ViewModel) ───────────────────────────
     private bool _recoveryPanelOpen
     {
         get => ViewModel.IsRecoveryOpen;
@@ -87,14 +87,14 @@ public partial class MainWindow : Window
     private int _currentFontSize = 13;
     private System.Windows.Threading.DispatcherTimer? _fontSizeTooltipTimer;
 
-    // ─── Find panel state (forwarded to ViewModel) ─────────────────
+    // ─── Find panel state (forwarded to ViewModel) ──────────────────────
     private bool _findPanelOpen
     {
         get => ViewModel.IsFindPanelOpen;
         set => ViewModel.IsFindPanelOpen = value;
     }
 
-    // ─── Window Drag Detection (forwarded to ViewModel) ────────
+    // ─── Window Drag Detection (forwarded to ViewModel) ─────────────────
     private bool _isDragOverlayActive
     {
         get => ViewModel.IsDragOverlayActive;
@@ -123,7 +123,7 @@ public partial class MainWindow : Window
     private CancellationTokenSource? _misplacedCheckCts; // debounce rapid desktop switches
     private int _fileDragEnterCount;       // Enter/leave counter for reliable overlay dismiss
 
-    // ─── Soft-delete / toast state ────────────────────────────────
+    // ─── Soft-delete / toast state ──────────────────────────────────────
     private record PendingDeletion(
         List<NoteTab> Tabs,
         List<int> OriginalIndexes,
@@ -132,7 +132,7 @@ public partial class MainWindow : Window
 
     private PendingDeletion? _pendingDeletion;
 
-    // ─── Autosave & Undo ─────────────────────────────────────────
+    // ─── Autosave & Undo ────────────────────────────────────────────────
     private readonly AutosaveService _autosaveService = new();
     private readonly System.Windows.Threading.DispatcherTimer _checkpointTimer;
     private readonly System.Windows.Threading.DispatcherTimer _stalenessTimer;
@@ -143,10 +143,10 @@ public partial class MainWindow : Window
     }
     private string? _lastSaveDirectory;
 
-    // ─── Toast undo action (for Replace All) ────────────────────────
+    // ─── Toast undo action (for Replace All) ────────────────────────────
     private Action? _pendingToastUndoAction;
 
-    // ─── Theme-aware brush helper ──
+    // ─── Theme-aware brush helper ───────────────────────────────────────
     // Use SetResourceReference for element properties that should auto-update on theme switch.
     // Use GetBrush for one-time assignments or comparisons.
     private SolidColorBrush GetBrush(string key) =>
@@ -356,7 +356,7 @@ public partial class MainWindow : Window
     /// </summary>
     public string DesktopGuid => ViewModel.DesktopGuid;
 
-    // ─── Staleness Refresh ─────────────────────────────────────────────────
+    // ─── Staleness Refresh ──────────────────────────────────────────────
 
     /// <summary>
     /// Notifies all tabs to recalculate their staleness indicator opacity.
@@ -368,7 +368,7 @@ public partial class MainWindow : Window
             tab.RefreshStaleness();
     }
 
-    // ─── Visual Tree Helper ─────────────────────────────────────────────────
+    // ─── Visual Tree Helper ─────────────────────────────────────────────
 
     /// <summary>
     /// Walks the visual tree to find the first descendant of type T with the given Name.
@@ -470,7 +470,7 @@ public partial class MainWindow : Window
         _collapseTimer.Start();
     }
 
-    // ─── Window Title ───────────────────────────────────────────────────────
+    // ─── Window Title ───────────────────────────────────────────────────
 
     /// <summary>
     /// Updates the window title based on the current desktop identity.
@@ -482,7 +482,7 @@ public partial class MainWindow : Window
         Title = ViewModel.WindowTitle;
     }
 
-    // ─── Window Lifecycle ───────────────────────────────────────────────────
+    // ─── Window Lifecycle ───────────────────────────────────────────────
 
     /// <summary>
     /// Flushes content, removes empty tabs, saves window geometry, then closes for real.
@@ -569,7 +569,7 @@ public partial class MainWindow : Window
         // Do NOT set e.Cancel = true — let the window close and be destroyed
     }
 
-    // ─── Autosave & Undo Helpers ────────────────────────────────────
+    // ─── Autosave & Undo Helpers ────────────────────────────────────────
 
     /// <summary>
     /// TextChanged handler for autosave debounce trigger and per-keystroke undo snapshots.

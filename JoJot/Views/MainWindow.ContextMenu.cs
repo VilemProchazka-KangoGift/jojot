@@ -9,7 +9,7 @@ namespace JoJot;
 
 public partial class MainWindow
 {
-    // ─── Tab Context Menu ──────────────────────
+    // ─── Tab Context Menu ───────────────────────────────────────────────
 
     private static readonly System.Windows.Media.FontFamily IconFontFamily =
         new("Segoe Fluent Icons, Segoe MDL2 Assets");

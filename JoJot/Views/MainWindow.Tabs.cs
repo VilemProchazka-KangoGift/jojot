@@ -20,7 +20,7 @@ public partial class MainWindow
         DangerBrush.Freeze(); // frozen brushes are cheaper to render and thread-safe
     }
 
-    // ─── Tab Loading ────────────────────────────────────────────────────────
+    // ─── Tab Loading ────────────────────────────────────────────────────
 
     /// <summary>
     /// Loads tabs from database for this desktop and populates the tab list.
@@ -54,7 +54,7 @@ public partial class MainWindow
             TabList.SelectedIndex = 0;
     }
 
-    // ─── Tab List Building ──────────────────────────────────────────────────
+    // ─── Tab List Building ──────────────────────────────────────────────
 
     /// <summary>
     /// Rebuilds the entire tab list from the _tabs collection, applying search filter.
@@ -292,7 +292,7 @@ public partial class MainWindow
         return null;
     }
 
-    // ─── Tab Selection ──────────────────────────────────────────────────────
+    // ─── Tab Selection ──────────────────────────────────────────────────
 
     /// <summary>
     /// Handles tab selection changes: saves current content, loads new tab content.
@@ -498,7 +498,7 @@ public partial class MainWindow
         }
     }
 
-    // ─── Tab Panel Resize ────────────────────────────
+    // ─── Tab Panel Resize ───────────────────────────────────────────────
 
     /// <summary>
     /// Restores persisted tab panel width from preferences on startup.
@@ -530,7 +530,7 @@ public partial class MainWindow
         }
     }
 
-    // ─── Content Save ───────────────────────────────────────────────────────
+    // ─── Content Save ───────────────────────────────────────────────────
 
     /// <summary>
     /// Saves current content from the editor to the active tab model and database.
@@ -552,7 +552,7 @@ public partial class MainWindow
         UndoManager.Instance.PushSnapshot(_activeTab.Id, currentContent);
     }
 
-    // ─── Tab Creation ───────────────────────────────────────────────────────
+    // ─── Tab Creation ───────────────────────────────────────────────────
 
     /// <summary>
     /// Creates a new empty tab, inserts it into the database, adds to the tab list,
@@ -601,14 +601,14 @@ public partial class MainWindow
         _ = CreateNewTabAsync();
     }
 
-    // ─── New Tab Button ─────────────────────────────────────────────────────
+    // ─── New Tab Button ─────────────────────────────────────────────────
 
     private void NewTabButton_Click(object sender, RoutedEventArgs e)
     {
         _ = CreateNewTabAsync();
     }
 
-    // ─── Pin/Unpin Toggle ─────────────────────────────────────────
+    // ─── Pin/Unpin Toggle ───────────────────────────────────────────────
 
     /// <summary>
     /// Toggles the pinned state of a tab, re-sorts the collection, and persists.
@@ -626,7 +626,7 @@ public partial class MainWindow
         UpdateToolbarState();
     }
 
-    // ─── Clone Tab ────────────────────────────────────────────────
+    // ─── Clone Tab ──────────────────────────────────────────────────────
 
     /// <summary>
     /// Clones the current tab: duplicates content into a new tab inserted after the source.

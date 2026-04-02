@@ -9,7 +9,7 @@ namespace JoJot;
 
 public partial class MainWindow
 {
-    // ─── Deletion Engine ─
+    // ─── Deletion Engine ────────────────────────────────────────────────
 
     /// <summary>
     /// Hard-deletes all tabs in the current pending deletion from the database.
@@ -155,7 +155,7 @@ public partial class MainWindow
         await CreateNewTabAsync();
     }
 
-    // ─── Toast Overlay ──────────────────
+    // ─── Toast Overlay ──────────────────────────────────────────────────
 
     /// <summary>
     /// Sets toast text for a single-tab deletion: e.g. "Note name" deleted

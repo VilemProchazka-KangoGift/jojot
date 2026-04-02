@@ -6,7 +6,7 @@ namespace JoJot;
 
 public partial class MainWindow
 {
-    // ─── File Drop ───────────────────────
+    // ─── File Drop ──────────────────────────────────────────────────────
 
     /// <summary>
     /// DragEnter handler — shows drop overlay when files are dragged over the content area.

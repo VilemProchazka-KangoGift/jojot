@@ -11,7 +11,7 @@ namespace JoJot;
 
 public partial class MainWindow
 {
-    // ─── Tab Search ─────────────────────────────────────────────────────────
+    // ─── Tab Search ─────────────────────────────────────────────────────
 
     private DispatcherTimer? _searchDebounceTimer;
 
@@ -62,7 +62,7 @@ public partial class MainWindow
     /// </summary>
     private bool MatchesSearch(NoteTab tab) => ViewModel.MatchesSearch(tab);
 
-    // ─── Find & Replace Panel ────────────────────────────────────────────────
+    // ─── Find & Replace Panel ───────────────────────────────────────────
 
     private List<int> _findMatches = [];
     private int _currentFindIndex = -1;
@@ -71,7 +71,7 @@ public partial class MainWindow
     private DispatcherTimer? _findTextChangeDebounce;
     private CancellationTokenSource? _findCts;
 
-    // ─── Highlight adorner ────────────────────────────────────────────────────
+    // ─── Highlight adorner ──────────────────────────────────────────────
 
     private TextBoxHighlightAdorner? _highlightAdorner;
     private DispatcherTimer? _scrollAdornerThrottle;
@@ -147,7 +147,7 @@ public partial class MainWindow
         ThemeService.ThemeChanged += OnThemeChangedAdornerRefresh;
     }
 
-    // ─── Panel show/hide ────────────────────────────────────────────────────
+    // ─── Panel show/hide ────────────────────────────────────────────────
 
     private void ShowFindPanel()
     {
@@ -186,7 +186,7 @@ public partial class MainWindow
         ContentEditor.Focus();
     }
 
-    // ─── Find operations ────────────────────────────────────────────────────
+    // ─── Find operations ────────────────────────────────────────────────
 
     private void OnFindTextChanged(object? sender, FindChangedEventArgs e)
     {
@@ -316,7 +316,7 @@ public partial class MainWindow
         Dispatcher.BeginInvoke(FindReplacePanel.FocusFindInput, System.Windows.Threading.DispatcherPriority.Input);
     }
 
-    // ─── Replace operations ────────────────────────────────────────────────
+    // ─── Replace operations ─────────────────────────────────────────────
 
     private void PerformReplace()
     {

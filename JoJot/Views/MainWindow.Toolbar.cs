@@ -6,7 +6,7 @@ namespace JoJot;
 
 public partial class MainWindow
 {
-    // ─── Toolbar ───────────────────────
+    // ─── Toolbar ────────────────────────────────────────────────────────
 
     private void ToolbarUndo_Click(object sender, RoutedEventArgs e) => PerformUndo();
     private void ToolbarRedo_Click(object sender, RoutedEventArgs e) => PerformRedo();

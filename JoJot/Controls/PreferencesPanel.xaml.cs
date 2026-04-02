@@ -107,7 +107,7 @@ public partial class PreferencesPanel : UserControl
         ThemeDarkBtn.Background = active == ThemeService.AppTheme.Dark ? accentBrush : defaultBrush;
     }
 
-    // ── Click handlers ──
+    // ─── Click handlers ─────────────────────────────────────────────────
 
     private void Close_Click(object sender, MouseButtonEventArgs e)
     {

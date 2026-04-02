@@ -5,7 +5,7 @@ namespace JoJot;
 
 public partial class MainWindow
 {
-    // ─── Window Drag Resolution ─────────
+    // ─── Window Drag Resolution ─────────────────────────────────────────
 
     /// <summary>
     /// Handles window drag detection from VirtualDesktopService.

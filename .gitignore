@@ -28,3 +28,4 @@ coverage*.xml
 # OS files
 Thumbs.db
 desktop.ini
+*.log

@@ -10,7 +10,7 @@ namespace JoJot;
 
 public partial class MainWindow
 {
-    // ─── Recovery Flyout Panel ────────────
+    // ─── Recovery Flyout Panel ──────────────────────────────────────────
 
     /// <summary>
     /// Opens the recovery flyout panel and populates it with orphaned session cards.

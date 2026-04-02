@@ -8,7 +8,7 @@ namespace JoJot;
 
 public partial class MainWindow
 {
-    // ─── Hamburger Menu ──────────────────────────────────
+    // ─── Hamburger Menu ─────────────────────────────────────────────────
 
     /// <summary>
     /// Generic hover handler for themed menu item Borders (hover background highlight).

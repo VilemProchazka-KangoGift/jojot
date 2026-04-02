@@ -48,7 +48,7 @@ public static class LogService
             .CreateLogger();
     }
 
-    // ─── Simple Messages ─────────────────────────────────────────────────────
+    // ─── Simple Messages ────────────────────────────────────────────────
 
     /// <summary>Logs a debug-level message (only visible when minimum level is Debug).</summary>
     public static void Debug(string message) => Log.Debug(message);
@@ -62,7 +62,7 @@ public static class LogService
     /// <summary>Logs an error message with optional exception details.</summary>
     public static void Error(string message, Exception? ex = null) => Log.Error(ex, message);
 
-    // ─── Structured Templates ────────────────────────────────────────────────
+    // ─── Structured Templates ───────────────────────────────────────────
 
     /// <summary>Logs a debug-level structured message template.</summary>
     public static void Debug<T>(string template, T value) => Log.Debug(template, value);
@@ -103,7 +103,7 @@ public static class LogService
     /// <summary>Logs an error structured message template with optional exception.</summary>
     public static void Error<T0, T1, T2>(string template, T0 v0, T1 v1, T2 v2, Exception? ex = null) => Log.Error(ex, template, v0, v1, v2);
 
-    // ─── Level Control ───────────────────────────────────────────────────────
+    // ─── Level Control ──────────────────────────────────────────────────
 
     /// <summary>
     /// Changes the minimum log level at runtime. Messages below this level are discarded.
@@ -114,7 +114,7 @@ public static class LogService
     /// <summary>Returns the current minimum log level.</summary>
     public static LogEventLevel GetMinimumLevel() => LevelSwitch.MinimumLevel;
 
-    // ─── Per-Service Context ─────────────────────────────────────────────────
+    // ─── Per-Service Context ────────────────────────────────────────────
 
     /// <summary>
     /// Creates a contextual logger tagged with the given type's name as SourceContext.
@@ -127,7 +127,7 @@ public static class LogService
     /// </summary>
     public static ILogger ForContext(string propertyName, object? value) => Log.ForContext(propertyName, value);
 
-    // ─── Lifecycle ───────────────────────────────────────────────────────────
+    // ─── Lifecycle ──────────────────────────────────────────────────────
 
     /// <summary>Flushes all buffered log events and closes sinks. Call on application exit.</summary>
     public static void Shutdown() => Log.CloseAndFlush();
