@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using JoJot.Models;
+using JoJot.Themes;
 
 namespace JoJot;
 
@@ -33,8 +34,8 @@ public partial class MainWindow
 
         var border = new Border
         {
-            Background = GetBrush("c-sidebar-bg"),
-            BorderBrush = GetBrush("c-border"),
+            Background = GetBrush(ThemeKeys.SidebarBackground),
+            BorderBrush = GetBrush(ThemeKeys.Border),
             BorderThickness = new Thickness(1),
             CornerRadius = new CornerRadius(6),
             Padding = new Thickness(4),
@@ -72,7 +73,7 @@ public partial class MainWindow
                 FontSize = 14,
                 VerticalAlignment = VerticalAlignment.Center
             };
-            iconBlock.SetResourceReference(TextBlock.ForegroundProperty, "c-toolbar-icon");
+            iconBlock.SetResourceReference(TextBlock.ForegroundProperty, ThemeKeys.ToolbarIcon);
             Grid.SetColumn(iconBlock, 0);
             grid.Children.Add(iconBlock);
 
@@ -82,7 +83,7 @@ public partial class MainWindow
                 FontSize = 13,
                 VerticalAlignment = VerticalAlignment.Center
             };
-            textBlock.SetResourceReference(TextBlock.ForegroundProperty, "c-text-primary");
+            textBlock.SetResourceReference(TextBlock.ForegroundProperty, ThemeKeys.TextPrimary);
             Grid.SetColumn(textBlock, 1);
             grid.Children.Add(textBlock);
 
@@ -95,7 +96,7 @@ public partial class MainWindow
                     VerticalAlignment = VerticalAlignment.Center,
                     Margin = new Thickness(16, 0, 0, 0)
                 };
-                shortcutBlock.SetResourceReference(TextBlock.ForegroundProperty, "c-text-muted");
+                shortcutBlock.SetResourceReference(TextBlock.ForegroundProperty, ThemeKeys.TextMuted);
                 Grid.SetColumn(shortcutBlock, 2);
                 grid.Children.Add(shortcutBlock);
             }
@@ -139,7 +140,7 @@ public partial class MainWindow
 
         // Separator
         var sep = new Separator { Margin = new Thickness(4, 2, 4, 2) };
-        sep.SetResourceReference(BackgroundProperty, "c-border");
+        sep.SetResourceReference(BackgroundProperty, ThemeKeys.Border);
         stack.Children.Add(sep);
 
         // Delete

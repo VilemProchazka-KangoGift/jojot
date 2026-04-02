@@ -4,6 +4,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using JoJot.Models;
+using JoJot.Themes;
 using JoJot.ViewModels;
 
 namespace JoJot.Controls;
@@ -91,7 +92,7 @@ public partial class CleanupPanel : UserControl
                 FontStyle = FontStyles.Italic,
                 Margin = new Thickness(0, 8, 0, 0)
             };
-            emptyBlock.SetResourceReference(TextBlock.ForegroundProperty, "c-text-muted");
+            emptyBlock.SetResourceReference(TextBlock.ForegroundProperty, ThemeKeys.TextMuted);
             PreviewList.Children.Add(emptyBlock);
             return;
         }
@@ -121,7 +122,7 @@ public partial class CleanupPanel : UserControl
                 FontFamily = new System.Windows.Media.FontFamily("Segoe Fluent Icons, Segoe MDL2 Assets"),
                 FontSize = 10
             };
-            pinRun.SetResourceReference(System.Windows.Documents.Run.ForegroundProperty, "c-text-muted");
+            pinRun.SetResourceReference(System.Windows.Documents.Run.ForegroundProperty, ThemeKeys.TextMuted);
             titleBlock.Inlines.Add(pinRun);
         }
 
@@ -138,11 +139,11 @@ public partial class CleanupPanel : UserControl
             {
                 FontStyle = FontStyles.Italic
             };
-            excerptRun.SetResourceReference(System.Windows.Documents.Run.ForegroundProperty, "c-text-muted");
+            excerptRun.SetResourceReference(System.Windows.Documents.Run.ForegroundProperty, ThemeKeys.TextMuted);
             titleBlock.Inlines.Add(excerptRun);
         }
 
-        titleBlock.SetResourceReference(TextBlock.ForegroundProperty, "c-text-primary");
+        titleBlock.SetResourceReference(TextBlock.ForegroundProperty, ThemeKeys.TextPrimary);
         container.Children.Add(titleBlock);
 
         var dateRow = new Grid { Margin = new Thickness(0, 2, 0, 0) };
@@ -153,7 +154,7 @@ public partial class CleanupPanel : UserControl
             HorizontalAlignment = HorizontalAlignment.Left,
             ToolTip = NoteTab.CreatedTooltip(tab.CreatedAt)
         };
-        createdBlock.SetResourceReference(TextBlock.ForegroundProperty, "c-text-muted");
+        createdBlock.SetResourceReference(TextBlock.ForegroundProperty, ThemeKeys.TextMuted);
         dateRow.Children.Add(createdBlock);
         var updatedBlock = new TextBlock
         {
@@ -162,7 +163,7 @@ public partial class CleanupPanel : UserControl
             HorizontalAlignment = HorizontalAlignment.Right,
             ToolTip = NoteTab.UpdatedTooltip(tab.UpdatedAt)
         };
-        updatedBlock.SetResourceReference(TextBlock.ForegroundProperty, "c-text-muted");
+        updatedBlock.SetResourceReference(TextBlock.ForegroundProperty, ThemeKeys.TextMuted);
         dateRow.Children.Add(updatedBlock);
         container.Children.Add(dateRow);
 
@@ -174,7 +175,7 @@ public partial class CleanupPanel : UserControl
             {
                 Margin = new Thickness(0, 2, 0, 0)
             };
-            divider.SetResourceReference(BackgroundProperty, "c-border");
+            divider.SetResourceReference(BackgroundProperty, ThemeKeys.Border);
             wrapper.Children.Add(divider);
             return wrapper;
         }

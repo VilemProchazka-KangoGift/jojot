@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using JoJot.Models;
 using JoJot.Services;
+using JoJot.Themes;
 
 namespace JoJot;
 
@@ -137,7 +138,7 @@ public partial class MainWindow
                 if (targetBorder is not null)
                 {
                     targetBorder.BorderThickness = new Thickness(0, 2, 0, 0);
-                    targetBorder.BorderBrush = GetBrush("c-accent");
+                    targetBorder.BorderBrush = GetBrush(ThemeKeys.Accent);
                     _dropIndicatorBorder = targetBorder;
                 }
             }
@@ -152,7 +153,7 @@ public partial class MainWindow
                         if (nextBorder is not null)
                         {
                             nextBorder.BorderThickness = new Thickness(0, 2, 0, 0);
-                            nextBorder.BorderBrush = GetBrush("c-accent");
+                            nextBorder.BorderBrush = GetBrush(ThemeKeys.Accent);
                             _dropIndicatorBorder = nextBorder;
                             break;
                         }
@@ -170,7 +171,7 @@ public partial class MainWindow
                             if (prevBorder is not null)
                             {
                                 prevBorder.BorderThickness = new Thickness(0, 0, 0, 2);
-                                prevBorder.BorderBrush = GetBrush("c-accent");
+                                prevBorder.BorderBrush = GetBrush(ThemeKeys.Accent);
                                 _dropIndicatorBorder = prevBorder;
                                 break;
                             }
@@ -188,7 +189,7 @@ public partial class MainWindow
                 if (lastBorder is not null)
                 {
                     lastBorder.BorderThickness = new Thickness(0, 0, 0, 2);
-                    lastBorder.BorderBrush = GetBrush("c-accent");
+                    lastBorder.BorderBrush = GetBrush(ThemeKeys.Accent);
                     _dropIndicatorBorder = lastBorder;
                 }
             }

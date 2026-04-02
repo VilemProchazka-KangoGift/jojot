@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using JoJot.Themes;
 
 namespace JoJot.Controls;
 
@@ -126,14 +127,14 @@ public partial class FindReplacePanel : UserControl
     private void UpdateToggleVisual(Border toggle, bool active)
     {
         toggle.Background = active
-            ? (System.Windows.Media.Brush)FindResource("c-accent")
+            ? (System.Windows.Media.Brush)FindResource(ThemeKeys.Accent)
             : new SolidColorBrush(Colors.Transparent);
 
         // Use white text on accent background for readability
         var textBlock = (TextBlock)toggle.Child;
         textBlock.Foreground = active
             ? new SolidColorBrush(Colors.White)
-            : (System.Windows.Media.Brush)FindResource("c-text-primary");
+            : (System.Windows.Media.Brush)FindResource(ThemeKeys.TextPrimary);
     }
 
     // ── Click & input handlers ──

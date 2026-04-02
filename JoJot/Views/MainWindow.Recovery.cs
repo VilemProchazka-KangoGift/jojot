@@ -4,6 +4,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using JoJot.Models;
 using JoJot.Services;
+using JoJot.Themes;
 
 namespace JoJot;
 
@@ -122,7 +123,7 @@ public partial class MainWindow
             FontWeight = FontWeights.Bold,
             TextTrimming = TextTrimming.CharacterEllipsis
         };
-        nameBlock.SetResourceReference(TextBlock.ForegroundProperty, "c-text-primary");
+        nameBlock.SetResourceReference(TextBlock.ForegroundProperty, ThemeKeys.TextPrimary);
         container.Children.Add(nameBlock);
 
         // Metadata row (tab count + date, muted)
@@ -132,7 +133,7 @@ public partial class MainWindow
             FontSize = 11,
             Margin = new Thickness(0, 2, 0, 6)
         };
-        metaBlock.SetResourceReference(TextBlock.ForegroundProperty, "c-text-muted");
+        metaBlock.SetResourceReference(TextBlock.ForegroundProperty, ThemeKeys.TextMuted);
         container.Children.Add(metaBlock);
 
         // Tab preview lines (matching cleanup panel style)
@@ -162,7 +163,7 @@ public partial class MainWindow
                     {
                         FontStyle = FontStyles.Italic
                     };
-                    dashRun.SetResourceReference(System.Windows.Documents.Run.ForegroundProperty, "c-text-muted");
+                    dashRun.SetResourceReference(System.Windows.Documents.Run.ForegroundProperty, ThemeKeys.TextMuted);
                     lineBlock.Inlines.Add(dashRun);
                 }
             }
@@ -176,7 +177,7 @@ public partial class MainWindow
                 lineBlock.FontStyle = FontStyles.Italic;
             }
 
-            lineBlock.SetResourceReference(TextBlock.ForegroundProperty, "c-text-primary");
+            lineBlock.SetResourceReference(TextBlock.ForegroundProperty, ThemeKeys.TextPrimary);
             tabContainer.Children.Add(lineBlock);
 
             // Date row: created (left) + updated (right)
@@ -188,7 +189,7 @@ public partial class MainWindow
                 HorizontalAlignment = HorizontalAlignment.Left,
                 ToolTip = NoteTab.CreatedTooltip(createdAt)
             };
-            createdBlock.SetResourceReference(TextBlock.ForegroundProperty, "c-text-muted");
+            createdBlock.SetResourceReference(TextBlock.ForegroundProperty, ThemeKeys.TextMuted);
             dateRow.Children.Add(createdBlock);
             var updatedBlock = new TextBlock
             {
@@ -197,7 +198,7 @@ public partial class MainWindow
                 HorizontalAlignment = HorizontalAlignment.Right,
                 ToolTip = NoteTab.UpdatedTooltip(updatedAt)
             };
-            updatedBlock.SetResourceReference(TextBlock.ForegroundProperty, "c-text-muted");
+            updatedBlock.SetResourceReference(TextBlock.ForegroundProperty, ThemeKeys.TextMuted);
             dateRow.Children.Add(updatedBlock);
             tabContainer.Children.Add(dateRow);
 
@@ -215,7 +216,7 @@ public partial class MainWindow
                 FontStyle = FontStyles.Italic,
                 Margin = new Thickness(0, 1, 0, 1)
             };
-            moreBlock.SetResourceReference(TextBlock.ForegroundProperty, "c-text-muted");
+            moreBlock.SetResourceReference(TextBlock.ForegroundProperty, ThemeKeys.TextMuted);
             container.Children.Add(moreBlock);
         }
 
@@ -238,7 +239,7 @@ public partial class MainWindow
                 Padding = new Thickness(8, 2, 8, 2),
                 BorderThickness = new Thickness(1)
             };
-            btn.SetResourceReference(BorderBrushProperty, "c-border");
+            btn.SetResourceReference(BorderBrushProperty, ThemeKeys.Border);
             if (isDestructive)
             {
                 btn.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(0xe7, 0x4c, 0x3c));
@@ -248,7 +249,7 @@ public partial class MainWindow
             else
             {
                 btn.Background = System.Windows.Media.Brushes.Transparent;
-                btn.SetResourceReference(ForegroundProperty, "c-text-primary");
+                btn.SetResourceReference(ForegroundProperty, ThemeKeys.TextPrimary);
             }
             return btn;
         }
@@ -288,7 +289,7 @@ public partial class MainWindow
                 Height = 1,
                 Margin = new Thickness(0, 0, 0, 0)
             };
-            divider.SetResourceReference(Border.BackgroundProperty, "c-border");
+            divider.SetResourceReference(Border.BackgroundProperty, ThemeKeys.Border);
             wrapper.Children.Add(divider);
             return wrapper;
         }
@@ -360,6 +361,6 @@ public partial class MainWindow
         OrphanBadge.Visibility = hasOrphans ? Visibility.Visible : Visibility.Collapsed;
         MenuRecover.Visibility = hasOrphans ? Visibility.Visible : Visibility.Collapsed; // Hide entire menu item
         MenuRecoverText.SetResourceReference(TextBlock.ForegroundProperty,
-            hasOrphans ? "c-accent" : "c-text-primary");
+            hasOrphans ? ThemeKeys.Accent : ThemeKeys.TextPrimary);
     }
 }

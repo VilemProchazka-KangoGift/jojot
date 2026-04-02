@@ -6,6 +6,7 @@ using System.Windows.Media;
 using System.Windows.Media.Animation;
 using JoJot.Models;
 using JoJot.Services;
+using JoJot.Themes;
 
 namespace JoJot;
 
@@ -208,7 +209,7 @@ public partial class MainWindow
             {
                 if (_isDragging) return;
                 pinIcon.Text = "\uE718"; // Pin icon
-                pinIcon.SetResourceReference(TextBlock.ForegroundProperty, "c-text-muted");
+                pinIcon.SetResourceReference(TextBlock.ForegroundProperty, ThemeKeys.TextMuted);
             };
         }
         else
@@ -216,12 +217,12 @@ public partial class MainWindow
             pinBtn.MouseEnter += (s, ev) =>
             {
                 if (_isDragging) return;
-                pinIcon.SetResourceReference(TextBlock.ForegroundProperty, "c-accent");
+                pinIcon.SetResourceReference(TextBlock.ForegroundProperty, ThemeKeys.Accent);
             };
             pinBtn.MouseLeave += (s, ev) =>
             {
                 if (_isDragging) return;
-                pinIcon.SetResourceReference(TextBlock.ForegroundProperty, "c-text-muted");
+                pinIcon.SetResourceReference(TextBlock.ForegroundProperty, ThemeKeys.TextMuted);
             };
         }
 
@@ -239,7 +240,7 @@ public partial class MainWindow
         closeBtn.MouseLeave += (s, ev) =>
         {
             if (_isDragging) return;
-            closeIcon.SetResourceReference(TextBlock.ForegroundProperty, "c-text-muted");
+            closeIcon.SetResourceReference(TextBlock.ForegroundProperty, ThemeKeys.TextMuted);
         };
 
         // Outer border hover — show/hide pin and close buttons
@@ -248,7 +249,7 @@ public partial class MainWindow
             if (_isDragging) return;
 
             if (item is not null && item != TabList.SelectedItem)
-                outerBorder.SetResourceReference(Border.BackgroundProperty, "c-hover-bg");
+                outerBorder.SetResourceReference(Border.BackgroundProperty, ThemeKeys.HoverBackground);
 
             if (!tab.Pinned)
             {
@@ -450,7 +451,7 @@ public partial class MainWindow
             return;
         }
 
-        outerBorder.SetResourceReference(Border.BackgroundProperty, "c-selected-bg");
+        outerBorder.SetResourceReference(Border.BackgroundProperty, ThemeKeys.SelectedBackground);
 
         var pinBtn = FindNamedDescendant<Border>(item, "PinBtn");
         var closeBtn = FindNamedDescendant<Border>(item, "CloseBtn");

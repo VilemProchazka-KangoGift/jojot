@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Media;
+using JoJot.Themes;
 using Brush = System.Windows.Media.Brush;
 
 namespace JoJot.Controls;
@@ -34,8 +35,8 @@ public class TextBoxHighlightAdorner : Adorner
     /// </summary>
     public void RefreshBrushes()
     {
-        _cachedMatchBrush = _textBox.TryFindResource("c-find-match-bg") as Brush;
-        _cachedActiveBrush = _textBox.TryFindResource("c-find-match-active-bg") as Brush;
+        _cachedMatchBrush = _textBox.TryFindResource(ThemeKeys.FindMatchBackground) as Brush;
+        _cachedActiveBrush = _textBox.TryFindResource(ThemeKeys.FindMatchActiveBackground) as Brush;
     }
 
     public void Update(List<int> matches, int activeIndex, int queryLength)

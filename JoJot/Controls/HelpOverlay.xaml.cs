@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using JoJot.Services;
+using JoJot.Themes;
 
 namespace JoJot.Controls;
 
@@ -79,7 +80,7 @@ public partial class HelpOverlay : UserControl
                 FontWeight = FontWeights.SemiBold,
                 Margin = new Thickness(0, 12, 0, 6)
             };
-            sectionHeader.SetResourceReference(TextBlock.ForegroundProperty, "c-text-muted");
+            sectionHeader.SetResourceReference(TextBlock.ForegroundProperty, ThemeKeys.TextMuted);
             HelpContent.Children.Add(sectionHeader);
 
             foreach (var (key, desc) in items)
@@ -96,7 +97,7 @@ public partial class HelpOverlay : UserControl
                     FontFamily = new System.Windows.Media.FontFamily("Consolas"),
                     FontWeight = FontWeights.SemiBold
                 };
-                keyBlock.SetResourceReference(TextBlock.ForegroundProperty, "c-accent");
+                keyBlock.SetResourceReference(TextBlock.ForegroundProperty, ThemeKeys.Accent);
                 Grid.SetColumn(keyBlock, 0);
                 row.Children.Add(keyBlock);
 
@@ -105,7 +106,7 @@ public partial class HelpOverlay : UserControl
                     Text = desc,
                     FontSize = 12
                 };
-                descBlock.SetResourceReference(TextBlock.ForegroundProperty, "c-text-primary");
+                descBlock.SetResourceReference(TextBlock.ForegroundProperty, ThemeKeys.TextPrimary);
                 Grid.SetColumn(descBlock, 1);
                 row.Children.Add(descBlock);
 

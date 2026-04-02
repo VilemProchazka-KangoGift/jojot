@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
+using JoJot.Themes;
 
 namespace JoJot;
 
@@ -14,7 +15,7 @@ public partial class MainWindow
     /// </summary>
     private void MenuItem_MouseEnter(object sender, MouseEventArgs e)
     {
-        if (sender is Border b) b.Background = GetBrush("c-hover-bg");
+        if (sender is Border b) b.Background = GetBrush(ThemeKeys.HoverBackground);
     }
 
     /// <summary>

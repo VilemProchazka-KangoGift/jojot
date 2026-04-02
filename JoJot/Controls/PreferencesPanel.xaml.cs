@@ -4,6 +4,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using JoJot.Services;
+using JoJot.Themes;
 
 namespace JoJot.Controls;
 
@@ -98,7 +99,7 @@ public partial class PreferencesPanel : UserControl
 
     private void UpdateThemeToggleHighlight(ThemeService.AppTheme active)
     {
-        var accentBrush = (SolidColorBrush)FindResource("c-accent");
+        var accentBrush = (SolidColorBrush)FindResource(ThemeKeys.Accent);
         var defaultBrush = new SolidColorBrush(Colors.Transparent);
 
         ThemeLightBtn.Background = active == ThemeService.AppTheme.Light ? accentBrush : defaultBrush;
