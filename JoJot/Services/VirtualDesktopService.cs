@@ -426,8 +426,9 @@ public static class VirtualDesktopService
             int hr = notifService.Register(_notificationListener, out _notificationCookie);
             if (hr != 0)
             {
-                LogService.Warn("Notification registration failed (HRESULT: {HResult}) — live updates disabled", $"0x{hr:X8}");
+                LogService.Warn("Notification registration failed (HRESULT: {HResult}) — falling back to polling", $"0x{hr:X8}");
                 _notificationListener = null;
+                StartDesktopPolling();
                 return;
             }
 
@@ -436,8 +437,9 @@ public static class VirtualDesktopService
         }
         catch (Exception ex)
         {
-            LogService.Warn("Failed to subscribe to desktop notifications: {ErrorMessage}", ex.Message);
+            LogService.Warn("Failed to subscribe to desktop notifications — falling back to polling: {ErrorMessage}", ex.Message);
             _notificationListener = null;
+            StartDesktopPolling();
         }
     }
 
