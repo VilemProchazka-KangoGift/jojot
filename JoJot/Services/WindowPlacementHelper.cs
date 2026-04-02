@@ -179,8 +179,8 @@ public static partial class WindowPlacementHelper
 
     // Constants
 
-    /// <summary>Default window width: 500 pixels (compact notepad-sized).</summary>
-    public const double DefaultWidth = 500;
+    /// <summary>Default window width: 1250 pixels.</summary>
+    public const double DefaultWidth = 1250;
 
     /// <summary>Default window height: 600 pixels (compact notepad-sized).</summary>
     public const double DefaultHeight = 600;

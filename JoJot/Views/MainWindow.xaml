@@ -8,7 +8,7 @@
         xmlns:controls="clr-namespace:JoJot.Controls"
         mc:Ignorable="d"
         Title="JoJot"
-        Width="500" Height="600"
+        Width="1250" Height="600"
         MinWidth="320" MinHeight="420"
         PreviewKeyDown="Window_PreviewKeyDown"
         PreviewMouseWheel="Window_PreviewMouseWheel"

@@ -7,9 +7,9 @@ public class WindowPlacementHelperTests
     // ─── Constants ────────────────────────────────────────────────────
 
     [Fact]
-    public void DefaultWidth_Is500()
+    public void DefaultWidth_Is1250()
     {
-        WindowPlacementHelper.DefaultWidth.Should().Be(500);
+        WindowPlacementHelper.DefaultWidth.Should().Be(1250);
     }
 
     [Fact]
