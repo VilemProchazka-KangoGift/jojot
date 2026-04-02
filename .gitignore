@@ -10,6 +10,21 @@ obj/
 # Installer output
 installer/output/
 
+# Planning & review artifacts
+.planning/
+.review/
+
+# Test results and coverage
+TestResults/
+*.coverage
+coverage*.xml
+
+# IDE settings
+.idea/
+.vscode/
+*.DotSettings.user
+.DS_Store
+
 # OS files
 Thumbs.db
 desktop.ini
