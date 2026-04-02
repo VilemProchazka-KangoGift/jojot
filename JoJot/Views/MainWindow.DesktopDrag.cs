@@ -284,8 +284,9 @@ public partial class MainWindow
     {
         if (!VirtualDesktopService.IsAvailable) return;
 
-        // Cancel any pending check — rapid desktop switches fire Activated multiple times
+        // Cancel and dispose any pending check — rapid desktop switches fire Activated multiple times
         _misplacedCheckCts?.Cancel();
+        _misplacedCheckCts?.Dispose();
         var cts = new CancellationTokenSource();
         _misplacedCheckCts = cts;
 
