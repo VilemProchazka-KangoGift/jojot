@@ -32,8 +32,10 @@ public static class StartupService
             "Feel free to delete this tab once you're ready.";
 
         await DatabaseCore.ExecuteNonQueryAsync(
-            $"INSERT INTO notes (desktop_guid, name, content, pinned, sort_order) " +
-            $"VALUES ('{EscapeSql(VirtualDesktopService.CurrentDesktopGuid)}', 'Welcome to JoJot', '{EscapeSql(welcomeContent)}', 0, 0);").ConfigureAwait(false);
+            "INSERT INTO notes (desktop_guid, name, content, pinned, sort_order) VALUES (@guid, @name, @content, 0, 0);",
+            ("@guid", VirtualDesktopService.CurrentDesktopGuid),
+            ("@name", "Welcome to JoJot"),
+            ("@content", welcomeContent)).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -52,11 +54,4 @@ public static class StartupService
             LogService.Error("Background migration failed", ex);
         }
     }
-
-    /// <summary>
-    /// Escapes single-quotes for inline SQL string literals.
-    /// Prefer parameterized queries in future callers — this helper is only
-    /// used here for the one-time welcome content insertion.
-    /// </summary>
-    internal static string EscapeSql(string value) => value.Replace("'", "''");
 }

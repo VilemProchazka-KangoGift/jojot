@@ -123,15 +123,27 @@ public static class DatabaseCore
     public static async Task<bool> VerifyIntegrityAsync(CancellationToken ct = default)
     {
         string[] required = ["notes", "app_state", "pending_moves", "preferences"];
-        foreach (var table in required)
+        await AcquireWriteLockAsync().ConfigureAwait(false);
+        try
         {
-            long count = await ExecuteScalarAsync<long>(
-                $"SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='{table}';").ConfigureAwait(false);
-            if (count == 0)
+            foreach (var table in required)
             {
-                LogService.Warn("Expected table {Table} is missing — running PRAGMA quick_check", table);
-                return await RunQuickCheckAsync().ConfigureAwait(false);
+                await using var cmd = _rawConnection!.CreateCommand();
+                cmd.CommandText = "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name=@name;";
+                cmd.Parameters.AddWithValue("@name", table);
+                var result = await cmd.ExecuteScalarAsync().ConfigureAwait(false);
+                long count = Convert.ToInt64(result);
+                if (count == 0)
+                {
+                    LogService.Warn("Expected table {Table} is missing — running PRAGMA quick_check", table);
+                    _writeLock.Release();
+                    return await RunQuickCheckAsync().ConfigureAwait(false);
+                }
             }
+        }
+        finally
+        {
+            if (_writeLock.CurrentCount == 0) _writeLock.Release();
         }
         return true;
     }
@@ -170,6 +182,31 @@ public static class DatabaseCore
         {
             await using var cmd = _rawConnection!.CreateCommand();
             cmd.CommandText = sql;
+            await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            LogService.Error("ExecuteNonQueryAsync failed: {Sql}", sql, ex);
+            throw;
+        }
+        finally
+        {
+            _writeLock.Release();
+        }
+    }
+
+    /// <summary>
+    /// Executes a parameterized non-query SQL command. Serialized through the write lock.
+    /// </summary>
+    public static async Task ExecuteNonQueryAsync(string sql, params (string name, object value)[] parameters)
+    {
+        await AcquireWriteLockAsync().ConfigureAwait(false);
+        try
+        {
+            await using var cmd = _rawConnection!.CreateCommand();
+            cmd.CommandText = sql;
+            foreach (var (name, value) in parameters)
+                cmd.Parameters.AddWithValue(name, value);
             await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
         }
         catch (Exception ex)
