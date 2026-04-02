@@ -7,7 +7,7 @@ namespace JoJot.Services;
 /// EF Core connection interceptor that ensures <c>PRAGMA foreign_keys=ON</c> is set
 /// on every new SQLite connection.
 /// </summary>
-public class SqlitePragmaInterceptor : DbConnectionInterceptor
+public sealed class SqlitePragmaInterceptor : DbConnectionInterceptor
 {
     /// <summary>
     /// Synchronously sets <c>PRAGMA foreign_keys=ON</c> after a connection is opened.

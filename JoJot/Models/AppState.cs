@@ -3,7 +3,7 @@ namespace JoJot.Models;
 /// <summary>
 /// Entity for the app_state table. Stores per-desktop session info and window geometry.
 /// </summary>
-public class AppState
+public sealed class AppState
 {
     /// <summary>
     /// Primary key (auto-incremented row ID).

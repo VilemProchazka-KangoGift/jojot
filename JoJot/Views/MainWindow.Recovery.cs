@@ -242,7 +242,7 @@ public partial class MainWindow
             btn.SetResourceReference(BorderBrushProperty, ThemeKeys.Border);
             if (isDestructive)
             {
-                btn.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(0xe7, 0x4c, 0x3c));
+                btn.SetResourceReference(BackgroundProperty, ThemeKeys.Danger);
                 btn.Foreground = System.Windows.Media.Brushes.White;
                 btn.BorderThickness = new Thickness(0);
             }

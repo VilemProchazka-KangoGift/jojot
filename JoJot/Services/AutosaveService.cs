@@ -8,7 +8,7 @@ namespace JoJot.Services;
 /// inactivity. A write frequency cap prevents scheduling a new write sooner than
 /// <see cref="DebounceMs"/> after the previous write completed.
 /// </summary>
-public class AutosaveService
+public sealed class AutosaveService
 {
     private readonly IDebounceTimer _timer;
     private readonly IClock _clock;

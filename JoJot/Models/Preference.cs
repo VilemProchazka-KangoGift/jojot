@@ -3,7 +3,7 @@ namespace JoJot.Models;
 /// <summary>
 /// Entity for the preferences table. Key/value settings store.
 /// </summary>
-public class Preference
+public sealed class Preference
 {
     /// <summary>
     /// Unique setting key used as the primary key.

@@ -8,7 +8,7 @@ namespace JoJot.ViewModels;
 /// Core state for a per-desktop MainWindow.
 /// Owns the tab collection, active tab, search text, and derived properties.
 /// </summary>
-public class MainWindowViewModel : ObservableObject
+public sealed class MainWindowViewModel : ObservableObject
 {
     private NoteTab? _activeTab;
     private string _searchText = "";

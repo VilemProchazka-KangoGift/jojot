@@ -9,7 +9,7 @@ namespace JoJot.Controls;
 /// <summary>
 /// EventArgs carrying the current find query and option flags.
 /// </summary>
-public class FindChangedEventArgs : EventArgs
+public sealed class FindChangedEventArgs : EventArgs
 {
     public string Query { get; init; } = "";
     public bool CaseSensitive { get; init; }
@@ -128,12 +128,12 @@ public partial class FindReplacePanel : UserControl
     {
         toggle.Background = active
             ? (System.Windows.Media.Brush)FindResource(ThemeKeys.Accent)
-            : new SolidColorBrush(Colors.Transparent);
+            : System.Windows.Media.Brushes.Transparent;
 
         // Use white text on accent background for readability
         var textBlock = (TextBlock)toggle.Child;
         textBlock.Foreground = active
-            ? new SolidColorBrush(Colors.White)
+            ? System.Windows.Media.Brushes.White
             : (System.Windows.Media.Brush)FindResource(ThemeKeys.TextPrimary);
     }
 

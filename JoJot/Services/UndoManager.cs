@@ -6,7 +6,7 @@ namespace JoJot.Services;
 /// first (tier-1 into tier-2), then evicts the oldest tier-2 entries until usage drops to 60 %.
 /// The active tab is never collapsed.
 /// </summary>
-public class UndoManager
+public sealed class UndoManager
 {
     private static UndoManager _instance = new(SystemClock.Instance);
 

@@ -100,7 +100,7 @@ public partial class PreferencesPanel : UserControl
     private void UpdateThemeToggleHighlight(ThemeService.AppTheme active)
     {
         var accentBrush = (SolidColorBrush)FindResource(ThemeKeys.Accent);
-        var defaultBrush = new SolidColorBrush(Colors.Transparent);
+        var defaultBrush = System.Windows.Media.Brushes.Transparent;
 
         ThemeLightBtn.Background = active == ThemeService.AppTheme.Light ? accentBrush : defaultBrush;
         ThemeSystemBtn.Background = active == ThemeService.AppTheme.System ? accentBrush : defaultBrush;

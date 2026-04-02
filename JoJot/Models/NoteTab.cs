@@ -8,7 +8,7 @@ namespace JoJot.Models;
 /// Maps 1:1 to the notes table in SQLite.
 /// Raises PropertyChanged for UI-affecting properties.
 /// </summary>
-public class NoteTab : ObservableObject
+public sealed class NoteTab : ObservableObject
 {
     /// <summary>
     /// Maximum number of characters shown in the display label before truncation.
@@ -322,4 +322,9 @@ public class NoteTab : ObservableObject
     /// </summary>
     public static string UpdatedTooltip(DateTime dt) =>
         $"Last updated: {dt:MMM d, yyyy h:mm tt}";
+
+    /// <summary>
+    /// Returns the display label for debugging convenience.
+    /// </summary>
+    public override string ToString() => DisplayLabel;
 }

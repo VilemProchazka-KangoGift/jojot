@@ -12,7 +12,7 @@ namespace JoJot.Controls;
 /// Active match uses a stronger color; other matches use a softer color.
 /// Colors are resolved via FindResource on each render to stay theme-aware.
 /// </summary>
-public class TextBoxHighlightAdorner : Adorner
+public sealed class TextBoxHighlightAdorner : Adorner
 {
     private const int HighlightThreshold = 500;
 

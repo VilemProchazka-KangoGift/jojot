@@ -9,7 +9,7 @@ namespace JoJot.Services;
 /// </summary>
 /// <param name="tabId">The <c>NoteTab.Id</c> this stack belongs to.</param>
 /// <param name="clock">Clock abstraction for testability; defaults to system clock.</param>
-public class UndoStack(long tabId, IClock? clock = null)
+public sealed class UndoStack(long tabId, IClock? clock = null)
 {
     /// <summary>A snapshot entry storing content and cursor position.</summary>
     public readonly record struct UndoEntry(string Content, int CursorPosition);
