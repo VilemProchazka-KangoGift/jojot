@@ -490,7 +490,7 @@ public partial class MainWindow
                     Dispatcher.InvokeAsync(() =>
                     {
                         try { TabList.ScrollIntoView(item); }
-                        catch (NullReferenceException) { }
+                        catch (NullReferenceException) { /* Layout not ready; safe to ignore */ }
                     }, System.Windows.Threading.DispatcherPriority.Loaded);
                 }
                 return;

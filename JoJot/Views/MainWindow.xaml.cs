@@ -150,7 +150,7 @@ public partial class MainWindow : Window
     // Use SetResourceReference for element properties that should auto-update on theme switch.
     // Use GetBrush for one-time assignments or comparisons.
     private SolidColorBrush GetBrush(string key) =>
-        (SolidColorBrush)FindResource(key);
+        (TryFindResource(key) as SolidColorBrush) ?? (SolidColorBrush)System.Windows.Media.Brushes.Black;
 
     /// <summary>
     /// Creates a MainWindow bound to a specific virtual desktop.
@@ -524,6 +524,10 @@ public partial class MainWindow : Window
 
         // Remove WndProc hook before HWND is destroyed
         RemoveDesktopActivationHook();
+
+        // Cancel and dispose pending desktop check
+        _misplacedCheckCts?.Cancel();
+        _misplacedCheckCts?.Dispose();
 
         // Stop all timers
         _autosaveService.Stop();
