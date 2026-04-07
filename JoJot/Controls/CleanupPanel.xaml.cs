@@ -4,6 +4,8 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using JoJot.Models;
+using JoJot.Resources;
+using JoJot.Services;
 using JoJot.Themes;
 using JoJot.ViewModels;
 
@@ -72,13 +74,14 @@ public partial class CleanupPanel : UserControl
 
         if (candidates.Count > 0)
         {
-            DeleteText.Text = $"Delete {candidates.Count} tab{(candidates.Count == 1 ? "" : "s")}";
+            var fmt = LanguageService.Plural(Strings.Cleanup_DeleteN_One, Strings.Cleanup_DeleteN_Few, Strings.Cleanup_DeleteN, candidates.Count);
+            DeleteText.Text = string.Format(fmt, candidates.Count);
             DeleteButton.IsEnabled = true;
             DeleteButton.Opacity = 1.0;
         }
         else
         {
-            DeleteText.Text = "Delete 0 tabs";
+            DeleteText.Text = Strings.Cleanup_Delete0;
             DeleteButton.IsEnabled = false;
             DeleteButton.Opacity = 0.5;
         }
@@ -87,7 +90,7 @@ public partial class CleanupPanel : UserControl
         {
             var emptyBlock = new TextBlock
             {
-                Text = "No tabs match this filter",
+                Text = Strings.Cleanup_NoMatch,
                 FontSize = 13,
                 FontStyle = FontStyles.Italic,
                 Margin = new Thickness(0, 8, 0, 0)

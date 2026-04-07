@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using JoJot.Models;
+using JoJot.Resources;
 using JoJot.Services;
 using JoJot.Themes;
 
@@ -113,7 +114,7 @@ public partial class MainWindow
                 desktopName = regName;
         }
 
-        var finalName = string.IsNullOrEmpty(desktopName) ? "Unknown desktop" : desktopName;
+        var finalName = string.IsNullOrEmpty(desktopName) ? Strings.Recovery_UnknownDesktop : desktopName;
 
         // Desktop name (bold, primary color)
         var nameBlock = new TextBlock
@@ -127,9 +128,10 @@ public partial class MainWindow
         container.Children.Add(nameBlock);
 
         // Metadata row (tab count + date, muted)
+        var tabLabel = string.Format(LanguageService.Plural(Strings.Recovery_TabCount_One, Strings.Recovery_TabCount_Few, Strings.Recovery_TabCount, tabCount), tabCount);
         var metaBlock = new TextBlock
         {
-            Text = $"{tabCount} tab{(tabCount == 1 ? "" : "s")} \u00B7 {lastUpdated:MMM d, yyyy}",
+            Text = $"{tabLabel} \u00B7 {lastUpdated:MMM d, yyyy}",
             FontSize = 11,
             Margin = new Thickness(0, 2, 0, 6)
         };
@@ -173,7 +175,7 @@ public partial class MainWindow
             }
             else
             {
-                lineBlock.Text = "Empty note";
+                lineBlock.Text = Strings.Recovery_EmptyNote;
                 lineBlock.FontStyle = FontStyles.Italic;
             }
 
@@ -211,7 +213,7 @@ public partial class MainWindow
         {
             var moreBlock = new TextBlock
             {
-                Text = $"+{remaining} more",
+                Text = string.Format(Strings.Recovery_More, remaining),
                 FontSize = 11,
                 FontStyle = FontStyles.Italic,
                 Margin = new Thickness(0, 1, 0, 1)
@@ -255,7 +257,7 @@ public partial class MainWindow
         }
 
         // Adopt — merge tabs into current desktop
-        var adoptBtn = CreateRowButton("Adopt");
+        var adoptBtn = CreateRowButton(Strings.Recovery_Adopt);
         DockPanel.SetDock(adoptBtn, Dock.Left);
         adoptBtn.Click += async (s, e) =>
         {
@@ -267,7 +269,7 @@ public partial class MainWindow
         buttonPanel.Children.Add(adoptBtn);
 
         // Delete — permanently delete session and all its notes
-        var deleteBtn = CreateRowButton("Delete", isDestructive: true);
+        var deleteBtn = CreateRowButton(Strings.Common_Delete, isDestructive: true);
         DockPanel.SetDock(deleteBtn, Dock.Right);
         deleteBtn.Click += async (s, e) =>
         {

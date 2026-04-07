@@ -1,6 +1,7 @@
 <UserControl x:Class="JoJot.Controls.DragOverlay"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:res="clr-namespace:JoJot.Resources"
              Visibility="Collapsed">
     <Grid>
         <!-- Semi-transparent backdrop -->
@@ -40,7 +41,7 @@
                 <!-- Action buttons -->
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,8">
                     <Button x:Name="KeepHereButton"
-                            Content="Keep here"
+                            Content="{x:Static res:Strings.Drag_KeepHere}"
                             Click="KeepHereButton_Click"
                             Padding="16,8" Margin="0,0,8,0"
                             FontSize="13"
@@ -49,7 +50,7 @@
                             BorderThickness="0"
                             Cursor="Hand"/>
                     <Button x:Name="MergeButton"
-                            Content="Merge notes"
+                            Content="{x:Static res:Strings.Drag_MergeNotes}"
                             Click="MergeButton_Click"
                             Padding="16,8" Margin="0,0,8,0"
                             FontSize="13"
@@ -59,7 +60,7 @@
                             BorderThickness="1"
                             Cursor="Hand"/>
                     <Button x:Name="CancelButton"
-                            Content="Go back"
+                            Content="{x:Static res:Strings.Drag_GoBack}"
                             Click="CancelButton_Click"
                             Padding="16,8"
                             FontSize="13"
@@ -72,7 +73,7 @@
 
                 <!-- Cancel failure instruction — hidden by default -->
                 <TextBlock x:Name="CancelFailureText"
-                           Text="If retry fails, move this window back manually via Win+Tab"
+                           Text="{x:Static res:Strings.Drag_RetryHint}"
                            FontSize="11"
                            Foreground="{DynamicResource c-text-muted}"
                            FontStyle="Italic"

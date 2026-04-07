@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+using JoJot.Resources;
 using JoJot.Services;
 using JoJot.Themes;
 
@@ -14,6 +15,7 @@ public partial class PreferencesPanel : UserControl
 
     public event EventHandler? CloseRequested;
     public event EventHandler<ThemeService.AppTheme>? ThemeChangeRequested;
+    public event EventHandler<LanguageService.AppLanguage>? LanguageChangeRequested;
     public event EventHandler<int>? FontSizeChangeRequested;
     public event EventHandler? FontSizeResetRequested;
     public event EventHandler<bool>? HotkeyRecordingChanged;
@@ -43,7 +45,7 @@ public partial class PreferencesPanel : UserControl
         if (_recordingHotkey)
         {
             _recordingHotkey = false;
-            HotkeyRecordText.Text = "Record";
+            HotkeyRecordText.Text = Strings.Pref_HotkeyRecord;
             HotkeyService.StopRecordingMode();
         }
 
@@ -62,10 +64,11 @@ public partial class PreferencesPanel : UserControl
         PanelTransform.BeginAnimation(TranslateTransform.XProperty, anim);
     }
 
-    public void RefreshValues(int fontSize, ThemeService.AppTheme theme, string hotkeyDisplay, string? autoDeleteDays = null)
+    public void RefreshValues(int fontSize, ThemeService.AppTheme theme, LanguageService.AppLanguage language, string hotkeyDisplay, string? autoDeleteDays = null)
     {
         FontSizeDisplay.Text = FontSizeToPercent(fontSize);
         UpdateThemeToggleHighlight(theme);
+        UpdateLanguageToggleHighlight(language);
         HotkeyDisplay.Text = hotkeyDisplay;
         _suppressAutoDeleteEvent = true;
         AutoDeleteDaysInput.Text = autoDeleteDays ?? "";
@@ -91,7 +94,7 @@ public partial class PreferencesPanel : UserControl
     public void StopRecording()
     {
         _recordingHotkey = false;
-        HotkeyRecordText.Text = "Record";
+        HotkeyRecordText.Text = Strings.Pref_HotkeyRecord;
         HotkeyService.StopRecordingMode();
     }
 
@@ -105,6 +108,15 @@ public partial class PreferencesPanel : UserControl
         ThemeLightBtn.Background = active == ThemeService.AppTheme.Light ? accentBrush : defaultBrush;
         ThemeSystemBtn.Background = active == ThemeService.AppTheme.System ? accentBrush : defaultBrush;
         ThemeDarkBtn.Background = active == ThemeService.AppTheme.Dark ? accentBrush : defaultBrush;
+    }
+
+    private void UpdateLanguageToggleHighlight(LanguageService.AppLanguage active)
+    {
+        var accentBrush = (SolidColorBrush)FindResource(ThemeKeys.Accent);
+        var defaultBrush = System.Windows.Media.Brushes.Transparent;
+
+        LangEnBtn.Background = active == LanguageService.AppLanguage.English ? accentBrush : defaultBrush;
+        LangCsBtn.Background = active == LanguageService.AppLanguage.Czech ? accentBrush : defaultBrush;
     }
 
     // ─── Click handlers ─────────────────────────────────────────────────
@@ -132,6 +144,16 @@ public partial class PreferencesPanel : UserControl
         ThemeChangeRequested?.Invoke(this, ThemeService.AppTheme.Dark);
     }
 
+    private void LangEn_Click(object sender, MouseButtonEventArgs e)
+    {
+        LanguageChangeRequested?.Invoke(this, LanguageService.AppLanguage.English);
+    }
+
+    private void LangCs_Click(object sender, MouseButtonEventArgs e)
+    {
+        LanguageChangeRequested?.Invoke(this, LanguageService.AppLanguage.Czech);
+    }
+
     private void FontSizeIncrease_Click(object sender, MouseButtonEventArgs e)
     {
         FontSizeChangeRequested?.Invoke(this, 1);
@@ -152,14 +174,14 @@ public partial class PreferencesPanel : UserControl
         if (_recordingHotkey)
         {
             _recordingHotkey = false;
-            HotkeyRecordText.Text = "Record";
+            HotkeyRecordText.Text = Strings.Pref_HotkeyRecord;
             HotkeyService.StopRecordingMode();
             HotkeyRecordingChanged?.Invoke(this, false);
         }
         else
         {
             _recordingHotkey = true;
-            HotkeyRecordText.Text = "Press keys...";
+            HotkeyRecordText.Text = Strings.Pref_HotkeyPressKeys;
             HotkeyService.StartRecordingMode();
             HotkeyRecordingChanged?.Invoke(this, true);
         }

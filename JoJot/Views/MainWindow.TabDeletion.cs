@@ -3,6 +3,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using JoJot.Models;
+using JoJot.Resources;
 using JoJot.Services;
 
 namespace JoJot;
@@ -169,7 +170,8 @@ public partial class MainWindow
         ToastMessageBlock.Inlines.Add(new System.Windows.Documents.Run("\u201C"));
         var italicRun = new System.Windows.Documents.Run(truncated) { FontStyle = FontStyles.Italic };
         ToastMessageBlock.Inlines.Add(italicRun);
-        ToastMessageBlock.Inlines.Add(new System.Windows.Documents.Run("\u201D deleted"));
+        var suffix = Strings.Toast_Deleted.Replace("{0}", "");
+        ToastMessageBlock.Inlines.Add(new System.Windows.Documents.Run("\u201D" + suffix));
     }
 
     /// <summary>
@@ -178,7 +180,8 @@ public partial class MainWindow
     private void UpdateToastContentBulk(int count)
     {
         ToastMessageBlock.Inlines.Clear();
-        ToastMessageBlock.Inlines.Add(new System.Windows.Documents.Run($"{count} notes deleted"));
+        var fmt = LanguageService.Plural(Strings.Toast_NotesDeleted_One, Strings.Toast_NotesDeleted_Few, Strings.Toast_NotesDeleted, count);
+        ToastMessageBlock.Inlines.Add(new System.Windows.Documents.Run(string.Format(fmt, count)));
     }
 
     /// <summary>

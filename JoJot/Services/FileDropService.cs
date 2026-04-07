@@ -1,4 +1,5 @@
 using System.IO;
+using JoJot.Resources;
 
 namespace JoJot.Services;
 
@@ -79,7 +80,7 @@ public static class FileDropService
 
             if (fileInfo.Length > MaxFileSizeBytes)
             {
-                return new FileDropResult(false, fileName, null, $"'{fileName}' is too large (max 500KB)");
+                return new FileDropResult(false, fileName, null, string.Format(Strings.Drop_TooLarge, fileName));
             }
 
             // Content inspection: read first 8 KB for binary check
@@ -89,7 +90,7 @@ public static class FileDropService
                 int bytesRead = await fs.ReadAsync(buffer.AsMemory(), cancellationToken).ConfigureAwait(false);
                 if (IsBinaryContent(buffer, bytesRead))
                 {
-                    return new FileDropResult(false, fileName, null, $"'{fileName}' contains binary content");
+                    return new FileDropResult(false, fileName, null, string.Format(Strings.Drop_Binary, fileName));
                 }
             }
 
@@ -99,17 +100,17 @@ public static class FileDropService
         catch (UnauthorizedAccessException)
         {
             LogService.Error("File drop: access denied for {FilePath}", filePath);
-            return new FileDropResult(false, fileName, null, $"Failed to read '{fileName}'");
+            return new FileDropResult(false, fileName, null, string.Format(Strings.Drop_ReadFailed, fileName));
         }
         catch (IOException ex)
         {
             LogService.Error("File drop: IO error for {FilePath}", filePath, ex);
-            return new FileDropResult(false, fileName, null, $"Failed to read '{fileName}'");
+            return new FileDropResult(false, fileName, null, string.Format(Strings.Drop_ReadFailed, fileName));
         }
         catch (Exception ex)
         {
             LogService.Error("File drop: unexpected error for {FilePath}", filePath, ex);
-            return new FileDropResult(false, fileName, null, $"Failed to read '{fileName}'");
+            return new FileDropResult(false, fileName, null, string.Format(Strings.Drop_ReadFailed, fileName));
         }
     }
 
@@ -145,7 +146,7 @@ public static class FileDropService
         {
             if (validFiles.Count > 0)
             {
-                combinedMessage = $"{validFiles.Count} file(s) opened, {errorCount} skipped ({lastError})";
+                combinedMessage = string.Format(Strings.Drop_PartialSuccess, validFiles.Count, errorCount, lastError);
             }
             else
             {

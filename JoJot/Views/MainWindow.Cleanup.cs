@@ -1,4 +1,5 @@
 using JoJot.Models;
+using JoJot.Resources;
 using JoJot.Services;
 
 namespace JoJot;
@@ -104,7 +105,8 @@ public partial class MainWindow
 
         // Show confirmation toast (no undo — cleanup deletion is permanent)
         int deleted = candidates.Count;
-        ShowInfoToast($"{deleted} tab{(deleted == 1 ? "" : "s")} cleaned up");
+        var fmt = LanguageService.Plural(Strings.Toast_CleanedUp_One, Strings.Toast_CleanedUp_Few, Strings.Toast_CleanedUp, deleted);
+        ShowInfoToast(string.Format(fmt, deleted));
     }
 
     /// <summary>

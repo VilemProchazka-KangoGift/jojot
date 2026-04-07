@@ -5,6 +5,7 @@ using System.Windows.Input;
 using System.Windows.Threading;
 using JoJot.Controls;
 using JoJot.Models;
+using JoJot.Resources;
 using JoJot.Services;
 
 namespace JoJot;
@@ -385,7 +386,8 @@ public partial class MainWindow
     /// </summary>
     private void ShowReplaceAllToast(int count)
     {
-        string msg = $"{count} replacement{(count == 1 ? "" : "s")} made";
+        var fmt = LanguageService.Plural(Strings.Toast_Replacements_One, Strings.Toast_Replacements_Few, Strings.Toast_Replacements, count);
+        string msg = string.Format(fmt, count);
         _pendingToastUndoAction = () => PerformUndo();
         ShowUndoableToast(msg);
     }

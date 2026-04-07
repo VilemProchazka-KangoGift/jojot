@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using JoJot.Models;
+using JoJot.Resources;
 using JoJot.Services;
 using JoJot.ViewModels;
 
@@ -322,7 +323,7 @@ public partial class MainWindow
         PreferencesPanel.UpdateHotkeyDisplay(HotkeyService.GetHotkeyDisplayString());
         if (!success)
         {
-            ShowInfoToast("Hotkey already in use by another app");
+            ShowInfoToast(Strings.Toast_HotkeyInUse);
         }
     }
 

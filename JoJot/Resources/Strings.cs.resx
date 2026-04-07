@@ -1,0 +1,242 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" msdata:Ordinal="0" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute name="xml:space" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+
+  <!-- ═══ Toolbar tooltips ═══ -->
+  <data name="Tooltip_Menu" xml:space="preserve"><value>Nabídka</value></data>
+  <data name="Tooltip_NewTab" xml:space="preserve"><value>Nová karta (Ctrl+T)</value></data>
+  <data name="Tooltip_Delete" xml:space="preserve"><value>Smazat (Ctrl+W)</value></data>
+  <data name="Tooltip_Undo" xml:space="preserve"><value>Zpět (Ctrl+Z)</value></data>
+  <data name="Tooltip_Redo" xml:space="preserve"><value>Znovu (Ctrl+Y)</value></data>
+  <data name="Tooltip_Copy" xml:space="preserve"><value>Kopírovat (Ctrl+C)</value></data>
+  <data name="Tooltip_Paste" xml:space="preserve"><value>Vložit (Ctrl+V)</value></data>
+  <data name="Tooltip_Pin" xml:space="preserve"><value>Připnout (Ctrl+P)</value></data>
+  <data name="Tooltip_Unpin" xml:space="preserve"><value>Odepnout (Ctrl+P)</value></data>
+  <data name="Tooltip_Clone" xml:space="preserve"><value>Klonovat do nové karty (Ctrl+K)</value></data>
+  <data name="Tooltip_Save" xml:space="preserve"><value>Uložit jako TXT (Ctrl+S)</value></data>
+  <data name="Tooltip_Find" xml:space="preserve"><value>Hledat (Ctrl+F)</value></data>
+  <data name="Tooltip_PinShort" xml:space="preserve"><value>Připnout</value></data>
+  <data name="Tooltip_UnpinShort" xml:space="preserve"><value>Odepnout</value></data>
+
+  <!-- ═══ Search ═══ -->
+  <data name="Search_Placeholder" xml:space="preserve"><value>Hledat karty...</value></data>
+
+  <!-- ═══ Hamburger menu ═══ -->
+  <data name="Menu_Recover" xml:space="preserve"><value>Obnovit relace</value></data>
+  <data name="Menu_Cleanup" xml:space="preserve"><value>Vyčistit karty</value></data>
+  <data name="Menu_Preferences" xml:space="preserve"><value>Nastavení</value></data>
+  <data name="Menu_Exit" xml:space="preserve"><value>Ukončit</value></data>
+
+  <!-- ═══ Common ═══ -->
+  <data name="Common_Undo" xml:space="preserve"><value>Zpět</value></data>
+  <data name="Common_Cancel" xml:space="preserve"><value>Zrušit</value></data>
+  <data name="Common_Delete" xml:space="preserve"><value>Smazat</value></data>
+
+  <!-- ═══ File drop overlay ═══ -->
+  <data name="Drop_FileHere" xml:space="preserve"><value>Přetáhněte soubor sem</value></data>
+  <data name="Drop_Hint" xml:space="preserve"><value>Pouze textové soubory, max 500 KB</value></data>
+  <data name="Drop_TooLarge" xml:space="preserve"><value>'{0}' je příliš velký (max 500 KB)</value></data>
+  <data name="Drop_Binary" xml:space="preserve"><value>'{0}' obsahuje binární data</value></data>
+  <data name="Drop_ReadFailed" xml:space="preserve"><value>Nepodařilo se přečíst '{0}'</value></data>
+  <data name="Drop_PartialSuccess" xml:space="preserve"><value>{0} soubor(ů) otevřeno, {1} přeskočeno ({2})</value></data>
+
+  <!-- ═══ Preferences panel ═══ -->
+  <data name="Pref_Header" xml:space="preserve"><value>Nastavení</value></data>
+  <data name="Pref_SectionLanguage" xml:space="preserve"><value>JAZYK</value></data>
+  <data name="Pref_Language" xml:space="preserve"><value>Jazyk</value></data>
+  <data name="Pref_LanguageHint" xml:space="preserve"><value>Vyžaduje restart aplikace</value></data>
+  <data name="Pref_SectionAppearance" xml:space="preserve"><value>VZHLED</value></data>
+  <data name="Pref_Theme" xml:space="preserve"><value>Motiv</value></data>
+  <data name="Pref_ThemeLight" xml:space="preserve"><value>Světlý</value></data>
+  <data name="Pref_ThemeSystem" xml:space="preserve"><value>Systém</value></data>
+  <data name="Pref_ThemeDark" xml:space="preserve"><value>Tmavý</value></data>
+  <data name="Pref_FontSize" xml:space="preserve"><value>Velikost písma</value></data>
+  <data name="Pref_FontReset" xml:space="preserve"><value>100 %</value></data>
+  <data name="Pref_SectionCleanup" xml:space="preserve"><value>ÚKLID</value></data>
+  <data name="Pref_AutoDelete" xml:space="preserve"><value>Automaticky smazat po</value></data>
+  <data name="Pref_Days" xml:space="preserve"><value>dnech</value></data>
+  <data name="Pref_AutoDeleteHint" xml:space="preserve"><value>Nechte prázdné pro vypnutí. Připnuté karty zůstanou.</value></data>
+  <data name="Pref_SectionShortcuts" xml:space="preserve"><value>ZKRATKY</value></data>
+  <data name="Pref_GlobalHotkey" xml:space="preserve"><value>Globální klávesová zkratka</value></data>
+  <data name="Pref_HotkeyRecord" xml:space="preserve"><value>Nahrát</value></data>
+  <data name="Pref_HotkeyPressKeys" xml:space="preserve"><value>Stiskněte klávesy...</value></data>
+  <data name="Pref_HotkeyHint" xml:space="preserve"><value>Aktivovat JoJot z libovolné aplikace</value></data>
+
+  <!-- ═══ Find / Replace panel ═══ -->
+  <data name="Find_Header" xml:space="preserve"><value>Hledat</value></data>
+  <data name="Find_Placeholder" xml:space="preserve"><value>Hledat</value></data>
+  <data name="Find_ReplacePlaceholder" xml:space="preserve"><value>Nahradit</value></data>
+  <data name="Find_Replace" xml:space="preserve"><value>Nahradit</value></data>
+  <data name="Find_ReplaceAll" xml:space="preserve"><value>Nahradit vše</value></data>
+  <data name="Find_NoMatches" xml:space="preserve"><value>Žádné shody</value></data>
+
+  <!-- ═══ Cleanup panel ═══ -->
+  <data name="Cleanup_Header" xml:space="preserve"><value>Vyčistit karty</value></data>
+  <data name="Cleanup_OlderThan" xml:space="preserve"><value>Vyčistit starší než</value></data>
+  <data name="Cleanup_UnitDays" xml:space="preserve"><value>dní</value></data>
+  <data name="Cleanup_UnitHours" xml:space="preserve"><value>hodin</value></data>
+  <data name="Cleanup_UnitWeeks" xml:space="preserve"><value>týdnů</value></data>
+  <data name="Cleanup_UnitMonths" xml:space="preserve"><value>měsíců</value></data>
+  <data name="Cleanup_IncludePinned" xml:space="preserve"><value>Včetně připnutých</value></data>
+  <data name="Cleanup_DeleteN" xml:space="preserve"><value>Smazat {0} karet</value></data>
+  <data name="Cleanup_DeleteN_One" xml:space="preserve"><value>Smazat {0} kartu</value></data>
+  <data name="Cleanup_DeleteN_Few" xml:space="preserve"><value>Smazat {0} karty</value></data>
+  <data name="Cleanup_Delete0" xml:space="preserve"><value>Smazat 0 karet</value></data>
+  <data name="Cleanup_NoMatch" xml:space="preserve"><value>Žádné karty neodpovídají filtru</value></data>
+  <data name="Cleanup_ConfirmTitle" xml:space="preserve"><value>Vyčistit karty</value></data>
+  <data name="Cleanup_ConfirmMessage" xml:space="preserve"><value>Trvale se smaže {0} karet{1}. Tuto akci nelze vrátit zpět.</value></data>
+  <data name="Cleanup_ConfirmMessage_One" xml:space="preserve"><value>Trvale se smaže {0} karta{1}. Tuto akci nelze vrátit zpět.</value></data>
+  <data name="Cleanup_ConfirmMessage_Few" xml:space="preserve"><value>Trvale se smažou {0} karty{1}. Tuto akci nelze vrátit zpět.</value></data>
+  <data name="Cleanup_ConfirmPinnedNote" xml:space="preserve"><value> (včetně {0} připnutých)</value></data>
+
+  <!-- ═══ Recovery panel ═══ -->
+  <data name="Recovery_Header" xml:space="preserve"><value>Obnovit relace</value></data>
+  <data name="Recovery_UnknownDesktop" xml:space="preserve"><value>Neznámá plocha</value></data>
+  <data name="Recovery_EmptyNote" xml:space="preserve"><value>Prázdná poznámka</value></data>
+  <data name="Recovery_TabCount" xml:space="preserve"><value>{0} karet</value></data>
+  <data name="Recovery_TabCount_One" xml:space="preserve"><value>{0} karta</value></data>
+  <data name="Recovery_TabCount_Few" xml:space="preserve"><value>{0} karty</value></data>
+  <data name="Recovery_More" xml:space="preserve"><value>+{0} dalších</value></data>
+  <data name="Recovery_Adopt" xml:space="preserve"><value>Převzít</value></data>
+
+  <!-- ═══ Help overlay ═══ -->
+  <data name="Help_Title" xml:space="preserve"><value>Klávesové zkratky</value></data>
+  <data name="Help_DismissHint" xml:space="preserve"><value>Stiskněte Escape nebo klikněte mimo pro zavření</value></data>
+  <data name="Help_SectionTabs" xml:space="preserve"><value>KARTY</value></data>
+  <data name="Help_SectionEditor" xml:space="preserve"><value>EDITOR</value></data>
+  <data name="Help_SectionView" xml:space="preserve"><value>ZOBRAZENÍ</value></data>
+  <data name="Help_SectionGlobal" xml:space="preserve"><value>GLOBÁLNÍ</value></data>
+  <data name="Help_NewTab" xml:space="preserve"><value>Nová karta</value></data>
+  <data name="Help_DeleteTab" xml:space="preserve"><value>Smazat kartu</value></data>
+  <data name="Help_NextTab" xml:space="preserve"><value>Další karta</value></data>
+  <data name="Help_PreviousTab" xml:space="preserve"><value>Předchozí karta</value></data>
+  <data name="Help_RenameTab" xml:space="preserve"><value>Přejmenovat kartu</value></data>
+  <data name="Help_PinUnpin" xml:space="preserve"><value>Připnout / Odepnout</value></data>
+  <data name="Help_CloneTab" xml:space="preserve"><value>Klonovat kartu</value></data>
+  <data name="Help_Undo" xml:space="preserve"><value>Zpět</value></data>
+  <data name="Help_Redo" xml:space="preserve"><value>Znovu</value></data>
+  <data name="Help_RedoAlt" xml:space="preserve"><value>Znovu (alt)</value></data>
+  <data name="Help_Copy" xml:space="preserve"><value>Kopírovat (vše bez výběru)</value></data>
+  <data name="Help_Paste" xml:space="preserve"><value>Vložit</value></data>
+  <data name="Help_Cut" xml:space="preserve"><value>Vyjmout</value></data>
+  <data name="Help_SelectAll" xml:space="preserve"><value>Vybrat vše</value></data>
+  <data name="Help_SaveAsTxt" xml:space="preserve"><value>Uložit jako TXT</value></data>
+  <data name="Help_Find" xml:space="preserve"><value>Hledat v editoru / Hledat karty</value></data>
+  <data name="Help_FontIncrease" xml:space="preserve"><value>Zvětšit písmo</value></data>
+  <data name="Help_FontDecrease" xml:space="preserve"><value>Zmenšit písmo</value></data>
+  <data name="Help_FontReset" xml:space="preserve"><value>Obnovit velikost písma (100 %)</value></data>
+  <data name="Help_Zoom" xml:space="preserve"><value>Přiblížení (nad editorem)</value></data>
+  <data name="Help_FocusMinimize" xml:space="preserve"><value>Aktivovat / minimalizovat JoJot</value></data>
+  <data name="Help_ShowHelp" xml:space="preserve"><value>Zobrazit nápovědu</value></data>
+
+  <!-- ═══ Context menu ═══ -->
+  <data name="Ctx_Rename" xml:space="preserve"><value>Přejmenovat</value></data>
+  <data name="Ctx_Pin" xml:space="preserve"><value>Připnout</value></data>
+  <data name="Ctx_Unpin" xml:space="preserve"><value>Odepnout</value></data>
+  <data name="Ctx_Clone" xml:space="preserve"><value>Klonovat do nové karty</value></data>
+  <data name="Ctx_SaveTxt" xml:space="preserve"><value>Uložit jako TXT</value></data>
+  <data name="Ctx_Delete" xml:space="preserve"><value>Smazat</value></data>
+  <data name="Ctx_DeleteAllBelow" xml:space="preserve"><value>Smazat vše pod</value></data>
+
+  <!-- ═══ Toast messages ═══ -->
+  <data name="Toast_Deleted" xml:space="preserve"><value>{0} smazáno</value></data>
+  <data name="Toast_NotesDeleted" xml:space="preserve"><value>{0} poznámek smazáno</value></data>
+  <data name="Toast_NotesDeleted_One" xml:space="preserve"><value>{0} poznámka smazána</value></data>
+  <data name="Toast_NotesDeleted_Few" xml:space="preserve"><value>{0} poznámky smazány</value></data>
+  <data name="Toast_CleanedUp" xml:space="preserve"><value>{0} karet vyčištěno</value></data>
+  <data name="Toast_CleanedUp_One" xml:space="preserve"><value>{0} karta vyčištěna</value></data>
+  <data name="Toast_CleanedUp_Few" xml:space="preserve"><value>{0} karty vyčištěny</value></data>
+  <data name="Toast_Replacements" xml:space="preserve"><value>{0} nahrazení provedeno</value></data>
+  <data name="Toast_Replacements_One" xml:space="preserve"><value>{0} nahrazení provedeno</value></data>
+  <data name="Toast_HotkeyConflict" xml:space="preserve"><value>Globální zkratka ({0}) je používána jinou aplikací. Změňte ji v Nastavení.</value></data>
+  <data name="Toast_Recovery" xml:space="preserve"><value>Okno obnoveno po přerušeném přesunu</value></data>
+  <data name="Toast_Merged" xml:space="preserve"><value>Sloučeno {0} poznámek z {1}</value></data>
+  <data name="Toast_HotkeyInUse" xml:space="preserve"><value>Klávesová zkratka je již používána jinou aplikací</value></data>
+
+  <!-- ═══ Drag overlay ═══ -->
+  <data name="Drag_KeepHere" xml:space="preserve"><value>Ponechat zde</value></data>
+  <data name="Drag_MergeNotes" xml:space="preserve"><value>Sloučit poznámky</value></data>
+  <data name="Drag_GoBack" xml:space="preserve"><value>Vrátit zpět</value></data>
+  <data name="Drag_Retry" xml:space="preserve"><value>Zkusit znovu</value></data>
+  <data name="Drag_RetryHint" xml:space="preserve"><value>Pokud opakování selže, přesuňte okno zpět ručně přes Win+Tab</value></data>
+  <data name="Drag_ConflictMessage" xml:space="preserve"><value>Na této ploše již existuje okno JoJot. Co chcete udělat?</value></data>
+  <data name="Drag_KeepOrGoMessage" xml:space="preserve"><value>Ponechat poznámky na této ploše, nebo se vrátit?</value></data>
+  <data name="Drag_AnotherWindowOpened" xml:space="preserve"><value>Na této ploše bylo otevřeno další okno. Můžete sloučit nebo se vrátit.</value></data>
+  <data name="Drag_From" xml:space="preserve"><value>Z: {0}</value></data>
+  <data name="Drag_MovedTo" xml:space="preserve"><value>Přesunuto na {0}</value></data>
+  <data name="Drag_DesktopN" xml:space="preserve"><value>Plocha {0}</value></data>
+  <data name="Drag_AnotherDesktop" xml:space="preserve"><value>jinou plochu</value></data>
+  <data name="Drag_Misplaced" xml:space="preserve"><value> (špatné umístění)</value></data>
+
+  <!-- ═══ Date / time strings ═══ -->
+  <data name="Date_NewNote" xml:space="preserve"><value>Nová poznámka</value></data>
+  <data name="Date_Yesterday" xml:space="preserve"><value>Včera</value></data>
+  <data name="Date_JustNow" xml:space="preserve"><value>Právě teď</value></data>
+  <data name="Date_Today" xml:space="preserve"><value>Dnes {0}</value></data>
+  <data name="Date_YesterdayTime" xml:space="preserve"><value>Včera {0}</value></data>
+  <data name="Date_CreatedPrefix" xml:space="preserve"><value>Vytvořeno: {0}</value></data>
+  <data name="Date_UpdatedPrefix" xml:space="preserve"><value>Naposledy upraveno: {0}</value></data>
+
+  <!-- ═══ Window title ═══ -->
+  <data name="Title_Named" xml:space="preserve"><value>JoJot — {0}</value></data>
+  <data name="Title_DesktopN" xml:space="preserve"><value>JoJot — Plocha {0}</value></data>
+  <data name="Title_Default" xml:space="preserve"><value>JoJot</value></data>
+  <data name="Title_DefaultFilename" xml:space="preserve"><value>JoJot poznámka {0}.txt</value></data>
+  <data name="Title_DefaultFilenameFallback" xml:space="preserve"><value>JoJot poznámka</value></data>
+
+  <!-- ═══ Welcome tab ═══ -->
+  <data name="Welcome_Title" xml:space="preserve"><value>Vítejte v JoJot</value></data>
+  <data name="Welcome_Content" xml:space="preserve"><value>Vítejte v JoJot!
+
+JoJot je lehká aplikace na poznámky, která váže vaše poznámky k virtuálním plochám. Přepněte na jinou plochu a JoJot automaticky zobrazí poznámky, které jste tam nechali — bez zbytečných kroků, vždy v kontextu.
+
+Pár věcí na začátek:
+  &#x2022; Ctrl+T  — otevřít novou kartu
+  &#x2022; Ctrl+W  — zavřít aktuální kartu
+  &#x2022; Zavření okna nechá JoJot běžet na pozadí — znovu ho spusťte pro návrat.
+
+Tuto kartu můžete kdykoliv smazat.</value></data>
+
+  <!-- ═══ Confirmation overlay ═══ -->
+  <data name="Confirm_Cancel" xml:space="preserve"><value>Zrušit</value></data>
+  <data name="Confirm_Delete" xml:space="preserve"><value>Smazat</value></data>
+</root>

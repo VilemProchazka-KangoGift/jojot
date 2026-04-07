@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media.Animation;
+using JoJot.Resources;
 
 namespace JoJot.Controls;
 
@@ -25,7 +26,7 @@ public partial class DragOverlay : UserControl
         MessageText.Text = message;
         KeepHereButton.Visibility = showKeepHere ? Visibility.Visible : Visibility.Collapsed;
         MergeButton.Visibility = showMerge ? Visibility.Visible : Visibility.Collapsed;
-        CancelButton.Content = "Go back";
+        CancelButton.Content = Strings.Drag_GoBack;
         CancelFailureText.Visibility = Visibility.Collapsed;
 
         Opacity = 0;
@@ -46,7 +47,7 @@ public partial class DragOverlay : UserControl
 
     public void ShowRetryMode()
     {
-        CancelButton.Content = "Retry";
+        CancelButton.Content = Strings.Drag_Retry;
         CancelFailureText.Visibility = Visibility.Visible;
     }
 

@@ -135,6 +135,9 @@ public partial class App : Application
                 LogService.Info("Log level restored from preferences: {LogLevel}", parsedLevel.Value);
             }
 
+            // Initialize language (sets CurrentUICulture before any UI is created)
+            await LanguageService.InitializeAsync();
+
             // Initialize theme and virtual desktop detection in parallel (independent of each other)
             var themeTask = ThemeService.InitializeAsync();
             await VirtualDesktopService.InitializeAsync();
@@ -339,7 +342,7 @@ public partial class App : Application
         if (_pendingRecoveryToast)
         {
             _pendingRecoveryToast = false;
-            window.ShowInfoToast("Recovered window from interrupted move");
+            window.ShowInfoToast(JoJot.Resources.Strings.Toast_Recovery);
         }
 
         return window;
@@ -527,7 +530,7 @@ public partial class App : Application
     {
         if (_windows.TryGetValue(desktopGuid, out var window))
         {
-            window.ShowInfoToast($"Merged {tabCount} notes from {fromDesktopName}");
+            window.ShowInfoToast(string.Format(JoJot.Resources.Strings.Toast_Merged, tabCount, fromDesktopName));
         }
     }
 

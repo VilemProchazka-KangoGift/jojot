@@ -29,7 +29,7 @@ The solution file uses the `.slnx` format.
 dotnet test JoJot.Tests/JoJot.Tests.csproj
 ```
 
-Test project: `JoJot.Tests/` (xUnit + AwesomeAssertions + NSubstitute). 1110 tests. `InternalsVisibleTo("JoJot.Tests")` in JoJot.csproj.
+Test project: `JoJot.Tests/` (xUnit + AwesomeAssertions + NSubstitute). 1135 tests. `InternalsVisibleTo("JoJot.Tests")` in JoJot.csproj.
 
 ### Versioning
 
@@ -87,7 +87,17 @@ SQLite database at `%LocalAppData%\JoJot\jojot.db`. WAL mode, NORMAL synchronous
 | `AppEnvironment` | Centralized paths, config flags, and environment detection |
 | `DesktopSwitchDetector` | Polling-based virtual desktop switch detection |
 | `SqlitePragmaInterceptor` | EF Core interceptor for SQLite PRAGMA configuration |
+| `LanguageService` | Language selection (English/Czech), culture init, app restart on change, plural helper |
 | `IClock` / `IDebounceTimer` | Testability interfaces for time and debounce abstraction |
+
+### Localization
+
+Standard .NET `.resx` localization: `Resources/Strings.resx` (English default) + `Resources/Strings.cs.resx` (Czech). `Strings.Designer.cs` provides typed accessors. `LanguageService` sets `CurrentUICulture` at startup from the `"language"` preference. Language change requires app restart (no runtime switching).
+
+- **XAML**: Uses `{x:Static res:Strings.PropertyName}` with `xmlns:res="clr-namespace:JoJot.Resources"`.
+- **C#**: Uses `Strings.PropertyName` directly (compile-time safe).
+- **Plurals**: Czech has 3 forms (1 / 2-4 / 5+). Use `LanguageService.Plural(one, few, other, count)` to select the correct resource string, then `string.Format()`.
+- **Adding a language**: Create `Resources/Strings.xx.resx` with all keys translated. Add the enum value to `LanguageService.AppLanguage` and handle it in `ParsePreference`/`ToPreferenceString`/`InitializeAsync`. Add a button to the language toggle in `PreferencesPanel.xaml`.
 
 ### Theming
 

@@ -1,5 +1,6 @@
 using System.Windows;
 using JoJot.Models;
+using JoJot.Resources;
 using JoJot.Services;
 
 namespace JoJot;
@@ -158,6 +159,6 @@ public partial class MainWindow
     public void ShowHotkeyConflictToast()
     {
         var combo = HotkeyService.GetHotkeyDisplayString();
-        ShowInfoToast($"Global hotkey ({combo}) is in use by another app. Change it in Preferences.");
+        ShowInfoToast(string.Format(Strings.Toast_HotkeyConflict, combo));
     }
 }

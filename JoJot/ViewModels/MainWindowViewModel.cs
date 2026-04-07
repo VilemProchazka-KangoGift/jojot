@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using JoJot.Models;
+using JoJot.Resources;
 
 namespace JoJot.ViewModels;
 
@@ -106,12 +107,12 @@ public sealed class MainWindowViewModel : ObservableObject
     internal static string FormatWindowTitle(string? desktopName, int? desktopIndex)
     {
         if (!string.IsNullOrEmpty(desktopName))
-            return $"JoJot \u2014 {desktopName}";
+            return string.Format(Strings.Title_Named, desktopName);
 
         if (desktopIndex.HasValue)
-            return $"JoJot \u2014 Desktop {desktopIndex.Value + 1}";
+            return string.Format(Strings.Title_DesktopN, desktopIndex.Value + 1);
 
-        return "JoJot";
+        return Strings.Title_Default;
     }
 
     // ─── Tab CRUD Logic ─────────────────────────────────────────────────
@@ -431,7 +432,7 @@ public sealed class MainWindowViewModel : ObservableObject
     {
         return totalMatches > 0
             ? $"{currentIndex + 1}/{totalMatches}"
-            : "No matches";
+            : Strings.Find_NoMatches;
     }
 
     // ─── Font Size ──────────────────────────────────────────────────────
@@ -502,7 +503,7 @@ public sealed class MainWindowViewModel : ObservableObject
             return SanitizeFilename(preview) + ".txt";
         }
 
-        return $"JoJot note {DateTime.Now:yyyy-MM-dd}.txt";
+        return string.Format(Strings.Title_DefaultFilename, DateTime.Now.ToString("yyyy-MM-dd"));
     }
 
     /// <summary>
@@ -521,7 +522,7 @@ public sealed class MainWindowViewModel : ObservableObject
         }
         while (sanitized.Length > 0 && sanitized[sanitized.Length - 1] is '.' or ' ')
             sanitized.Length--;
-        return sanitized.Length == 0 ? "JoJot note" : sanitized.ToString();
+        return sanitized.Length == 0 ? Strings.Title_DefaultFilenameFallback : sanitized.ToString();
     }
 
     private void OnTabsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)

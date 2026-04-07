@@ -1,6 +1,7 @@
 <UserControl x:Class="JoJot.Controls.FindReplacePanel"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:res="clr-namespace:JoJot.Resources"
              Visibility="Collapsed">
     <Border Background="{DynamicResource c-win-bg}" BorderBrush="{DynamicResource c-border}"
             BorderThickness="1,0,0,0">
@@ -12,7 +13,7 @@
 
             <!-- Header -->
             <Grid Grid.Row="0" Margin="16,16,16,8">
-                <TextBlock Text="Find" FontSize="18" FontWeight="SemiBold"
+                <TextBlock Text="{x:Static res:Strings.Find_Header}" FontSize="18" FontWeight="SemiBold"
                            Foreground="{DynamicResource c-text-primary}"/>
                 <TextBlock Text="&#xE711;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="14"
                            HorizontalAlignment="Right" Cursor="Hand"
@@ -33,7 +34,7 @@
                              BorderThickness="1"
                              TextChanged="FindInput_TextChanged"
                              PreviewKeyDown="FindInput_PreviewKeyDown"/>
-                    <TextBlock x:Name="FindPlaceholder" Text="Find" FontSize="13" Padding="8,6"
+                    <TextBlock x:Name="FindPlaceholder" Text="{x:Static res:Strings.Find_Placeholder}" FontSize="13" Padding="8,6"
                                Foreground="{DynamicResource c-text-muted}"
                                IsHitTestVisible="False"/>
                     <TextBlock x:Name="FindClearButton" Text="&#xE711;"
@@ -111,7 +112,7 @@
                              Foreground="{DynamicResource c-text-primary}"
                              BorderBrush="{DynamicResource c-border}"
                              BorderThickness="1"/>
-                    <TextBlock x:Name="ReplacePlaceholder" Text="Replace" FontSize="13" Padding="8,6"
+                    <TextBlock x:Name="ReplacePlaceholder" Text="{x:Static res:Strings.Find_ReplacePlaceholder}" FontSize="13" Padding="8,6"
                                Foreground="{DynamicResource c-text-muted}"
                                IsHitTestVisible="False"/>
                     <TextBlock x:Name="ReplaceClearButton" Text="&#xE711;"
@@ -134,7 +135,7 @@
                     <Border Grid.Column="0" CornerRadius="3" Padding="8,5" Margin="0,0,6,0"
                             BorderBrush="{DynamicResource c-border}" BorderThickness="1"
                             Cursor="Hand" MouseLeftButtonDown="Replace_Click">
-                        <TextBlock Text="Replace" FontSize="12"
+                        <TextBlock Text="{x:Static res:Strings.Find_Replace}" FontSize="12"
                                    Foreground="{DynamicResource c-text-primary}"/>
                     </Border>
 
@@ -142,7 +143,7 @@
                     <Border Grid.Column="1" CornerRadius="3" Padding="8,5"
                             BorderBrush="{DynamicResource c-border}" BorderThickness="1"
                             Cursor="Hand" MouseLeftButtonDown="ReplaceAll_Click">
-                        <TextBlock Text="Replace All" FontSize="12"
+                        <TextBlock Text="{x:Static res:Strings.Find_ReplaceAll}" FontSize="12"
                                    Foreground="{DynamicResource c-text-primary}"/>
                     </Border>
                 </Grid>

@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using JoJot.Models;
+using JoJot.Resources;
 using JoJot.Themes;
 
 namespace JoJot;
@@ -107,13 +108,13 @@ public partial class MainWindow
         }
 
         // Rename
-        stack.Children.Add(CreateCtxItem("\uE8AC", "Rename", "F2", () =>
+        stack.Children.Add(CreateCtxItem("\uE8AC", Strings.Ctx_Rename, "F2", () =>
         {
             StartRename(item, tab);
         }));
 
         // Pin/Unpin (dynamic text based on tab state)
-        string pinText = tab.Pinned ? "Unpin" : "Pin";
+        string pinText = tab.Pinned ? Strings.Ctx_Unpin : Strings.Ctx_Pin;
         string pinIcon = tab.Pinned ? "\uE77A" : "\uE718";
         stack.Children.Add(CreateCtxItem(pinIcon, pinText, "Ctrl+P", () =>
         {
@@ -123,7 +124,7 @@ public partial class MainWindow
         }));
 
         // Clone to new tab
-        stack.Children.Add(CreateCtxItem("\uF413", "Clone to new tab", "Ctrl+K", () =>
+        stack.Children.Add(CreateCtxItem("\uF413", Strings.Ctx_Clone, "Ctrl+K", () =>
         {
             _activeTab = tab;
             SelectTabByNote(tab);
@@ -131,7 +132,7 @@ public partial class MainWindow
         }));
 
         // Save as TXT
-        stack.Children.Add(CreateCtxItem("\uE74E", "Save as TXT", "Ctrl+S", () =>
+        stack.Children.Add(CreateCtxItem("\uE74E", Strings.Ctx_SaveTxt, "Ctrl+S", () =>
         {
             _activeTab = tab;
             SelectTabByNote(tab);
@@ -144,13 +145,13 @@ public partial class MainWindow
         stack.Children.Add(sep);
 
         // Delete
-        stack.Children.Add(CreateCtxItem("\uE74D", "Delete", "Ctrl+W", () =>
+        stack.Children.Add(CreateCtxItem("\uE74D", Strings.Ctx_Delete, "Ctrl+W", () =>
         {
             _ = DeleteTabAsync(tab);
         }));
 
         // Delete all below
-        stack.Children.Add(CreateCtxItem("\uE75C", "Delete all below", null, () =>
+        stack.Children.Add(CreateCtxItem("\uE75C", Strings.Ctx_DeleteAllBelow, null, () =>
         {
             int tabIndex = _tabs.IndexOf(tab);
             if (tabIndex < 0) return;

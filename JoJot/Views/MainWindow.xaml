@@ -6,6 +6,7 @@
         xmlns:local="clr-namespace:JoJot"
         xmlns:models="clr-namespace:JoJot.Models"
         xmlns:controls="clr-namespace:JoJot.Controls"
+        xmlns:res="clr-namespace:JoJot.Resources"
         mc:Ignorable="d"
         Title="JoJot"
         Width="1250" Height="600"
@@ -59,7 +60,7 @@
                                 IsHitTestVisible="True" Margin="0,0,0,0"
                                 VerticalAlignment="Center"
                                 Opacity="0" Visibility="Collapsed"
-                                ToolTip="Pin">
+                                ToolTip="{x:Static res:Strings.Tooltip_PinShort}">
                             <TextBlock x:Name="PinIcon"
                                        Text="&#xE718;"
                                        FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
@@ -131,7 +132,7 @@
                     <Setter TargetName="RenameBox" Property="Grid.Column" Value="1"/>
                     <Setter TargetName="PinBtn" Property="Visibility" Value="Visible"/>
                     <Setter TargetName="PinBtn" Property="Opacity" Value="1"/>
-                    <Setter TargetName="PinBtn" Property="ToolTip" Value="Unpin"/>
+                    <Setter TargetName="PinBtn" Property="ToolTip" Value="{x:Static res:Strings.Tooltip_UnpinShort}"/>
                 </DataTrigger>
                 <!-- Placeholder: italic muted text -->
                 <DataTrigger Binding="{Binding IsPlaceholder}" Value="True">
@@ -196,7 +197,7 @@
                         <Grid Grid.Column="0" Margin="0,0,4,0">
                             <Button x:Name="HamburgerButton" Style="{StaticResource ToolbarButtonStyle}"
                                 Click="HamburgerButton_Click"
-                                ToolTip="Menu" ToolTipService.InitialShowDelay="600">
+                                ToolTip="{x:Static res:Strings.Tooltip_Menu}" ToolTipService.InitialShowDelay="600">
                                 <TextBlock Text="&#xE700;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
                                        FontSize="14" Foreground="{DynamicResource c-toolbar-icon}"
                                        HorizontalAlignment="Center" VerticalAlignment="Center"/>
@@ -216,7 +217,7 @@
                                  Foreground="{DynamicResource c-text-primary}"
                                  TextChanged="SearchBox_TextChanged"
                                  PreviewKeyDown="SearchBox_PreviewKeyDown"/>
-                            <TextBlock x:Name="SearchPlaceholder" Text="Search tabs..."
+                            <TextBlock x:Name="SearchPlaceholder" Text="{x:Static res:Strings.Search_Placeholder}"
                                    IsHitTestVisible="False" Foreground="{DynamicResource c-text-muted}" FontSize="12"
                                    Padding="6,3" VerticalAlignment="Center"/>
                         </Grid>
@@ -228,7 +229,7 @@
                             Background="Transparent" BorderThickness="1"
                             BorderBrush="{DynamicResource c-border}" Cursor="Hand"
                             Click="NewTabButton_Click"
-                            ToolTip="New tab (Ctrl+T)"/>
+                            ToolTip="{x:Static res:Strings.Tooltip_NewTab}"/>
                     </Grid>
                 </Border>
 
@@ -268,7 +269,7 @@
                     <Button x:Name="ToolbarDelete" DockPanel.Dock="Right"
                             Style="{StaticResource ToolbarButtonStyle}"
                             Click="ToolbarDelete_Click"
-                            ToolTip="Delete (Ctrl+W)" ToolTipService.InitialShowDelay="600">
+                            ToolTip="{x:Static res:Strings.Tooltip_Delete}" ToolTipService.InitialShowDelay="600">
                         <TextBlock x:Name="DeleteIconText" Text="&#xE74D;"
                                    FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
                                    FontSize="14" Foreground="{DynamicResource c-toolbar-icon}" Opacity="0.7"
@@ -280,7 +281,7 @@
                         <!-- Undo -->
                         <Button x:Name="ToolbarUndo" Style="{StaticResource ToolbarButtonStyle}"
                                 Click="ToolbarUndo_Click"
-                                ToolTip="Undo (Ctrl+Z)" ToolTipService.InitialShowDelay="600">
+                                ToolTip="{x:Static res:Strings.Tooltip_Undo}" ToolTipService.InitialShowDelay="600">
                             <TextBlock Text="&#xE7A7;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
                                        FontSize="14" Foreground="{DynamicResource c-toolbar-icon}"
                                        HorizontalAlignment="Center" VerticalAlignment="Center"/>
@@ -289,7 +290,7 @@
                         <!-- Redo -->
                         <Button x:Name="ToolbarRedo" Style="{StaticResource ToolbarButtonStyle}"
                                 Click="ToolbarRedo_Click"
-                                ToolTip="Redo (Ctrl+Y)" ToolTipService.InitialShowDelay="600">
+                                ToolTip="{x:Static res:Strings.Tooltip_Redo}" ToolTipService.InitialShowDelay="600">
                             <TextBlock Text="&#xE7A6;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
                                        FontSize="14" Foreground="{DynamicResource c-toolbar-icon}"
                                        HorizontalAlignment="Center" VerticalAlignment="Center"/>
@@ -302,7 +303,7 @@
                         <!-- Copy -->
                         <Button x:Name="ToolbarCopy" Style="{StaticResource ToolbarButtonStyle}"
                          Click="ToolbarCopy_Click"
-                         ToolTip="Copy (Ctrl+C)" ToolTipService.InitialShowDelay="600">
+                         ToolTip="{x:Static res:Strings.Tooltip_Copy}" ToolTipService.InitialShowDelay="600">
                             <TextBlock Text="&#xE8C8;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
                             FontSize="14" Foreground="{DynamicResource c-toolbar-icon}"
                             HorizontalAlignment="Center" VerticalAlignment="Center"/>
@@ -311,7 +312,7 @@
                         <!-- Paste -->
                         <Button x:Name="ToolbarPaste" Style="{StaticResource ToolbarButtonStyle}"
                          Click="ToolbarPaste_Click"
-                         ToolTip="Paste (Ctrl+V)" ToolTipService.InitialShowDelay="600">
+                         ToolTip="{x:Static res:Strings.Tooltip_Paste}" ToolTipService.InitialShowDelay="600">
                             <TextBlock Text="&#xE77F;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
                             FontSize="14" Foreground="{DynamicResource c-toolbar-icon}"
                             HorizontalAlignment="Center" VerticalAlignment="Center"/>
@@ -324,7 +325,7 @@
                         <!-- Pin -->
                         <Button x:Name="ToolbarPin" Style="{StaticResource ToolbarButtonStyle}"
                           Click="ToolbarPin_Click"
-                          ToolTip="Pin (Ctrl+P)" ToolTipService.InitialShowDelay="600">
+                          ToolTip="{x:Static res:Strings.Tooltip_Pin}" ToolTipService.InitialShowDelay="600">
                             <TextBlock x:Name="PinIconText" Text="&#xE718;"
                              FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
                              FontSize="14" Foreground="{DynamicResource c-toolbar-icon}"
@@ -334,7 +335,7 @@
                         <!-- Clone -->
                         <Button x:Name="ToolbarClone" Style="{StaticResource ToolbarButtonStyle}"
                           Click="ToolbarClone_Click"
-                          ToolTip="Clone to new tab (Ctrl+K)" ToolTipService.InitialShowDelay="600">
+                          ToolTip="{x:Static res:Strings.Tooltip_Clone}" ToolTipService.InitialShowDelay="600">
                             <TextBlock Text="&#xF413;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
                              FontSize="14" Foreground="{DynamicResource c-toolbar-icon}"
                              HorizontalAlignment="Center" VerticalAlignment="Center"/>
@@ -346,7 +347,7 @@
                         <!-- Save as TXT -->
                         <Button x:Name="ToolbarSave" Style="{StaticResource ToolbarButtonStyle}"
                                 Click="ToolbarSave_Click"
-                                ToolTip="Save as TXT (Ctrl+S)" ToolTipService.InitialShowDelay="600">
+                                ToolTip="{x:Static res:Strings.Tooltip_Save}" ToolTipService.InitialShowDelay="600">
                             <TextBlock Text="&#xE74E;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
                                        FontSize="14" Foreground="{DynamicResource c-toolbar-icon}"
                                        HorizontalAlignment="Center" VerticalAlignment="Center"/>
@@ -358,7 +359,7 @@
                         <!-- Find -->
                         <Button x:Name="ToolbarFind" Style="{StaticResource ToolbarButtonStyle}"
                                 Click="ToolbarFind_Click"
-                                ToolTip="Find (Ctrl+F)" ToolTipService.InitialShowDelay="600">
+                                ToolTip="{x:Static res:Strings.Tooltip_Find}" ToolTipService.InitialShowDelay="600">
                             <TextBlock Text="&#xE721;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
                                        FontSize="14" Foreground="{DynamicResource c-toolbar-icon}"
                                        HorizontalAlignment="Center" VerticalAlignment="Center"/>
@@ -417,9 +418,8 @@
                                    Foreground="{DynamicResource c-accent}" FontSize="13"
                                    TextDecorations="Underline" Cursor="Hand"
                                    Margin="12,0,0,0"
-                                   MouseLeftButtonDown="UndoToast_Click">
-                            Undo
-                        </TextBlock>
+                                   MouseLeftButtonDown="UndoToast_Click"
+                                   Text="{x:Static res:Strings.Common_Undo}"/>
                     </Grid>
                 </Border>
 
@@ -438,9 +438,9 @@
                 <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
                     <TextBlock Text="&#xE896;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="48"
                                Foreground="{DynamicResource c-accent}" HorizontalAlignment="Center"/>
-                    <TextBlock Text="Drop file here" FontSize="18" FontWeight="SemiBold"
+                    <TextBlock Text="{x:Static res:Strings.Drop_FileHere}" FontSize="18" FontWeight="SemiBold"
                                Foreground="White" HorizontalAlignment="Center" Margin="0,12,0,0"/>
-                    <TextBlock Text="Text files only, max 500KB" FontSize="12"
+                    <TextBlock Text="{x:Static res:Strings.Drop_Hint}" FontSize="12"
                                Foreground="{DynamicResource c-text-muted}" HorizontalAlignment="Center" Margin="0,4,0,0"/>
                 </StackPanel>
             </Border>
@@ -468,7 +468,7 @@
                             </Grid.ColumnDefinitions>
                             <TextBlock Grid.Column="0" Text="&#xE72C;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
                                        FontSize="14" Foreground="{DynamicResource c-toolbar-icon}" VerticalAlignment="Center"/>
-                            <TextBlock x:Name="MenuRecoverText" Grid.Column="1" Text="Recover sessions" FontSize="13"
+                            <TextBlock x:Name="MenuRecoverText" Grid.Column="1" Text="{x:Static res:Strings.Menu_Recover}" FontSize="13"
                                        Foreground="{DynamicResource c-text-primary}" VerticalAlignment="Center"/>
                         </Grid>
                     </Border>
@@ -487,7 +487,7 @@
                             </Grid.ColumnDefinitions>
                             <TextBlock Grid.Column="0" Text="&#xE74D;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
                                        FontSize="14" Foreground="{DynamicResource c-toolbar-icon}" VerticalAlignment="Center"/>
-                            <TextBlock Grid.Column="1" Text="Clean up tabs" FontSize="13"
+                            <TextBlock Grid.Column="1" Text="{x:Static res:Strings.Menu_Cleanup}" FontSize="13"
                                        Foreground="{DynamicResource c-text-primary}" VerticalAlignment="Center"/>
                         </Grid>
                     </Border>
@@ -506,7 +506,7 @@
                             </Grid.ColumnDefinitions>
                             <TextBlock Grid.Column="0" Text="&#xE713;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
                                        FontSize="14" Foreground="{DynamicResource c-toolbar-icon}" VerticalAlignment="Center"/>
-                            <TextBlock Grid.Column="1" Text="Preferences" FontSize="13"
+                            <TextBlock Grid.Column="1" Text="{x:Static res:Strings.Menu_Preferences}" FontSize="13"
                                        Foreground="{DynamicResource c-text-primary}" VerticalAlignment="Center"/>
                         </Grid>
                     </Border>
@@ -522,7 +522,7 @@
                             </Grid.ColumnDefinitions>
                             <TextBlock Grid.Column="0" Text="&#xE7E8;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
                                        FontSize="14" Foreground="{DynamicResource c-toolbar-icon}" VerticalAlignment="Center"/>
-                            <TextBlock Grid.Column="1" Text="Exit" FontSize="13"
+                            <TextBlock Grid.Column="1" Text="{x:Static res:Strings.Menu_Exit}" FontSize="13"
                                        Foreground="{DynamicResource c-text-primary}" VerticalAlignment="Center"/>
                         </Grid>
                     </Border>

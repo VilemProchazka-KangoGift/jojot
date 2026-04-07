@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Input;
+using JoJot.Resources;
 using JoJot.Services;
 
 namespace JoJot;
@@ -77,12 +78,12 @@ public partial class MainWindow
         if (hasTab && _activeTab!.Pinned)
         {
             PinIconText.Text = "\uE77A"; // Unpin
-            ToolbarPin.ToolTip = "Unpin (Ctrl+P)";
+            ToolbarPin.ToolTip = Strings.Tooltip_Unpin;
         }
         else
         {
             PinIconText.Text = "\uE718"; // Pin
-            ToolbarPin.ToolTip = "Pin (Ctrl+P)";
+            ToolbarPin.ToolTip = Strings.Tooltip_Pin;
         }
     }
 }

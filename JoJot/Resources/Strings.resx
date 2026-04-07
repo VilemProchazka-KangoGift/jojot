@@ -1,0 +1,243 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" msdata:Ordinal="0" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute name="xml:space" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+
+  <!-- ═══ Toolbar tooltips ═══ -->
+  <data name="Tooltip_Menu" xml:space="preserve"><value>Menu</value></data>
+  <data name="Tooltip_NewTab" xml:space="preserve"><value>New tab (Ctrl+T)</value></data>
+  <data name="Tooltip_Delete" xml:space="preserve"><value>Delete (Ctrl+W)</value></data>
+  <data name="Tooltip_Undo" xml:space="preserve"><value>Undo (Ctrl+Z)</value></data>
+  <data name="Tooltip_Redo" xml:space="preserve"><value>Redo (Ctrl+Y)</value></data>
+  <data name="Tooltip_Copy" xml:space="preserve"><value>Copy (Ctrl+C)</value></data>
+  <data name="Tooltip_Paste" xml:space="preserve"><value>Paste (Ctrl+V)</value></data>
+  <data name="Tooltip_Pin" xml:space="preserve"><value>Pin (Ctrl+P)</value></data>
+  <data name="Tooltip_Unpin" xml:space="preserve"><value>Unpin (Ctrl+P)</value></data>
+  <data name="Tooltip_Clone" xml:space="preserve"><value>Clone to new tab (Ctrl+K)</value></data>
+  <data name="Tooltip_Save" xml:space="preserve"><value>Save as TXT (Ctrl+S)</value></data>
+  <data name="Tooltip_Find" xml:space="preserve"><value>Find (Ctrl+F)</value></data>
+  <data name="Tooltip_PinShort" xml:space="preserve"><value>Pin</value></data>
+  <data name="Tooltip_UnpinShort" xml:space="preserve"><value>Unpin</value></data>
+
+  <!-- ═══ Search ═══ -->
+  <data name="Search_Placeholder" xml:space="preserve"><value>Search tabs...</value></data>
+
+  <!-- ═══ Hamburger menu ═══ -->
+  <data name="Menu_Recover" xml:space="preserve"><value>Recover sessions</value></data>
+  <data name="Menu_Cleanup" xml:space="preserve"><value>Clean up tabs</value></data>
+  <data name="Menu_Preferences" xml:space="preserve"><value>Preferences</value></data>
+  <data name="Menu_Exit" xml:space="preserve"><value>Exit</value></data>
+
+  <!-- ═══ Common ═══ -->
+  <data name="Common_Undo" xml:space="preserve"><value>Undo</value></data>
+  <data name="Common_Cancel" xml:space="preserve"><value>Cancel</value></data>
+  <data name="Common_Delete" xml:space="preserve"><value>Delete</value></data>
+
+  <!-- ═══ File drop overlay ═══ -->
+  <data name="Drop_FileHere" xml:space="preserve"><value>Drop file here</value></data>
+  <data name="Drop_Hint" xml:space="preserve"><value>Text files only, max 500KB</value></data>
+  <data name="Drop_TooLarge" xml:space="preserve"><value>'{0}' is too large (max 500KB)</value></data>
+  <data name="Drop_Binary" xml:space="preserve"><value>'{0}' contains binary content</value></data>
+  <data name="Drop_ReadFailed" xml:space="preserve"><value>Failed to read '{0}'</value></data>
+  <data name="Drop_PartialSuccess" xml:space="preserve"><value>{0} file(s) opened, {1} skipped ({2})</value></data>
+
+  <!-- ═══ Preferences panel ═══ -->
+  <data name="Pref_Header" xml:space="preserve"><value>Preferences</value></data>
+  <data name="Pref_SectionLanguage" xml:space="preserve"><value>LANGUAGE</value></data>
+  <data name="Pref_Language" xml:space="preserve"><value>Language</value></data>
+  <data name="Pref_LanguageHint" xml:space="preserve"><value>Restart required to apply</value></data>
+  <data name="Pref_SectionAppearance" xml:space="preserve"><value>APPEARANCE</value></data>
+  <data name="Pref_Theme" xml:space="preserve"><value>Theme</value></data>
+  <data name="Pref_ThemeLight" xml:space="preserve"><value>Light</value></data>
+  <data name="Pref_ThemeSystem" xml:space="preserve"><value>System</value></data>
+  <data name="Pref_ThemeDark" xml:space="preserve"><value>Dark</value></data>
+  <data name="Pref_FontSize" xml:space="preserve"><value>Font Size</value></data>
+  <data name="Pref_FontReset" xml:space="preserve"><value>100%</value></data>
+  <data name="Pref_SectionCleanup" xml:space="preserve"><value>CLEANUP</value></data>
+  <data name="Pref_AutoDelete" xml:space="preserve"><value>Auto-delete after</value></data>
+  <data name="Pref_Days" xml:space="preserve"><value>days</value></data>
+  <data name="Pref_AutoDeleteHint" xml:space="preserve"><value>Leave blank to disable. Pinned tabs are kept.</value></data>
+  <data name="Pref_SectionShortcuts" xml:space="preserve"><value>SHORTCUTS</value></data>
+  <data name="Pref_GlobalHotkey" xml:space="preserve"><value>Global Hotkey</value></data>
+  <data name="Pref_HotkeyRecord" xml:space="preserve"><value>Record</value></data>
+  <data name="Pref_HotkeyPressKeys" xml:space="preserve"><value>Press keys...</value></data>
+  <data name="Pref_HotkeyHint" xml:space="preserve"><value>Focus JoJot from any app</value></data>
+
+  <!-- ═══ Find / Replace panel ═══ -->
+  <data name="Find_Header" xml:space="preserve"><value>Find</value></data>
+  <data name="Find_Placeholder" xml:space="preserve"><value>Find</value></data>
+  <data name="Find_ReplacePlaceholder" xml:space="preserve"><value>Replace</value></data>
+  <data name="Find_Replace" xml:space="preserve"><value>Replace</value></data>
+  <data name="Find_ReplaceAll" xml:space="preserve"><value>Replace All</value></data>
+  <data name="Find_NoMatches" xml:space="preserve"><value>No matches</value></data>
+
+  <!-- ═══ Cleanup panel ═══ -->
+  <data name="Cleanup_Header" xml:space="preserve"><value>Clean up tabs</value></data>
+  <data name="Cleanup_OlderThan" xml:space="preserve"><value>Clean up older than</value></data>
+  <data name="Cleanup_UnitDays" xml:space="preserve"><value>days</value></data>
+  <data name="Cleanup_UnitHours" xml:space="preserve"><value>hours</value></data>
+  <data name="Cleanup_UnitWeeks" xml:space="preserve"><value>weeks</value></data>
+  <data name="Cleanup_UnitMonths" xml:space="preserve"><value>months</value></data>
+  <data name="Cleanup_IncludePinned" xml:space="preserve"><value>Include pinned</value></data>
+  <data name="Cleanup_DeleteN" xml:space="preserve"><value>Delete {0} tabs</value></data>
+  <data name="Cleanup_DeleteN_One" xml:space="preserve"><value>Delete {0} tab</value></data>
+  <data name="Cleanup_DeleteN_Few" xml:space="preserve"><value>Delete {0} tabs</value></data>
+  <data name="Cleanup_Delete0" xml:space="preserve"><value>Delete 0 tabs</value></data>
+  <data name="Cleanup_NoMatch" xml:space="preserve"><value>No tabs match this filter</value></data>
+  <data name="Cleanup_ConfirmTitle" xml:space="preserve"><value>Clean up tabs</value></data>
+  <data name="Cleanup_ConfirmMessage" xml:space="preserve"><value>This will permanently delete {0} tabs{1}. This cannot be undone.</value></data>
+  <data name="Cleanup_ConfirmMessage_One" xml:space="preserve"><value>This will permanently delete {0} tab{1}. This cannot be undone.</value></data>
+  <data name="Cleanup_ConfirmMessage_Few" xml:space="preserve"><value>This will permanently delete {0} tabs{1}. This cannot be undone.</value></data>
+  <data name="Cleanup_ConfirmPinnedNote" xml:space="preserve"><value> (including {0} pinned)</value></data>
+
+  <!-- ═══ Recovery panel ═══ -->
+  <data name="Recovery_Header" xml:space="preserve"><value>Recover Sessions</value></data>
+  <data name="Recovery_UnknownDesktop" xml:space="preserve"><value>Unknown desktop</value></data>
+  <data name="Recovery_EmptyNote" xml:space="preserve"><value>Empty note</value></data>
+  <data name="Recovery_TabCount" xml:space="preserve"><value>{0} tabs</value></data>
+  <data name="Recovery_TabCount_One" xml:space="preserve"><value>{0} tab</value></data>
+  <data name="Recovery_TabCount_Few" xml:space="preserve"><value>{0} tabs</value></data>
+  <data name="Recovery_More" xml:space="preserve"><value>+{0} more</value></data>
+  <data name="Recovery_Adopt" xml:space="preserve"><value>Adopt</value></data>
+
+  <!-- ═══ Help overlay ═══ -->
+  <data name="Help_Title" xml:space="preserve"><value>Keyboard Shortcuts</value></data>
+  <data name="Help_DismissHint" xml:space="preserve"><value>Press Escape or click outside to close</value></data>
+  <data name="Help_SectionTabs" xml:space="preserve"><value>TABS</value></data>
+  <data name="Help_SectionEditor" xml:space="preserve"><value>EDITOR</value></data>
+  <data name="Help_SectionView" xml:space="preserve"><value>VIEW</value></data>
+  <data name="Help_SectionGlobal" xml:space="preserve"><value>GLOBAL</value></data>
+  <data name="Help_NewTab" xml:space="preserve"><value>New tab</value></data>
+  <data name="Help_DeleteTab" xml:space="preserve"><value>Delete tab</value></data>
+  <data name="Help_NextTab" xml:space="preserve"><value>Next tab</value></data>
+  <data name="Help_PreviousTab" xml:space="preserve"><value>Previous tab</value></data>
+  <data name="Help_RenameTab" xml:space="preserve"><value>Rename tab</value></data>
+  <data name="Help_PinUnpin" xml:space="preserve"><value>Pin / Unpin</value></data>
+  <data name="Help_CloneTab" xml:space="preserve"><value>Clone tab</value></data>
+  <data name="Help_Undo" xml:space="preserve"><value>Undo</value></data>
+  <data name="Help_Redo" xml:space="preserve"><value>Redo</value></data>
+  <data name="Help_RedoAlt" xml:space="preserve"><value>Redo (alt)</value></data>
+  <data name="Help_Copy" xml:space="preserve"><value>Copy (all if no selection)</value></data>
+  <data name="Help_Paste" xml:space="preserve"><value>Paste</value></data>
+  <data name="Help_Cut" xml:space="preserve"><value>Cut</value></data>
+  <data name="Help_SelectAll" xml:space="preserve"><value>Select all</value></data>
+  <data name="Help_SaveAsTxt" xml:space="preserve"><value>Save as TXT</value></data>
+  <data name="Help_Find" xml:space="preserve"><value>Find in editor / Search tabs</value></data>
+  <data name="Help_FontIncrease" xml:space="preserve"><value>Increase font size</value></data>
+  <data name="Help_FontDecrease" xml:space="preserve"><value>Decrease font size</value></data>
+  <data name="Help_FontReset" xml:space="preserve"><value>Reset font size (100%)</value></data>
+  <data name="Help_Zoom" xml:space="preserve"><value>Zoom (over editor)</value></data>
+  <data name="Help_FocusMinimize" xml:space="preserve"><value>Focus / minimize JoJot</value></data>
+  <data name="Help_ShowHelp" xml:space="preserve"><value>Show this help</value></data>
+
+  <!-- ═══ Context menu ═══ -->
+  <data name="Ctx_Rename" xml:space="preserve"><value>Rename</value></data>
+  <data name="Ctx_Pin" xml:space="preserve"><value>Pin</value></data>
+  <data name="Ctx_Unpin" xml:space="preserve"><value>Unpin</value></data>
+  <data name="Ctx_Clone" xml:space="preserve"><value>Clone to new tab</value></data>
+  <data name="Ctx_SaveTxt" xml:space="preserve"><value>Save as TXT</value></data>
+  <data name="Ctx_Delete" xml:space="preserve"><value>Delete</value></data>
+  <data name="Ctx_DeleteAllBelow" xml:space="preserve"><value>Delete all below</value></data>
+
+  <!-- ═══ Toast messages ═══ -->
+  <data name="Toast_Deleted" xml:space="preserve"><value>{0} deleted</value><comment>{0} = quoted tab name e.g. \u201CName\u201D deleted</comment></data>
+  <data name="Toast_NotesDeleted" xml:space="preserve"><value>{0} notes deleted</value></data>
+  <data name="Toast_NotesDeleted_One" xml:space="preserve"><value>{0} note deleted</value></data>
+  <data name="Toast_NotesDeleted_Few" xml:space="preserve"><value>{0} notes deleted</value></data>
+  <data name="Toast_CleanedUp" xml:space="preserve"><value>{0} tabs cleaned up</value></data>
+  <data name="Toast_CleanedUp_One" xml:space="preserve"><value>{0} tab cleaned up</value></data>
+  <data name="Toast_CleanedUp_Few" xml:space="preserve"><value>{0} tabs cleaned up</value></data>
+  <data name="Toast_Replacements" xml:space="preserve"><value>{0} replacements made</value></data>
+  <data name="Toast_Replacements_One" xml:space="preserve"><value>{0} replacement made</value></data>
+  <data name="Toast_Replacements_Few" xml:space="preserve"><value>{0} replacements made</value></data>
+  <data name="Toast_HotkeyConflict" xml:space="preserve"><value>Global hotkey ({0}) is in use by another app. Change it in Preferences.</value></data>
+  <data name="Toast_Recovery" xml:space="preserve"><value>Recovered window from interrupted move</value></data>
+  <data name="Toast_Merged" xml:space="preserve"><value>Merged {0} notes from {1}</value></data>
+  <data name="Toast_HotkeyInUse" xml:space="preserve"><value>Hotkey already in use by another app</value></data>
+
+  <!-- ═══ Drag overlay ═══ -->
+  <data name="Drag_KeepHere" xml:space="preserve"><value>Keep here</value></data>
+  <data name="Drag_MergeNotes" xml:space="preserve"><value>Merge notes</value></data>
+  <data name="Drag_GoBack" xml:space="preserve"><value>Go back</value></data>
+  <data name="Drag_Retry" xml:space="preserve"><value>Retry</value></data>
+  <data name="Drag_RetryHint" xml:space="preserve"><value>If retry fails, move this window back manually via Win+Tab</value></data>
+  <data name="Drag_ConflictMessage" xml:space="preserve"><value>This desktop already has a JoJot window. What would you like to do?</value></data>
+  <data name="Drag_KeepOrGoMessage" xml:space="preserve"><value>Keep your notes on this desktop, or go back?</value></data>
+  <data name="Drag_AnotherWindowOpened" xml:space="preserve"><value>Another window was opened on this desktop. You can merge or go back.</value></data>
+  <data name="Drag_From" xml:space="preserve"><value>From: {0}</value></data>
+  <data name="Drag_MovedTo" xml:space="preserve"><value>Moved to {0}</value></data>
+  <data name="Drag_DesktopN" xml:space="preserve"><value>Desktop {0}</value></data>
+  <data name="Drag_AnotherDesktop" xml:space="preserve"><value>another desktop</value></data>
+  <data name="Drag_Misplaced" xml:space="preserve"><value> (misplaced)</value></data>
+
+  <!-- ═══ Date / time strings ═══ -->
+  <data name="Date_NewNote" xml:space="preserve"><value>New note</value></data>
+  <data name="Date_Yesterday" xml:space="preserve"><value>Yesterday</value></data>
+  <data name="Date_JustNow" xml:space="preserve"><value>Just now</value></data>
+  <data name="Date_Today" xml:space="preserve"><value>Today {0}</value></data>
+  <data name="Date_YesterdayTime" xml:space="preserve"><value>Yesterday {0}</value></data>
+  <data name="Date_CreatedPrefix" xml:space="preserve"><value>Created: {0}</value></data>
+  <data name="Date_UpdatedPrefix" xml:space="preserve"><value>Last updated: {0}</value></data>
+
+  <!-- ═══ Window title ═══ -->
+  <data name="Title_Named" xml:space="preserve"><value>JoJot — {0}</value></data>
+  <data name="Title_DesktopN" xml:space="preserve"><value>JoJot — Desktop {0}</value></data>
+  <data name="Title_Default" xml:space="preserve"><value>JoJot</value></data>
+  <data name="Title_DefaultFilename" xml:space="preserve"><value>JoJot note {0}.txt</value></data>
+  <data name="Title_DefaultFilenameFallback" xml:space="preserve"><value>JoJot note</value></data>
+
+  <!-- ═══ Welcome tab ═══ -->
+  <data name="Welcome_Title" xml:space="preserve"><value>Welcome to JoJot</value></data>
+  <data name="Welcome_Content" xml:space="preserve"><value>Welcome to JoJot!
+
+JoJot is a lightweight note-taking app that ties your notes to your virtual desktops. Switch to a different desktop and JoJot automatically shows the notes you left there — zero friction, always in context.
+
+A few things to get you started:
+  &#x2022; Ctrl+T  — open a new tab
+  &#x2022; Ctrl+W  — close the current tab
+  &#x2022; Closing the window keeps JoJot running in the background — relaunch to get it back.
+
+Feel free to delete this tab once you're ready.</value></data>
+
+  <!-- ═══ Confirmation overlay ═══ -->
+  <data name="Confirm_Cancel" xml:space="preserve"><value>Cancel</value></data>
+  <data name="Confirm_Delete" xml:space="preserve"><value>Delete</value></data>
+</root>

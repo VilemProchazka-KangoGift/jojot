@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using JoJot.Resources;
 using JoJot.Services;
 using JoJot.Themes;
 
@@ -39,35 +40,35 @@ public partial class HelpOverlay : UserControl
     {
         var shortcuts = new (string section, (string key, string desc)[] items)[]
         {
-            ("TABS", [
-                ("Ctrl+T", "New tab"),
-                ("Ctrl+W", "Delete tab"),
-                ("Ctrl+Tab", "Next tab"),
-                ("Ctrl+Shift+Tab", "Previous tab"),
-                ("F2", "Rename tab"),
-                ("Ctrl+P", "Pin / Unpin"),
-                ("Ctrl+K", "Clone tab")
+            (Strings.Help_SectionTabs, [
+                ("Ctrl+T", Strings.Help_NewTab),
+                ("Ctrl+W", Strings.Help_DeleteTab),
+                ("Ctrl+Tab", Strings.Help_NextTab),
+                ("Ctrl+Shift+Tab", Strings.Help_PreviousTab),
+                ("F2", Strings.Help_RenameTab),
+                ("Ctrl+P", Strings.Help_PinUnpin),
+                ("Ctrl+K", Strings.Help_CloneTab)
             ]),
-            ("EDITOR", [
-                ("Ctrl+Z", "Undo"),
-                ("Ctrl+Y", "Redo"),
-                ("Ctrl+Shift+Z", "Redo (alt)"),
-                ("Ctrl+C", "Copy (all if no selection)"),
-                ("Ctrl+V", "Paste"),
-                ("Ctrl+X", "Cut"),
-                ("Ctrl+A", "Select all"),
-                ("Ctrl+S", "Save as TXT"),
-                ("Ctrl+F", "Find in editor / Search tabs")
+            (Strings.Help_SectionEditor, [
+                ("Ctrl+Z", Strings.Help_Undo),
+                ("Ctrl+Y", Strings.Help_Redo),
+                ("Ctrl+Shift+Z", Strings.Help_RedoAlt),
+                ("Ctrl+C", Strings.Help_Copy),
+                ("Ctrl+V", Strings.Help_Paste),
+                ("Ctrl+X", Strings.Help_Cut),
+                ("Ctrl+A", Strings.Help_SelectAll),
+                ("Ctrl+S", Strings.Help_SaveAsTxt),
+                ("Ctrl+F", Strings.Help_Find)
             ]),
-            ("VIEW", [
-                ("Ctrl+=", "Increase font size"),
-                ("Ctrl+-", "Decrease font size"),
-                ("Ctrl+0", "Reset font size (100%)"),
-                ("Ctrl+Scroll", "Zoom (over editor)")
+            (Strings.Help_SectionView, [
+                ("Ctrl+=", Strings.Help_FontIncrease),
+                ("Ctrl+-", Strings.Help_FontDecrease),
+                ("Ctrl+0", Strings.Help_FontReset),
+                ("Ctrl+Scroll", Strings.Help_Zoom)
             ]),
-            ("GLOBAL", [
-                (HotkeyService.GetHotkeyDisplayString(), "Focus / minimize JoJot"),
-                ("Ctrl+Shift+/", "Show this help")
+            (Strings.Help_SectionGlobal, [
+                (HotkeyService.GetHotkeyDisplayString(), Strings.Help_FocusMinimize),
+                ("Ctrl+Shift+/", Strings.Help_ShowHelp)
             ]),
         };
 

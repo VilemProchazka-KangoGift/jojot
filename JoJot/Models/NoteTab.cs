@@ -1,3 +1,4 @@
+using JoJot.Resources;
 using JoJot.Services;
 using JoJot.ViewModels;
 
@@ -18,7 +19,7 @@ public sealed class NoteTab : ObservableObject
     /// <summary>
     /// Placeholder text shown when a note has no name and no content.
     /// </summary>
-    private const string PlaceholderLabel = "New note";
+    private static string PlaceholderLabel => Strings.Date_NewNote;
 
     /// <summary>
     /// Threshold in minutes below which "Just now" is shown instead of a timestamp.
@@ -221,7 +222,7 @@ public sealed class NoteTab : ObservableObject
 
         if (dt.Date == now.Date.AddDays(-1))
         {
-            return "Yesterday";
+            return Strings.Date_Yesterday;
         }
 
         if (dt.Year == now.Year)
@@ -242,17 +243,17 @@ public sealed class NoteTab : ObservableObject
 
         if (diff.TotalMinutes < JustNowThresholdMinutes)
         {
-            return "Just now";
+            return Strings.Date_JustNow;
         }
 
         if (dt.Date == now.Date)
         {
-            return $"Today {dt:h:mm tt}";
+            return string.Format(Strings.Date_Today, dt.ToString("h:mm tt"));
         }
 
         if (dt.Date == now.Date.AddDays(-1))
         {
-            return $"Yesterday {dt:h:mm tt}";
+            return string.Format(Strings.Date_YesterdayTime, dt.ToString("h:mm tt"));
         }
 
         if (dt.Year == now.Year)
@@ -315,13 +316,13 @@ public sealed class NoteTab : ObservableObject
     /// Tooltip string showing the exact created-at date and time.
     /// </summary>
     public static string CreatedTooltip(DateTime dt) =>
-        $"Created: {dt:MMM d, yyyy h:mm tt}";
+        string.Format(Strings.Date_CreatedPrefix, dt.ToString("MMM d, yyyy h:mm tt"));
 
     /// <summary>
     /// Tooltip string showing the exact updated-at date and time.
     /// </summary>
     public static string UpdatedTooltip(DateTime dt) =>
-        $"Last updated: {dt:MMM d, yyyy h:mm tt}";
+        string.Format(Strings.Date_UpdatedPrefix, dt.ToString("MMM d, yyyy h:mm tt"));
 
     /// <summary>
     /// Returns the display label for debugging convenience.

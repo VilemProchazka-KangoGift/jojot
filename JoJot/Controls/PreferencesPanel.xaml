@@ -1,6 +1,7 @@
 <UserControl x:Class="JoJot.Controls.PreferencesPanel"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:res="clr-namespace:JoJot.Resources"
              Visibility="Collapsed">
     <Border Background="{DynamicResource c-win-bg}" BorderBrush="{DynamicResource c-border}"
             BorderThickness="1,0,0,0">
@@ -15,7 +16,7 @@
 
             <!-- Header with close button -->
             <Grid Grid.Row="0" Margin="16,16,16,8">
-                <TextBlock Text="Preferences" FontSize="18" FontWeight="SemiBold"
+                <TextBlock Text="{x:Static res:Strings.Pref_Header}" FontSize="18" FontWeight="SemiBold"
                            Foreground="{DynamicResource c-text-primary}"/>
                 <TextBlock Text="&#xE711;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="14"
                            HorizontalAlignment="Right" Cursor="Hand"
@@ -26,12 +27,40 @@
             <!-- Scrollable content -->
             <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Margin="16,0,16,16">
                 <StackPanel>
+                    <!-- LANGUAGE SECTION -->
+                    <TextBlock Text="{x:Static res:Strings.Pref_SectionLanguage}" FontSize="11" FontWeight="SemiBold" Margin="0,8,0,8"
+                               Foreground="{DynamicResource c-text-muted}"/>
+                    <TextBlock Text="{x:Static res:Strings.Pref_Language}" FontSize="13" Margin="0,0,0,6"
+                               Foreground="{DynamicResource c-text-primary}"/>
+                    <Grid x:Name="LanguageToggle" Margin="0,0,0,4">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Border x:Name="LangEnBtn" Grid.Column="0" CornerRadius="4,0,0,4"
+                                BorderThickness="1" BorderBrush="{DynamicResource c-border}"
+                                Cursor="Hand" Padding="8,6"
+                                MouseLeftButtonDown="LangEn_Click">
+                            <TextBlock Text="English" FontSize="12" HorizontalAlignment="Center"
+                                       Foreground="{DynamicResource c-text-primary}"/>
+                        </Border>
+                        <Border x:Name="LangCsBtn" Grid.Column="1" CornerRadius="0,4,4,0"
+                                BorderThickness="1" BorderBrush="{DynamicResource c-border}"
+                                Cursor="Hand" Padding="8,6"
+                                MouseLeftButtonDown="LangCs_Click">
+                            <TextBlock Text="Česky" FontSize="12" HorizontalAlignment="Center"
+                                       Foreground="{DynamicResource c-text-primary}"/>
+                        </Border>
+                    </Grid>
+                    <TextBlock Text="{x:Static res:Strings.Pref_LanguageHint}" FontSize="11" Margin="0,2,0,16"
+                               Foreground="{DynamicResource c-text-muted}"/>
+
                     <!-- APPEARANCE SECTION -->
-                    <TextBlock Text="APPEARANCE" FontSize="11" FontWeight="SemiBold" Margin="0,8,0,8"
+                    <TextBlock Text="{x:Static res:Strings.Pref_SectionAppearance}" FontSize="11" FontWeight="SemiBold" Margin="0,8,0,8"
                                Foreground="{DynamicResource c-text-muted}"/>
 
                     <!-- Theme toggle -->
-                    <TextBlock Text="Theme" FontSize="13" Margin="0,0,0,6"
+                    <TextBlock Text="{x:Static res:Strings.Pref_Theme}" FontSize="13" Margin="0,0,0,6"
                                Foreground="{DynamicResource c-text-primary}"/>
                     <Grid x:Name="ThemeToggle" Margin="0,0,0,16">
                         <Grid.ColumnDefinitions>
@@ -43,27 +72,27 @@
                                 BorderThickness="1" BorderBrush="{DynamicResource c-border}"
                                 Cursor="Hand" Padding="8,6"
                                 MouseLeftButtonDown="ThemeLight_Click">
-                            <TextBlock Text="Light" FontSize="12" HorizontalAlignment="Center"
+                            <TextBlock Text="{x:Static res:Strings.Pref_ThemeLight}" FontSize="12" HorizontalAlignment="Center"
                                        Foreground="{DynamicResource c-text-primary}"/>
                         </Border>
                         <Border x:Name="ThemeSystemBtn" Grid.Column="1"
                                 BorderThickness="0,1,0,1" BorderBrush="{DynamicResource c-border}"
                                 Cursor="Hand" Padding="8,6"
                                 MouseLeftButtonDown="ThemeSystem_Click">
-                            <TextBlock Text="System" FontSize="12" HorizontalAlignment="Center"
+                            <TextBlock Text="{x:Static res:Strings.Pref_ThemeSystem}" FontSize="12" HorizontalAlignment="Center"
                                        Foreground="{DynamicResource c-text-primary}"/>
                         </Border>
                         <Border x:Name="ThemeDarkBtn" Grid.Column="2" CornerRadius="0,4,4,0"
                                 BorderThickness="1" BorderBrush="{DynamicResource c-border}"
                                 Cursor="Hand" Padding="8,6"
                                 MouseLeftButtonDown="ThemeDark_Click">
-                            <TextBlock Text="Dark" FontSize="12" HorizontalAlignment="Center"
+                            <TextBlock Text="{x:Static res:Strings.Pref_ThemeDark}" FontSize="12" HorizontalAlignment="Center"
                                        Foreground="{DynamicResource c-text-primary}"/>
                         </Border>
                     </Grid>
 
                     <!-- Font size -->
-                    <TextBlock Text="Font Size" FontSize="13" Margin="0,0,0,6"
+                    <TextBlock Text="{x:Static res:Strings.Pref_FontSize}" FontSize="13" Margin="0,0,0,6"
                                Foreground="{DynamicResource c-text-primary}"/>
                     <Grid Margin="0,0,0,4">
                         <Grid.ColumnDefinitions>
@@ -87,17 +116,17 @@
                                        Foreground="{DynamicResource c-text-primary}" HorizontalAlignment="Center"/>
                         </Border>
                     </Grid>
-                    <TextBlock Text="100%" FontSize="11" Foreground="{DynamicResource c-accent}"
+                    <TextBlock Text="{x:Static res:Strings.Pref_FontReset}" FontSize="11" Foreground="{DynamicResource c-accent}"
                                Cursor="Hand" Margin="0,2,0,16" HorizontalAlignment="Center"
                                MouseLeftButtonDown="FontSizeReset_Click"
                                TextDecorations="Underline"/>
 
                     <!-- CLEANUP SECTION -->
-                    <TextBlock Text="CLEANUP" FontSize="11" FontWeight="SemiBold" Margin="0,8,0,8"
+                    <TextBlock Text="{x:Static res:Strings.Pref_SectionCleanup}" FontSize="11" FontWeight="SemiBold" Margin="0,8,0,8"
                                Foreground="{DynamicResource c-text-muted}"/>
 
                     <!-- Auto-delete old tabs -->
-                    <TextBlock Text="Auto-delete after" FontSize="13" Margin="0,0,0,6"
+                    <TextBlock Text="{x:Static res:Strings.Pref_AutoDelete}" FontSize="13" Margin="0,0,0,6"
                                Foreground="{DynamicResource c-text-primary}"/>
                     <Grid Margin="0,0,0,4">
                         <Grid.ColumnDefinitions>
@@ -113,19 +142,19 @@
                                  BorderThickness="1"
                                  TextChanged="AutoDeleteDays_TextChanged"
                                  PreviewTextInput="AutoDeleteDays_PreviewTextInput"/>
-                        <TextBlock Grid.Column="1" Text="days" FontSize="13"
+                        <TextBlock Grid.Column="1" Text="{x:Static res:Strings.Pref_Days}" FontSize="13"
                                    VerticalAlignment="Center" Margin="8,0,0,0"
                                    Foreground="{DynamicResource c-text-primary}"/>
                     </Grid>
-                    <TextBlock Text="Leave blank to disable. Pinned tabs are kept." FontSize="11" Margin="0,2,0,16"
+                    <TextBlock Text="{x:Static res:Strings.Pref_AutoDeleteHint}" FontSize="11" Margin="0,2,0,16"
                                Foreground="{DynamicResource c-text-muted}"/>
 
                     <!-- SHORTCUTS SECTION -->
-                    <TextBlock Text="SHORTCUTS" FontSize="11" FontWeight="SemiBold" Margin="0,8,0,8"
+                    <TextBlock Text="{x:Static res:Strings.Pref_SectionShortcuts}" FontSize="11" FontWeight="SemiBold" Margin="0,8,0,8"
                                Foreground="{DynamicResource c-text-muted}"/>
 
                     <!-- Global hotkey picker -->
-                    <TextBlock Text="Global Hotkey" FontSize="13" Margin="0,0,0,6"
+                    <TextBlock Text="{x:Static res:Strings.Pref_GlobalHotkey}" FontSize="13" Margin="0,0,0,6"
                                Foreground="{DynamicResource c-text-primary}"/>
                     <Grid Margin="0,0,0,4">
                         <Grid.ColumnDefinitions>
@@ -141,11 +170,11 @@
                         <Border x:Name="HotkeyRecordBtn" Grid.Column="1" CornerRadius="4" Cursor="Hand"
                                 Background="{DynamicResource c-accent}" Padding="12,4" Margin="8,0,0,0"
                                 MouseLeftButtonDown="HotkeyRecord_Click">
-                            <TextBlock x:Name="HotkeyRecordText" Text="Record" FontSize="12"
+                            <TextBlock x:Name="HotkeyRecordText" Text="{x:Static res:Strings.Pref_HotkeyRecord}" FontSize="12"
                                        Foreground="White" HorizontalAlignment="Center"/>
                         </Border>
                     </Grid>
-                    <TextBlock Text="Focus JoJot from any app" FontSize="11" Margin="0,2,0,16"
+                    <TextBlock Text="{x:Static res:Strings.Pref_HotkeyHint}" FontSize="11" Margin="0,2,0,16"
                                Foreground="{DynamicResource c-text-muted}"/>
                 </StackPanel>
             </ScrollViewer>

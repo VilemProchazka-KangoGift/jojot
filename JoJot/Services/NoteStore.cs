@@ -327,7 +327,7 @@ public static class NoteStore
                     desktopGuid, limit)
                 .ToListAsync(ct).ConfigureAwait(false);
 
-            return names.Select(n => n ?? "Empty note").ToList();
+            return names.Select(n => n ?? Resources.Strings.Recovery_EmptyNote).ToList();
         }
         catch (Exception ex)
         {

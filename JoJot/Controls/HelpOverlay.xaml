@@ -1,6 +1,7 @@
 <UserControl x:Class="JoJot.Controls.HelpOverlay"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:res="clr-namespace:JoJot.Resources"
              Visibility="Collapsed">
     <Grid Background="{DynamicResource c-overlay-bg}" MouseLeftButtonDown="Backdrop_Click">
         <Border Background="{DynamicResource c-win-bg}" CornerRadius="8" Padding="24"
@@ -9,14 +10,14 @@
             <ScrollViewer VerticalScrollBarVisibility="Auto">
                 <StackPanel x:Name="HelpContent">
                     <Grid>
-                        <TextBlock Text="Keyboard Shortcuts" FontSize="18" FontWeight="SemiBold"
+                        <TextBlock Text="{x:Static res:Strings.Help_Title}" FontSize="18" FontWeight="SemiBold"
                                    Foreground="{DynamicResource c-text-primary}"/>
                         <TextBlock Text="&#xE711;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="14"
                                    HorizontalAlignment="Right" Cursor="Hand"
                                    Foreground="{DynamicResource c-text-muted}"
                                    MouseLeftButtonDown="Close_Click"/>
                     </Grid>
-                    <TextBlock Text="Press Escape or click outside to close" FontSize="11"
+                    <TextBlock Text="{x:Static res:Strings.Help_DismissHint}" FontSize="11"
                                Foreground="{DynamicResource c-text-muted}" Margin="0,4,0,16"/>
                 </StackPanel>
             </ScrollViewer>

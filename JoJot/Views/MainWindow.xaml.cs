@@ -7,6 +7,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using JoJot.Models;
+using JoJot.Resources;
 using JoJot.Services;
 using JoJot.ViewModels;
 
@@ -189,12 +190,14 @@ public partial class MainWindow : Window
         CleanupPanel.DeleteRequested += (_, candidates) =>
         {
             int pinnedCount = candidates.Count(t => t.Pinned);
-            string pinnedNote = pinnedCount > 0 ? $" (including {pinnedCount} pinned)" : "";
-            string message = $"This will permanently delete {candidates.Count} tab{(candidates.Count == 1 ? "" : "s")}{pinnedNote}. This cannot be undone.";
-            ShowConfirmation("Clean up tabs", message, () => _ = ExecuteCleanupDeleteAsync(candidates));
+            string pinnedNote = pinnedCount > 0 ? string.Format(Strings.Cleanup_ConfirmPinnedNote, pinnedCount) : "";
+            var msgFmt = LanguageService.Plural(Strings.Cleanup_ConfirmMessage_One, Strings.Cleanup_ConfirmMessage_Few, Strings.Cleanup_ConfirmMessage, candidates.Count);
+            string message = string.Format(msgFmt, candidates.Count, pinnedNote);
+            ShowConfirmation(Strings.Cleanup_ConfirmTitle, message, () => _ = ExecuteCleanupDeleteAsync(candidates));
         };
         PreferencesPanel.CloseRequested += (_, _) => HidePreferencesPanel();
         PreferencesPanel.ThemeChangeRequested += (_, theme) => _ = ThemeService.SetThemeAsync(theme);
+        PreferencesPanel.LanguageChangeRequested += (_, lang) => _ = LanguageService.SetLanguageAsync(lang);
         PreferencesPanel.FontSizeChangeRequested += (_, delta) => _ = ChangeFontSizeAsync(delta);
         PreferencesPanel.FontSizeResetRequested += (_, _) => _ = SetFontSizeAsync(13);
         PreferencesPanel.HotkeyRecordingChanged += (_, isRecording) =>

@@ -1,4 +1,5 @@
 using System.Windows;
+using JoJot.Resources;
 using JoJot.Services;
 
 namespace JoJot;
@@ -36,8 +37,8 @@ public partial class MainWindow
             case ViewModels.MainWindowViewModel.DragAction.Dismiss:
                 await PendingMoveStore.DeletePendingMoveAsync(_desktopGuid);
                 _isMisplaced = false;
-                if (Title.Contains(" (misplaced)"))
-                    Title = Title.Replace(" (misplaced)", "");
+                if (Title.Contains(Strings.Drag_Misplaced))
+                    Title = Title.Replace(Strings.Drag_Misplaced, "");
                 await HideDragOverlayAsync();
                 return;
 
@@ -75,16 +76,16 @@ public partial class MainWindow
             }
             else if (sourceDesktop is not null)
             {
-                sourceLabel = $"Desktop {sourceDesktop.Index + 1}";
+                sourceLabel = string.Format(Strings.Drag_DesktopN, sourceDesktop.Index + 1);
             }
             else
             {
-                sourceLabel = "Unknown desktop";
+                sourceLabel = Strings.Recovery_UnknownDesktop;
             }
         }
         catch
         {
-            sourceLabel = "Unknown desktop"; // best-effort
+            sourceLabel = Strings.Recovery_UnknownDesktop; // best-effort
         }
 
         // Configure overlay content with name fallback
@@ -99,17 +100,17 @@ public partial class MainWindow
             var targetDesktop = targetDesktops.FirstOrDefault(d =>
                 d.Id.ToString().Equals(toGuid, StringComparison.OrdinalIgnoreCase));
             displayName = targetDesktop is not null
-                ? $"Desktop {targetDesktop.Index + 1}"
-                : "another desktop";
+                ? string.Format(Strings.Drag_DesktopN, targetDesktop.Index + 1)
+                : Strings.Drag_AnotherDesktop;
         }
 
         string message = targetHasSession
-            ? "This desktop already has a JoJot window. What would you like to do?"
-            : "Keep your notes on this desktop, or go back?";
+            ? Strings.Drag_ConflictMessage
+            : Strings.Drag_KeepOrGoMessage;
 
         DragOverlay.Show(
-            $"From: {sourceLabel}",
-            $"Moved to {displayName}",
+            string.Format(Strings.Drag_From, sourceLabel),
+            string.Format(Strings.Drag_MovedTo, displayName),
             message,
             showKeepHere: !targetHasSession,
             showMerge: targetHasSession);
@@ -133,7 +134,7 @@ public partial class MainWindow
             if (app?.HasWindowForDesktop(newGuid) == true)
             {
                 // Refresh overlay with keep-here hidden and merge visible
-                DragOverlay.UpdateContent("Another window was opened on this desktop. You can merge or go back.",
+                DragOverlay.UpdateContent(Strings.Drag_AnotherWindowOpened,
                     showKeepHere: false, showMerge: true);
                 return;
             }
@@ -201,7 +202,7 @@ public partial class MainWindow
 
             // Show toast on target window
             int tabCount = _tabs.Count;
-            string fromName = Title.Replace("JoJot \u2014 ", "").Replace(" (misplaced)", "");
+            string fromName = Title.Replace("JoJot \u2014 ", "").Replace(Strings.Drag_Misplaced, "");
             app?.ShowMergeToast(targetGuid, tabCount, fromName);
 
             // Hide overlay and close this window
@@ -241,9 +242,9 @@ public partial class MainWindow
                 _isMisplaced = false;
 
                 // Remove "(misplaced)" badge from title
-                if (Title.Contains(" (misplaced)"))
+                if (Title.Contains(Strings.Drag_Misplaced))
                 {
-                    Title = Title.Replace(" (misplaced)", "");
+                    Title = Title.Replace(Strings.Drag_Misplaced, "");
                 }
 
                 // Hide overlay with fade-out
@@ -333,7 +334,7 @@ public partial class MainWindow
                     string currentTitle = Title;
                     if (!currentTitle.Contains("(misplaced)"))
                     {
-                        Title = currentTitle + " (misplaced)";
+                        Title = currentTitle + Strings.Drag_Misplaced;
                     }
                 }
 
@@ -351,9 +352,9 @@ public partial class MainWindow
                 // Window is now on correct desktop — clear misplaced state
                 _isMisplaced = false;
                 string currentTitle = Title;
-                if (currentTitle.Contains(" (misplaced)"))
+                if (currentTitle.Contains(Strings.Drag_Misplaced))
                 {
-                    Title = currentTitle.Replace(" (misplaced)", "");
+                    Title = currentTitle.Replace(Strings.Drag_Misplaced, "");
                 }
 
                 // Dismiss the move overlay if it's still showing

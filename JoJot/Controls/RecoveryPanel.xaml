@@ -1,6 +1,7 @@
 <UserControl x:Class="JoJot.Controls.RecoveryPanel"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:res="clr-namespace:JoJot.Resources"
              Visibility="Collapsed">
     <Border Background="{DynamicResource c-win-bg}" BorderBrush="{DynamicResource c-border}"
             BorderThickness="1,0,0,0">
@@ -15,7 +16,7 @@
 
             <!-- Header with close button -->
             <Grid Grid.Row="0" Margin="16,16,16,8">
-                <TextBlock Text="Recover Sessions" FontSize="18" FontWeight="SemiBold"
+                <TextBlock Text="{x:Static res:Strings.Recovery_Header}" FontSize="18" FontWeight="SemiBold"
                            Foreground="{DynamicResource c-text-primary}"/>
                 <TextBlock Text="&#xE711;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="14"
                            HorizontalAlignment="Right" Cursor="Hand"
