@@ -13,9 +13,9 @@
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
 
     <!-- Version metadata (CalVer) -->
-    <Version>2026.4.7</Version>
-    <AssemblyVersion>2026.4.7.0</AssemblyVersion>
-    <FileVersion>2026.4.7.0</FileVersion>
+    <Version>2026.4.8</Version>
+    <AssemblyVersion>2026.4.8.0</AssemblyVersion>
+    <FileVersion>2026.4.8.0</FileVersion>
 
     <!-- Publisher and product info -->
     <Company>Vilem Prochazka</Company>
