@@ -22,8 +22,15 @@ public partial class MainWindow
         if (_findPanelOpen) HideFindPanel();
 
         CleanupPanel.ResetFilters();
-        var savedAutoDeleteDays = await PreferenceStore.GetPreferenceAsync("auto_delete_days");
-        CleanupPanel.SetAutoDeleteDays(savedAutoDeleteDays);
+        try
+        {
+            var savedAutoDeleteDays = await PreferenceStore.GetPreferenceAsync("auto_delete_days");
+            CleanupPanel.SetAutoDeleteDays(savedAutoDeleteDays);
+        }
+        catch (Exception ex)
+        {
+            LogService.Warn("Failed to load auto_delete_days preference: {ErrorMessage}", ex.Message);
+        }
         _cleanupPanelOpen = true;
         CleanupPanel.Show();
         RefreshCleanupPreview();
