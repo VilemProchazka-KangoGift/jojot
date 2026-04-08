@@ -55,6 +55,12 @@ public static class LanguageService
             ? new CultureInfo("cs-CZ")
             : new CultureInfo("en-US");
 
+        // Must set on the current thread AND the default for new threads.
+        // ConfigureAwait(false) above may resume on a thread pool thread,
+        // but CultureInfo.DefaultThreadCurrentUICulture propagates to all threads
+        // including the WPF dispatcher thread.
+        CultureInfo.DefaultThreadCurrentUICulture = culture;
+        CultureInfo.DefaultThreadCurrentCulture = culture;
         Thread.CurrentThread.CurrentUICulture = culture;
         Thread.CurrentThread.CurrentCulture = culture;
     }
