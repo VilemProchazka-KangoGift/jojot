@@ -193,6 +193,7 @@
   <data name="Toast_CleanedUp_Few" xml:space="preserve"><value>{0} karty vyčištěny</value></data>
   <data name="Toast_Replacements" xml:space="preserve"><value>{0} nahrazení provedeno</value></data>
   <data name="Toast_Replacements_One" xml:space="preserve"><value>{0} nahrazení provedeno</value></data>
+  <data name="Toast_Replacements_Few" xml:space="preserve"><value>{0} nahrazení provedena</value></data>
   <data name="Toast_HotkeyConflict" xml:space="preserve"><value>Globální zkratka ({0}) je používána jinou aplikací. Změňte ji v Nastavení.</value></data>
   <data name="Toast_Recovery" xml:space="preserve"><value>Okno obnoveno po přerušeném přesunu</value></data>
   <data name="Toast_Merged" xml:space="preserve"><value>Sloučeno {0} poznámek z {1}</value></data>

@@ -1,4 +1,5 @@
 using System.Globalization;
+using JoJot.Resources;
 
 namespace JoJot.Services;
 
@@ -55,10 +56,10 @@ public static class LanguageService
             ? new CultureInfo("cs-CZ")
             : new CultureInfo("en-US");
 
-        // Must set on the current thread AND the default for new threads.
-        // ConfigureAwait(false) above may resume on a thread pool thread,
-        // but CultureInfo.DefaultThreadCurrentUICulture propagates to all threads
-        // including the WPF dispatcher thread.
+        // Set the Strings resource class culture directly — this is used by
+        // ResourceManager.GetString() regardless of which thread calls it,
+        // bypassing thread-local CurrentUICulture entirely.
+        Strings.Culture = culture;
         CultureInfo.DefaultThreadCurrentUICulture = culture;
         CultureInfo.DefaultThreadCurrentCulture = culture;
         Thread.CurrentThread.CurrentUICulture = culture;
