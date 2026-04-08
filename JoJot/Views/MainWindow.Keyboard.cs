@@ -16,7 +16,8 @@ public partial class MainWindow
     internal ICommand CloseTabCommand { get; private set; } = null!;
     internal ICommand TogglePinCommand { get; private set; } = null!;
     internal ICommand CloneTabCommand { get; private set; } = null!;
-    internal ICommand SaveAsCommand { get; private set; } = null!;
+    internal ICommand SaveCommand { get; private set; } = null!;
+    internal ICommand SaveAsDialogCommand { get; private set; } = null!;
     internal ICommand ToggleHelpCommand { get; private set; } = null!;
     internal ICommand IncreaseFontCommand { get; private set; } = null!;
     internal ICommand DecreaseFontCommand { get; private set; } = null!;
@@ -40,8 +41,11 @@ public partial class MainWindow
         CloneTabCommand = new RelayCommand(
             () => _ = CloneTabAsync(_activeTab!),
             () => _activeTab is not null);
-        SaveAsCommand = new RelayCommand(
-            () => SaveAsTxt(),
+        SaveCommand = new RelayCommand(
+            () => SaveNote(),
+            () => _activeTab is not null);
+        SaveAsDialogCommand = new RelayCommand(
+            () => SaveAsDialog(),
             () => _activeTab is not null);
         ToggleHelpCommand = new RelayCommand(() =>
         {
@@ -56,7 +60,8 @@ public partial class MainWindow
         InputBindings.Add(new KeyBinding(CloseTabCommand, Key.W, ModifierKeys.Control));
         InputBindings.Add(new KeyBinding(TogglePinCommand, Key.P, ModifierKeys.Control));
         InputBindings.Add(new KeyBinding(CloneTabCommand, Key.K, ModifierKeys.Control));
-        InputBindings.Add(new KeyBinding(SaveAsCommand, Key.S, ModifierKeys.Control));
+        InputBindings.Add(new KeyBinding(SaveAsDialogCommand, Key.S, ModifierKeys.Control | ModifierKeys.Shift));
+        InputBindings.Add(new KeyBinding(SaveCommand, Key.S, ModifierKeys.Control));
         InputBindings.Add(new KeyBinding(ToggleHelpCommand, Key.OemQuestion, ModifierKeys.Control | ModifierKeys.Shift));
         InputBindings.Add(new KeyBinding(IncreaseFontCommand, Key.OemPlus, ModifierKeys.Control));
         InputBindings.Add(new KeyBinding(IncreaseFontCommand, Key.Add, ModifierKeys.Control));

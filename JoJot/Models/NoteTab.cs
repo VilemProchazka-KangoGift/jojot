@@ -28,6 +28,7 @@ public sealed class NoteTab : ObservableObject
 
     private static readonly string[] NameDependents = [nameof(DisplayLabel), nameof(IsPlaceholder)];
     private static readonly string[] ContentDependents = [nameof(DisplayLabel), nameof(IsPlaceholder)];
+    private static readonly string[] FilePathDependents = [nameof(IsFileBacked)];
 
     /// <summary>Cached DisplayLabel value — invalidated when Name or Content changes.</summary>
     private string? _cachedDisplayLabel;
@@ -38,6 +39,7 @@ public sealed class NoteTab : ObservableObject
     private bool _pinned;
     private DateTime _updatedAt;
     private int _sortOrder;
+    private string? _filePath;
 
     /// <summary>
     /// Primary key (auto-incremented row ID).
@@ -121,6 +123,20 @@ public sealed class NoteTab : ObservableObject
     /// Saved caret position within the text editor for this tab.
     /// </summary>
     public int CursorPosition { get; set; }
+
+    /// <summary>
+    /// Absolute path to the file this tab is backed by. Null for regular notes.
+    /// </summary>
+    public string? FilePath
+    {
+        get => _filePath;
+        set => SetProperty(ref _filePath, value, FilePathDependents);
+    }
+
+    /// <summary>
+    /// True when this tab is backed by a file on disk.
+    /// </summary>
+    public bool IsFileBacked => FilePath is not null;
 
     /// <summary>
     /// Three-tier label fallback: custom name, first ~45 chars of content, or "New note" placeholder.

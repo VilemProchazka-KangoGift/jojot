@@ -97,7 +97,7 @@ public partial class MainWindow
             {
                 int sortOrder = pinnedCount + insertOffset;
                 long newId = await NoteStore.InsertNoteAsync(
-                    _desktopGuid, result.FileName, result.Content!, false, sortOrder);
+                    _desktopGuid, result.FileName, result.Content!, false, sortOrder, result.FilePath);
 
                 var newTab = new NoteTab
                 {
@@ -107,6 +107,7 @@ public partial class MainWindow
                     Content = result.Content!,
                     Pinned = false,
                     SortOrder = sortOrder,
+                    FilePath = result.FilePath,
                     CreatedAt = DateTime.Now,
                     UpdatedAt = DateTime.Now
                 };

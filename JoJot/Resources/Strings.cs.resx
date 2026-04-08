@@ -52,7 +52,8 @@
   <data name="Tooltip_Pin" xml:space="preserve"><value>Připnout (Ctrl+P)</value></data>
   <data name="Tooltip_Unpin" xml:space="preserve"><value>Odepnout (Ctrl+P)</value></data>
   <data name="Tooltip_Clone" xml:space="preserve"><value>Klonovat do nové karty (Ctrl+K)</value></data>
-  <data name="Tooltip_Save" xml:space="preserve"><value>Uložit jako TXT (Ctrl+S)</value></data>
+  <data name="Tooltip_Save" xml:space="preserve"><value>Uložit (Ctrl+S)</value></data>
+  <data name="Tooltip_SaveAs" xml:space="preserve"><value>Uložit jako (Ctrl+Shift+S)</value></data>
   <data name="Tooltip_Find" xml:space="preserve"><value>Hledat (Ctrl+F)</value></data>
   <data name="Tooltip_PinShort" xml:space="preserve"><value>Připnout</value></data>
   <data name="Tooltip_UnpinShort" xml:space="preserve"><value>Odepnout</value></data>
@@ -159,7 +160,8 @@
   <data name="Help_Paste" xml:space="preserve"><value>Vložit</value></data>
   <data name="Help_Cut" xml:space="preserve"><value>Vyjmout</value></data>
   <data name="Help_SelectAll" xml:space="preserve"><value>Vybrat vše</value></data>
-  <data name="Help_SaveAsTxt" xml:space="preserve"><value>Uložit jako TXT</value></data>
+  <data name="Help_Save" xml:space="preserve"><value>Uložit</value></data>
+  <data name="Help_SaveAs" xml:space="preserve"><value>Uložit jako</value></data>
   <data name="Help_Find" xml:space="preserve"><value>Hledat v editoru / Hledat karty</value></data>
   <data name="Help_FontIncrease" xml:space="preserve"><value>Zvětšit písmo</value></data>
   <data name="Help_FontDecrease" xml:space="preserve"><value>Zmenšit písmo</value></data>
@@ -173,9 +175,13 @@
   <data name="Ctx_Pin" xml:space="preserve"><value>Připnout</value></data>
   <data name="Ctx_Unpin" xml:space="preserve"><value>Odepnout</value></data>
   <data name="Ctx_Clone" xml:space="preserve"><value>Klonovat do nové karty</value></data>
-  <data name="Ctx_SaveTxt" xml:space="preserve"><value>Uložit jako TXT</value></data>
+  <data name="Ctx_Save" xml:space="preserve"><value>Uložit</value></data>
+  <data name="Ctx_SaveAs" xml:space="preserve"><value>Uložit jako</value></data>
   <data name="Ctx_Delete" xml:space="preserve"><value>Smazat</value></data>
   <data name="Ctx_DeleteAllBelow" xml:space="preserve"><value>Smazat vše pod</value></data>
+
+  <!-- ═══ Save messages ═══ -->
+  <data name="Save_Failed" xml:space="preserve"><value>Nepodařilo se uložit {0}</value></data>
 
   <!-- ═══ Toast messages ═══ -->
   <data name="Toast_Deleted" xml:space="preserve"><value>{0} smazáno</value></data>
@@ -239,4 +245,9 @@ Tuto kartu můžete kdykoliv smazat.</value></data>
   <!-- ═══ Confirmation overlay ═══ -->
   <data name="Confirm_Cancel" xml:space="preserve"><value>Zrušit</value></data>
   <data name="Confirm_Delete" xml:space="preserve"><value>Smazat</value></data>
+
+  <!-- ═══ Language restart ═══ -->
+  <data name="Language_RestartTitle" xml:space="preserve"><value>Vyžadován restart</value></data>
+  <data name="Language_RestartMessage" xml:space="preserve"><value>JoJot je potřeba restartovat pro změnu jazyka.</value></data>
+  <data name="Language_RestartButton" xml:space="preserve"><value>Restartovat</value></data>
 </root>

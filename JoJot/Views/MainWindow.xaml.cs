@@ -143,6 +143,7 @@ public partial class MainWindow : Window
         set => ViewModel.IsRestoringContent = value;
     }
     private string? _lastSaveDirectory;
+    private static readonly System.Text.Encoding Utf8Bom = new System.Text.UTF8Encoding(encoderShouldEmitUTF8Identifier: true);
 
     // ─── Toast undo action (for Replace All) ────────────────────────────
     private Action? _pendingToastUndoAction;
@@ -197,7 +198,16 @@ public partial class MainWindow : Window
         };
         PreferencesPanel.CloseRequested += (_, _) => HidePreferencesPanel();
         PreferencesPanel.ThemeChangeRequested += (_, theme) => _ = ThemeService.SetThemeAsync(theme);
-        PreferencesPanel.LanguageChangeRequested += (_, lang) => _ = LanguageService.SetLanguageAsync(lang);
+        PreferencesPanel.LanguageChangeRequested += (_, lang) =>
+        {
+            if (lang == LanguageService.Current) return;
+            ShowConfirmation(
+                Strings.Language_RestartTitle,
+                Strings.Language_RestartMessage,
+                () => _ = LanguageService.SetLanguageAsync(lang),
+                Strings.Language_RestartButton,
+                useDangerStyle: false);
+        };
         PreferencesPanel.FontSizeChangeRequested += (_, delta) => _ = ChangeFontSizeAsync(delta);
         PreferencesPanel.FontSizeResetRequested += (_, _) => _ = SetFontSizeAsync(13);
         PreferencesPanel.HotkeyRecordingChanged += (_, isRecording) =>
@@ -205,7 +215,7 @@ public partial class MainWindow : Window
             if (isRecording) HotkeyService.PauseHotkey();
             else HotkeyService.ResumeHotkey();
         };
-        PreferencesPanel.AutoDeleteDaysChanged += (_, value) =>
+        CleanupPanel.AutoDeleteDaysChanged += (_, value) =>
         {
             if (string.IsNullOrWhiteSpace(value))
                 _ = PreferenceStore.SetPreferenceAsync("auto_delete_days", "");
@@ -716,29 +726,75 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// Opens a Save As dialog for exporting the active note as UTF-8 TXT with BOM.
-    /// Remembers the last save directory within the session (resets on app launch).
+    /// Contextual save: writes directly to file for file-backed tabs,
+    /// shows Save As dialog for regular notes.
     /// </summary>
-    private void SaveAsTxt()
+    private void SaveNote()
     {
         if (_activeTab is null) return;
         FlushContentSync();
 
+        if (_activeTab.IsFileBacked)
+        {
+            try
+            {
+                System.IO.File.WriteAllText(_activeTab.FilePath!, _activeTab.Content, Utf8Bom);
+            }
+            catch (Exception ex)
+            {
+                LogService.Error("Save to file failed: {FilePath}", _activeTab.FilePath!, ex);
+                ShowInfoToast(string.Format(Strings.Save_Failed, System.IO.Path.GetFileName(_activeTab.FilePath!)));
+            }
+        }
+        else
+        {
+            ShowSaveAsDialog();
+        }
+    }
+
+    /// <summary>
+    /// Always shows a Save As dialog. After saving, the tab becomes file-backed.
+    /// </summary>
+    private void SaveAsDialog()
+    {
+        if (_activeTab is null) return;
+        FlushContentSync();
+        ShowSaveAsDialog();
+    }
+
+    private void ShowSaveAsDialog()
+    {
         var dialog = new Microsoft.Win32.SaveFileDialog
         {
             Filter = "Text files (*.txt)|*.txt|All files (*.*)|*.*",
             DefaultExt = ".txt",
-            FileName = MainWindowViewModel.GetDefaultFilename(_activeTab)
+            FileName = _activeTab!.IsFileBacked
+                ? System.IO.Path.GetFileName(_activeTab.FilePath!)
+                : MainWindowViewModel.GetDefaultFilename(_activeTab)
         };
 
-        if (!string.IsNullOrEmpty(_lastSaveDirectory))
+        if (_activeTab.IsFileBacked)
+            dialog.InitialDirectory = System.IO.Path.GetDirectoryName(_activeTab.FilePath!);
+        else if (!string.IsNullOrEmpty(_lastSaveDirectory))
             dialog.InitialDirectory = _lastSaveDirectory;
 
-        if (dialog.ShowDialog(this) == true)
+        if (dialog.ShowDialog(this) != true) return;
+
+        try
         {
-            var utf8Bom = new System.Text.UTF8Encoding(encoderShouldEmitUTF8Identifier: true);
-            System.IO.File.WriteAllText(dialog.FileName, _activeTab.Content, utf8Bom);
-            _lastSaveDirectory = System.IO.Path.GetDirectoryName(dialog.FileName);
+            System.IO.File.WriteAllText(dialog.FileName, _activeTab.Content, Utf8Bom);
         }
+        catch (Exception ex)
+        {
+            LogService.Error("Save to file failed: {FilePath}", dialog.FileName, ex);
+            ShowInfoToast(string.Format(Strings.Save_Failed, System.IO.Path.GetFileName(dialog.FileName)));
+            return;
+        }
+
+        _lastSaveDirectory = System.IO.Path.GetDirectoryName(dialog.FileName);
+        _activeTab.FilePath = dialog.FileName;
+        _activeTab.Name = System.IO.Path.GetFileName(dialog.FileName);
+        _ = NoteStore.UpdateNoteFilePathAndNameAsync(_activeTab.Id, dialog.FileName, _activeTab.Name);
+        UpdateToolbarState();
     }
 }

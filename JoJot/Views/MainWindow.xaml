@@ -69,13 +69,23 @@
                                        HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
 
-                        <!-- Title label — default in Col0 -->
-                        <TextBlock x:Name="TitleBlock" Grid.Column="0"
-                                   Text="{Binding DisplayLabel}"
-                                   FontSize="13"
-                                   Foreground="{DynamicResource c-text-primary}"
-                                   TextTrimming="CharacterEllipsis"
-                                   VerticalAlignment="Center"/>
+                        <!-- Title label + file icon — default in Col0 -->
+                        <StackPanel x:Name="TitlePanel" Orientation="Horizontal" Grid.Column="0" VerticalAlignment="Center">
+                            <TextBlock x:Name="FileIcon"
+                                       Text="&#xE8A5;"
+                                       FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                       FontSize="11"
+                                       Foreground="{DynamicResource c-text-muted}"
+                                       VerticalAlignment="Center"
+                                       Margin="0,0,4,0"
+                                       Visibility="Collapsed"/>
+                            <TextBlock x:Name="TitleBlock"
+                                       Text="{Binding DisplayLabel}"
+                                       FontSize="13"
+                                       Foreground="{DynamicResource c-text-primary}"
+                                       TextTrimming="CharacterEllipsis"
+                                       VerticalAlignment="Center"/>
+                        </StackPanel>
 
                         <!-- Hidden rename TextBox — shares title column -->
                         <TextBox x:Name="RenameBox" Grid.Column="0"
@@ -128,11 +138,16 @@
                     <Setter TargetName="Col0" Property="Width" Value="Auto"/>
                     <Setter TargetName="Col1" Property="Width" Value="*"/>
                     <Setter TargetName="PinBtn" Property="Grid.Column" Value="0"/>
-                    <Setter TargetName="TitleBlock" Property="Grid.Column" Value="1"/>
+                    <Setter TargetName="TitlePanel" Property="Grid.Column" Value="1"/>
                     <Setter TargetName="RenameBox" Property="Grid.Column" Value="1"/>
                     <Setter TargetName="PinBtn" Property="Visibility" Value="Visible"/>
                     <Setter TargetName="PinBtn" Property="Opacity" Value="1"/>
                     <Setter TargetName="PinBtn" Property="ToolTip" Value="{x:Static res:Strings.Tooltip_UnpinShort}"/>
+                </DataTrigger>
+                <!-- File-backed: show file icon, full path tooltip on title -->
+                <DataTrigger Binding="{Binding IsFileBacked}" Value="True">
+                    <Setter TargetName="FileIcon" Property="Visibility" Value="Visible"/>
+                    <Setter TargetName="TitlePanel" Property="ToolTip" Value="{Binding FilePath}"/>
                 </DataTrigger>
                 <!-- Placeholder: italic muted text -->
                 <DataTrigger Binding="{Binding IsPlaceholder}" Value="True">
@@ -344,11 +359,20 @@
                         <!-- Separator -->
                         <Border Width="1" Margin="4,4" Background="{DynamicResource c-border}"/>
 
-                        <!-- Save as TXT -->
+                        <!-- Save -->
                         <Button x:Name="ToolbarSave" Style="{StaticResource ToolbarButtonStyle}"
                                 Click="ToolbarSave_Click"
                                 ToolTip="{x:Static res:Strings.Tooltip_Save}" ToolTipService.InitialShowDelay="600">
                             <TextBlock Text="&#xE74E;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                       FontSize="14" Foreground="{DynamicResource c-toolbar-icon}"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Button>
+
+                        <!-- Save As (visible only for file-backed tabs) -->
+                        <Button x:Name="ToolbarSaveAs" Style="{StaticResource ToolbarButtonStyle}"
+                                Click="ToolbarSaveAs_Click" Visibility="Collapsed"
+                                ToolTip="{x:Static res:Strings.Tooltip_SaveAs}" ToolTipService.InitialShowDelay="600">
+                            <TextBlock Text="&#xE792;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
                                        FontSize="14" Foreground="{DynamicResource c-toolbar-icon}"
                                        HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Button>

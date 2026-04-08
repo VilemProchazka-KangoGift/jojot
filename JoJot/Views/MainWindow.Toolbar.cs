@@ -47,7 +47,8 @@ public partial class MainWindow
         ApplicationCommands.Paste.Execute(null, ContentEditor);
     }
 
-    private void ToolbarSave_Click(object sender, RoutedEventArgs e) => SaveAsTxt();
+    private void ToolbarSave_Click(object sender, RoutedEventArgs e) => SaveNote();
+    private void ToolbarSaveAs_Click(object sender, RoutedEventArgs e) => SaveAsDialog();
 
     private void ToolbarFind_Click(object sender, RoutedEventArgs e) => ShowFindPanel();
 
@@ -72,6 +73,8 @@ public partial class MainWindow
         ToolbarCopy.IsEnabled = hasTab;
         ToolbarPaste.IsEnabled = hasTab;
         ToolbarSave.IsEnabled = hasTab;
+        ToolbarSaveAs.Visibility = hasTab && _activeTab!.IsFileBacked
+            ? Visibility.Visible : Visibility.Collapsed;
         ToolbarDelete.IsEnabled = hasTab;
 
         // Update pin icon: show Unpin when tab is already pinned

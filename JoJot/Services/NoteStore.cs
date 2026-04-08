@@ -59,7 +59,7 @@ public static class NoteStore
     /// <summary>
     /// Inserts a new note and returns its auto-generated ID.
     /// </summary>
-    public static async Task<long> InsertNoteAsync(string desktopGuid, string? name, string content, bool pinned, int sortOrder)
+    public static async Task<long> InsertNoteAsync(string desktopGuid, string? name, string content, bool pinned, int sortOrder, string? filePath = null)
     {
         await DatabaseCore.AcquireWriteLockAsync().ConfigureAwait(false);
         try
@@ -73,6 +73,7 @@ public static class NoteStore
                 Content = content,
                 Pinned = pinned,
                 SortOrder = sortOrder,
+                FilePath = filePath,
                 CreatedAt = now,
                 UpdatedAt = now
             };
@@ -137,6 +138,32 @@ public static class NoteStore
         catch (Exception ex)
         {
             LogService.Error("UpdateNoteNameAsync failed (id={NoteId})", noteId, ex);
+            throw;
+        }
+        finally
+        {
+            DatabaseCore.ReleaseWriteLock();
+        }
+    }
+
+    /// <summary>
+    /// Updates a note's file path and name in a single DB round-trip.
+    /// </summary>
+    public static async Task UpdateNoteFilePathAndNameAsync(long noteId, string? filePath, string? name)
+    {
+        await DatabaseCore.AcquireWriteLockAsync().ConfigureAwait(false);
+        try
+        {
+            await using var context = DatabaseCore.CreateContext();
+            await context.Notes
+                .Where(n => n.Id == noteId)
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(n => n.FilePath, filePath)
+                    .SetProperty(n => n.Name, name)).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            LogService.Error("UpdateNoteFilePathAndNameAsync failed (id={NoteId})", noteId, ex);
             throw;
         }
         finally

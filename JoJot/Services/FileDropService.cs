@@ -20,9 +20,10 @@ public static class FileDropService
     /// </summary>
     /// <param name="IsValid">Whether the file passed validation.</param>
     /// <param name="FileName">The file name (without path).</param>
+    /// <param name="FilePath">Absolute file path; <c>null</c> on error.</param>
     /// <param name="Content">The text content if valid; <c>null</c> otherwise.</param>
     /// <param name="ErrorMessage">Describes why validation failed; <c>null</c> if valid.</param>
-    public record FileDropResult(bool IsValid, string FileName, string? Content, string? ErrorMessage);
+    public record FileDropResult(bool IsValid, string FileName, string? FilePath, string? Content, string? ErrorMessage);
 
     /// <summary>
     /// Summary of processing multiple dropped files.
@@ -80,7 +81,7 @@ public static class FileDropService
 
             if (fileInfo.Length > MaxFileSizeBytes)
             {
-                return new FileDropResult(false, fileName, null, string.Format(Strings.Drop_TooLarge, fileName));
+                return new FileDropResult(false, fileName, null, null, string.Format(Strings.Drop_TooLarge, fileName));
             }
 
             // Content inspection: read first 8 KB for binary check
@@ -90,27 +91,27 @@ public static class FileDropService
                 int bytesRead = await fs.ReadAsync(buffer.AsMemory(), cancellationToken).ConfigureAwait(false);
                 if (IsBinaryContent(buffer, bytesRead))
                 {
-                    return new FileDropResult(false, fileName, null, string.Format(Strings.Drop_Binary, fileName));
+                    return new FileDropResult(false, fileName, null, null, string.Format(Strings.Drop_Binary, fileName));
                 }
             }
 
             var content = await File.ReadAllTextAsync(filePath, cancellationToken).ConfigureAwait(false);
-            return new FileDropResult(true, fileName, content, null);
+            return new FileDropResult(true, fileName, filePath, content, null);
         }
         catch (UnauthorizedAccessException)
         {
             LogService.Error("File drop: access denied for {FilePath}", filePath);
-            return new FileDropResult(false, fileName, null, string.Format(Strings.Drop_ReadFailed, fileName));
+            return new FileDropResult(false, fileName, null, null, string.Format(Strings.Drop_ReadFailed, fileName));
         }
         catch (IOException ex)
         {
             LogService.Error("File drop: IO error for {FilePath}", filePath, ex);
-            return new FileDropResult(false, fileName, null, string.Format(Strings.Drop_ReadFailed, fileName));
+            return new FileDropResult(false, fileName, null, null, string.Format(Strings.Drop_ReadFailed, fileName));
         }
         catch (Exception ex)
         {
             LogService.Error("File drop: unexpected error for {FilePath}", filePath, ex);
-            return new FileDropResult(false, fileName, null, string.Format(Strings.Drop_ReadFailed, fileName));
+            return new FileDropResult(false, fileName, null, null, string.Format(Strings.Drop_ReadFailed, fileName));
         }
     }
 

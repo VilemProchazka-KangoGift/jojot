@@ -91,10 +91,12 @@ public class JoJotDbContext : DbContext
             e.Property(n => n.SortOrder).HasColumnName("sort_order").HasDefaultValue(0);
             e.Property(n => n.EditorScrollOffset).HasColumnName("editor_scroll_offset").HasDefaultValue(0);
             e.Property(n => n.CursorPosition).HasColumnName("cursor_position").HasDefaultValue(0);
+            e.Property(n => n.FilePath).HasColumnName("file_path");
 
             // Computed properties are not mapped to the database
             e.Ignore(n => n.DisplayLabel);
             e.Ignore(n => n.IsPlaceholder);
+            e.Ignore(n => n.IsFileBacked);
             e.Ignore(n => n.CreatedDisplay);
             e.Ignore(n => n.UpdatedDisplay);
         });

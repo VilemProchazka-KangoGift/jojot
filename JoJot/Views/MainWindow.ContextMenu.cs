@@ -107,11 +107,17 @@ public partial class MainWindow
             return b;
         }
 
-        // Rename
-        stack.Children.Add(CreateCtxItem("\uE8AC", Strings.Ctx_Rename, "F2", () =>
+        // Rename (disabled for file-backed tabs)
+        var renameItem = CreateCtxItem("\uE8AC", Strings.Ctx_Rename, "F2", () =>
         {
             StartRename(item, tab);
-        }));
+        });
+        if (tab.IsFileBacked)
+        {
+            renameItem.IsEnabled = false;
+            renameItem.Opacity = 0.4;
+        }
+        stack.Children.Add(renameItem);
 
         // Pin/Unpin (dynamic text based on tab state)
         string pinText = tab.Pinned ? Strings.Ctx_Unpin : Strings.Ctx_Pin;
@@ -131,12 +137,20 @@ public partial class MainWindow
             ToolbarClone_Click(this, new RoutedEventArgs());
         }));
 
-        // Save as TXT
-        stack.Children.Add(CreateCtxItem("\uE74E", Strings.Ctx_SaveTxt, "Ctrl+S", () =>
+        // Save
+        stack.Children.Add(CreateCtxItem("\uE74E", Strings.Ctx_Save, "Ctrl+S", () =>
         {
             _activeTab = tab;
             SelectTabByNote(tab);
-            ToolbarSave_Click(this, new RoutedEventArgs());
+            SaveNote();
+        }));
+
+        // Save As
+        stack.Children.Add(CreateCtxItem("\uE792", Strings.Ctx_SaveAs, "Ctrl+Shift+S", () =>
+        {
+            _activeTab = tab;
+            SelectTabByNote(tab);
+            SaveAsDialog();
         }));
 
         // Separator

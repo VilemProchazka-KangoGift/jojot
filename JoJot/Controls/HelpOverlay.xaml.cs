@@ -57,7 +57,8 @@ public partial class HelpOverlay : UserControl
                 ("Ctrl+V", Strings.Help_Paste),
                 ("Ctrl+X", Strings.Help_Cut),
                 ("Ctrl+A", Strings.Help_SelectAll),
-                ("Ctrl+S", Strings.Help_SaveAsTxt),
+                ("Ctrl+S", Strings.Help_Save),
+                ("Ctrl+Shift+S", Strings.Help_SaveAs),
                 ("Ctrl+F", Strings.Help_Find)
             ]),
             (Strings.Help_SectionView, [

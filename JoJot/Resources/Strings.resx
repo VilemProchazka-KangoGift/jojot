@@ -52,7 +52,8 @@
   <data name="Tooltip_Pin" xml:space="preserve"><value>Pin (Ctrl+P)</value></data>
   <data name="Tooltip_Unpin" xml:space="preserve"><value>Unpin (Ctrl+P)</value></data>
   <data name="Tooltip_Clone" xml:space="preserve"><value>Clone to new tab (Ctrl+K)</value></data>
-  <data name="Tooltip_Save" xml:space="preserve"><value>Save as TXT (Ctrl+S)</value></data>
+  <data name="Tooltip_Save" xml:space="preserve"><value>Save (Ctrl+S)</value></data>
+  <data name="Tooltip_SaveAs" xml:space="preserve"><value>Save As (Ctrl+Shift+S)</value></data>
   <data name="Tooltip_Find" xml:space="preserve"><value>Find (Ctrl+F)</value></data>
   <data name="Tooltip_PinShort" xml:space="preserve"><value>Pin</value></data>
   <data name="Tooltip_UnpinShort" xml:space="preserve"><value>Unpin</value></data>
@@ -159,7 +160,8 @@
   <data name="Help_Paste" xml:space="preserve"><value>Paste</value></data>
   <data name="Help_Cut" xml:space="preserve"><value>Cut</value></data>
   <data name="Help_SelectAll" xml:space="preserve"><value>Select all</value></data>
-  <data name="Help_SaveAsTxt" xml:space="preserve"><value>Save as TXT</value></data>
+  <data name="Help_Save" xml:space="preserve"><value>Save</value></data>
+  <data name="Help_SaveAs" xml:space="preserve"><value>Save As</value></data>
   <data name="Help_Find" xml:space="preserve"><value>Find in editor / Search tabs</value></data>
   <data name="Help_FontIncrease" xml:space="preserve"><value>Increase font size</value></data>
   <data name="Help_FontDecrease" xml:space="preserve"><value>Decrease font size</value></data>
@@ -173,9 +175,13 @@
   <data name="Ctx_Pin" xml:space="preserve"><value>Pin</value></data>
   <data name="Ctx_Unpin" xml:space="preserve"><value>Unpin</value></data>
   <data name="Ctx_Clone" xml:space="preserve"><value>Clone to new tab</value></data>
-  <data name="Ctx_SaveTxt" xml:space="preserve"><value>Save as TXT</value></data>
+  <data name="Ctx_Save" xml:space="preserve"><value>Save</value></data>
+  <data name="Ctx_SaveAs" xml:space="preserve"><value>Save As</value></data>
   <data name="Ctx_Delete" xml:space="preserve"><value>Delete</value></data>
   <data name="Ctx_DeleteAllBelow" xml:space="preserve"><value>Delete all below</value></data>
+
+  <!-- ═══ Save messages ═══ -->
+  <data name="Save_Failed" xml:space="preserve"><value>Failed to save {0}</value><comment>{0} = filename</comment></data>
 
   <!-- ═══ Toast messages ═══ -->
   <data name="Toast_Deleted" xml:space="preserve"><value>{0} deleted</value><comment>{0} = quoted tab name e.g. \u201CName\u201D deleted</comment></data>
@@ -240,4 +246,9 @@ Feel free to delete this tab once you're ready.</value></data>
   <!-- ═══ Confirmation overlay ═══ -->
   <data name="Confirm_Cancel" xml:space="preserve"><value>Cancel</value></data>
   <data name="Confirm_Delete" xml:space="preserve"><value>Delete</value></data>
+
+  <!-- ═══ Language restart ═══ -->
+  <data name="Language_RestartTitle" xml:space="preserve"><value>Restart required</value></data>
+  <data name="Language_RestartMessage" xml:space="preserve"><value>JoJot needs to restart to apply the new language.</value></data>
+  <data name="Language_RestartButton" xml:space="preserve"><value>Restart</value></data>
 </root>

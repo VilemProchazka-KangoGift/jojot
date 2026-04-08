@@ -15,6 +15,7 @@ public partial class MainWindow
     /// </summary>
     private void BeginRename(ListBoxItem item, NoteTab tab)
     {
+        if (tab.IsFileBacked) return;
         if (_activeRename is not null) CommitRename();
         if (_isDragging) return;
 

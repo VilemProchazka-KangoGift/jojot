@@ -255,7 +255,15 @@ public static class DatabaseCore
             await ExecuteNonQueryAsync("ALTER TABLE app_state ADD COLUMN window_state TEXT;").ConfigureAwait(false);
             LogService.Info("Migration: added window_state column to app_state");
         }
-        else
+
+        bool hasFilePath = await ColumnExistsAsync("notes", "file_path").ConfigureAwait(false);
+        if (!hasFilePath)
+        {
+            await ExecuteNonQueryAsync("ALTER TABLE notes ADD COLUMN file_path TEXT;").ConfigureAwait(false);
+            LogService.Info("Migration: added file_path column to notes");
+        }
+
+        if (hasWindowState && hasFilePath)
         {
             LogService.Info("No pending migrations.");
         }
