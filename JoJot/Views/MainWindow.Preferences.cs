@@ -13,8 +13,10 @@ public partial class MainWindow
         var savedFontSize = await PreferenceStore.GetPreferenceAsync("font_size");
         _currentFontSize = ViewModels.MainWindowViewModel.ParseFontSize(savedFontSize);
         ContentEditor.FontSize = _currentFontSize;
+        PreferencesPanel.RefreshValues(_currentFontSize, ThemeService.CurrentSetting, LanguageService.Current, HotkeyService.GetHotkeyDisplayString());
+
         var savedAutoDeleteDays = await PreferenceStore.GetPreferenceAsync("auto_delete_days");
-        PreferencesPanel.RefreshValues(_currentFontSize, ThemeService.CurrentSetting, LanguageService.Current, HotkeyService.GetHotkeyDisplayString(), savedAutoDeleteDays);
+        CleanupPanel.SetAutoDeleteDays(savedAutoDeleteDays);
     }
 
     private void MenuPreferences_Click(object sender, MouseButtonEventArgs e)
@@ -33,8 +35,7 @@ public partial class MainWindow
         if (_findPanelOpen) HideFindPanel();
 
         _preferencesOpen = true;
-        var savedAutoDeleteDays = await PreferenceStore.GetPreferenceAsync("auto_delete_days");
-        PreferencesPanel.RefreshValues(_currentFontSize, ThemeService.CurrentSetting, LanguageService.Current, HotkeyService.GetHotkeyDisplayString(), savedAutoDeleteDays);
+        PreferencesPanel.RefreshValues(_currentFontSize, ThemeService.CurrentSetting, LanguageService.Current, HotkeyService.GetHotkeyDisplayString());
         PreferencesPanel.Show();
     }
 

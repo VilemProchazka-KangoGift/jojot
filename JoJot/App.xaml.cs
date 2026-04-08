@@ -25,6 +25,16 @@ public partial class App : Application
     private static Mutex? _singleInstanceMutex;
 
     /// <summary>
+    /// Releases the single-instance mutex so a restarted process can acquire it.
+    /// </summary>
+    internal static void ReleaseSingleInstanceMutex()
+    {
+        try { _singleInstanceMutex?.ReleaseMutex(); } catch (ApplicationException) { }
+        _singleInstanceMutex?.Dispose();
+        _singleInstanceMutex = null;
+    }
+
+    /// <summary>
     /// Cancellation source signaled on application exit to stop the IPC server and other background work.
     /// </summary>
     private readonly CancellationTokenSource _appShutdownCts = new();
@@ -631,8 +641,7 @@ public partial class App : Application
         // Synchronous close in exit path — no async available here
         DatabaseCore.CloseAsync().GetAwaiter().GetResult();
 
-        _singleInstanceMutex?.ReleaseMutex();
-        _singleInstanceMutex?.Dispose();
+        ReleaseSingleInstanceMutex();
 
         _appShutdownCts.Dispose();
 

@@ -13,6 +13,7 @@
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
 
             <!-- Row 0: Header with close button -->
@@ -61,9 +62,36 @@
             </StackPanel>
 
             <!-- Row 2: Scrollable preview list -->
-            <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" Margin="16,0,16,16">
+            <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" Margin="16,0,16,8">
                 <StackPanel x:Name="PreviewList"/>
             </ScrollViewer>
+
+            <!-- Row 3: Auto-cleanup setting -->
+            <StackPanel Grid.Row="3" Margin="16,0,16,16">
+                <Border Height="1" Background="{DynamicResource c-border}" Margin="0,0,0,12"/>
+                <TextBlock Text="{x:Static res:Strings.Pref_AutoDelete}" FontSize="13" Margin="0,0,0,6"
+                           Foreground="{DynamicResource c-text-primary}"/>
+                <Grid Margin="0,0,0,4">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBox x:Name="AutoDeleteDaysInput" Grid.Column="0"
+                             Width="60" FontSize="13" Padding="6,4"
+                             VerticalContentAlignment="Center"
+                             Background="{DynamicResource c-tab-bg}"
+                             Foreground="{DynamicResource c-text-primary}"
+                             BorderBrush="{DynamicResource c-text-muted}"
+                             BorderThickness="1"
+                             TextChanged="AutoDeleteDays_TextChanged"
+                             PreviewTextInput="AutoDeleteDays_PreviewTextInput"/>
+                    <TextBlock Grid.Column="1" Text="{x:Static res:Strings.Pref_Days}" FontSize="13"
+                               VerticalAlignment="Center" Margin="8,0,0,0"
+                               Foreground="{DynamicResource c-text-primary}"/>
+                </Grid>
+                <TextBlock Text="{x:Static res:Strings.Pref_AutoDeleteHint}" FontSize="11" Margin="0,2,0,0"
+                           Foreground="{DynamicResource c-text-muted}"/>
+            </StackPanel>
         </Grid>
     </Border>
 </UserControl>

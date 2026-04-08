@@ -70,14 +70,16 @@ public static class LanguageService
 
     /// <summary>
     /// Restarts the application by launching a new process and exiting the current one.
+    /// Releases the single-instance mutex before starting the new process so it can acquire it.
     /// </summary>
-    private static void RestartApp()
+    internal static void RestartApp()
     {
         var exePath = Environment.ProcessPath;
-        if (exePath is not null)
-        {
-            System.Diagnostics.Process.Start(exePath);
-        }
+        if (exePath is null) return;
+
+        // Release the single-instance mutex so the new process can acquire it
+        App.ReleaseSingleInstanceMutex();
+        System.Diagnostics.Process.Start(exePath);
         Environment.Exit(0);
     }
 

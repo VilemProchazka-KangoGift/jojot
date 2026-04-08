@@ -17,10 +17,12 @@ namespace JoJot.Controls;
 public partial class CleanupPanel : UserControl
 {
     private List<NoteTab> _currentCandidates = [];
+    private bool _suppressAutoDeleteEvent;
 
     public event EventHandler? CloseRequested;
     public event EventHandler<List<NoteTab>>? DeleteRequested;
     public event EventHandler? FilterChanged;
+    public event EventHandler<string>? AutoDeleteDaysChanged;
 
     public string AgeText => AgeInput.Text;
     public int UnitIndex => UnitCombo.SelectedIndex;
@@ -210,5 +212,26 @@ public partial class CleanupPanel : UserControl
     private void IncludePinned_Changed(object sender, RoutedEventArgs e)
     {
         FilterChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    public void SetAutoDeleteDays(string? value)
+    {
+        _suppressAutoDeleteEvent = true;
+        AutoDeleteDaysInput.Text = value ?? "";
+        _suppressAutoDeleteEvent = false;
+    }
+
+    private void AutoDeleteDays_PreviewTextInput(object sender, TextCompositionEventArgs e)
+    {
+        foreach (char c in e.Text)
+        {
+            if (!char.IsDigit(c)) { e.Handled = true; return; }
+        }
+    }
+
+    private void AutoDeleteDays_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        if (_suppressAutoDeleteEvent) return;
+        AutoDeleteDaysChanged?.Invoke(this, AutoDeleteDaysInput.Text);
     }
 }

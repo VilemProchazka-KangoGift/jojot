@@ -13,9 +13,9 @@
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
 
     <!-- Version metadata (CalVer) -->
-    <Version>2026.4.8</Version>
-    <AssemblyVersion>2026.4.8.0</AssemblyVersion>
-    <FileVersion>2026.4.8.0</FileVersion>
+    <Version>2026.4.9</Version>
+    <AssemblyVersion>2026.4.9.0</AssemblyVersion>
+    <FileVersion>2026.4.9.0</FileVersion>
 
     <!-- Publisher and product info -->
     <Company>Vilem Prochazka</Company>
@@ -44,7 +44,7 @@
   <!-- Localization: generate typed accessor from Strings.resx -->
   <ItemGroup>
     <EmbeddedResource Update="Resources\Strings.resx">
-      <Generator>ResXFileCodeGenerator</Generator>
+      <Generator>PublicResXFileCodeGenerator</Generator>
       <LastGenOutput>Strings.Designer.cs</LastGenOutput>
     </EmbeddedResource>
     <Compile Update="Resources\Strings.Designer.cs">

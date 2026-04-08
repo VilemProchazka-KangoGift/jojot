@@ -8,7 +8,7 @@ public partial class MainWindow
 {
     // ─── Cleanup Panel ──────────────────────────────────────────────────
 
-    private void ShowCleanupPanel()
+    private async void ShowCleanupPanel()
     {
         if (_cleanupPanelOpen)
         {
@@ -22,6 +22,8 @@ public partial class MainWindow
         if (_findPanelOpen) HideFindPanel();
 
         CleanupPanel.ResetFilters();
+        var savedAutoDeleteDays = await PreferenceStore.GetPreferenceAsync("auto_delete_days");
+        CleanupPanel.SetAutoDeleteDays(savedAutoDeleteDays);
         _cleanupPanelOpen = true;
         CleanupPanel.Show();
         RefreshCleanupPreview();

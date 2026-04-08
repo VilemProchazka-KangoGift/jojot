@@ -18,13 +18,18 @@ public partial class ConfirmationOverlay : UserControl
         InitializeComponent();
     }
 
-    public void Show(string title, string message, Action? onConfirm)
+    public void Show(string title, string message, Action? onConfirm, string? confirmText = null, bool useDangerStyle = true)
     {
         TitleText.Text = title;
         MessageText.Text = message;
         _confirmAction = onConfirm;
         DeleteButton.Visibility = onConfirm is not null ? Visibility.Visible : Visibility.Collapsed;
-        CancelButton.Content = onConfirm is not null ? "Cancel" : "OK";
+        if (onConfirm is not null && confirmText is not null)
+            DeleteButton.Content = confirmText;
+        else
+            DeleteButton.Content = JoJot.Resources.Strings.Confirm_Delete;
+        DeleteButton.SetResourceReference(BackgroundProperty, useDangerStyle ? Themes.ThemeKeys.Danger : Themes.ThemeKeys.Accent);
+        CancelButton.Content = onConfirm is not null ? JoJot.Resources.Strings.Confirm_Cancel : "OK";
         Visibility = Visibility.Visible;
         CancelButton.Focus();
     }
