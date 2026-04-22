@@ -105,6 +105,11 @@ public static partial class DesktopSwitchDetector
         Volatile.Write(ref _lastSwitchWasCrossDesktop, wasCross);
         Volatile.Write(ref _lastCrossDesktopTargetGuid, activatedGuid);
 
+        long gapMs = activationTicks == 0 ? -1 : (switchTicks - activationTicks) * 1000 / Stopwatch.Frequency;
+        LogService.Info(
+            "DESKTOP-TELEMETRY cross-desktop-eval t={MonotonicMs}ms new={NewGuid} activated={ActivatedGuid} gap-ms={GapMs} verdict={Verdict}",
+            DesktopTelemetry.MonotonicMs, newDesktopGuid, activatedGuid ?? "(null)", gapMs, wasCross);
+
         // Clear activation state — prevents stale timestamps from triggering on next switch
         Volatile.Write(ref _lastActivationTicks, 0L);
         Volatile.Write(ref _lastActivatedDesktopGuid, null);

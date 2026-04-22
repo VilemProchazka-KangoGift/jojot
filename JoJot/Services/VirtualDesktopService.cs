@@ -465,6 +465,7 @@ public static class VirtualDesktopService
             if (!newGuid.Equals(_currentDesktopGuid, StringComparison.OrdinalIgnoreCase))
             {
                 string oldGuid = Volatile.Read(ref _currentDesktopGuid);
+                DesktopTelemetry.LogSnapshot("poll-switch", "old={OldGuid} new={NewGuid}", oldGuid, newGuid);
                 _previousDesktopGuid = oldGuid;
                 _lastDesktopSwitchTime = DateTime.UtcNow;
                 Volatile.Write(ref _currentDesktopGuid, newGuid);
@@ -559,6 +560,8 @@ public static class VirtualDesktopService
     {
         string oldGuid = oldDesktopId.ToString();
         string newGuid = newDesktopId.ToString();
+
+        DesktopTelemetry.LogSnapshot("com-switch", "old={OldGuid} new={NewGuid}", oldGuid, newGuid);
 
         // Track previous desktop for redirect heuristics
         _previousDesktopGuid = oldGuid;

@@ -46,11 +46,6 @@ public partial class App : Application
     private readonly Dictionary<string, MainWindow> _windows = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
-    /// UTC time before which desktop-switch redirects are suppressed (prevents redirect loops).
-    /// </summary>
-    private DateTime _redirectCooldownUntil = DateTime.MinValue;
-
-    /// <summary>
     /// Async void startup handler. The ENTIRE body after exception-handler setup is wrapped in
     /// try/catch so no exceptions can escape this async void entry point.
     /// </summary>
@@ -161,8 +156,8 @@ public partial class App : Application
                 LogService.Info("Virtual desktop: fallback mode (single-notepad)");
             }
 
-            // Desktop switch detection (keyboard hook for deliberate-switch filtering)
-            DesktopSwitchDetector.Initialize();
+            // Diagnostic telemetry — foreground hook + monotonic clock
+            DesktopTelemetry.Initialize();
 
             // Subscribe to desktop notifications (must happen on UI thread for COM callbacks)
             VirtualDesktopService.SubscribeNotifications();
@@ -228,10 +223,19 @@ public partial class App : Application
                 {
                     try
                     {
-                        if (!ShouldRedirect(DateTime.UtcNow, _redirectCooldownUntil,
-                            _windows.ContainsKey(oldGuid), _windows.ContainsKey(newGuid),
-                            DesktopSwitchDetector.WasCrossDesktopActivation(newGuid),
-                            DesktopSwitchDetector.IsRecentKeyboardNavigation))
+                        bool hasOld = _windows.ContainsKey(oldGuid);
+                        bool hasNew = _windows.ContainsKey(newGuid);
+                        bool crossDesktop = DesktopSwitchDetector.WasCrossDesktopActivation(newGuid);
+                        bool kbNav = DesktopSwitchDetector.IsRecentKeyboardNavigation;
+                        bool cooldown = DateTime.UtcNow < _redirectCooldownUntil;
+                        bool verdict = ShouldRedirect(DateTime.UtcNow, _redirectCooldownUntil,
+                            hasOld, hasNew, crossDesktop, kbNav);
+
+                        DesktopTelemetry.LogSnapshot("redirect-decision",
+                            "old={OldGuid} new={NewGuid} hasOld={HasOld} hasNew={HasNew} crossDesktop={CrossDesktop} kbNav={KbNav} cooldown={Cooldown} verdict={Verdict}",
+                            oldGuid, newGuid, hasOld, hasNew, crossDesktop, kbNav, cooldown, verdict);
+
+                        if (!verdict)
                         {
                             return;
                         }
@@ -635,6 +639,7 @@ public partial class App : Application
         IpcService.StopServer();
         HotkeyService.Shutdown();
         DesktopSwitchDetector.Shutdown();
+        DesktopTelemetry.Shutdown();
         VirtualDesktopService.Shutdown();
         ThemeService.Shutdown();
 

@@ -34,6 +34,9 @@ public partial class MainWindow
         if (msg == WM_ACTIVATE && (wParam.ToInt32() & 0xFFFF) != WA_INACTIVE)
         {
             DesktopSwitchDetector.NotifyWindowActivated(_desktopGuid);
+            DesktopTelemetry.LogSnapshot("wm-activate",
+                "win-hwnd=0x{WinHwnd:X} win-desktop={WinDesktop} wParam=0x{WParam:X}",
+                hwnd.ToInt64(), _desktopGuid, wParam.ToInt32());
         }
 
         return IntPtr.Zero;
