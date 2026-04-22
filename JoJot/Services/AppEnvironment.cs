@@ -1,4 +1,5 @@
 using System.IO;
+using System.Reflection;
 
 namespace JoJot.Services;
 
@@ -32,4 +33,16 @@ public static class AppEnvironment
 
     /// <summary>Global mutex name for single-instance enforcement.</summary>
     public const string MutexName = "Global\\JoJot_SingleInstance" + Suffix;
+
+    /// <summary>CalVer version string (YYYY.M.Count) sourced from AssemblyVersion.</summary>
+    public static string Version { get; } = BuildVersion();
+
+    /// <summary>Version with a " (Dev)" marker appended in debug builds.</summary>
+    public static string VersionDisplay { get; } = IsDebug ? $"{Version} (Dev)" : Version;
+
+    private static string BuildVersion()
+    {
+        var v = Assembly.GetExecutingAssembly().GetName().Version!;
+        return $"{v.Major}.{v.Minor}.{v.Build}";
+    }
 }

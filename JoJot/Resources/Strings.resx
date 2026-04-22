@@ -101,6 +101,8 @@
   <data name="Pref_HotkeyRecord" xml:space="preserve"><value>Record</value></data>
   <data name="Pref_HotkeyPressKeys" xml:space="preserve"><value>Press keys...</value></data>
   <data name="Pref_HotkeyHint" xml:space="preserve"><value>Focus JoJot from any app</value></data>
+  <data name="Pref_SectionAbout" xml:space="preserve"><value>ABOUT</value></data>
+  <data name="Pref_Version" xml:space="preserve"><value>Version {0}</value></data>
 
   <!-- ═══ Find / Replace panel ═══ -->
   <data name="Find_Header" xml:space="preserve"><value>Find</value></data>

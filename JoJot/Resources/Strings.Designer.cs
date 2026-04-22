@@ -480,6 +480,10 @@ namespace JoJot.Resources {
             get { return ResourceManager.GetString("Pref_LanguageHint", resourceCulture)!; }
         }
 
+        public static string Pref_SectionAbout {
+            get { return ResourceManager.GetString("Pref_SectionAbout", resourceCulture)!; }
+        }
+
         public static string Pref_SectionAppearance {
             get { return ResourceManager.GetString("Pref_SectionAppearance", resourceCulture)!; }
         }
@@ -510,6 +514,10 @@ namespace JoJot.Resources {
 
         public static string Pref_ThemeSystem {
             get { return ResourceManager.GetString("Pref_ThemeSystem", resourceCulture)!; }
+        }
+
+        public static string Pref_Version {
+            get { return ResourceManager.GetString("Pref_Version", resourceCulture)!; }
         }
 
         public static string Recovery_Adopt {

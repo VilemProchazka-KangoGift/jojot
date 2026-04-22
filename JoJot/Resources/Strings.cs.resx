@@ -101,6 +101,8 @@
   <data name="Pref_HotkeyRecord" xml:space="preserve"><value>Nahrát</value></data>
   <data name="Pref_HotkeyPressKeys" xml:space="preserve"><value>Stiskněte klávesy...</value></data>
   <data name="Pref_HotkeyHint" xml:space="preserve"><value>Aktivovat JoJot z libovolné aplikace</value></data>
+  <data name="Pref_SectionAbout" xml:space="preserve"><value>O APLIKACI</value></data>
+  <data name="Pref_Version" xml:space="preserve"><value>Verze {0}</value></data>
 
   <!-- ═══ Find / Replace panel ═══ -->
   <data name="Find_Header" xml:space="preserve"><value>Hledat</value></data>

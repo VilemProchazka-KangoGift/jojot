@@ -25,6 +25,7 @@ public partial class PreferencesPanel : UserControl
     public PreferencesPanel()
     {
         InitializeComponent();
+        VersionDisplay.Text = string.Format(Strings.Pref_Version, AppEnvironment.VersionDisplay);
     }
 
     public void Show()

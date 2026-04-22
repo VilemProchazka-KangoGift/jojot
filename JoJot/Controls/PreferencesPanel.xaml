@@ -148,6 +148,12 @@
                     </Grid>
                     <TextBlock Text="{x:Static res:Strings.Pref_HotkeyHint}" FontSize="11" Margin="0,2,0,16"
                                Foreground="{DynamicResource c-text-muted}"/>
+
+                    <!-- ABOUT SECTION -->
+                    <TextBlock Text="{x:Static res:Strings.Pref_SectionAbout}" FontSize="11" FontWeight="SemiBold" Margin="0,8,0,8"
+                               Foreground="{DynamicResource c-text-muted}"/>
+                    <TextBlock x:Name="VersionDisplay" FontSize="12" Margin="0,0,0,16"
+                               Foreground="{DynamicResource c-text-muted}"/>
                 </StackPanel>
             </ScrollViewer>
         </Grid>
