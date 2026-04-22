@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Threading;
 using JoJot.Themes;
 
 namespace JoJot.Controls;
@@ -70,8 +71,14 @@ public partial class FindReplacePanel : UserControl
     public void Show()
     {
         Visibility = Visibility.Visible;
-        FindInput.Focus();
-        FindInput.SelectAll();
+        // On first open (Collapsed → Visible), FindInput isn't focusable until after
+        // a layout pass. Input priority runs below Normal, so queued async continuations
+        // (e.g. Select() calls) complete before this focus takes.
+        Dispatcher.BeginInvoke(() =>
+        {
+            FindInput.Focus();
+            FindInput.SelectAll();
+        }, DispatcherPriority.Input);
     }
 
     /// <summary>

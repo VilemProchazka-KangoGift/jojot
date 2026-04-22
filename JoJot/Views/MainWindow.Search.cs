@@ -168,7 +168,6 @@ public partial class MainWindow
         if (!string.IsNullOrEmpty(query))
         {
             _ = RunSearchAsync(query, FindReplacePanel.CaseSensitive, FindReplacePanel.WholeWord);
-            RestoreFindFocusAfterSelect();
         }
     }
 
