@@ -152,8 +152,10 @@ public partial class MainWindow
 
     private void ShowFindPanel()
     {
-        // Close other side panels first (preferences, cleanup, recovery)
-        ViewModel.CloseAllSidePanels();
+        // One-panel-at-a-time — match the pattern used by Show{Preferences,Cleanup,Recovery}Panel
+        if (_preferencesOpen) HidePreferencesPanel();
+        if (_cleanupPanelOpen) HideCleanupPanel();
+        if (_recoveryPanelOpen) HideRecoveryPanel();
 
         _findPanelOpen = true;
 
