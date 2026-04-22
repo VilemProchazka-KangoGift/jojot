@@ -157,7 +157,6 @@ public partial class MainWindow
 
         _findPanelOpen = true;
 
-        // Auto-populate find input from editor selection
         if (ContentEditor.SelectionLength > 0)
         {
             FindReplacePanel.SetFindText(ContentEditor.SelectedText);
@@ -165,13 +164,18 @@ public partial class MainWindow
 
         FindReplacePanel.Show();
 
-        // If panel already has query text, trigger re-search now
         var query = FindReplacePanel.GetFindText();
         if (!string.IsNullOrEmpty(query))
         {
             _ = RunSearchAsync(query, FindReplacePanel.CaseSensitive, FindReplacePanel.WholeWord);
+            RestoreFindFocusAfterSelect();
         }
     }
+
+    // ContentEditor.Select() steals focus — restore at Input priority so it runs after
+    // the Normal-priority async continuation that called Select().
+    private void RestoreFindFocusAfterSelect() =>
+        Dispatcher.BeginInvoke(FindReplacePanel.FocusFindInput, DispatcherPriority.Input);
 
     private void HideFindPanel()
     {
@@ -313,8 +317,7 @@ public partial class MainWindow
         FindReplacePanel.UpdateMatches(_findMatches, _currentFindIndex);
         _highlightAdorner?.Update(_findMatches, _currentFindIndex, _findQueryLength);
 
-        // ContentEditor.Select() steals focus — defer restoration to after WPF processes the selection change
-        Dispatcher.BeginInvoke(FindReplacePanel.FocusFindInput, System.Windows.Threading.DispatcherPriority.Input);
+        RestoreFindFocusAfterSelect();
     }
 
     // ─── Replace operations ─────────────────────────────────────────────

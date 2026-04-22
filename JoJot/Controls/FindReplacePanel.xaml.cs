@@ -24,6 +24,7 @@ public partial class FindReplacePanel : UserControl
 {
     private bool _caseSensitive;
     private bool _wholeWord;
+    private bool _suppressFindChanged;
     private List<int> _matches = [];
     private int _currentMatchIndex = -1;
 
@@ -87,8 +88,16 @@ public partial class FindReplacePanel : UserControl
     /// </summary>
     public void SetFindText(string text)
     {
-        FindInput.Text = text;
-        FindInput.CaretIndex = text.Length;
+        _suppressFindChanged = true;
+        try
+        {
+            FindInput.Text = text;
+            FindInput.CaretIndex = text.Length;
+        }
+        finally
+        {
+            _suppressFindChanged = false;
+        }
     }
 
     /// <summary>
@@ -160,6 +169,7 @@ public partial class FindReplacePanel : UserControl
 
     private void FindInput_TextChanged(object sender, TextChangedEventArgs e)
     {
+        if (_suppressFindChanged) return;
         RaiseFindChanged();
     }
 
