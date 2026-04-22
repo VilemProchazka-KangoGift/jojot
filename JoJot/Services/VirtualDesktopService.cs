@@ -14,8 +14,6 @@ public static class VirtualDesktopService
     private static string _currentDesktopGuid = DefaultDesktopGuid;
     private static string _currentDesktopName = "";
     private static int _currentDesktopIndex;
-    private static string _previousDesktopGuid = "";
-    private static DateTime _lastDesktopSwitchTime = DateTime.MinValue;
 
     private static VirtualDesktopNotificationListener? _notificationListener;
     private static uint _notificationCookie;
@@ -63,17 +61,6 @@ public static class VirtualDesktopService
     /// Returns empty string if name is not set or in fallback mode.
     /// </summary>
     public static string CurrentDesktopName => _currentDesktopName;
-
-    /// <summary>
-    /// The GUID of the desktop the user was on before the last switch.
-    /// Empty if no switch has occurred yet.
-    /// </summary>
-    public static string PreviousDesktopGuid => _previousDesktopGuid;
-
-    /// <summary>
-    /// UTC timestamp of the last desktop switch. Used for redirect heuristics.
-    /// </summary>
-    public static DateTime LastDesktopSwitchTime => _lastDesktopSwitchTime;
 
     /// <summary>
     /// Initializes the virtual desktop service.
@@ -465,11 +452,7 @@ public static class VirtualDesktopService
             if (!newGuid.Equals(_currentDesktopGuid, StringComparison.OrdinalIgnoreCase))
             {
                 string oldGuid = Volatile.Read(ref _currentDesktopGuid);
-                DesktopTelemetry.LogSnapshot("poll-switch", "old={OldGuid} new={NewGuid}", oldGuid, newGuid);
-                _previousDesktopGuid = oldGuid;
-                _lastDesktopSwitchTime = DateTime.UtcNow;
                 Volatile.Write(ref _currentDesktopGuid, newGuid);
-                DesktopSwitchDetector.NotifyDesktopSwitch(newGuid);
                 _currentDesktopName = name;
                 _currentDesktopIndex = index;
                 LogService.Info("Poll: desktop switched {OldGuid} -> {NewGuid}", oldGuid, newGuid);
@@ -561,17 +544,8 @@ public static class VirtualDesktopService
         string oldGuid = oldDesktopId.ToString();
         string newGuid = newDesktopId.ToString();
 
-        DesktopTelemetry.LogSnapshot("com-switch", "old={OldGuid} new={NewGuid}", oldGuid, newGuid);
-
-        // Track previous desktop for redirect heuristics
-        _previousDesktopGuid = oldGuid;
-        _lastDesktopSwitchTime = DateTime.UtcNow;
-
         // Update internal state to reflect the new current desktop
         Volatile.Write(ref _currentDesktopGuid, newGuid);
-
-        // Record desktop switch timestamp for cross-desktop activation detection
-        DesktopSwitchDetector.NotifyDesktopSwitch(newGuid);
 
         // Try to update name and index from the new desktop
         try

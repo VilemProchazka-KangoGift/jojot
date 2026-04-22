@@ -88,9 +88,6 @@ public static class LogService
     /// <summary>Logs an informational structured message template.</summary>
     public static void Info<T0, T1, T2, T3, T4>(string template, T0 v0, T1 v1, T2 v2, T3 v3, T4 v4) => Log.Information(template, v0, v1, v2, v3, v4);
 
-    /// <summary>Logs an informational structured message template.</summary>
-    public static void Info(string template, params object?[] values) => Log.Information(template, values);
-
     /// <summary>Logs a warning structured message template with optional exception.</summary>
     public static void Warn<T>(string template, T value, Exception? ex = null) => Log.Warning(ex, template, value);
 

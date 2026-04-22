@@ -85,7 +85,6 @@ SQLite database at `%LocalAppData%\JoJot\jojot.db`. WAL mode, NORMAL synchronous
 | `WindowPlacementHelper` | Win32 `SetWindowPlacement` for geometry save/restore |
 | `WindowActivationHelper` | Win32 `SetForegroundWindow` with `AllowSetForegroundWindow` |
 | `AppEnvironment` | Centralized paths, config flags, and environment detection |
-| `DesktopSwitchDetector` | Polling-based virtual desktop switch detection |
 | `SqlitePragmaInterceptor` | EF Core interceptor for SQLite PRAGMA configuration |
 | `LanguageService` | Language selection (English/Czech), culture init, app restart on change, plural helper |
 | `IClock` / `IDebounceTimer` | Testability interfaces for time and debounce abstraction |

@@ -37,6 +37,14 @@ internal static class ComGuids
     public static readonly Guid CLSID_VirtualDesktopManager =
         new("AA509086-5CA9-4C25-8F95-589D3C07B48A");
 
+    /// <summary>
+    /// CLSID for the virtual-desktop notification service.
+    /// Distinct from <see cref="CLSID_VirtualDesktopManagerInternal"/> — Win11 25H2 (build 26200)
+    /// rejects QueryService against the manager CLSID for the notification interface.
+    /// </summary>
+    public static readonly Guid CLSID_IVirtualNotificationService =
+        new("A501FDEC-4A09-464C-AE4E-1B9C21B84918");
+
     // ─── Documented interface GUID (stable) ─────────────────────────────
 
     /// <summary>IID for the documented IVirtualDesktopManager interface (stable across builds).</summary>

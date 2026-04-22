@@ -535,9 +535,6 @@ public partial class MainWindow : Window
         ThemeService.ThemeChanged -= OnThemeChangedAdornerRefresh;
         VirtualDesktopService.WindowMovedToDesktop -= OnWindowMovedToDesktop;
 
-        // Remove WndProc hook before HWND is destroyed
-        RemoveDesktopActivationHook();
-
         // Cancel and dispose pending desktop check
         _misplacedCheckCts?.Cancel();
         _misplacedCheckCts?.Dispose();

@@ -78,9 +78,10 @@ internal static class VirtualDesktopInterop
             Marshal.GetObjectForIUnknown(internalPtr);
         Marshal.Release(internalPtr);
 
-        // 4. Query for IVirtualDesktopNotificationService
+        // 4. Query for IVirtualDesktopNotificationService — uses its OWN CLSID, not the manager's
+        var clsidNotifService = ComGuids.CLSID_IVirtualNotificationService;
         var iidNotifService = _guidSet.IVirtualDesktopNotificationService;
-        hr = provider.QueryService(ref clsidInternal, ref iidNotifService, out IntPtr notifPtr);
+        hr = provider.QueryService(ref clsidNotifService, ref iidNotifService, out IntPtr notifPtr);
         if (hr != 0 || notifPtr == IntPtr.Zero)
         {
             // Notification service is optional — title updates won't work but detection still does

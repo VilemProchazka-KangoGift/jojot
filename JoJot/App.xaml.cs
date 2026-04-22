@@ -156,9 +156,6 @@ public partial class App : Application
                 LogService.Info("Virtual desktop: fallback mode (single-notepad)");
             }
 
-            // Diagnostic telemetry — foreground hook + monotonic clock
-            DesktopTelemetry.Initialize();
-
             // Subscribe to desktop notifications (must happen on UI thread for COM callbacks)
             VirtualDesktopService.SubscribeNotifications();
 
@@ -213,44 +210,8 @@ public partial class App : Application
                 });
             };
 
-            // Redirect: when Windows pulls the user to a JoJot desktop from a non-JoJot desktop
-            // (e.g. taskbar click), switch back and create a window on the origin desktop.
             VirtualDesktopService.CurrentDesktopChanged += (oldGuid, newGuid) =>
-            {
                 LogService.Info("Desktop switched: {OldGuid} -> {NewGuid}", oldGuid, newGuid);
-
-                Dispatcher.InvokeAsync(async () =>
-                {
-                    try
-                    {
-                        bool hasOld = _windows.ContainsKey(oldGuid);
-                        bool hasNew = _windows.ContainsKey(newGuid);
-                        bool crossDesktop = DesktopSwitchDetector.WasCrossDesktopActivation(newGuid);
-                        bool kbNav = DesktopSwitchDetector.IsRecentKeyboardNavigation;
-                        bool cooldown = DateTime.UtcNow < _redirectCooldownUntil;
-                        bool verdict = ShouldRedirect(DateTime.UtcNow, _redirectCooldownUntil,
-                            hasOld, hasNew, crossDesktop, kbNav);
-
-                        DesktopTelemetry.LogSnapshot("redirect-decision",
-                            "old={OldGuid} new={NewGuid} hasOld={HasOld} hasNew={HasNew} crossDesktop={CrossDesktop} kbNav={KbNav} cooldown={Cooldown} verdict={Verdict}",
-                            oldGuid, newGuid, hasOld, hasNew, crossDesktop, kbNav, cooldown, verdict);
-
-                        if (!verdict)
-                        {
-                            return;
-                        }
-
-                        LogService.Info("Redirect: creating window on {DesktopGuid} and switching back", oldGuid);
-                        _redirectCooldownUntil = DateTime.UtcNow.AddSeconds(3);
-                        await CreateWindowForDesktop(oldGuid);
-                        VirtualDesktopService.TrySwitchToDesktop(oldGuid);
-                    }
-                    catch (Exception ex)
-                    {
-                        LogService.Error("Error handling desktop switch redirect", ex);
-                    }
-                });
-            };
 
             // Log startup timing
             sw.Stop();
@@ -443,27 +404,6 @@ public partial class App : Application
     }
 
     /// <summary>
-    /// Determines whether a desktop-switch redirect should occur.
-    /// Requires ALL conditions:
-    ///   1. Cooldown expired
-    ///   2. Cross-desktop activation detected (positive signal from WM_ACTIVATE)
-    ///   3. No recent keyboard navigation (Alt+Tab, Ctrl+Win+Arrow, Win+Tab)
-    ///   4. Switching FROM no-window TO has-window
-    /// The cross-desktop activation requirement prevents redirecting on deliberate
-    /// desktop switches (Task View, Ctrl+Win+Arrow, touchpad gestures) where the
-    /// COM callback fires before WM_ACTIVATE.
-    /// </summary>
-    internal static bool ShouldRedirect(DateTime now, DateTime cooldownUntil,
-        bool hasOldWindow, bool hasNewWindow,
-        bool crossDesktopActivation, bool isKeyboardNavigation)
-    {
-        if (now < cooldownUntil) return false;
-        if (!crossDesktopActivation) return false;
-        if (isKeyboardNavigation) return false;
-        return !hasOldWindow && hasNewWindow;
-    }
-
-    /// <summary>
     /// Resolves the target desktop for an IPC new-tab command.
     /// Prefers the sender's desktop GUID (queried by the second instance via COM at launch time)
     /// over the first instance's cached GUID (which may be stale if Windows has already activated
@@ -638,8 +578,6 @@ public partial class App : Application
         _appShutdownCts.Cancel();
         IpcService.StopServer();
         HotkeyService.Shutdown();
-        DesktopSwitchDetector.Shutdown();
-        DesktopTelemetry.Shutdown();
         VirtualDesktopService.Shutdown();
         ThemeService.Shutdown();
 
