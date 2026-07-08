@@ -36,7 +36,6 @@ public static class NoteStore
     /// </summary>
     public static async Task<List<NoteTab>> GetNotesForDesktopAsync(string desktopGuid, CancellationToken ct = default)
     {
-        await DatabaseCore.AcquireWriteLockAsync(ct).ConfigureAwait(false);
         try
         {
             await using var context = DatabaseCore.CreateContext();
@@ -49,10 +48,6 @@ public static class NoteStore
         {
             LogService.Error("GetNotesForDesktopAsync failed (guid={DesktopGuid})", desktopGuid, ex);
             throw;
-        }
-        finally
-        {
-            DatabaseCore.ReleaseWriteLock();
         }
     }
 
@@ -322,7 +317,6 @@ public static class NoteStore
     /// </summary>
     public static async Task<int> GetMaxSortOrderAsync(string desktopGuid, CancellationToken ct = default)
     {
-        await DatabaseCore.AcquireWriteLockAsync(ct).ConfigureAwait(false);
         try
         {
             await using var context = DatabaseCore.CreateContext();
@@ -333,10 +327,6 @@ public static class NoteStore
             LogService.Error("GetMaxSortOrderAsync failed (guid={DesktopGuid})", desktopGuid, ex);
             throw;
         }
-        finally
-        {
-            DatabaseCore.ReleaseWriteLock();
-        }
     }
 
     /// <summary>
@@ -344,7 +334,6 @@ public static class NoteStore
     /// </summary>
     public static async Task<List<string>> GetNoteNamesForDesktopAsync(string desktopGuid, int limit = 5, CancellationToken ct = default)
     {
-        await DatabaseCore.AcquireWriteLockAsync(ct).ConfigureAwait(false);
         try
         {
             await using var context = DatabaseCore.CreateContext();
@@ -361,10 +350,6 @@ public static class NoteStore
             LogService.Error("GetNoteNamesForDesktopAsync failed (guid={DesktopGuid})", desktopGuid, ex);
             return [];
         }
-        finally
-        {
-            DatabaseCore.ReleaseWriteLock();
-        }
     }
 
     /// <summary>
@@ -372,7 +357,6 @@ public static class NoteStore
     /// </summary>
     public static async Task<List<(string? Name, string Excerpt, DateTime CreatedAt, DateTime UpdatedAt)>> GetNotePreviewsForDesktopAsync(string desktopGuid, int limit = 5, CancellationToken ct = default)
     {
-        await DatabaseCore.AcquireWriteLockAsync(ct).ConfigureAwait(false);
         try
         {
             await using var context = DatabaseCore.CreateContext();
@@ -396,10 +380,6 @@ public static class NoteStore
             LogService.Error("GetNotePreviewsForDesktopAsync failed (guid={DesktopGuid})", desktopGuid, ex);
             return [];
         }
-        finally
-        {
-            DatabaseCore.ReleaseWriteLock();
-        }
     }
 
     /// <summary>
@@ -407,7 +387,6 @@ public static class NoteStore
     /// </summary>
     public static async Task<int> GetNoteCountForDesktopAsync(string desktopGuid, CancellationToken ct = default)
     {
-        await DatabaseCore.AcquireWriteLockAsync(ct).ConfigureAwait(false);
         try
         {
             await using var context = DatabaseCore.CreateContext();
@@ -417,10 +396,6 @@ public static class NoteStore
         {
             LogService.Error("GetNoteCountForDesktopAsync failed (guid={DesktopGuid})", desktopGuid, ex);
             return 0;
-        }
-        finally
-        {
-            DatabaseCore.ReleaseWriteLock();
         }
     }
 

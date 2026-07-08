@@ -13,7 +13,6 @@ public static class SessionStore
     /// </summary>
     public static async Task<List<(string DesktopGuid, string? DesktopName, int? DesktopIndex)>> GetAllSessionsAsync(CancellationToken ct = default)
     {
-        await DatabaseCore.AcquireWriteLockAsync(ct).ConfigureAwait(false);
         try
         {
             await using var context = DatabaseCore.CreateContext();
@@ -27,10 +26,6 @@ public static class SessionStore
         {
             LogService.Error("GetAllSessionsAsync failed", ex);
             throw;
-        }
-        finally
-        {
-            DatabaseCore.ReleaseWriteLock();
         }
     }
 
@@ -132,7 +127,6 @@ public static class SessionStore
     /// </summary>
     public static async Task<string?> GetDesktopNameAsync(string desktopGuid, CancellationToken ct = default)
     {
-        await DatabaseCore.AcquireWriteLockAsync(ct).ConfigureAwait(false);
         try
         {
             await using var context = DatabaseCore.CreateContext();
@@ -146,10 +140,6 @@ public static class SessionStore
         {
             LogService.Error("GetDesktopNameAsync failed (guid={DesktopGuid})", desktopGuid, ex);
             return null;
-        }
-        finally
-        {
-            DatabaseCore.ReleaseWriteLock();
         }
     }
 
@@ -196,7 +186,6 @@ public static class SessionStore
     /// </summary>
     public static async Task<WindowGeometry?> GetWindowGeometryAsync(string desktopGuid, CancellationToken ct = default)
     {
-        await DatabaseCore.AcquireWriteLockAsync(ct).ConfigureAwait(false);
         try
         {
             await using var context = DatabaseCore.CreateContext();
@@ -219,10 +208,6 @@ public static class SessionStore
         {
             LogService.Error("GetWindowGeometryAsync failed (guid={DesktopGuid})", desktopGuid, ex);
             throw;
-        }
-        finally
-        {
-            DatabaseCore.ReleaseWriteLock();
         }
     }
 
@@ -267,7 +252,6 @@ public static class SessionStore
     {
         if (orphanGuids.Count == 0) return [];
 
-        await DatabaseCore.AcquireWriteLockAsync(ct).ConfigureAwait(false);
         try
         {
             await using var context = DatabaseCore.CreateContext();
@@ -307,10 +291,6 @@ public static class SessionStore
         {
             LogService.Error("GetOrphanedSessionInfoAsync failed", ex);
             throw;
-        }
-        finally
-        {
-            DatabaseCore.ReleaseWriteLock();
         }
     }
 

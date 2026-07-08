@@ -12,7 +12,6 @@ public static class PreferenceStore
     /// </summary>
     public static async Task<string?> GetPreferenceAsync(string key, CancellationToken ct = default)
     {
-        await DatabaseCore.AcquireWriteLockAsync(ct).ConfigureAwait(false);
         try
         {
             await using var context = DatabaseCore.CreateContext();
@@ -26,10 +25,6 @@ public static class PreferenceStore
         {
             LogService.Error("GetPreferenceAsync failed for key: {Key}", key, ex);
             return null;
-        }
-        finally
-        {
-            DatabaseCore.ReleaseWriteLock();
         }
     }
 
