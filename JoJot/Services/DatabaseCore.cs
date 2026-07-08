@@ -80,9 +80,9 @@ public static class DatabaseCore
         _rawConnection = new SqliteConnection(_connectionString);
         await _rawConnection.OpenAsync().ConfigureAwait(false);
 
-        await ExecuteRawPragmaAsync("PRAGMA journal_mode=WAL;").ConfigureAwait(false);
-        await ExecuteRawPragmaAsync("PRAGMA synchronous=NORMAL;").ConfigureAwait(false);
-        await ExecuteRawPragmaAsync("PRAGMA foreign_keys=ON;").ConfigureAwait(false);
+        await ExecuteRawPragmaAsync(
+            "PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL; PRAGMA foreign_keys=ON;")
+            .ConfigureAwait(false);
 
         InitializeContextPool();
 
@@ -107,13 +107,43 @@ public static class DatabaseCore
     }
 
     /// <summary>
-    /// Creates all schema tables if they do not already exist.
+    /// Current schema version stamped into PRAGMA user_version after EnsureCreated + migrations.
+    /// v1 = base tables + window_state + file_path columns + idx_notes_desktop index.
+    /// Increment when adding any schema change, and guard the new migration on the old version.
     /// </summary>
-    public static async Task EnsureSchemaAsync()
+    internal const int CurrentSchemaVersion = 1;
+
+    /// <summary>Reads PRAGMA user_version (0 on a freshly created database).</summary>
+    internal static async Task<int> GetUserVersionAsync()
     {
+        await using var cmd = _rawConnection!.CreateCommand();
+        cmd.CommandText = "PRAGMA user_version;";
+        var result = await cmd.ExecuteScalarAsync().ConfigureAwait(false);
+        return Convert.ToInt32(result);
+    }
+
+    private static async Task SetUserVersionAsync(int version)
+    {
+        // PRAGMA does not support parameters; version is a compile-time constant at call sites.
+        await ExecuteRawPragmaAsync($"PRAGMA user_version = {version};").ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Creates all schema tables if they do not already exist. Returns false without touching
+    /// EF when the schema stamp is current (the ~450ms EnsureCreated fast path).
+    /// </summary>
+    public static async Task<bool> EnsureSchemaAsync()
+    {
+        if (await GetUserVersionAsync().ConfigureAwait(false) == CurrentSchemaVersion)
+        {
+            LogService.Info("Schema is current (v{Version}) — skipping EnsureCreated", CurrentSchemaVersion);
+            return false;
+        }
+
         await using var context = CreateContext();
         await context.Database.EnsureCreatedAsync().ConfigureAwait(false);
         LogService.Info("Schema ensured (all four tables).");
+        return true;
     }
 
     /// <summary>
@@ -297,6 +327,12 @@ public static class DatabaseCore
     /// </summary>
     public static async Task RunPendingMigrationsAsync()
     {
+        if (await GetUserVersionAsync().ConfigureAwait(false) == CurrentSchemaVersion)
+        {
+            LogService.Info("Schema stamp current (v{Version}) — skipping migration probes", CurrentSchemaVersion);
+            return;
+        }
+
         bool hasWindowState = await ColumnExistsAsync("app_state", "window_state").ConfigureAwait(false);
         if (!hasWindowState)
         {
@@ -322,6 +358,9 @@ public static class DatabaseCore
         {
             LogService.Info("No pending column migrations.");
         }
+
+        await SetUserVersionAsync(CurrentSchemaVersion).ConfigureAwait(false);
+        LogService.Info("Schema stamped at v{Version}", CurrentSchemaVersion);
     }
 
     /// <summary>
