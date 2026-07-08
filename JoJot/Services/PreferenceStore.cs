@@ -7,11 +7,58 @@ namespace JoJot.Services;
 /// </summary>
 public static class PreferenceStore
 {
+    private static Dictionary<string, string>? _cache;
+    private static readonly Lock _cacheLock = new();
+
+    /// <summary>
+    /// Loads every preference row into the in-memory cache. Called once at startup after the
+    /// schema is ensured. Returns the loaded map so callers can reconcile external snapshots.
+    /// </summary>
+    public static async Task<IReadOnlyDictionary<string, string>> InitializeCacheAsync(CancellationToken ct = default)
+    {
+        await using var context = DatabaseCore.CreateContext();
+        var all = await context.Preferences
+            .AsNoTracking()
+            .ToDictionaryAsync(p => p.Key, p => p.Value, ct).ConfigureAwait(false);
+        lock (_cacheLock)
+        {
+            _cache = all;
+        }
+        return all;
+    }
+
+    /// <summary>
+    /// Seeds the cache from a disk snapshot before the database is open, so language/theme
+    /// reads during early startup are instant. A later InitializeCacheAsync replaces it with
+    /// database truth. No-op if the real cache is already loaded.
+    /// </summary>
+    public static void PreloadProvisional(IReadOnlyDictionary<string, string> snapshot)
+    {
+        lock (_cacheLock)
+        {
+            _cache ??= new Dictionary<string, string>(snapshot);
+        }
+    }
+
+    /// <summary>Clears the cache so tests start from an uncached state.</summary>
+    internal static void ResetCacheForTests()
+    {
+        lock (_cacheLock)
+        {
+            _cache = null;
+        }
+    }
+
     /// <summary>
     /// Gets a preference value by key. Returns null if the key doesn't exist.
     /// </summary>
     public static async Task<string?> GetPreferenceAsync(string key, CancellationToken ct = default)
     {
+        lock (_cacheLock)
+        {
+            if (_cache is not null)
+                return _cache.TryGetValue(key, out var cached) ? cached : null;
+        }
         try
         {
             await using var context = DatabaseCore.CreateContext();
@@ -40,6 +87,12 @@ public static class PreferenceStore
             await context.Database.ExecuteSqlRawAsync(
                 "INSERT INTO preferences (key, value) VALUES ({0}, {1}) ON CONFLICT(key) DO UPDATE SET value = {1}",
                 key, value).ConfigureAwait(false);
+
+            lock (_cacheLock)
+            {
+                if (_cache is not null)
+                    _cache[key] = value;
+            }
         }
         catch (Exception ex)
         {

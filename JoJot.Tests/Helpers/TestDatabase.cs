@@ -17,6 +17,7 @@ public sealed class TestDatabase : IAsyncDisposable
     public static async Task<TestDatabase> CreateAsync()
     {
         LogService.InitializeNoop();
+        PreferenceStore.ResetCacheForTests();
 
         // Use a unique shared in-memory database per test to avoid cross-test pollution.
         // "cache=shared" keeps the DB alive as long as at least one connection is open.

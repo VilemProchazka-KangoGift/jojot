@@ -184,6 +184,7 @@ public partial class App : Application
 
             // Warm up EF model after integrity is confirmed (must complete before first real query)
             await DatabaseCore.WarmupModelAsync();
+            await PreferenceStore.InitializeCacheAsync();
             LogPhase(sw, "integrity+warmup");
 
             // Restore log level from preferences
