@@ -28,14 +28,20 @@ public partial class MainWindow
         pending.Cts.Cancel();
         pending.Cts.Dispose();
 
+        // A tab may still be persisting its optimistic INSERT — wait for all of them so the batched
+        // delete below can't race ahead of an insert and target a not-yet-existing (or wrong) row.
+        // ConfigureAwait(false): this method is sync-blocked via GetAwaiter().GetResult() on the
+        // close path, so the continuations must not require the (blocked) UI thread or it deadlocks.
         foreach (var tab in pending.Tabs)
         {
-            // A tab may still be persisting its optimistic INSERT — wait so the delete can't race
-            // ahead of the insert and target a not-yet-existing (or wrong) row.
             await tab.Persisted.ConfigureAwait(false);
-            // ConfigureAwait(false): this method is sync-blocked via GetAwaiter().GetResult() on the
-            // close path, so the continuation must not require the (blocked) UI thread or it deadlocks.
-            await NoteStore.DeleteNoteAsync(tab.Id).ConfigureAwait(false);
+        }
+
+        // Single batched statement instead of one DELETE per tab.
+        await NoteStore.DeleteNotesAsync(pending.Tabs.Select(t => t.Id).ToList()).ConfigureAwait(false);
+
+        foreach (var tab in pending.Tabs)
+        {
             // Remove undo stack on permanent deletion (thread-safe — UndoManager locks internally).
             UndoManager.Instance.RemoveStack(tab.Id);
         }

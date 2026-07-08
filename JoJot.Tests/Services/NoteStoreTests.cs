@@ -60,6 +60,28 @@ public class NoteStoreTests : IAsyncLifetime
         max.Should().Be(5);
     }
 
+    // ─── DeleteNotes (batched) ────────────────────────────────────────
+
+    [Fact]
+    public async Task DeleteNotes_RemovesAllGivenIds_InOneCall()
+    {
+        long a = await NoteStore.InsertNoteAsync("d1", null, "a", false, 0);
+        long b = await NoteStore.InsertNoteAsync("d1", null, "b", false, 1);
+        long keep = await NoteStore.InsertNoteAsync("d1", null, "keep", false, 2);
+
+        int deleted = await NoteStore.DeleteNotesAsync([a, b]);
+
+        deleted.Should().Be(2);
+        var remaining = await NoteStore.GetNotesForDesktopAsync("d1");
+        remaining.Should().ContainSingle(n => n.Id == keep);
+    }
+
+    [Fact]
+    public async Task DeleteNotes_EmptyList_IsNoOp()
+    {
+        (await NoteStore.DeleteNotesAsync([])).Should().Be(0);
+    }
+
     // ─── DeleteEmptyNotes ─────────────────────────────────────────────
 
     [Fact]

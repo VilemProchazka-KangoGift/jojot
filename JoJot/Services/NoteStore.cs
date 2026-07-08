@@ -257,6 +257,30 @@ public static class NoteStore
         }
     }
 
+    /// <summary>Deletes multiple notes in a single statement. Returns the number of rows removed.</summary>
+    public static async Task<int> DeleteNotesAsync(IReadOnlyCollection<long> noteIds)
+    {
+        if (noteIds.Count == 0) return 0;
+
+        await DatabaseCore.AcquireWriteLockAsync().ConfigureAwait(false);
+        try
+        {
+            await using var context = DatabaseCore.CreateContext();
+            return await context.Notes
+                .Where(n => noteIds.Contains(n.Id))
+                .ExecuteDeleteAsync().ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            LogService.Error("DeleteNotesAsync failed ({Count} ids)", noteIds.Count, ex);
+            throw;
+        }
+        finally
+        {
+            DatabaseCore.ReleaseWriteLock();
+        }
+    }
+
     /// <summary>
     /// Deletes all notes with empty or whitespace-only content for a given desktop.
     /// Pinned notes are preserved. Returns the number deleted.
