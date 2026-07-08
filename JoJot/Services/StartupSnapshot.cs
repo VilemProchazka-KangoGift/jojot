@@ -46,13 +46,16 @@ public static class StartupSnapshot
             if (!File.Exists(FilePath)) return false;
             var loaded = JsonSerializer.Deserialize<SnapshotData>(File.ReadAllText(FilePath));
             if (loaded is null) return false;
+            // System.Text.Json builds a fresh case-sensitive dictionary; restore ordinal-ignore-case
+            // so GetGeometry lookups behave the same as a freshly-constructed SnapshotData.
+            loaded.Geometry = new Dictionary<string, WindowGeometry>(loaded.Geometry, StringComparer.OrdinalIgnoreCase);
             lock (_lock) _data = loaded;
             return true;
         }
         catch (Exception ex)
         {
             LogService.Warn("StartupSnapshot: failed to load — discarding ({Error})", ex.Message);
-            try { File.Delete(FilePath); } catch (IOException) { }
+            try { File.Delete(FilePath); } catch (Exception) { }
             return false;
         }
     }

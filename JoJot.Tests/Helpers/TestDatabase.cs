@@ -1,3 +1,4 @@
+using System.IO;
 using JoJot.Services;
 using Microsoft.Data.Sqlite;
 
@@ -18,6 +19,9 @@ public sealed class TestDatabase : IAsyncDisposable
     {
         LogService.InitializeNoop();
         PreferenceStore.ResetCacheForTests();
+        StartupSnapshot.ResetForTests();
+        StartupSnapshot.OverrideFilePathForTests =
+            Path.Combine(Path.GetTempPath(), $"jojot-testsnap-{Guid.NewGuid():N}.json");
 
         // Use a unique shared in-memory database per test to avoid cross-test pollution.
         // "cache=shared" keeps the DB alive as long as at least one connection is open.

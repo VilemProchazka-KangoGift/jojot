@@ -5,6 +5,7 @@ using JoJot.Services;
 namespace JoJot.Tests.Services;
 
 /// <summary>Round-trip tests for the startup snapshot sidecar file.</summary>
+[Collection("Database")]
 public sealed class StartupSnapshotTests : IDisposable
 {
     private readonly string _tempFile;
