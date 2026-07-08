@@ -574,6 +574,7 @@ public partial class MainWindow : Window
 
         // Fire-and-forget: save geometry to database (process stays alive so this completes)
         _ = SessionStore.SaveWindowGeometryAsync(_desktopGuid, geo);
+        StartupSnapshot.UpdateGeometry(_desktopGuid, geo);
 
         LogService.Info("Window closing for desktop {DesktopGuid} \u2014 geometry saved ({Left},{Top} {Width}x{Height} maximized={IsMaximized})", _desktopGuid, geo.Left, geo.Top, geo.Width, geo.Height);
 

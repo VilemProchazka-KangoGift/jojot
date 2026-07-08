@@ -93,6 +93,8 @@ public static class PreferenceStore
                 if (_cache is not null)
                     _cache[key] = value;
             }
+
+            StartupSnapshot.UpdatePreference(key, value);
         }
         catch (Exception ex)
         {
