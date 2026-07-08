@@ -34,12 +34,19 @@ public partial class App : Application
         _singleInstanceMutex = null;
     }
 
+    /// <summary>Stores the mutex acquired by Program.Main for the process lifetime.</summary>
+    internal static void SetSingleInstanceMutex(Mutex mutex)
+    {
+        _singleInstanceMutex = mutex;
+        GC.KeepAlive(_singleInstanceMutex);
+    }
+
     /// <summary>
     /// Re-acquires the single-instance mutex after a zombie first instance was killed, so this
     /// process can continue as the primary. Returns false if ownership could not be obtained
     /// (another instance won the race), in which case the caller should exit.
     /// </summary>
-    private static bool TryReacquireMutexAsPrimary()
+    internal static bool TryReacquireMutexAsPrimary()
     {
         try
         {
@@ -113,54 +120,6 @@ public partial class App : Application
         try
         {
             var sw = Stopwatch.StartNew();
-
-            // Initialize logging
-            var appDir = AppEnvironment.AppDataDirectory;
-            Directory.CreateDirectory(appDir);
-            LogService.Initialize(appDir);
-            LogService.Info("JoJot starting...");
-
-            // Single-instance enforcement via global mutex
-            bool createdNew = IpcService.TryAcquireMutex(out var mutex);
-            _singleInstanceMutex = mutex;
-            GC.KeepAlive(_singleInstanceMutex);
-
-            if (!createdNew)
-            {
-                // Second instance: query current desktop via COM so the first instance
-                // creates a window on the desktop the user is actually on, not wherever
-                // its cached CurrentDesktopGuid points (which may already be stale if
-                // Windows activated the first instance's window on another desktop).
-                string? senderDesktopGuid = null;
-                try
-                {
-                    VirtualDesktopInterop.Initialize();
-                    var (id, _, _) = VirtualDesktopInterop.GetCurrentDesktop();
-                    senderDesktopGuid = id.ToString();
-                }
-                catch (Exception ex)
-                {
-                    LogService.Warn("Second instance: failed to query desktop — first instance will use cached GUID: {Error}", ex.Message);
-                }
-
-                LogService.Info("Second instance detected — sending new-tab command (desktop={DesktopGuid})", senderDesktopGuid);
-                var sendResult = await IpcService.SendCommandAsync(new NewTabCommand(DesktopGuid: senderDesktopGuid));
-                if (sendResult != IpcService.SendResult.ZombieKilled)
-                {
-                    Environment.Exit(0);
-                    return;
-                }
-
-                // The previous instance was unresponsive and has been terminated. Rather than leaving
-                // the user with no running JoJot at all, take over as primary: re-acquire the now-freed
-                // mutex and fall through into normal startup below.
-                LogService.Warn("Previous instance was unresponsive and terminated — continuing as primary");
-                if (!TryReacquireMutexAsPrimary())
-                {
-                    Environment.Exit(0);
-                    return;
-                }
-            }
 
             // Explicit shutdown mode — process stays alive when all windows are closed
             ShutdownMode = ShutdownMode.OnExplicitShutdown;
