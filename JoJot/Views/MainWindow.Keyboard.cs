@@ -36,10 +36,10 @@ public partial class MainWindow
             () => _ = DeleteTabAsync(_activeTab!),
             () => _activeTab is not null);
         TogglePinCommand = new RelayCommand(
-            () => _ = TogglePinAsync(_activeTab!),
+            () => TogglePin(_activeTab!),
             () => _activeTab is not null);
         CloneTabCommand = new RelayCommand(
-            () => _ = CloneTabAsync(_activeTab!),
+            () => CloneTab(_activeTab!),
             () => _activeTab is not null);
         SaveCommand = new RelayCommand(
             () => SaveNote(),

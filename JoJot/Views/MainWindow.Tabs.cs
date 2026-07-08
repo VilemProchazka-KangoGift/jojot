@@ -210,7 +210,7 @@ public partial class MainWindow
         // Pin button click
         pinBtn.MouseLeftButtonDown += (s, ev) =>
         {
-            _ = TogglePinAsync(tab);
+            TogglePin(tab);
             ev.Handled = true;
         };
 
@@ -740,41 +740,47 @@ public partial class MainWindow
     // ─── Pin/Unpin Toggle ───────────────────────────────────────────────
 
     /// <summary>
-    /// Toggles the pinned state of a tab, re-sorts the collection, and persists.
-    /// Pinned tabs always sort to top.
+    /// Toggles the pinned state of a tab, re-sorts the collection, and persists in the
+    /// background (UI first — a pin toggle must never wait on the database).
     /// </summary>
-    private async Task TogglePinAsync(NoteTab tab)
+    private void TogglePin(NoteTab tab)
     {
         tab.Pinned = !tab.Pinned;
-        await NoteStore.UpdateNotePinnedAsync(tab.Id, tab.Pinned);
 
         // ReorderAfterPinToggle clears and repopulates the bound collection; guard so the transient
         // empty state doesn't fire SelectionChanged and blank the active tab. RebuildTabList reselects.
         MutateTabsGuarded(() => ViewModel.ReorderAfterPinToggle(tab));
-        await NoteStore.UpdateNoteSortOrdersAsync(_tabs.Where(t => t.Id > 0).Select(t => (t.Id, t.SortOrder)));
-
         RebuildTabList();
         UpdateToolbarState();
+
+        var orders = _tabs.Where(t => t.Id > 0).Select(t => (t.Id, t.SortOrder)).ToList();
+        bool pinned = tab.Pinned;
+        BackgroundWriter.Run(async () =>
+        {
+            // Persisted is safe to await here even for a not-yet-persisted (temp-id) tab: Task 11's
+            // fix guarantees it always completes, even on a failed INSERT. Pin never creates a tab
+            // itself, so there is no BeginPersistence/CompletePersistence pairing to manage here.
+            await tab.Persisted.ConfigureAwait(false);
+            await NoteStore.UpdateNotePinnedAsync(tab.Id, pinned).ConfigureAwait(false);
+            await NoteStore.UpdateNoteSortOrdersAsync(orders).ConfigureAwait(false);
+        }, "pin toggle");
     }
 
     // ─── Clone Tab ──────────────────────────────────────────────────────
 
     /// <summary>
-    /// Clones the current tab: duplicates content into a new tab inserted after the source.
+    /// Clones the current tab optimistically: the clone appears and is focused immediately;
+    /// the INSERT and sort-order persist run in the background.
     /// </summary>
-    private async Task CloneTabAsync(NoteTab source)
+    private void CloneTab(NoteTab source)
     {
         SaveCurrentTabContent();
 
         var (insertIndex, sortOrder) = ViewModel.GetClonePosition(source);
 
-        long newId = await NoteStore.InsertNoteAsync(
-            _desktopGuid, source.Name, source.Content,
-            source.Pinned, sortOrder);
-
         var clone = new NoteTab
         {
-            Id = newId,
+            Id = NoteTab.NextTempId(),
             DesktopGuid = _desktopGuid,
             Name = source.Name,
             Content = source.Content,
@@ -783,12 +789,43 @@ public partial class MainWindow
             CreatedAt = DateTime.Now,
             UpdatedAt = DateTime.Now
         };
+        clone.BeginPersistence();
 
         ViewModel.InsertNewTab(clone, insertIndex);
-        await NoteStore.UpdateNoteSortOrdersAsync(_tabs.Where(t => t.Id > 0).Select(t => (t.Id, t.SortOrder)));
-
         RebuildTabList();
         SelectTabByNote(clone);
         Keyboard.Focus(ContentEditor);
+
+        var orders = _tabs.Where(t => t.Id > 0).Select(t => (t.Id, t.SortOrder)).ToList();
+        BackgroundWriter.Run(async () =>
+        {
+            long tempId = clone.Id;
+            try
+            {
+                long realId = await NoteStore.InsertNoteAsync(
+                    _desktopGuid, clone.Name, clone.Content, clone.Pinned, sortOrder).ConfigureAwait(false);
+
+                // Id assignment raises PropertyChanged and the undo stack re-key must be atomic
+                // with it from the UI's perspective — do both on the dispatcher.
+                await Dispatcher.InvokeAsync(() =>
+                {
+                    clone.Id = realId;
+                    UndoManager.Instance.MigrateStack(tempId, realId);
+                });
+
+                await NoteStore.UpdateNoteSortOrdersAsync(orders).ConfigureAwait(false);
+            }
+            finally
+            {
+                // Persisted MUST complete in every outcome — including a thrown INSERT. It gates
+                // CommitPendingDeletionAsync (which awaits tab.Persisted before DeleteNoteAsync),
+                // and that method is sync-blocked via GetAwaiter().GetResult() on the window-close/
+                // shutdown path. If Persisted never completed, that await would hang the UI thread
+                // forever. We do NOT catch the exception: finally runs before it leaves the lambda,
+                // so Persisted completes AND BackgroundWriter still logs it and fires the
+                // "Saving failed — kept in memory" toast.
+                clone.CompletePersistence();
+            }
+        }, "clone tab");
     }
 }

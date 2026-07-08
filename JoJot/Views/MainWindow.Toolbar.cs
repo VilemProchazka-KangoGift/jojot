@@ -15,13 +15,13 @@ public partial class MainWindow
     private void ToolbarPin_Click(object sender, RoutedEventArgs e)
     {
         if (_activeTab is not null)
-            _ = TogglePinAsync(_activeTab);
+            TogglePin(_activeTab);
     }
 
     private void ToolbarClone_Click(object sender, RoutedEventArgs e)
     {
         if (_activeTab is not null)
-            _ = CloneTabAsync(_activeTab);
+            CloneTab(_activeTab);
     }
 
     private void ToolbarCopy_Click(object sender, RoutedEventArgs e)
