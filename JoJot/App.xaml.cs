@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.IO;
 using System.Windows;
 using System.Windows.Interop;
 using JoJot.Interop;

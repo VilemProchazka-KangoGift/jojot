@@ -687,16 +687,19 @@ public partial class MainWindow
                 long realId = await NoteStore.InsertNoteAsync(
                     _desktopGuid, null, "", false, sortOrder).ConfigureAwait(false);
 
-                // Id assignment raises PropertyChanged and the undo stack re-key must be atomic
-                // with it from the UI's perspective — do both on the dispatcher.
-                await Dispatcher.InvokeAsync(() =>
-                {
-                    newTab.Id = realId;
-                    UndoManager.Instance.MigrateStack(tempId, realId);
-                });
+                // Assign the real id and re-key the undo stack on the background thread. Id is a plain
+                // long (atomic write, no PropertyChanged, no binding keyed on it — selection is
+                // reference-based) and MigrateStack is internally locked, so neither needs the UI
+                // dispatcher — and MUST NOT hop to it: Persisted completes in the finally below, and
+                // the sync-blocked close path (CommitPendingDeletionAsync via GetAwaiter().GetResult())
+                // never pumps the dispatcher, so a hop here would deadlock the UI thread on close.
+                newTab.Id = realId;
+                UndoManager.Instance.MigrateStack(tempId, realId);
 
-                // Catch-all: anything typed before the row existed lives only in the model.
-                string content = await Dispatcher.InvokeAsync(() => newTab.Content);
+                // Catch-all: anything typed before the row existed lives only in the model. Reading
+                // Content off-thread is a benign race (atomic reference read); autosave re-persists on
+                // the next change once the real id exists.
+                string content = newTab.Content;
                 if (content.Length > 0)
                 {
                     await NoteStore.UpdateNoteContentAsync(realId, content).ConfigureAwait(false);
@@ -805,13 +808,14 @@ public partial class MainWindow
                 long realId = await NoteStore.InsertNoteAsync(
                     _desktopGuid, clone.Name, clone.Content, clone.Pinned, sortOrder).ConfigureAwait(false);
 
-                // Id assignment raises PropertyChanged and the undo stack re-key must be atomic
-                // with it from the UI's perspective — do both on the dispatcher.
-                await Dispatcher.InvokeAsync(() =>
-                {
-                    clone.Id = realId;
-                    UndoManager.Instance.MigrateStack(tempId, realId);
-                });
+                // Assign the real id and re-key the undo stack on the background thread. Id is a plain
+                // long (atomic write, no PropertyChanged, no binding keyed on it — selection is
+                // reference-based) and MigrateStack is internally locked, so neither needs the UI
+                // dispatcher — and MUST NOT hop to it: Persisted completes in the finally below, and
+                // the sync-blocked close path (CommitPendingDeletionAsync via GetAwaiter().GetResult())
+                // never pumps the dispatcher, so a hop here would deadlock the UI thread on close.
+                clone.Id = realId;
+                UndoManager.Instance.MigrateStack(tempId, realId);
 
                 await NoteStore.UpdateNoteSortOrdersAsync(orders).ConfigureAwait(false);
             }
