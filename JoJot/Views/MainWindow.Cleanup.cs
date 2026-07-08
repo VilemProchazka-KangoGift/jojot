@@ -85,9 +85,13 @@ public partial class MainWindow
         bool wasActiveDeleted = _activeTab is not null && candidates.Any(t => t.Id == _activeTab.Id);
         int activeOriginalIndex = wasActiveDeleted ? _tabs.IndexOf(_activeTab!) : 0;
 
-        // Remove from in-memory collection
-        foreach (var tab in candidates)
-            _tabs.Remove(tab);
+        // Remove from in-memory collection (guarded: removing the selected item would otherwise
+        // fire SelectionChanged on the bound list before the focus fallback runs).
+        MutateTabsGuarded(() =>
+        {
+            foreach (var tab in candidates)
+                _tabs.Remove(tab);
+        });
 
         // Hard-delete from database (permanent, no undo)
         foreach (var tab in candidates)

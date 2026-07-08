@@ -123,29 +123,59 @@ public static class DatabaseCore
     public static async Task<bool> VerifyIntegrityAsync(CancellationToken ct = default)
     {
         string[] required = ["notes", "app_state", "pending_moves", "preferences"];
-        await AcquireWriteLockAsync().ConfigureAwait(false);
+        await AcquireWriteLockAsync(ct).ConfigureAwait(false);
         try
         {
+            // Page-level integrity first: quick_check catches on-disk corruption that a
+            // table-existence check cannot. Run it unconditionally — it is fast for small DBs.
+            await using (var checkCmd = _rawConnection!.CreateCommand())
+            {
+                checkCmd.CommandText = "PRAGMA quick_check;";
+                await using var reader = await checkCmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+                if (!await reader.ReadAsync(ct).ConfigureAwait(false))
+                    return false;
+                string quickCheck = reader.GetString(0);
+                if (!string.Equals(quickCheck, "ok", StringComparison.OrdinalIgnoreCase))
+                {
+                    LogService.Error("PRAGMA quick_check returned: {Result}", quickCheck);
+                    return false;
+                }
+            }
+
+            // Schema completeness: every expected table must exist.
             foreach (var table in required)
             {
                 await using var cmd = _rawConnection!.CreateCommand();
                 cmd.CommandText = "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name=@name;";
                 cmd.Parameters.AddWithValue("@name", table);
-                var result = await cmd.ExecuteScalarAsync().ConfigureAwait(false);
-                long count = Convert.ToInt64(result);
-                if (count == 0)
+                var result = await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false);
+                if (Convert.ToInt64(result) == 0)
                 {
-                    LogService.Warn("Expected table {Table} is missing — running PRAGMA quick_check", table);
-                    _writeLock.Release();
-                    return await RunQuickCheckAsync().ConfigureAwait(false);
+                    LogService.Warn("Expected table {Table} is missing", table);
+                    return false;
                 }
             }
+
+            return true;
+        }
+        catch (OperationCanceledException)
+        {
+            // Cancellation is not corruption — never let it trigger destructive recovery.
+            throw;
+        }
+        catch (Exception ex)
+        {
+            // Only DEFINITE corruption signals above (missing table / quick_check != ok) return false,
+            // because the caller responds to false by moving the DB aside and creating an empty one.
+            // An unexpected/transient error here (IO hiccup, etc.) must NOT nuke the user's database —
+            // assume healthy and let the first real query surface any genuine problem.
+            LogService.Error("VerifyIntegrityAsync failed unexpectedly — assuming healthy to avoid destructive recovery", ex);
+            return true;
         }
         finally
         {
-            if (_writeLock.CurrentCount == 0) _writeLock.Release();
+            _writeLock.Release();
         }
-        return true;
     }
 
     /// <summary>
@@ -156,20 +186,38 @@ public static class DatabaseCore
     {
         LogService.Error("Database corruption detected — backing up and recreating");
 
-        _rawConnection?.Dispose();
-        _rawConnection = null;
+        // Release ALL open handles to the file before moving it. The raw connection AND the pooled
+        // EF connections (opened by EnsureSchemaAsync before the integrity check) hold the file open.
+        // Microsoft.Data.Sqlite pools physical connections, so nulling the factory is not enough —
+        // the pool must be cleared, or File.Move throws a sharing violation and recovery silently fails.
+        _contextFactory = null;
+        if (_rawConnection is not null)
+        {
+            await _rawConnection.DisposeAsync().ConfigureAwait(false);
+            _rawConnection = null;
+        }
+        SqliteConnection.ClearAllPools();
 
         string corruptPath = dbPath + ".corrupt";
-        if (File.Exists(corruptPath))
-            File.Delete(corruptPath);
-
-        File.Move(dbPath, corruptPath);
+        MoveOrDeleteCorruptFile(dbPath, corruptPath);
+        // The -wal and -shm sidecars belong to the corrupt DB. A stale WAL left next to the fresh
+        // file would be replayed into it and re-corrupt it, so move them out of the way too.
+        MoveOrDeleteCorruptFile(dbPath + "-wal", corruptPath + "-wal");
+        MoveOrDeleteCorruptFile(dbPath + "-shm", corruptPath + "-shm");
         LogService.Warn("Corrupt database backed up to: {CorruptPath}", corruptPath);
 
         await OpenAsync(dbPath).ConfigureAwait(false);
         await EnsureSchemaAsync().ConfigureAwait(false);
 
         LogService.Info("Fresh database created after corruption recovery.");
+    }
+
+    /// <summary>Moves <paramref name="source"/> to <paramref name="dest"/> (replacing dest), if it exists.</summary>
+    private static void MoveOrDeleteCorruptFile(string source, string dest)
+    {
+        if (!File.Exists(source)) return;
+        if (File.Exists(dest)) File.Delete(dest);
+        File.Move(source, dest);
     }
 
     /// <summary>
@@ -263,9 +311,16 @@ public static class DatabaseCore
             LogService.Info("Migration: added file_path column to notes");
         }
 
+        // Index for the hot per-desktop note queries. EnsureCreated only adds indexes to a brand-new
+        // database, so existing installs need this explicit, idempotent creation. Name matches the
+        // model's HasDatabaseName so a fresh DB doesn't end up with two indexes on the same columns.
+        await ExecuteNonQueryAsync(
+            "CREATE INDEX IF NOT EXISTS idx_notes_desktop ON notes(desktop_guid, pinned, sort_order);")
+            .ConfigureAwait(false);
+
         if (hasWindowState && hasFilePath)
         {
-            LogService.Info("No pending migrations.");
+            LogService.Info("No pending column migrations.");
         }
     }
 
@@ -316,38 +371,6 @@ public static class DatabaseCore
     }
 
     // ─── Private helpers ────────────────────────────────────────────────
-
-    private static async Task<bool> RunQuickCheckAsync()
-    {
-        try
-        {
-            await AcquireWriteLockAsync().ConfigureAwait(false);
-            try
-            {
-                await using var cmd = _rawConnection!.CreateCommand();
-                cmd.CommandText = "PRAGMA quick_check;";
-                await using var reader = await cmd.ExecuteReaderAsync().ConfigureAwait(false);
-                if (reader.Read())
-                {
-                    string result = reader.GetString(0);
-                    bool ok = string.Equals(result, "ok", StringComparison.OrdinalIgnoreCase);
-                    if (!ok)
-                        LogService.Error("PRAGMA quick_check returned: {Result}", result);
-                    return ok;
-                }
-                return false;
-            }
-            finally
-            {
-                _writeLock.Release();
-            }
-        }
-        catch (Exception ex)
-        {
-            LogService.Error("PRAGMA quick_check failed with exception", ex);
-            return false;
-        }
-    }
 
     private static async Task<bool> ColumnExistsAsync(string table, string column)
     {

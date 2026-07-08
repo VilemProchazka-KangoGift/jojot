@@ -41,17 +41,28 @@ public partial class MainWindow
     }
 
     /// <summary>
+    /// Clears the tab search filter and refreshes the list immediately (bypassing the debounce).
+    /// Used by Escape, by new-tab creation (a filter would hide the new empty tab), and by the
+    /// deletion focus cascade.
+    /// </summary>
+    private void ClearSearch()
+    {
+        _searchDebounceTimer?.Stop();
+        SearchBox.Text = "";          // TextChanged syncs _searchText/placeholder and re-arms the debounce
+        _searchDebounceTimer?.Stop(); // cancel it — refresh right now instead
+        _searchText = "";
+        SearchPlaceholder.Visibility = Visibility.Visible;
+        RebuildTabList();
+    }
+
+    /// <summary>
     /// Escape clears search and returns focus to editor.
     /// </summary>
     private void SearchBox_PreviewKeyDown(object sender, KeyEventArgs e)
     {
         if (e.Key == Key.Escape)
         {
-            _searchDebounceTimer?.Stop();
-            SearchBox.Text = "";
-            _searchText = "";
-            SearchPlaceholder.Visibility = Visibility.Visible;
-            RebuildTabList();
+            ClearSearch();
             Keyboard.Focus(ContentEditor);
             e.Handled = true;
         }
@@ -161,7 +172,13 @@ public partial class MainWindow
 
         if (ContentEditor.SelectionLength > 0)
         {
-            FindReplacePanel.SetFindText(ContentEditor.SelectedText);
+            // Seed with the first line only — the find input is single-line, and multi-line
+            // queries render as odd block highlights. (Matches VS Code/browser behavior.)
+            var seed = ContentEditor.SelectedText;
+            int newline = seed.IndexOfAny(['\r', '\n']);
+            if (newline >= 0) seed = seed[..newline];
+            if (seed.Length > 0)
+                FindReplacePanel.SetFindText(seed);
         }
 
         FindReplacePanel.Show();
@@ -331,17 +348,20 @@ public partial class MainWindow
         int matchPos = _findMatches[_currentFindIndex];
 
         // Push undo snapshot before replacement
+        FlushPendingUndoSnapshot();
         var stack = UndoManager.Instance.GetOrCreateStack(_activeTab.Id);
         stack.PushSnapshot(ContentEditor.Text);
 
         string newContent = ViewModels.MainWindowViewModel.ReplaceSingle(
             ContentEditor.Text, matchPos, _findQueryLength, replacement);
 
-        // Assign via ContentEditor.Text — triggers autosave and TextChanged handler
+        // TextChanged is suppressed during the assignment, so the autosave trigger is skipped —
+        // mark dirty explicitly so the replacement is persisted (and survives window close).
         _suppressTextChanged = true;
         ContentEditor.Text = newContent;
         _activeTab.Content = newContent;
         _suppressTextChanged = false;
+        _autosaveService.NotifyTextChanged();
 
         // Re-run search to update match positions after replacement
         var query = FindReplacePanel.GetFindText();
@@ -359,6 +379,7 @@ public partial class MainWindow
         string replacement = FindReplacePanel.GetReplaceText();
 
         // Push undo snapshot BEFORE replacement so Replace All is a single undo action
+        FlushPendingUndoSnapshot();
         var stack = UndoManager.Instance.GetOrCreateStack(_activeTab.Id);
         stack.PushSnapshot(ContentEditor.Text);
 
@@ -366,11 +387,13 @@ public partial class MainWindow
             ContentEditor.Text, query, replacement,
             FindReplacePanel.CaseSensitive, FindReplacePanel.WholeWord);
 
-        // Assign via ContentEditor.Text — triggers autosave
+        // TextChanged is suppressed during the assignment, so mark dirty explicitly so the
+        // Replace All result is persisted rather than silently reverting on window close.
         _suppressTextChanged = true;
         ContentEditor.Text = newContent;
         _activeTab.Content = newContent;
         _suppressTextChanged = false;
+        _autosaveService.NotifyTextChanged();
 
         // Show replacement count via toast with undo
         if (count > 0)

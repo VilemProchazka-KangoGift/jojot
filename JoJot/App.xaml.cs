@@ -35,6 +35,35 @@ public partial class App : Application
     }
 
     /// <summary>
+    /// Re-acquires the single-instance mutex after a zombie first instance was killed, so this
+    /// process can continue as the primary. Returns false if ownership could not be obtained
+    /// (another instance won the race), in which case the caller should exit.
+    /// </summary>
+    private static bool TryReacquireMutexAsPrimary()
+    {
+        try
+        {
+            _singleInstanceMutex?.Dispose();
+            var mutex = new Mutex(true, IpcService.MutexName, out bool createdNew);
+            if (!createdNew)
+            {
+                // The named mutex still exists (the killed process may have abandoned it) — try to
+                // take ownership. An abandoned mutex grants ownership via AbandonedMutexException.
+                try { createdNew = mutex.WaitOne(TimeSpan.FromSeconds(1)); }
+                catch (AbandonedMutexException) { createdNew = true; }
+            }
+            _singleInstanceMutex = mutex;
+            GC.KeepAlive(_singleInstanceMutex);
+            return createdNew;
+        }
+        catch (Exception ex)
+        {
+            LogService.Error("Failed to re-acquire single-instance mutex after zombie kill", ex);
+            return false;
+        }
+    }
+
+    /// <summary>
     /// Cancellation source signaled on application exit to stop the IPC server and other background work.
     /// </summary>
     private readonly CancellationTokenSource _appShutdownCts = new();
@@ -104,9 +133,22 @@ public partial class App : Application
                 }
 
                 LogService.Info("Second instance detected — sending new-tab command (desktop={DesktopGuid})", senderDesktopGuid);
-                await IpcService.SendCommandAsync(new NewTabCommand(DesktopGuid: senderDesktopGuid));
-                Environment.Exit(0);
-                return;
+                var sendResult = await IpcService.SendCommandAsync(new NewTabCommand(DesktopGuid: senderDesktopGuid));
+                if (sendResult != IpcService.SendResult.ZombieKilled)
+                {
+                    Environment.Exit(0);
+                    return;
+                }
+
+                // The previous instance was unresponsive and has been terminated. Rather than leaving
+                // the user with no running JoJot at all, take over as primary: re-acquire the now-freed
+                // mutex and fall through into normal startup below.
+                LogService.Warn("Previous instance was unresponsive and terminated — continuing as primary");
+                if (!TryReacquireMutexAsPrimary())
+                {
+                    Environment.Exit(0);
+                    return;
+                }
             }
 
             // Explicit shutdown mode — process stays alive when all windows are closed
@@ -174,6 +216,10 @@ public partial class App : Application
 
             // Start IPC server
             IpcService.StartServer(HandleIpcCommand, _appShutdownCts.Token);
+
+            // Register the global hotkey once, on a dedicated message-only window owned by the app
+            // (not any MainWindow) so it keeps working after all windows are closed.
+            await HotkeyService.InitializeAsync(OnGlobalHotkeyPressed);
 
             // Run pending migrations before window restore.
             // Migrations must complete before GetWindowGeometryAsync (which reads
@@ -276,38 +322,6 @@ public partial class App : Application
         // Load tabs from database after window is shown
         await window.LoadTabsAsync();
 
-        // Initialize global hotkey after window has HWND.
-        // Only register for the first window (hotkey is system-wide, one registration suffices).
-        if (_windows.Count <= 1)
-        {
-            await HotkeyService.InitializeAsync(window, () =>
-            {
-                Dispatcher.InvokeAsync(() =>
-                {
-                    try
-                    {
-                        // Global hotkey action: activate window and create a new note
-                        var currentGuid = VirtualDesktopService.CurrentDesktopGuid;
-                        if (_windows.TryGetValue(currentGuid, out var w))
-                        {
-                            w.WindowState = WindowState.Normal;
-                            WindowActivationHelper.ActivateWindow(w);
-                            _ = w.CreateNewTabAsync();
-                        }
-                        else
-                        {
-                            // No window for this desktop — create one (auto-creates first tab)
-                            _ = CreateWindowForDesktop(currentGuid);
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        LogService.Error("Error handling global hotkey", ex);
-                    }
-                });
-            });
-        }
-
         // Initialize preferences panel data
         await window.InitializePreferencesAsync();
 
@@ -321,6 +335,36 @@ public partial class App : Application
         }
 
         return window;
+    }
+
+    /// <summary>
+    /// Global hotkey handler: on the current desktop, activate the existing window and add a note,
+    /// or create a window if none exists. Marshaled to the UI thread.
+    /// </summary>
+    private void OnGlobalHotkeyPressed()
+    {
+        Dispatcher.InvokeAsync(() =>
+        {
+            try
+            {
+                var currentGuid = VirtualDesktopService.CurrentDesktopGuid;
+                if (_windows.TryGetValue(currentGuid, out var w))
+                {
+                    w.WindowState = WindowState.Normal;
+                    WindowActivationHelper.ActivateWindow(w);
+                    _ = w.CreateNewTabAsync();
+                }
+                else
+                {
+                    // No window for this desktop — create one (auto-creates first tab)
+                    _ = CreateWindowForDesktop(currentGuid);
+                }
+            }
+            catch (Exception ex)
+            {
+                LogService.Error("Error handling global hotkey", ex);
+            }
+        });
     }
 
     // ─── IPC Command Routing ────────────────────────────────────────────
@@ -559,6 +603,16 @@ public partial class App : Application
 
         // Snapshot the window list — FlushAndClose triggers Closed which removes entries from _windows
         var windows = _windows.Values.ToList();
+
+        // Persist irreplaceable note content for EVERY window first — before any slower per-window
+        // teardown (geometry, pending-deletion commits, close animations). If Windows cuts the
+        // shutdown budget short, note data is already safe even if later close work doesn't finish.
+        foreach (var window in windows)
+        {
+            try { window.FlushContentForShutdown(); }
+            catch (Exception ex) { LogService.Error("Shutdown content flush failed", ex); }
+        }
+
         foreach (var window in windows)
         {
             window.FlushAndClose();

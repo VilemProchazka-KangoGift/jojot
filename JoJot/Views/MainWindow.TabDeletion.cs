@@ -30,8 +30,10 @@ public partial class MainWindow
 
         foreach (var tab in pending.Tabs)
         {
-            await NoteStore.DeleteNoteAsync(tab.Id);
-            // Remove undo stack on permanent deletion
+            // ConfigureAwait(false): this method is sync-blocked via GetAwaiter().GetResult() on the
+            // close path, so the continuation must not require the (blocked) UI thread or it deadlocks.
+            await NoteStore.DeleteNoteAsync(tab.Id).ConfigureAwait(false);
+            // Remove undo stack on permanent deletion (thread-safe — UndoManager locks internally).
             UndoManager.Instance.RemoveStack(tab.Id);
         }
     }
@@ -46,7 +48,10 @@ public partial class MainWindow
         await CommitPendingDeletionAsync();
 
         int originalIndex = _tabs.IndexOf(tab);
-        var focusTarget = ViewModel.RemoveTab(tab);
+        NoteTab? focusTarget = null;
+        // Guard: removing the selected data item fires SelectionChanged on the bound list; suppress
+        // it so the focus cascade below drives the new selection cleanly.
+        MutateTabsGuarded(() => focusTarget = ViewModel.RemoveTab(tab));
         RebuildTabList();
 
         if (focusTarget is not null)
@@ -69,7 +74,10 @@ public partial class MainWindow
         SaveCurrentTabContent();
         await CommitPendingDeletionAsync();
 
-        var (removed, originalIndexes, focusTarget) = ViewModel.RemoveMultiple(candidates);
+        List<NoteTab> removed = [];
+        List<int> originalIndexes = [];
+        NoteTab? focusTarget = null;
+        MutateTabsGuarded(() => (removed, originalIndexes, focusTarget) = ViewModel.RemoveMultiple(candidates));
         if (removed.Count == 0) return;
 
         RebuildTabList();
@@ -142,10 +150,7 @@ public partial class MainWindow
         if (!string.IsNullOrEmpty(_searchText))
         {
             // Search is hiding everything — clear it and retry
-            SearchBox.Text = "";
-            _searchText = "";
-            SearchPlaceholder.Visibility = Visibility.Visible;
-            RebuildTabList();
+            ClearSearch();
 
             var retryTarget = ViewModel.GetFocusCascadeTarget(0);
             await ApplyFocusCascadeAsync(retryTarget);

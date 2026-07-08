@@ -40,6 +40,7 @@ public sealed class NoteTab : ObservableObject
     private DateTime _updatedAt;
     private int _sortOrder;
     private string? _filePath;
+    private bool _showUnpinnedSeparator;
 
     /// <summary>
     /// Primary key (auto-incremented row ID).
@@ -89,6 +90,17 @@ public sealed class NoteTab : ObservableObject
     {
         get => _pinned;
         set => SetProperty(ref _pinned, value);
+    }
+
+    /// <summary>
+    /// True for the first unpinned tab when pinned tabs exist — drives the zone divider shown
+    /// above it in the tab list (replaces the imperative separator item so the list can virtualize).
+    /// Recomputed by RebuildTabList whenever the tab order or pin state changes.
+    /// </summary>
+    public bool ShowUnpinnedSeparator
+    {
+        get => _showUnpinnedSeparator;
+        set => SetProperty(ref _showUnpinnedSeparator, value);
     }
 
     /// <summary>

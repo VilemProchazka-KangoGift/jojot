@@ -1,5 +1,4 @@
 using System.Runtime.InteropServices;
-using System.Windows;
 using System.Windows.Input;
 using System.Windows.Interop;
 
@@ -38,6 +37,9 @@ public static partial class HotkeyService
 
     private const int WM_HOTKEY = 0x0312;
     private const int HOTKEY_ID = 0x9001;
+
+    /// <summary>HWND_MESSAGE — parent for a message-only window (receives messages, no UI).</summary>
+    private static readonly IntPtr HwndMessage = new(-3);
 
     private const int WH_KEYBOARD_LL = 13;
     private const int WM_KEYDOWN = 0x0100;
@@ -79,14 +81,25 @@ public static partial class HotkeyService
     /// Loads saved hotkey from preferences and registers it.
     /// Returns false if the hotkey is already in use by another application.
     /// </summary>
-    /// <param name="window">The window to use for hotkey message reception.</param>
     /// <param name="onHotkeyPressed">Callback invoked when the hotkey is pressed.</param>
-    public static async Task<bool> InitializeAsync(Window window, Action onHotkeyPressed)
+    public static async Task<bool> InitializeAsync(Action onHotkeyPressed)
     {
         _onHotkeyPressed = onHotkeyPressed;
-        _hwnd = new WindowInteropHelper(window).Handle;
-        _source = HwndSource.FromHwnd(_hwnd);
-        _source?.AddHook(WndProc);
+
+        // Own a dedicated message-only window so the global hotkey's lifetime is independent of any
+        // MainWindow. Previously the hook was attached to the first window's HWND and stopped
+        // working when that window closed — even though the process stays alive and the hotkey is
+        // the primary way to summon a new window. Must run on the UI thread (needs a message queue).
+        var parameters = new HwndSourceParameters("JoJot.GlobalHotkey")
+        {
+            Width = 0,
+            Height = 0,
+            WindowStyle = 0,
+            ParentWindow = HwndMessage
+        };
+        _source = new HwndSource(parameters);
+        _source.AddHook(WndProc);
+        _hwnd = _source.Handle;
 
         var savedModifiers = await PreferenceStore.GetPreferenceAsync("hotkey_modifiers").ConfigureAwait(false);
         var savedVk = await PreferenceStore.GetPreferenceAsync("hotkey_vk").ConfigureAwait(false);
@@ -360,7 +373,9 @@ public static partial class HotkeyService
         }
 
         _source?.RemoveHook(WndProc);
+        _source?.Dispose(); // we own the message-only window now, so dispose it
         _source = null;
+        _hwnd = IntPtr.Zero;
         LogService.Info("Global hotkey service shutdown");
     }
 

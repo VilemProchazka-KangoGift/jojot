@@ -241,6 +241,15 @@ public partial class MainWindow : Window
         // Wire TextChanged for autosave debounce
         ContentEditor.TextChanged += ContentEditor_TextChanged;
 
+        // Triple-click selects the whole logical line. handledEventsToo: the TextBox's internal
+        // TextEditor may mark mouse events handled before instance handlers run — we must see the
+        // click regardless. The matching mouse-up is suppressed so the editor's own up-processing
+        // can't collapse the selection we just made.
+        ContentEditor.AddHandler(PreviewMouseLeftButtonDownEvent,
+            new MouseButtonEventHandler(ContentEditor_TripleClickSelectLine), handledEventsToo: true);
+        ContentEditor.AddHandler(PreviewMouseLeftButtonUpEvent,
+            new MouseButtonEventHandler(ContentEditor_TripleClickMouseUp), handledEventsToo: true);
+
         // Allow file drops to propagate to Window handler; suppress text drops
         ContentEditor.PreviewDragEnter += (s, e) =>
         {
@@ -513,6 +522,8 @@ public partial class MainWindow : Window
         _autosaveService.Stop();
         _checkpointTimer.Stop();
         _contentSyncTimer?.Stop();
+        _undoCoalesceTimer?.Stop();
+        _tabScrollTimer?.Stop();
         _findDebounceTimer?.Stop();
         CancelPendingSearch();
 
@@ -544,26 +555,16 @@ public partial class MainWindow : Window
         _checkpointTimer.Stop();
         _stalenessTimer.Stop();
         _contentSyncTimer?.Stop();
+        _undoCoalesceTimer?.Stop();
+        _tabScrollTimer?.Stop();
         _findDebounceTimer?.Stop();
         _findTextChangeDebounce?.Stop();
         _searchDebounceTimer?.Stop();
         _collapseTimer?.Stop();
         CancelPendingSearch();
 
-        // Synchronous flush — block until save completes (no data loss)
-        FlushContentSync();
-        if (_activeTab is not null)
-        {
-            string content = ContentEditor.Text;
-            if (content != _activeTab.Content)
-            {
-                _activeTab.Content = content;
-                _activeTab.CursorPosition = ContentEditor.CaretIndex;
-                _activeTab.UpdatedAt = DateTime.Now;
-                NoteStore.UpdateNoteContentAsync(_activeTab.Id, content)
-                    .GetAwaiter().GetResult(); // Sync flush on close — no data loss
-            }
-        }
+        // Synchronous flush — block until save completes (no data loss).
+        PersistActiveContentSync();
 
         // Commit pending deletions before close
         CommitPendingDeletionAsync().GetAwaiter().GetResult();
@@ -579,6 +580,103 @@ public partial class MainWindow : Window
         // Do NOT set e.Cancel = true — let the window close and be destroyed
     }
 
+    /// <summary>
+    /// Synchronously persists the active tab's content to the database if there are unsaved
+    /// changes. Gated on the autosave dirty flag (NOT an editor-vs-model compare, which
+    /// ThrottleContentSync renders useless). Marks the autosave layer clean so a later flush
+    /// on the same close won't re-write. Safe to block on — the write runs no UI callbacks.
+    /// </summary>
+    private void PersistActiveContentSync()
+    {
+        FlushContentSync();
+        if (_activeTab is null || !_autosaveService.IsDirty) return;
+
+        string content = ContentEditor.Text;
+        _activeTab.Content = content;
+        _activeTab.CursorPosition = ContentEditor.CaretIndex;
+        _activeTab.UpdatedAt = DateTime.Now;
+        NoteStore.UpdateNoteContentAsync(_activeTab.Id, content).GetAwaiter().GetResult();
+        _autosaveService.MarkClean();
+    }
+
+    /// <summary>
+    /// Persists note content only (no geometry / no window teardown) for the OS-shutdown path.
+    /// Called for every window up front so a tight shutdown budget can't cost note data even if
+    /// later per-window close work is cut short.
+    /// </summary>
+    internal void FlushContentForShutdown() => PersistActiveContentSync();
+
+    // ─── Editor Mouse Helpers ───────────────────────────────────────────
+
+    private bool _suppressNextEditorMouseUp;
+    private int _editorClickStreak;
+    private long _lastEditorClickTicks;
+    private System.Windows.Point _lastEditorClickPos;
+
+    /// <summary>
+    /// Triple-click selects the entire logical line under the cursor (up to the newline,
+    /// including wrapped segments). WPF TextBox only handles double-click (word) natively.
+    /// Clicks are counted MANUALLY: the TextBox captures the mouse during the double-click
+    /// word-selection, and that capture change resets MouseDevice's click counter — so
+    /// e.ClickCount never reliably reaches 3 on a TextBox. The selection is re-asserted after
+    /// the editor's own input processing and the matching mouse-up is suppressed, so nothing
+    /// can collapse it back to a word/caret.
+    /// </summary>
+    private void ContentEditor_TripleClickSelectLine(object sender, MouseButtonEventArgs e)
+    {
+        // Manual click-streak tracking using the system double-click time and rectangle.
+        var pos = e.GetPosition(ContentEditor);
+        long now = Environment.TickCount64;
+        var dcSize = System.Windows.Forms.SystemInformation.DoubleClickSize;
+        bool chained = now - _lastEditorClickTicks <= System.Windows.Forms.SystemInformation.DoubleClickTime
+            && Math.Abs(pos.X - _lastEditorClickPos.X) <= dcSize.Width
+            && Math.Abs(pos.Y - _lastEditorClickPos.Y) <= dcSize.Height;
+        _editorClickStreak = chained ? _editorClickStreak + 1 : 1;
+        _lastEditorClickTicks = now;
+        _lastEditorClickPos = pos;
+
+        if (_editorClickStreak < 3 && e.ClickCount < 3) return;
+        _editorClickStreak = 0; // consume — the next quick click starts a fresh streak
+
+        string text = ContentEditor.Text;
+        if (text.Length == 0) return;
+
+        int caret = ContentEditor.GetCharacterIndexFromPoint(pos, snapToText: true);
+        if (caret < 0) caret = ContentEditor.CaretIndex;
+        caret = Math.Clamp(caret, 0, text.Length);
+
+        int lineStart = caret > 0 ? text.LastIndexOf('\n', caret - 1) + 1 : 0;
+        int lineEnd = caret < text.Length ? text.IndexOf('\n', caret) : -1;
+        if (lineEnd < 0) lineEnd = text.Length;
+        if (lineEnd > lineStart && text[lineEnd - 1] == '\r') lineEnd--; // exclude CR of CRLF
+
+        int length = lineEnd - lineStart;
+        ContentEditor.Select(lineStart, length);
+        e.Handled = true;
+        _suppressNextEditorMouseUp = true;
+
+        // Re-assert after the editor's own mouse handling (which may run despite e.Handled via
+        // class handlers registered with handledEventsToo) so the line selection sticks.
+        Dispatcher.BeginInvoke(() =>
+        {
+            if (ContentEditor.SelectionStart != lineStart || ContentEditor.SelectionLength != length)
+                ContentEditor.Select(lineStart, length);
+        }, System.Windows.Threading.DispatcherPriority.Input);
+    }
+
+    /// <summary>
+    /// Swallows the mouse-up that follows a triple-click so the editor's up-processing
+    /// (caret placement / selection anchoring) cannot collapse the line selection.
+    /// </summary>
+    private void ContentEditor_TripleClickMouseUp(object sender, MouseButtonEventArgs e)
+    {
+        if (!_suppressNextEditorMouseUp) return;
+        _suppressNextEditorMouseUp = false;
+        if (ContentEditor.IsMouseCaptured)
+            ContentEditor.ReleaseMouseCapture();
+        e.Handled = true;
+    }
+
     // ─── Autosave & Undo Helpers ────────────────────────────────────────
 
     /// <summary>
@@ -592,8 +690,9 @@ public partial class MainWindow : Window
         string text = ContentEditor.Text;
         int cursor = ContentEditor.CaretIndex;
 
-        // Push per-keystroke undo snapshot (O(1) amortized — collapse is offloaded)
-        UndoManager.Instance.PushSnapshot(_activeTab.Id, text, cursor);
+        // Coalesce undo snapshots to ~one per 600ms of typing instead of a full-content copy on
+        // every keystroke — the per-keystroke copy is O(n) and makes large-note editing O(n²).
+        ScheduleUndoSnapshot(_activeTab.Id, text, cursor);
 
         // Throttle model sync — DisplayLabel binding doesn't need per-character updates
         ThrottleContentSync(text);
@@ -611,6 +710,51 @@ public partial class MainWindow : Window
     private ScrollViewer? _cachedContentScrollViewer;
     private System.Windows.Threading.DispatcherTimer? _contentSyncTimer;
     private string? _pendingContentSync;
+
+    // ─── Undo snapshot coalescing ───────────────────────────────────────
+    private System.Windows.Threading.DispatcherTimer? _undoCoalesceTimer;
+    private long _pendingUndoTabId;
+    private string? _pendingUndoText;
+    private int _pendingUndoCursor;
+    private const int UndoCoalesceMs = 600;
+
+    /// <summary>
+    /// Records the latest editor state and ensures a coalescing timer is running. The timer is
+    /// deliberately NOT reset on each keystroke, so during a continuous typing burst it fires
+    /// periodically (~every 600ms) rather than being pushed out to the end of the burst — giving
+    /// reasonable undo granularity while capping snapshot frequency. The tab id is captured here so
+    /// a late tick can never push a snapshot onto a tab the user has since switched away from.
+    /// </summary>
+    private void ScheduleUndoSnapshot(long tabId, string text, int cursor)
+    {
+        _pendingUndoTabId = tabId;
+        _pendingUndoText = text;
+        _pendingUndoCursor = cursor;
+
+        if (_undoCoalesceTimer is null)
+        {
+            _undoCoalesceTimer = new System.Windows.Threading.DispatcherTimer
+            {
+                Interval = TimeSpan.FromMilliseconds(UndoCoalesceMs)
+            };
+            _undoCoalesceTimer.Tick += (_, _) => FlushPendingUndoSnapshot();
+        }
+        if (!_undoCoalesceTimer.IsEnabled)
+            _undoCoalesceTimer.Start();
+    }
+
+    /// <summary>
+    /// Pushes any pending coalesced undo snapshot immediately and stops the timer. Call before
+    /// undo/redo, replace, save, and tab switch so the latest typed state is captured and no stale
+    /// tick fires afterward (which would corrupt the redo chain or target the wrong tab).
+    /// </summary>
+    private void FlushPendingUndoSnapshot()
+    {
+        _undoCoalesceTimer?.Stop();
+        if (_pendingUndoText is null) return;
+        UndoManager.Instance.PushSnapshot(_pendingUndoTabId, _pendingUndoText, _pendingUndoCursor);
+        _pendingUndoText = null;
+    }
 
     /// <summary>
     /// Defers <c>_activeTab.Content</c> assignment (and its PropertyChanged / DisplayLabel
@@ -684,6 +828,7 @@ public partial class MainWindow : Window
     {
         if (_activeTab is null) return;
         FlushContentSync();
+        FlushPendingUndoSnapshot(); // capture any coalesced typing and stop the sampler first
 
         // Capture current editor content so redo can restore it.
         // PushSnapshot deduplicates if content matches the current index.
@@ -698,6 +843,10 @@ public partial class MainWindow : Window
         ContentEditor.CaretIndex = Math.Min(entry.Value.CursorPosition, entry.Value.Content.Length);
         _suppressTextChanged = false;
 
+        // Suppressing TextChanged also suppresses the autosave trigger, so mark dirty explicitly —
+        // otherwise an undo as the last action is never persisted and silently reverts on reload.
+        _autosaveService.NotifyTextChanged();
+
         UpdateToolbarState(); // refresh undo/redo button states
         RefreshFindOnTextChange(); // update find highlights after undo
     }
@@ -709,6 +858,7 @@ public partial class MainWindow : Window
     {
         if (_activeTab is null) return;
         FlushContentSync();
+        FlushPendingUndoSnapshot(); // stop the sampler so no stale tick corrupts the redo chain
         var entry = UndoManager.Instance.Redo(_activeTab.Id);
         if (entry is null) return;
 
@@ -717,6 +867,9 @@ public partial class MainWindow : Window
         ContentEditor.Text = entry.Value.Content;
         ContentEditor.CaretIndex = Math.Min(entry.Value.CursorPosition, entry.Value.Content.Length);
         _suppressTextChanged = false;
+
+        // Mark dirty explicitly — the suppressed TextChanged skips the autosave trigger.
+        _autosaveService.NotifyTextChanged();
 
         UpdateToolbarState(); // refresh undo/redo button states
         RefreshFindOnTextChange(); // update find highlights after redo

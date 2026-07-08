@@ -82,9 +82,11 @@ public partial class MainWindow
     private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
     {
         // Find panel: Enter/Shift+Enter cycle matches — must be first to prevent
-        // WPF keyboard navigation from stealing Shift+Enter as focus-backward
+        // WPF keyboard navigation from stealing Shift+Enter as focus-backward.
+        // Skip when the editor has focus: there Enter must insert a newline as usual.
         var realKey = e.Key == Key.System ? e.SystemKey : e.Key;
-        if ((realKey == Key.Enter || realKey == Key.Return) && _findPanelOpen && !ConfirmationOverlay.IsOpen)
+        if ((realKey == Key.Enter || realKey == Key.Return) && _findPanelOpen && !ConfirmationOverlay.IsOpen
+            && !ContentEditor.IsKeyboardFocusWithin)
         {
             if ((Keyboard.Modifiers & ModifierKeys.Shift) != 0)
                 CycleFindMatch(forward: false);
@@ -279,14 +281,15 @@ public partial class MainWindow
         }
 
         // F2: Rename active tab
-        if (e.Key == Key.F2 && TabList.SelectedItem is ListBoxItem f2Item && f2Item.Tag is NoteTab f2Tab)
+        if (e.Key == Key.F2 && TabList.SelectedItem is NoteTab f2Tab)
         {
-            BeginRename(f2Item, f2Tab);
+            BeginRenameByTab(f2Tab);
             e.Handled = true;
             return;
         }
 
-        // Ctrl+Tab / Ctrl+Shift+Tab: Cycle tabs
+        // Ctrl+Tab / Ctrl+Shift+Tab: Cycle tabs. Items are all NoteTabs now (no separator rows),
+        // so plain index wrap-around suffices.
         if (e.Key == Key.Tab && Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
         {
             int count = TabList.Items.Count;
@@ -295,22 +298,12 @@ public partial class MainWindow
             int current = TabList.SelectedIndex;
             if (current < 0) current = 0;
 
-            if (Keyboard.Modifiers.HasFlag(ModifierKeys.Shift))
-            {
-                // Previous tab: skip separator items
-                int next = current;
-                do { next = (next - 1 + count) % count; }
-                while (next != current && TabList.Items[next] is ListBoxItem li && li.Tag is not NoteTab);
-                TabList.SelectedIndex = next;
-            }
-            else
-            {
-                // Next tab: skip separator items
-                int next = current;
-                do { next = (next + 1) % count; }
-                while (next != current && TabList.Items[next] is ListBoxItem li && li.Tag is not NoteTab);
-                TabList.SelectedIndex = next;
-            }
+            TabList.SelectedIndex = Keyboard.Modifiers.HasFlag(ModifierKeys.Shift)
+                ? (current - 1 + count) % count
+                : (current + 1) % count;
+
+            // With virtualization the newly-selected tab may be off-screen — bring it into view.
+            SafeScrollIntoView(TabList.SelectedItem);
 
             e.Handled = true;
             return;
@@ -337,9 +330,9 @@ public partial class MainWindow
     /// </summary>
     private void TabList_PreviewKeyDown(object sender, KeyEventArgs e)
     {
-        if (e.Key == Key.F2 && TabList.SelectedItem is ListBoxItem selItem && selItem.Tag is NoteTab selTab)
+        if (e.Key == Key.F2 && TabList.SelectedItem is NoteTab selTab)
         {
-            BeginRename(selItem, selTab);
+            BeginRenameByTab(selTab);
             e.Handled = true;
         }
     }
@@ -349,9 +342,9 @@ public partial class MainWindow
     /// </summary>
     private void TabList_PreviewMouseDoubleClick(object sender, MouseButtonEventArgs e)
     {
-        if (TabList.SelectedItem is ListBoxItem item && item.Tag is NoteTab tab)
+        if (TabList.SelectedItem is NoteTab tab)
         {
-            BeginRename(item, tab);
+            BeginRenameByTab(tab);
             e.Handled = true;
         }
     }

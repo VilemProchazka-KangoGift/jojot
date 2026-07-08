@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.IO;
 using System.Reflection;
 
@@ -28,11 +29,30 @@ public static class AppEnvironment
     /// <summary>Full path to the SQLite database file.</summary>
     public static string DatabasePath { get; } = Path.Combine(AppDataDirectory, "jojot.db");
 
-    /// <summary>Named pipe name for IPC communication.</summary>
-    public const string PipeName = "JoJot_IPC" + Suffix;
+    /// <summary>Windows session id — used to scope single-instance to the interactive session.</summary>
+    private static readonly int SessionId = GetSessionId();
 
-    /// <summary>Global mutex name for single-instance enforcement.</summary>
-    public const string MutexName = "Global\\JoJot_SingleInstance" + Suffix;
+    private static int GetSessionId()
+    {
+        using var p = Process.GetCurrentProcess();
+        return p.SessionId;
+    }
+
+    /// <summary>
+    /// Named pipe name for IPC communication. Scoped to the Windows session id: pipe names are
+    /// machine-global (unlike mutexes they have no per-session namespace), so on an RDP / multi-user
+    /// host a second user's pipe would otherwise collide with the first user's. Session marker is
+    /// placed before the Dev/Release suffix.
+    /// </summary>
+    public static string PipeName { get; } = $"JoJot_IPC_S{SessionId}{Suffix}";
+
+    /// <summary>
+    /// Single-instance mutex name. Uses the <c>Local\</c> (per-session) namespace rather than
+    /// <c>Global\</c> so single-instance enforcement is per interactive session — a second user on
+    /// a shared/RDP host can run their own instance instead of being blocked (and unable to reach
+    /// the other session's process over IPC).
+    /// </summary>
+    public static string MutexName { get; } = $"Local\\JoJot_SingleInstance{Suffix}";
 
     /// <summary>CalVer version string (YYYY.M.Count) sourced from AssemblyVersion.</summary>
     public static string Version { get; } = BuildVersion();

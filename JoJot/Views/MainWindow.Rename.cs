@@ -11,6 +11,26 @@ public partial class MainWindow
     // ─── Inline Rename ──────────────────────────────────────────────────
 
     /// <summary>
+    /// Starts inline rename for a tab given its data item. Under virtualization the tab may be
+    /// scrolled off-screen (no container), so scroll it into view and rename once the container
+    /// is realized — otherwise the keystroke would be swallowed with nothing happening.
+    /// </summary>
+    private void BeginRenameByTab(NoteTab tab)
+    {
+        SafeScrollIntoView(tab);
+        if (ContainerFor(tab) is ListBoxItem item)
+        {
+            BeginRename(item, tab);
+            return;
+        }
+        Dispatcher.BeginInvoke(() =>
+        {
+            if (ContainerFor(tab) is ListBoxItem c)
+                BeginRename(c, tab);
+        }, System.Windows.Threading.DispatcherPriority.Loaded);
+    }
+
+    /// <summary>
     /// Starts inline rename for a tab. Hides the label TextBlock and shows a TextBox.
     /// </summary>
     private void BeginRename(ListBoxItem item, NoteTab tab)

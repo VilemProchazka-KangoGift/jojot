@@ -18,12 +18,23 @@
         PreviewDragEnter="OnFileDragEnter" PreviewDragOver="OnFileDragOver"
         PreviewDragLeave="OnFileDragLeave" Drop="OnFileDrop">
     <Window.Resources>
-        <!-- ListBoxItem style: no default selection highlight, stretch content -->
-        <Style TargetType="ListBoxItem">
+        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+
+        <!-- Tab list item container style: transparent template (highlight handled in code-behind),
+             exposes the bound NoteTab via Tag, and carries the per-item mouse handlers that were
+             previously wired imperatively in CreateTabListItem. Applied via ItemContainerStyle so
+             WPF generates (and virtualizes) the containers from ItemsSource. -->
+        <Style x:Key="TabItemContainerStyle" TargetType="ListBoxItem">
             <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
             <Setter Property="Padding" Value="0"/>
             <Setter Property="Margin" Value="0"/>
-            <!-- Override default selection brushes to transparent (we handle highlighting manually) -->
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Tag" Value="{Binding}"/>
+            <EventSetter Event="PreviewMouseLeftButtonDown" Handler="TabItem_PreviewMouseLeftButtonDown"/>
+            <EventSetter Event="PreviewMouseMove" Handler="TabItem_PreviewMouseMove"/>
+            <EventSetter Event="PreviewMouseLeftButtonUp" Handler="TabItem_PreviewMouseLeftButtonUp"/>
+            <EventSetter Event="PreviewMouseDown" Handler="TabItem_PreviewMouseDown"/>
+            <EventSetter Event="MouseRightButtonUp" Handler="TabItem_MouseRightButtonUp"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="ListBoxItem">
@@ -35,6 +46,11 @@
 
         <!-- Tab item DataTemplate -->
         <DataTemplate x:Key="TabItemTemplate" DataType="{x:Type models:NoteTab}">
+          <StackPanel>
+            <!-- Zone divider above the first unpinned tab (replaces the old separator item) -->
+            <Border x:Name="ZoneSeparator" Height="1" Margin="8,4,8,4"
+                    Background="{DynamicResource c-border}"
+                    Visibility="{Binding ShowUnpinnedSeparator, Converter={StaticResource BoolToVis}}"/>
             <Border x:Name="OuterBorder" Padding="8,6,8,6" BorderThickness="0"
                     Background="Transparent" Loaded="TabItemBorder_Loaded">
                 <Grid>
@@ -130,9 +146,23 @@
                     </Grid>
                 </Grid>
             </Border>
+          </StackPanel>
 
             <!-- DataTriggers for pinned state and placeholder styling -->
             <DataTemplate.Triggers>
+                <!-- Selection + hover background — declarative so it survives virtualization and
+                     scroll-out/scroll-in. Code-behind must never set OuterBorder.Background locally:
+                     a local value would permanently override these triggers. -->
+                <DataTrigger Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" Value="True">
+                    <Setter TargetName="OuterBorder" Property="Background" Value="{DynamicResource c-selected-bg}"/>
+                </DataTrigger>
+                <MultiDataTrigger>
+                    <MultiDataTrigger.Conditions>
+                        <Condition Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" Value="True"/>
+                        <Condition Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" Value="False"/>
+                    </MultiDataTrigger.Conditions>
+                    <Setter TargetName="OuterBorder" Property="Background" Value="{DynamicResource c-hover-bg}"/>
+                </MultiDataTrigger>
                 <!-- Pinned: swap columns, show pin always -->
                 <DataTrigger Binding="{Binding Pinned}" Value="True">
                     <Setter TargetName="Col0" Property="Width" Value="Auto"/>
@@ -248,13 +278,29 @@
                     </Grid>
                 </Border>
 
-                <!-- Tab list -->
+                <!-- Tab list — data-bound + UI-virtualized (ItemsSource set in code-behind) -->
+                <!-- IsSynchronizedWithCurrentItem=False: ItemsSource is an ICollectionView, which
+                     would otherwise auto-sync selection with view currency — removing the selected
+                     tab would silently select the next one while our guard suppresses the handler,
+                     leaving the editor stuck on the deleted tab.
+                     ScrollUnit=Pixel: smooth pixel scrolling instead of snapping whole items. -->
+                <!-- VirtualizationMode=Standard (NOT Recycling): the per-item handlers/closures are
+                     wired in TabItemBorder_Loaded, and recycled containers do not re-fire Loaded —
+                     recycling would leave stale closures (pin/close acting on the wrong tab) and
+                     stale visuals. Standard mode creates fresh containers, so Loaded always fires. -->
                 <ListBox x:Name="TabList" BorderThickness="0" Background="Transparent"
                      HorizontalContentAlignment="Stretch"
-                     VirtualizingStackPanel.IsVirtualizing="False"
+                     VirtualizingStackPanel.IsVirtualizing="True"
+                     VirtualizingStackPanel.VirtualizationMode="Standard"
+                     VirtualizingPanel.ScrollUnit="Pixel"
+                     ScrollViewer.CanContentScroll="True"
+                     IsSynchronizedWithCurrentItem="False"
+                     ItemTemplate="{StaticResource TabItemTemplate}"
+                     ItemContainerStyle="{StaticResource TabItemContainerStyle}"
                      SelectionChanged="TabList_SelectionChanged"
                      PreviewKeyDown="TabList_PreviewKeyDown"
                      PreviewMouseDoubleClick="TabList_PreviewMouseDoubleClick"
+                     PreviewMouseWheel="TabList_PreviewMouseWheel"
                      ScrollViewer.HorizontalScrollBarVisibility="Disabled"/>
             </DockPanel>
 

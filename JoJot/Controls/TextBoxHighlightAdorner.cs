@@ -109,10 +109,36 @@ public sealed class TextBoxHighlightAdorner : Adorner
     {
         try
         {
+            int endPos = pos + _queryLength - 1;
             var startRect = _textBox.GetRectFromCharacterIndex(pos);
-            var endRect = _textBox.GetRectFromCharacterIndex(pos + _queryLength - 1, true);
-            var rect = new Rect(startRect.TopLeft, endRect.BottomRight);
-            drawingContext.DrawRectangle(brush, null, rect);
+            var endRect = _textBox.GetRectFromCharacterIndex(endPos, true);
+
+            // Single visual line — one rectangle from start to end.
+            if (Math.Abs(startRect.Top - endRect.Top) < 0.5)
+            {
+                drawingContext.DrawRectangle(brush, null, new Rect(startRect.TopLeft, endRect.BottomRight));
+                return;
+            }
+
+            // The match spans multiple visual lines (newline in the query, or word wrap).
+            // A single Rect(start.TopLeft, end.BottomRight) would paint a misleading block
+            // between the two x-positions across all rows — draw one rect per line instead.
+            int firstLine = _textBox.GetLineIndexFromCharacterIndex(pos);
+            int lastLine = _textBox.GetLineIndexFromCharacterIndex(endPos);
+            for (int line = firstLine; line <= lastLine; line++)
+            {
+                int lineStart = _textBox.GetCharacterIndexFromLineIndex(line);
+                int lineLength = _textBox.GetLineLength(line);
+                if (lineStart < 0 || lineLength <= 0) continue;
+
+                int segStart = Math.Max(pos, lineStart);
+                int segEnd = Math.Min(endPos, lineStart + lineLength - 1);
+                if (segEnd < segStart) continue;
+
+                var s = _textBox.GetRectFromCharacterIndex(segStart);
+                var e = _textBox.GetRectFromCharacterIndex(segEnd, true);
+                drawingContext.DrawRectangle(brush, null, new Rect(s.TopLeft, e.BottomRight));
+            }
         }
         catch
         {

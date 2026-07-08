@@ -85,6 +85,19 @@ public class DatabaseCoreIntegrityTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Schema_HasSingleNotesDesktopIndex_AfterMigration()
+    {
+        // The model (EnsureCreated) and RunPendingMigrations both target idx_notes_desktop by the
+        // same name, so a fresh DB must end up with exactly one such index — not zero, not two.
+        await DatabaseCore.RunPendingMigrationsAsync();
+
+        long count = await DatabaseCore.ExecuteScalarAsync<long>(
+            "SELECT COUNT(*) FROM sqlite_master WHERE type='index' AND name='idx_notes_desktop'");
+
+        count.Should().Be(1);
+    }
+
+    [Fact]
     public async Task EnsureSchema_IsIdempotent()
     {
         await DatabaseCore.EnsureSchemaAsync();

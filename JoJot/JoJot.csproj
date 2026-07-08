@@ -56,6 +56,9 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.3" />
+    <!-- Override the transitive SQLitePCLRaw pulled in by EF Core 10.0.3 (2.1.11, vulnerable per
+         GHSA-2m69-gcr7-jv3q) with the patched 3.x line. The raw/bundle API is source-compatible. -->
+    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.3" />
     <PackageReference Include="Serilog" Version="4.3.1" />
     <PackageReference Include="Serilog.Enrichers.Process" Version="3.0.0" />
     <PackageReference Include="Serilog.Enrichers.Thread" Version="4.0.0" />

@@ -22,6 +22,18 @@ public static class IpcService
     private static CancellationTokenSource? _cts;
     private static Action<IpcMessage>? _commandHandler;
 
+    /// <summary>Outcome of a second-instance <see cref="SendCommandAsync"/> call.</summary>
+    public enum SendResult
+    {
+        /// <summary>The command was delivered to the running first instance.</summary>
+        Delivered,
+        /// <summary>The first instance was an unresponsive zombie and was terminated; the caller
+        /// should take over as the primary instance rather than exit.</summary>
+        ZombieKilled,
+        /// <summary>Delivery failed for another reason; the caller should exit to avoid two instances.</summary>
+        Failed
+    }
+
     // ─── Server side (first instance) ───────────────────────────────────
 
     /// <summary>
@@ -109,7 +121,7 @@ public static class IpcService
     /// <param name="message">The IPC command to send.</param>
     /// <param name="timeoutMs">Connect timeout in milliseconds (default 500ms).</param>
     /// <param name="cancellationToken">Cancellation token for the operation.</param>
-    public static async Task SendCommandAsync(IpcMessage message, int timeoutMs = 500, int maxRetries = 2, CancellationToken cancellationToken = default)
+    public static async Task<SendResult> SendCommandAsync(IpcMessage message, int timeoutMs = 500, int maxRetries = 2, CancellationToken cancellationToken = default)
     {
         for (int attempt = 0; attempt <= maxRetries; attempt++)
         {
@@ -125,7 +137,7 @@ public static class IpcService
                 await writer.WriteLineAsync(json.AsMemory(), cancellationToken).ConfigureAwait(false);
 
                 LogService.Info("IpcService: sent command {Command} to first instance", json);
-                return;
+                return SendResult.Delivered;
             }
             catch (TimeoutException) when (attempt < maxRetries)
             {
@@ -137,7 +149,7 @@ public static class IpcService
             {
                 LogService.Warn("IpcService: connect timeout after {MaxRetries} retries — killing zombie process", maxRetries);
                 KillExistingInstances();
-                return;
+                return SendResult.ZombieKilled;
             }
             catch (OperationCanceledException)
             {
@@ -146,9 +158,10 @@ public static class IpcService
             catch (Exception ex)
             {
                 LogService.Warn("IpcService: failed to send command to first instance", ex);
-                return;
+                return SendResult.Failed;
             }
         }
+        return SendResult.Failed;
     }
 
     /// <summary>
@@ -169,6 +182,9 @@ public static class IpcService
             {
                 LogService.Info("IpcService: killing zombie process PID={ProcessId}", proc.Id);
                 proc.Kill(entireProcessTree: true);
+                // Wait briefly so the process fully exits and releases its mutex/DB handles before
+                // this instance tries to take over as primary.
+                proc.WaitForExit(2000);
             }
             catch (Exception ex)
             {

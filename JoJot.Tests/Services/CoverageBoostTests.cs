@@ -32,19 +32,21 @@ public class CoverageBoostTests : IAsyncLifetime
     }
 
     // ═══════════════════════════════════════════════════════════════════
-    // DatabaseCore — VerifyIntegrity triggers RunQuickCheckAsync
+    // DatabaseCore — VerifyIntegrity schema-completeness + quick_check
     // ═══════════════════════════════════════════════════════════════════
 
     [Fact]
-    public async Task VerifyIntegrity_MissingTable_RunsQuickCheck_ReturnsTrue()
+    public async Task VerifyIntegrity_MissingTable_ReturnsFalse()
     {
-        // Drop a table to force VerifyIntegrityAsync into the RunQuickCheckAsync path
+        // A missing expected table means the schema is incomplete. VerifyIntegrity must report
+        // unhealthy so startup triggers corruption recovery. (Previously it wrongly returned true
+        // because PRAGMA quick_check on the surviving pages passed — a table missing is still a
+        // broken database.)
         await DatabaseCore.ExecuteNonQueryAsync("DROP TABLE IF EXISTS pending_moves;");
 
         var result = await DatabaseCore.VerifyIntegrityAsync();
 
-        // Database is structurally sound (just missing a table), so quick_check returns "ok" → true
-        result.Should().BeTrue();
+        result.Should().BeFalse();
 
         // Recreate the table for subsequent tests
         await DatabaseCore.EnsureSchemaAsync();

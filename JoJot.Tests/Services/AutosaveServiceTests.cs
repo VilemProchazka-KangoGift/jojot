@@ -67,6 +67,74 @@ public class AutosaveServiceTests
         _timer.IsEnabled.Should().BeTrue();
     }
 
+    // ─── Max-wait bound (H3) ───────────────────────────────────────────
+
+    [Fact]
+    public void NotifyTextChanged_KeepsResettingTimer_WithinMaxWait()
+    {
+        var svc = CreateService();
+        svc.DebounceMs = 500;
+        svc.MaxWaitMs = 3000;
+        svc.Configure(() => (1L, "content"), (_, _) => Task.CompletedTask);
+
+        svc.NotifyTextChanged();
+        int startsAfterFirst = _timer.StartCount;
+
+        // Keep typing faster than the debounce but still within the max-wait window.
+        _clock.Advance(TimeSpan.FromMilliseconds(200));
+        svc.NotifyTextChanged();
+
+        _timer.StartCount.Should().BeGreaterThan(startsAfterFirst,
+            "within the max-wait window each keystroke resets the debounce timer");
+    }
+
+    [Fact]
+    public void NotifyTextChanged_StopsResettingTimer_AfterMaxWait()
+    {
+        var svc = CreateService();
+        svc.DebounceMs = 500;
+        svc.MaxWaitMs = 3000;
+        svc.Configure(() => (1L, "content"), (_, _) => Task.CompletedTask);
+
+        // First keystroke arms the timer and starts the dirty streak.
+        svc.NotifyTextChanged();
+        int startsAfterFirst = _timer.StartCount;
+        _timer.IsEnabled.Should().BeTrue();
+
+        // Sustained sub-debounce typing carries the change past the max-wait cap.
+        _clock.Advance(TimeSpan.FromMilliseconds(3100));
+        svc.NotifyTextChanged();
+
+        _timer.StartCount.Should().Be(startsAfterFirst,
+            "past the max-wait cap the debounce timer must not be reset again");
+        _timer.IsEnabled.Should().BeTrue(
+            "the pending save timer stays armed so it can finally fire");
+    }
+
+    [Fact]
+    public void NotifyTextChanged_ResetsDirtyStreak_AfterSuccessfulSave()
+    {
+        var svc = CreateService();
+        svc.DebounceMs = 500;
+        svc.MaxWaitMs = 3000;
+        svc.Configure(() => (1L, "content"), (_, _) => Task.CompletedTask);
+
+        svc.NotifyTextChanged();
+        _clock.Advance(TimeSpan.FromMilliseconds(3100));
+        svc.NotifyTextChanged(); // past cap — timer not reset
+
+        // A save fires and clears the dirty streak.
+        _timer.Fire();
+        svc.IsDirty.Should().BeFalse();
+
+        // New typing starts a fresh streak, so the timer is armed again immediately.
+        _clock.Advance(TimeSpan.FromMilliseconds(600)); // past debounce so cooldown doesn't block
+        int startsBefore = _timer.StartCount;
+        svc.NotifyTextChanged();
+        _timer.StartCount.Should().BeGreaterThan(startsBefore,
+            "after a save the dirty streak restarts, so the debounce timer is rearmed");
+    }
+
     // ─── FlushAsync ────────────────────────────────────────────────────
 
     [Fact]

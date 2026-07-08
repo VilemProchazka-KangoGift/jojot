@@ -11,9 +11,12 @@ public sealed class TestTimer : IDebounceTimer
     public bool IsEnabled { get; private set; }
     public TimeSpan Interval { get; set; } = TimeSpan.FromMilliseconds(500);
 
+    /// <summary>Number of times <see cref="Start"/> has been called — lets tests detect timer resets.</summary>
+    public int StartCount { get; private set; }
+
     public event EventHandler? Tick;
 
-    public void Start() => IsEnabled = true;
+    public void Start() { IsEnabled = true; StartCount++; }
 
     public void Stop() => IsEnabled = false;
 

@@ -93,12 +93,18 @@ public class JoJotDbContext : DbContext
             e.Property(n => n.CursorPosition).HasColumnName("cursor_position").HasDefaultValue(0);
             e.Property(n => n.FilePath).HasColumnName("file_path");
 
-            // Computed properties are not mapped to the database
+            // Covering index for the hot per-desktop ordered read (pinned DESC, sort_order ASC) and
+            // every desktop_guid-filtered query. Same name as the index created in
+            // RunPendingMigrationsAsync so fresh and pre-existing databases converge on one index.
+            e.HasIndex(n => new { n.DesktopGuid, n.Pinned, n.SortOrder }).HasDatabaseName("idx_notes_desktop");
+
+            // Computed / UI-only properties are not mapped to the database
             e.Ignore(n => n.DisplayLabel);
             e.Ignore(n => n.IsPlaceholder);
             e.Ignore(n => n.IsFileBacked);
             e.Ignore(n => n.CreatedDisplay);
             e.Ignore(n => n.UpdatedDisplay);
+            e.Ignore(n => n.ShowUnpinnedSeparator);
         });
     }
 

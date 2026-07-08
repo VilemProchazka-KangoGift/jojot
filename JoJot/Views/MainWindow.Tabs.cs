@@ -20,6 +20,48 @@ public partial class MainWindow
         DangerBrush.Freeze(); // frozen brushes are cheaper to render and thread-safe
     }
 
+    /// <summary>
+    /// Filtered/ordered view over ViewModel.Tabs bound to TabList.ItemsSource. The ObservableCollection
+    /// is kept in display order (pinned-first) by the ViewModel, so this view only applies the search
+    /// filter — no sort/group, which keeps UI virtualization straightforward on a flat item list.
+    /// </summary>
+    private System.Windows.Data.ListCollectionView? _tabsView;
+
+    /// <summary>
+    /// Resolves the realized ListBoxItem container for a tab, or null if the tab is virtualized
+    /// (off-screen) or not yet generated. Callers must null-guard.
+    /// </summary>
+    private ListBoxItem? ContainerFor(NoteTab? tab) =>
+        tab is null ? null : TabList.ItemContainerGenerator.ContainerFromItem(tab) as ListBoxItem;
+
+    /// <summary>
+    /// Runs a structural mutation of the tab collection with SelectionChanged suppressed. Because
+    /// TabList is now bound to the collection view, clearing/removing the selected data item would
+    /// otherwise fire SelectionChanged mid-operation and blank the active tab. The caller restores
+    /// selection afterward (typically via RebuildTabList → SelectTabByNote or a focus cascade).
+    /// </summary>
+    private void MutateTabsGuarded(Action mutate)
+    {
+        bool prev = _isRebuildingTabList;
+        _isRebuildingTabList = true;
+        try { mutate(); }
+        finally { _isRebuildingTabList = prev; }
+    }
+
+    /// <summary>
+    /// Creates the collection view and binds it to TabList once. Idempotent — LoadTabsAsync can run
+    /// multiple times (e.g. after a merge), but the ItemsSource is established a single time.
+    /// </summary>
+    private void EnsureTabsViewBound()
+    {
+        if (_tabsView is not null) return;
+        _tabsView = new System.Windows.Data.ListCollectionView(_tabs)
+        {
+            Filter = o => o is NoteTab t && MatchesSearch(t)
+        };
+        TabList.ItemsSource = _tabsView;
+    }
+
     // ─── Tab Loading ────────────────────────────────────────────────────
 
     /// <summary>
@@ -32,13 +74,19 @@ public partial class MainWindow
         // Restore persisted tab panel width
         await RestoreTabPanelWidthAsync();
 
+        // Bind the virtualized collection view before mutating _tabs so the ListBox tracks changes.
+        EnsureTabsViewBound();
+
         // Silently delete empty unpinned notes before loading
         await NoteStore.DeleteEmptyNotesAsync(_desktopGuid);
 
         var notes = await NoteStore.GetNotesForDesktopAsync(_desktopGuid);
-        _tabs.Clear();
-        foreach (var note in notes)
-            _tabs.Add(note);
+        MutateTabsGuarded(() =>
+        {
+            _tabs.Clear();
+            foreach (var note in notes)
+                _tabs.Add(note);
+        });
 
         if (_tabs.Count == 0)
         {
@@ -57,95 +105,60 @@ public partial class MainWindow
     // ─── Tab List Building ──────────────────────────────────────────────
 
     /// <summary>
-    /// Rebuilds the entire tab list from the _tabs collection, applying search filter.
-    /// Includes a zone separator between pinned and unpinned tabs.
+    /// Refreshes the tab list: recomputes the pinned/unpinned zone-divider flags and re-applies the
+    /// search filter on the bound collection view. No longer tears down/recreates containers — the
+    /// data-bound, virtualized ListBox updates itself; this only drives derived visual state.
     /// </summary>
     private void RebuildTabList()
     {
-        TabList.SelectionChanged -= TabList_SelectionChanged;
+        // Zone divider: the first VISIBLE unpinned tab shows a top divider when any visible pinned
+        // tabs exist. Computed over the filtered set so an active search doesn't leave the divider
+        // on a hidden tab (or missing between visible pinned and visible unpinned results).
+        bool hasVisiblePinned = false;
+        foreach (var tab in _tabs)
+            if (tab.Pinned && MatchesSearch(tab)) { hasVisiblePinned = true; break; }
+
+        bool firstUnpinnedSeen = false;
+        foreach (var tab in _tabs)
+        {
+            bool show = hasVisiblePinned && !tab.Pinned && !firstUnpinnedSeen && MatchesSearch(tab);
+            if (show) firstUnpinnedSeen = true;
+            tab.ShowUnpinnedSeparator = show;
+        }
+
+        // Re-apply the search filter. Guard selection churn during the refresh.
         _isRebuildingTabList = true;
-        TabList.Items.Clear();
-
-        bool hasPinned = false;
-
-        // First pass: identify if there are pinned tabs (for zone separator)
-        foreach (var tab in _tabs)
-        {
-            if (!MatchesSearch(tab)) continue;
-            if (tab.Pinned) { hasPinned = true; break; }
-        }
-
-        bool separatorAdded = false;
-
-        foreach (var tab in _tabs)
-        {
-            if (!MatchesSearch(tab)) continue;
-
-            // Insert zone separator before first unpinned tab
-            if (!tab.Pinned && hasPinned && !separatorAdded)
-            {
-                var separator = new ListBoxItem
-                {
-                    Content = new Separator { Margin = new Thickness(8, 4, 8, 4) },
-                    IsHitTestVisible = false,
-                    IsEnabled = false,
-                    Focusable = false
-                };
-                TabList.Items.Add(separator);
-                separatorAdded = true;
-            }
-
-            var item = CreateTabListItem(tab);
-            TabList.Items.Add(item);
-        }
-
-        TabList.SelectionChanged += TabList_SelectionChanged;
+        _tabsView?.Refresh();
         _isRebuildingTabList = false;
 
-        // Re-select active tab if still visible
+        // Re-select active tab if still visible after filtering
         if (_activeTab is not null)
             SelectTabByNote(_activeTab);
     }
 
     /// <summary>
-    /// Creates a ListBoxItem for a NoteTab using the XAML DataTemplate.
-    /// Tag stores the NoteTab reference for later retrieval.
-    /// Hover/click behavior is wired in the TabItemBorder_Loaded handler.
+    /// Middle-click on a tab container deletes it (soft-delete with undo toast).
     /// </summary>
-    private ListBoxItem CreateTabListItem(NoteTab tab)
+    private void TabItem_PreviewMouseDown(object sender, MouseButtonEventArgs e)
     {
-        var item = new ListBoxItem
+        if (e.ChangedButton == MouseButton.Middle && sender is ListBoxItem { Tag: NoteTab tab })
         {
-            Tag = tab,
-            Cursor = Cursors.Hand,
-            Content = tab,
-            ContentTemplate = (DataTemplate)FindResource("TabItemTemplate")
-        };
+            _ = DeleteTabAsync(tab);
+            e.Handled = true;
+        }
+    }
 
-        // Wire mouse events for drag-to-reorder
-        item.PreviewMouseLeftButtonDown += TabItem_PreviewMouseLeftButtonDown;
-        item.PreviewMouseMove += TabItem_PreviewMouseMove;
-        item.PreviewMouseLeftButtonUp += TabItem_PreviewMouseLeftButtonUp;
-
-        // Middle-click: delete tab
-        item.PreviewMouseDown += (s, e) =>
-        {
-            if (e.ChangedButton == MouseButton.Middle)
-            {
-                _ = DeleteTabAsync(tab);
-                e.Handled = true;
-            }
-        };
-
-        // Right-click: show themed context menu
-        item.MouseRightButtonUp += (s, e) =>
+    /// <summary>
+    /// Right-click on a tab container opens the themed context menu.
+    /// </summary>
+    private void TabItem_MouseRightButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is ListBoxItem item && item.Tag is NoteTab tab)
         {
             var contextMenu = BuildTabContextMenu(tab, item);
             contextMenu.IsOpen = true;
             e.Handled = true;
-        };
-
-        return item;
+        }
     }
 
     /// <summary>
@@ -243,13 +256,12 @@ public partial class MainWindow
             closeIcon.SetResourceReference(TextBlock.ForegroundProperty, ThemeKeys.TextMuted);
         };
 
-        // Outer border hover — show/hide pin and close buttons
+        // Outer border hover — show/hide pin and close buttons.
+        // Hover/selection BACKGROUND is handled declaratively by DataTemplate triggers; never set
+        // OuterBorder.Background here — a local value would permanently override those triggers.
         outerBorder.MouseEnter += (s, ev) =>
         {
             if (_isDragging) return;
-
-            if (item is not null && item != TabList.SelectedItem)
-                outerBorder.SetResourceReference(Border.BackgroundProperty, ThemeKeys.HoverBackground);
 
             if (!tab.Pinned)
             {
@@ -264,9 +276,6 @@ public partial class MainWindow
         {
             if (_isDragging) return;
 
-            if (item is not null && item != TabList.SelectedItem)
-                outerBorder.Background = System.Windows.Media.Brushes.Transparent;
-
             if (!tab.Pinned)
             {
                 AnimateOpacity(pinBtn, 1, 0, 100);
@@ -276,6 +285,11 @@ public partial class MainWindow
             AnimateOpacity(closeBtn, 1, 0, 100);
             DelayedCollapse(closeBtn);
         };
+
+        // If this container is (or is recycled into) the selected tab, re-apply the selection
+        // highlight — under virtualization a container can be realized after SelectionChanged ran.
+        if (item is not null && ReferenceEquals(tab, TabList.SelectedItem))
+            ApplyActiveHighlight(item);
     }
 
     /// <summary>
@@ -309,6 +323,7 @@ public partial class MainWindow
             if (_activeTab is not null)
             {
                 FlushContentSync();
+                FlushPendingUndoSnapshot(); // capture the outgoing tab's coalesced typing before switching
                 bool contentChanged = _activeTab.Content != ContentEditor.Text;
                 _activeTab.Content = ContentEditor.Text;
                 _activeTab.CursorPosition = ContentEditor.CaretIndex;
@@ -318,43 +333,27 @@ public partial class MainWindow
                 }
             }
 
-            // Remove background highlight from deselected items and hide buttons
+            // Hide pin/close buttons on deselected items (background reverts via template triggers)
             foreach (var removed in e.RemovedItems)
             {
-                if (removed is ListBoxItem oldItem)
+                if (removed is not NoteTab oldTab) continue;
+                var oldItem = ContainerFor(oldTab);
+                if (oldItem is null) continue; // virtualized off-screen — nothing to clean up
+
+                var oldPinBtn = FindNamedDescendant<Border>(oldItem, "PinBtn");
+                var oldCloseBtn = FindNamedDescendant<Border>(oldItem, "CloseBtn");
+
+                // Don't hide a pinned tab's always-visible pin icon
+                if (oldPinBtn is not null && !oldTab.Pinned)
                 {
-                    var oldBorder = FindNamedDescendant<Border>(oldItem, "OuterBorder");
-                    if (oldBorder is not null)
-                    {
-                        oldBorder.Background = System.Windows.Media.Brushes.Transparent;
-                    }
-                    else
-                    {
-                        // Template not yet applied — defer clear to match deferred highlight
-                        var itemToClean = oldItem;
-                        _ = Dispatcher.BeginInvoke(() =>
-                        {
-                            var border = FindNamedDescendant<Border>(itemToClean, "OuterBorder");
-                            if (border is not null)
-                                border.Background = System.Windows.Media.Brushes.Transparent;
-                        }, System.Windows.Threading.DispatcherPriority.Loaded);
-                    }
+                    oldPinBtn.Opacity = 0;
+                    oldPinBtn.Visibility = Visibility.Collapsed;
+                }
 
-                    var oldPinBtn = FindNamedDescendant<Border>(oldItem, "PinBtn");
-                    var oldCloseBtn = FindNamedDescendant<Border>(oldItem, "CloseBtn");
-
-                    // Don't hide pinned tab's always-visible pin icon
-                    if (oldPinBtn is not null && !(oldItem.Tag is NoteTab oldTab && oldTab.Pinned))
-                    {
-                        oldPinBtn.Opacity = 0;
-                        oldPinBtn.Visibility = Visibility.Collapsed;
-                    }
-
-                    if (oldCloseBtn is not null)
-                    {
-                        oldCloseBtn.Opacity = 0;
-                        oldCloseBtn.Visibility = Visibility.Collapsed;
-                    }
+                if (oldCloseBtn is not null)
+                {
+                    oldCloseBtn.Opacity = 0;
+                    oldCloseBtn.Visibility = Visibility.Collapsed;
                 }
             }
 
@@ -374,9 +373,23 @@ public partial class MainWindow
             }
 
             // Apply new selection
-            if (TabList.SelectedItem is ListBoxItem newItem && newItem.Tag is NoteTab tab)
+            if (TabList.SelectedItem is NoteTab tab)
             {
-                ApplyActiveHighlight(newItem);
+                var newItem = ContainerFor(tab);
+                if (newItem is not null)
+                {
+                    ApplyActiveHighlight(newItem);
+                }
+                else
+                {
+                    // Container not realized yet — apply once it is. (TabItemBorder_Loaded also
+                    // reapplies, covering recycled containers scrolled back into view.)
+                    _ = Dispatcher.BeginInvoke(() =>
+                    {
+                        var c = ContainerFor(tab);
+                        if (c is not null) ApplyActiveHighlight(c);
+                    }, System.Windows.Threading.DispatcherPriority.Loaded);
+                }
 
                 _activeTab = tab;
 
@@ -428,16 +441,16 @@ public partial class MainWindow
     }
 
     /// <summary>
-    /// Applies the background highlight to a selected tab item.
-    /// Uses FindNamedDescendant to locate pin/close buttons in the DataTemplate.
-    /// If the DataTemplate visual tree is not yet applied (e.g. on window open or after
-    /// RebuildTabList), defers a single retry to DispatcherPriority.Loaded.
+    /// Reveals the pin/close buttons on the selected tab item. The selection BACKGROUND is applied
+    /// declaratively by the DataTemplate IsSelected trigger — do not set it here (a local value
+    /// would override the trigger forever). If the DataTemplate visual tree is not yet applied
+    /// (e.g. on window open or after RebuildTabList), defers a single retry to DispatcherPriority.Loaded.
     /// </summary>
     private void ApplyActiveHighlight(ListBoxItem item, bool isDeferred = false)
     {
-        // Guard against stale deferred calls — if selection changed since
-        // the original call, this item should no longer be highlighted.
-        if (item != TabList.SelectedItem) return;
+        // Guard against stale deferred calls — if selection changed since the original call, this
+        // container's tab is no longer selected. (SelectedItem is a NoteTab; compare via the item's Tag.)
+        if (item.Tag is not NoteTab data || !ReferenceEquals(data, TabList.SelectedItem)) return;
 
         var outerBorder = FindNamedDescendant<Border>(item, "OuterBorder");
         if (outerBorder is null)
@@ -450,8 +463,6 @@ public partial class MainWindow
             }
             return;
         }
-
-        outerBorder.SetResourceReference(Border.BackgroundProperty, ThemeKeys.SelectedBackground);
 
         var pinBtn = FindNamedDescendant<Border>(item, "PinBtn");
         var closeBtn = FindNamedDescendant<Border>(item, "CloseBtn");
@@ -469,33 +480,94 @@ public partial class MainWindow
     }
 
     /// <summary>
-    /// Finds and selects the ListBoxItem whose Tag matches the given NoteTab.
+    /// Selects the given tab (the NoteTab data item) in the bound list and scrolls it into view.
     /// </summary>
     private void SelectTabByNote(NoteTab tab)
     {
-        foreach (var obj in TabList.Items)
+        // If a guarded/suppressed mutation left SelectedItem already pointing at this tab while
+        // the editor still shows another one, assigning the same value wouldn't raise
+        // SelectionChanged — force a real change so the switch logic runs.
+        if (ReferenceEquals(TabList.SelectedItem, tab) && !ReferenceEquals(_activeTab, tab))
+            TabList.SelectedItem = null;
+
+        TabList.SelectedItem = tab;
+        SafeScrollIntoView(tab);
+    }
+
+    /// <summary>
+    /// Scrolls an item into view, tolerating the NullReferenceException a VirtualizingStackPanel can
+    /// throw during layout before it's been measured/arranged (retried once after the layout pass).
+    /// </summary>
+    private void SafeScrollIntoView(object? item)
+    {
+        if (item is null) return;
+        try
         {
-            if (obj is ListBoxItem item && item.Tag is NoteTab t && t.Id == tab.Id)
-            {
-                TabList.SelectedItem = item;
-                try
-                {
-                    TabList.ScrollIntoView(item);
-                }
-                catch (NullReferenceException)
-                {
-                    // WPF VirtualizingStackPanel can throw during layout
-                    // if the panel hasn't been measured/arranged yet.
-                    // Defer the scroll to after layout completes.
-                    Dispatcher.InvokeAsync(() =>
-                    {
-                        try { TabList.ScrollIntoView(item); }
-                        catch (NullReferenceException) { /* Layout not ready; safe to ignore */ }
-                    }, System.Windows.Threading.DispatcherPriority.Loaded);
-                }
-                return;
-            }
+            TabList.ScrollIntoView(item);
         }
+        catch (NullReferenceException)
+        {
+            Dispatcher.InvokeAsync(() =>
+            {
+                try { TabList.ScrollIntoView(item); }
+                catch (NullReferenceException) { /* Layout not ready; safe to ignore */ }
+            }, System.Windows.Threading.DispatcherPriority.Loaded);
+        }
+    }
+
+    // ─── Smooth Wheel Scrolling ─────────────────────────────────────────
+
+    private ScrollViewer? _tabListScrollViewer;
+    private System.Windows.Threading.DispatcherTimer? _tabScrollTimer;
+    private double _tabScrollTarget;
+
+    /// <summary>Pixels scrolled per mouse-wheel notch (~1.2 tab rows; default item scrolling jumps 3).</summary>
+    private const double TabScrollStepPx = 56;
+
+    /// <summary>
+    /// Replaces the default instant wheel scrolling with a short eased animation toward an
+    /// accumulated target offset — smaller steps, smooth motion. Requires ScrollUnit=Pixel so
+    /// VerticalOffset is in pixels. Successive notches accumulate into the same glide.
+    /// </summary>
+    private void TabList_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        _tabListScrollViewer ??= FindDescendant<ScrollViewer>(TabList);
+        var sv = _tabListScrollViewer;
+        if (sv is null || sv.ScrollableHeight <= 0) return; // nothing to scroll — leave default behavior
+
+        e.Handled = true;
+
+        // Start a new glide from the current position; while gliding, accumulate onto the target.
+        if (_tabScrollTimer is null || !_tabScrollTimer.IsEnabled)
+            _tabScrollTarget = sv.VerticalOffset;
+        _tabScrollTarget = Math.Clamp(
+            _tabScrollTarget - e.Delta / 120.0 * TabScrollStepPx, 0, sv.ScrollableHeight);
+
+        if (_tabScrollTimer is null)
+        {
+            _tabScrollTimer = new System.Windows.Threading.DispatcherTimer(
+                System.Windows.Threading.DispatcherPriority.Render)
+            {
+                Interval = TimeSpan.FromMilliseconds(16) // ~60 fps
+            };
+            _tabScrollTimer.Tick += (_, _) =>
+            {
+                var scroller = _tabListScrollViewer;
+                if (scroller is null) { _tabScrollTimer!.Stop(); return; }
+
+                double current = scroller.VerticalOffset;
+                double remaining = _tabScrollTarget - current;
+                if (Math.Abs(remaining) < 0.5)
+                {
+                    scroller.ScrollToVerticalOffset(_tabScrollTarget);
+                    _tabScrollTimer!.Stop();
+                    return;
+                }
+                // Exponential ease-out: cover 30% of the remaining distance per frame.
+                scroller.ScrollToVerticalOffset(current + remaining * 0.3);
+            };
+        }
+        _tabScrollTimer.Start();
     }
 
     // ─── Tab Panel Resize ───────────────────────────────────────────────
@@ -540,13 +612,19 @@ public partial class MainWindow
     {
         if (_activeTab is null) return;
         FlushContentSync();
+        FlushPendingUndoSnapshot(); // commit any coalesced typing as an undo step at this boundary
         string currentContent = ContentEditor.Text;
-        if (currentContent == _activeTab.Content) return; // No change
 
         var scrollViewer = GetContentScrollViewer();
         int scrollOffset = scrollViewer is not null ? (int)scrollViewer.VerticalOffset : 0;
 
+        // Always keep in-memory editor state (caret/scroll) current; it's cheap and needed for restore.
         ViewModel.SaveEditorStateToTab(currentContent, ContentEditor.CaretIndex, scrollOffset);
+
+        // Persist when the autosave layer has unsaved changes. The old editor==model compare was
+        // unreliable (ThrottleContentSync keeps the model synced to the editor), so it skipped
+        // needed writes; IsDirty is the authoritative "unsaved to DB" signal.
+        if (!_autosaveService.IsDirty && currentContent == _activeTab.Content) return;
 
         _ = NoteStore.UpdateNoteContentAsync(_activeTab.Id, currentContent);
         UndoManager.Instance.PushSnapshot(_activeTab.Id, currentContent);
@@ -560,6 +638,11 @@ public partial class MainWindow
     /// </summary>
     public async Task CreateNewTabAsync()
     {
+        // An active search filter would hide the new (empty) tab — it can't match the query, so the
+        // view filters it out and "nothing happens". Clear the search first, then create.
+        if (!string.IsNullOrEmpty(_searchText))
+            ClearSearch();
+
         SaveCurrentTabContent();
 
         var (existingPlaceholder, insertIndex, sortOrder) = ViewModel.GetNewTabPosition();
@@ -619,7 +702,9 @@ public partial class MainWindow
         tab.Pinned = !tab.Pinned;
         await NoteStore.UpdateNotePinnedAsync(tab.Id, tab.Pinned);
 
-        ViewModel.ReorderAfterPinToggle(tab);
+        // ReorderAfterPinToggle clears and repopulates the bound collection; guard so the transient
+        // empty state doesn't fire SelectionChanged and blank the active tab. RebuildTabList reselects.
+        MutateTabsGuarded(() => ViewModel.ReorderAfterPinToggle(tab));
         await NoteStore.UpdateNoteSortOrdersAsync(_tabs.Select(t => (t.Id, t.SortOrder)));
 
         RebuildTabList();
