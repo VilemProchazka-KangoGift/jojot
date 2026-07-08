@@ -27,6 +27,10 @@ public partial class MainWindow
     /// </summary>
     private System.Windows.Data.ListCollectionView? _tabsView;
 
+    /// <summary>False until the first LoadTabsAsync — blocks tab creation while the window
+    /// shell is visible but the database is still opening.</summary>
+    private bool _tabsLoaded;
+
     /// <summary>
     /// Resolves the realized ListBoxItem container for a tab, or null if the tab is virtualized
     /// (off-screen) or not yet generated. Callers must null-guard.
@@ -76,6 +80,7 @@ public partial class MainWindow
 
         // Bind the virtualized collection view before mutating _tabs so the ListBox tracks changes.
         EnsureTabsViewBound();
+        _tabsLoaded = true;
 
         // Silently delete empty unpinned notes before loading
         await NoteStore.DeleteEmptyNotesAsync(_desktopGuid);
@@ -638,6 +643,8 @@ public partial class MainWindow
     /// </summary>
     public async Task CreateNewTabAsync()
     {
+        if (!_tabsLoaded) return; // window shell is up but the DB isn't — ignore early Ctrl+T
+
         // An active search filter would hide the new (empty) tab — it can't match the query, so the
         // view filters it out and "nothing happens". Clear the search first, then create.
         if (!string.IsNullOrEmpty(_searchText))

@@ -50,7 +50,7 @@ SQLite database at `%LocalAppData%\JoJot\jojot.db`. WAL mode, NORMAL synchronous
 
 ### Application Lifecycle
 
-`App.xaml` uses `Startup="OnAppStartup"` (not `StartupUri`). `ShutdownMode` is `OnExplicitShutdown` — the process stays alive when all windows are closed. The startup sequence in `App.xaml.cs` is ordered: logging → mutex → database → log level restore → theme → virtual desktop detection → session matching → IPC server → window creation.
+`App.xaml` uses `Startup="OnAppStartup"` (not `StartupUri`). `ShutdownMode` is `OnExplicitShutdown` — the process stays alive when all windows are closed. The startup sequence in `App.xaml.cs` is window-first: logging + mutex happen in `Program.Main` (second instances never load WPF); then the DB pipeline starts in the background while the snapshot (`startup-cache.json`) provides preferences and geometry so the window shows immediately; DB-dependent steps (session matching, migrations, tab load, IPC server, hotkey) complete behind the visible window. `StartupSnapshot` is reconciled to DB truth after the preference cache loads.
 
 ### Single-Instance & IPC
 

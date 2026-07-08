@@ -127,43 +127,34 @@ public partial class App : Application
             // Handle OS shutdown/logoff so JoJot does not block Windows session end
             SessionEnding += OnSessionEnding;
 
-            // Open database and ensure schema
-            var dbPath = AppEnvironment.DatabasePath;
-            await DatabaseCore.OpenAsync(dbPath);
-            await DatabaseCore.EnsureSchemaAsync();
-            LogPhase(sw, "db-open+schema");
+            // Kick off the entire DB pipeline immediately; it runs while the window appears.
+            var dbInitTask = InitializeDatabaseAsync();
 
-            // Integrity check with corruption recovery (before EF warmup to avoid wasted work)
-            bool healthy = await DatabaseCore.VerifyIntegrityAsync();
-            if (!healthy)
+            // Fast path: snapshot seeds the preference cache so language/theme resolve instantly.
+            bool haveSnapshot = StartupSnapshot.TryLoad();
+            if (haveSnapshot)
             {
-                LogService.Error("Database integrity check failed — initiating corruption recovery");
-                await DatabaseCore.HandleCorruptionAsync(dbPath);
+                PreferenceStore.PreloadProvisional(StartupSnapshot.Preferences);
             }
+            else
+            {
+                // First launch (or lost snapshot): preferences must come from the DB before any UI.
+                await dbInitTask;
+            }
+            LogPhase(sw, "db-kickoff+snapshot");
 
-            // Warm up EF model after integrity is confirmed (must complete before first real query)
-            await DatabaseCore.WarmupModelAsync();
-            await PreferenceStore.InitializeCacheAsync();
-            LogPhase(sw, "integrity+warmup");
-
-            // Restore log level from preferences
-            var savedLogLevel = await PreferenceStore.GetPreferenceAsync("log_level").ConfigureAwait(false);
+            var savedLogLevel = await PreferenceStore.GetPreferenceAsync("log_level");
             var parsedLevel = ParseLogLevel(savedLogLevel);
             if (parsedLevel is not null)
             {
                 LogService.SetMinimumLevel(parsedLevel.Value);
-                LogService.Info("Log level restored from preferences: {LogLevel}", parsedLevel.Value);
             }
 
-            // Initialize language (sets CurrentUICulture before any UI is created)
-            await LanguageService.InitializeAsync();
-            LogPhase(sw, "prefs+language");
-
-            // Initialize theme and virtual desktop detection in parallel (independent of each other)
-            var themeTask = ThemeService.InitializeAsync();
+            await LanguageService.InitializeAsync();   // reads "language" from cache — instant on fast path
+            await ThemeService.InitializeAsync();       // reads "theme" from cache — instant on fast path
             await VirtualDesktopService.InitializeAsync();
-            await themeTask;
-            LogPhase(sw, "theme+vd-init");
+            VirtualDesktopService.SubscribeNotifications();
+            LogPhase(sw, "prefs+language+theme+vd-init");
             if (VirtualDesktopService.IsAvailable)
             {
                 LogService.Info("Virtual desktop: {DesktopGuid} ({DesktopName})", VirtualDesktopService.CurrentDesktopGuid, VirtualDesktopService.CurrentDesktopName);
@@ -173,23 +164,35 @@ public partial class App : Application
                 LogService.Info("Virtual desktop: fallback mode (single-notepad)");
             }
 
-            // Subscribe to desktop notifications (must happen on UI thread for COM callbacks)
-            VirtualDesktopService.SubscribeNotifications();
+            // Window appears NOW — before the database is ready on the fast path.
+            var currentDesktopGuid = VirtualDesktopService.CurrentDesktopGuid;
+            var mainWindow = CreateWindowShell(currentDesktopGuid);
+            LogPhase(sw, "window-shell-shown");
+
+            await dbInitTask;
+            LogPhase(sw, "db-ready");
+
+            // Reconcile provisional (snapshot) preferences against database truth.
+            var dbPrefs = await PreferenceStore.InitializeCacheAsync();
+            ReconcileSnapshotPreferences(dbPrefs);
 
             // Session matching — associate saved sessions with live desktops
             await VirtualDesktopService.MatchSessionsAsync();
             await VirtualDesktopService.EnsureCurrentDesktopSessionAsync();
-            LogPhase(sw, "session-matching");
 
-            // Resolve pending moves from crash recovery
+            // Resolve pending moves from crash recovery, auto-delete old notes, welcome tab
             await ResolvePendingMovesAsync();
-
-            // Auto-delete old notes if configured
             await RunAutoDeleteAsync();
-
-            // Welcome tab on first launch
             await StartupService.CreateWelcomeTabIfFirstLaunch();
-            LogPhase(sw, "recovery+autodelete+welcome");
+
+            // Run pending migrations (no-op when schema is already stamped)
+            await StartupService.RunBackgroundMigrationsAsync();
+            LogPhase(sw, "session+recovery+migrations");
+
+            // Complete DB-dependent window setup behind the already-visible window.
+            await CompleteWindowInitAsync(mainWindow, currentDesktopGuid);
+            mainWindow.UpdateOrphanBadge();
+            LogPhase(sw, "tabs-loaded");
 
             // Start IPC server
             IpcService.StartServer(HandleIpcCommand, _appShutdownCts.Token);
@@ -198,20 +201,6 @@ public partial class App : Application
             // (not any MainWindow) so it keeps working after all windows are closed.
             await HotkeyService.InitializeAsync(OnGlobalHotkeyPressed);
             LogPhase(sw, "ipc+hotkey");
-
-            // Run pending migrations before window restore.
-            // Migrations must complete before GetWindowGeometryAsync (which reads
-            // columns added by migrations like window_state).
-            await StartupService.RunBackgroundMigrationsAsync();
-            LogPhase(sw, "migrations");
-
-            // Create and show window for current desktop
-            var currentDesktopGuid = VirtualDesktopService.CurrentDesktopGuid;
-            var mainWindow = await CreateWindowForDesktop(currentDesktopGuid);
-            LogPhase(sw, "window-create+show");
-
-            // Set orphan badge after session matching
-            mainWindow.UpdateOrphanBadge();
 
             // Wire desktop event handlers
             // Live title updates when desktop is renamed in Windows Settings
@@ -252,25 +241,22 @@ public partial class App : Application
     // ─── Window Factory ─────────────────────────────────────────────────
 
     /// <summary>
-    /// Creates a new MainWindow for the given desktop, restores its geometry,
-    /// sets its title, registers it in the window dictionary, and shows it.
+    /// Creates, positions, titles, registers, and shows a MainWindow for the given desktop.
+    /// Uses ONLY snapshot geometry — no database access — so it can run before the DB is open.
     /// </summary>
-    private async Task<MainWindow> CreateWindowForDesktop(string desktopGuid)
+    private MainWindow CreateWindowShell(string desktopGuid)
     {
         var window = new MainWindow(desktopGuid);
 
-        // Register cleanup on close — Closed fires after window is destroyed
         window.Closed += (_, _) =>
         {
             _windows.Remove(desktopGuid);
             LogService.Info("Window removed from registry for desktop {DesktopGuid} ({WindowCount} windows remaining)", desktopGuid, _windows.Count);
         };
 
-        // Restore geometry (must happen before Show for WindowStartupLocation to work)
-        var geo = await SessionStore.GetWindowGeometryAsync(desktopGuid);
+        var geo = StartupSnapshot.GetGeometry(desktopGuid);
         WindowPlacementHelper.ApplyGeometry(window, geo);
 
-        // Set title — look up this specific desktop by GUID, not "current"
         if (VirtualDesktopService.IsAvailable)
         {
             var desktops = VirtualDesktopService.GetAllDesktops();
@@ -286,35 +272,98 @@ public partial class App : Application
         _windows[desktopGuid] = window;
         window.Show();
 
-        // Apply geometry via SetWindowPlacement AFTER Show (needs HWND)
         if (geo is not null)
         {
-            WindowPlacementHelper.ApplyGeometry(window, geo);
+            WindowPlacementHelper.ApplyGeometry(window, geo); // SetWindowPlacement needs the HWND
         }
 
-        // Ensure window lands on the target desktop (e.g. IPC from a different desktop)
         if (VirtualDesktopService.IsAvailable)
         {
             var hwnd = new WindowInteropHelper(window).Handle;
             VirtualDesktopService.TryMoveWindowToDesktop(hwnd, desktopGuid);
         }
 
-        // Load tabs from database after window is shown
-        await window.LoadTabsAsync();
+        return window;
+    }
 
-        // Initialize preferences panel data
+    /// <summary>
+    /// Completes DB-dependent window setup: geometry fallback for desktops the snapshot has
+    /// never seen, tab loading, preferences panel, activation, and recovery toast.
+    /// Requires the database to be open.
+    /// </summary>
+    private async Task CompleteWindowInitAsync(MainWindow window, string desktopGuid)
+    {
+        if (StartupSnapshot.GetGeometry(desktopGuid) is null)
+        {
+            var geo = await SessionStore.GetWindowGeometryAsync(desktopGuid);
+            if (geo is not null)
+            {
+                WindowPlacementHelper.ApplyGeometry(window, geo);
+                StartupSnapshot.UpdateGeometry(desktopGuid, geo);
+            }
+        }
+
+        await window.LoadTabsAsync();
         await window.InitializePreferencesAsync();
 
         WindowActivationHelper.ActivateWindow(window);
 
-        // Show recovery toast if crash recovery happened
         if (_pendingRecoveryToast)
         {
             _pendingRecoveryToast = false;
             window.ShowInfoToast(JoJot.Resources.Strings.Toast_Recovery);
         }
+    }
 
+    /// <summary>
+    /// Creates a fully initialized window. Used by IPC/hotkey/orphan paths where the
+    /// database is already open.
+    /// </summary>
+    private async Task<MainWindow> CreateWindowForDesktop(string desktopGuid)
+    {
+        var window = CreateWindowShell(desktopGuid);
+        await CompleteWindowInitAsync(window, desktopGuid);
         return window;
+    }
+
+    /// <summary>Open → schema → integrity/corruption recovery → EF warmup, as one awaitable unit.</summary>
+    private static async Task InitializeDatabaseAsync()
+    {
+        var dbPath = AppEnvironment.DatabasePath;
+        await DatabaseCore.OpenAsync(dbPath);
+        await DatabaseCore.EnsureSchemaAsync();
+
+        bool healthy = await DatabaseCore.VerifyIntegrityAsync();
+        if (!healthy)
+        {
+            LogService.Error("Database integrity check failed — initiating corruption recovery");
+            await DatabaseCore.HandleCorruptionAsync(dbPath);
+        }
+
+        await DatabaseCore.WarmupModelAsync();
+    }
+
+    /// <summary>
+    /// After the DB cache loads, corrects anything the provisional snapshot got wrong.
+    /// Theme is re-applied live; language cannot hot-swap (needs restart) so it only logs;
+    /// log level is re-applied. Finally the snapshot file is refreshed to DB truth.
+    /// </summary>
+    private static void ReconcileSnapshotPreferences(IReadOnlyDictionary<string, string> dbPrefs)
+    {
+        var dbTheme = ThemeService.ParseThemePreference(dbPrefs.GetValueOrDefault("theme"));
+        if (dbTheme != ThemeService.CurrentSetting)
+        {
+            LogService.Warn("Snapshot theme differed from database — re-applying {Theme}", dbTheme);
+            ThemeService.ApplyTheme(dbTheme);
+        }
+
+        var dbLevel = ParseLogLevel(dbPrefs.GetValueOrDefault("log_level"));
+        if (dbLevel is not null)
+        {
+            LogService.SetMinimumLevel(dbLevel.Value);
+        }
+
+        StartupSnapshot.ReplacePreferences(dbPrefs);
     }
 
     /// <summary>
