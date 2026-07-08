@@ -250,6 +250,45 @@ public class AutosaveServiceTests
         completedTabId.Should().Be(7);
     }
 
+    // ─── FlushInBackground ─────────────────────────────────────────────
+
+    [Fact]
+    public async Task FlushInBackground_CapturesContentAtCallTime_AndClearsDirty()
+    {
+        var saved = new List<(long TabId, string Content)>();
+        long currentTab = 42;
+        string currentContent = "before-switch";
+        var service = new AutosaveService(new TestClock(), new TestTimer());
+        service.Configure(
+            contentProvider: () => (currentTab, currentContent),
+            saveFunc: (id, content) => { saved.Add((id, content)); return Task.CompletedTask; });
+
+        service.NotifyTextChanged();
+        service.FlushInBackground();
+
+        // Simulate the tab switch happening immediately after — must not affect the capture.
+        currentTab = 99;
+        currentContent = "after-switch";
+
+        (await BackgroundWriter.DrainAsync(TimeSpan.FromSeconds(2))).Should().BeTrue();
+        saved.Should().ContainSingle().Which.Should().Be((42L, "before-switch"));
+        service.IsDirty.Should().BeFalse();
+    }
+
+    [Fact]
+    public void FlushInBackground_SkipsAndStaysDirty_ForUnpersistedTab()
+    {
+        var service = new AutosaveService(new TestClock(), new TestTimer());
+        service.Configure(
+            contentProvider: () => (0L, "unsaved"),
+            saveFunc: (_, _) => Task.CompletedTask);
+
+        service.NotifyTextChanged();
+        service.FlushInBackground();
+
+        service.IsDirty.Should().BeTrue("content of an unpersisted tab must stay flagged for a later flush");
+    }
+
     // ─── Stop ──────────────────────────────────────────────────────────
 
     [Fact]

@@ -154,6 +154,41 @@ public sealed class AutosaveService
     }
 
     /// <summary>
+    /// Captures the current tab's content synchronously and persists it in the background,
+    /// so tab switches never wait on the database. The capture happens before this method
+    /// returns — the caller may immediately change the active tab. An unpersisted tab
+    /// (id &lt;= 0) is skipped and stays dirty; its content lives in the model until it has a row.
+    /// </summary>
+    public void FlushInBackground()
+    {
+        _timer.Stop();
+
+        if (!_isDirty || _contentProvider is null || _saveFunc is null)
+        {
+            return;
+        }
+
+        var (tabId, content) = _contentProvider();
+        if (tabId <= 0)
+        {
+            return; // stays dirty — flushed after the row exists
+        }
+
+        _isDirty = false;
+        var save = _saveFunc;
+        var snapshot = _onSnapshot;
+        var completed = _onSaveCompleted;
+
+        BackgroundWriter.Run(async () =>
+        {
+            await save(tabId, content).ConfigureAwait(false);
+            _lastWriteCompleted = _clock.Now; // benign race: only feeds the write-frequency cap
+            snapshot?.Invoke(tabId, content);
+            completed?.Invoke(tabId);
+        }, "autosave flush");
+    }
+
+    /// <summary>
     /// Stops the autosave timer. Called on tab switch before the context changes.
     /// </summary>
     public void Stop()

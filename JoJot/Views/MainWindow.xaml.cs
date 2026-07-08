@@ -370,6 +370,9 @@ public partial class MainWindow : Window
         VirtualDesktopService.WindowMovedToDesktop += OnWindowMovedToDesktop;
         Activated += OnWindowActivated_CheckMisplaced;
         Activated += (_, _) => RefreshStalenessIndicators();
+
+        // Surface background autosave failures as a toast
+        BackgroundWriter.WriteFailed += OnBackgroundWriteFailed;
     }
 
     /// <summary>
@@ -504,6 +507,15 @@ public partial class MainWindow : Window
         Title = ViewModel.WindowTitle;
     }
 
+    /// <summary>Shows a save-failure toast for background persistence errors. Event arrives
+    /// on a background thread; only the active window for the failure's desktop matters, so
+    /// every window showing it is acceptable and simple.</summary>
+    private void OnBackgroundWriteFailed(string operationName)
+    {
+        Dispatcher.InvokeAsync(() =>
+            ShowInfoToast(string.Format(Strings.Toast_SaveFailed, operationName)));
+    }
+
     // ─── Window Lifecycle ───────────────────────────────────────────────
 
     /// <summary>
@@ -545,6 +557,7 @@ public partial class MainWindow : Window
         // Unsubscribe static events to allow GC of this window
         ThemeService.ThemeChanged -= OnThemeChangedAdornerRefresh;
         VirtualDesktopService.WindowMovedToDesktop -= OnWindowMovedToDesktop;
+        BackgroundWriter.WriteFailed -= OnBackgroundWriteFailed;
 
         // Cancel and dispose pending desktop check
         _misplacedCheckCts?.Cancel();

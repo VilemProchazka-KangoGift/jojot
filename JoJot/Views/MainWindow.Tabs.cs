@@ -362,9 +362,9 @@ public partial class MainWindow
                 }
             }
 
-            // Flush autosave service — stops timer, saves content,
-            // and updates _lastWriteCompleted to keep write frequency cap accurate
-            await _autosaveService.FlushAsync();
+            // Flush autosave service in the background — stops timer, captures content
+            // synchronously, and persists it via BackgroundWriter without blocking the switch
+            _autosaveService.FlushInBackground();
             _checkpointTimer.Stop();
 
             // Save scroll offset for outgoing tab

@@ -636,6 +636,10 @@ namespace JoJot.Resources {
             get { return ResourceManager.GetString("Toast_Replacements_One", resourceCulture)!; }
         }
 
+        public static string Toast_SaveFailed {
+            get { return ResourceManager.GetString("Toast_SaveFailed", resourceCulture)!; }
+        }
+
         public static string Tooltip_Clone {
             get { return ResourceManager.GetString("Tooltip_Clone", resourceCulture)!; }
         }

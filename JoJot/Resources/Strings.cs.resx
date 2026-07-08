@@ -200,6 +200,7 @@
   <data name="Toast_Recovery" xml:space="preserve"><value>Okno obnoveno po přerušeném přesunu</value></data>
   <data name="Toast_Merged" xml:space="preserve"><value>Sloučeno {0} poznámek z {1}</value></data>
   <data name="Toast_HotkeyInUse" xml:space="preserve"><value>Klávesová zkratka je již používána jinou aplikací</value></data>
+  <data name="Toast_SaveFailed" xml:space="preserve"><value>Uložení selhalo ({0}) — poznámka zůstává v paměti, zkusíme to při další změně</value></data>
 
   <!-- ═══ Drag overlay ═══ -->
   <data name="Drag_KeepHere" xml:space="preserve"><value>Ponechat zde</value></data>

@@ -200,6 +200,7 @@
   <data name="Toast_Recovery" xml:space="preserve"><value>Recovered window from interrupted move</value></data>
   <data name="Toast_Merged" xml:space="preserve"><value>Merged {0} notes from {1}</value></data>
   <data name="Toast_HotkeyInUse" xml:space="preserve"><value>Hotkey already in use by another app</value></data>
+  <data name="Toast_SaveFailed" xml:space="preserve"><value>Saving failed ({0}) — your note is kept in memory, retrying on next change</value><comment>{0} = operation name</comment></data>
 
   <!-- ═══ Drag overlay ═══ -->
   <data name="Drag_KeepHere" xml:space="preserve"><value>Keep here</value></data>
