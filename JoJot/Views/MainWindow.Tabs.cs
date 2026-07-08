@@ -96,8 +96,8 @@ public partial class MainWindow
         if (_tabs.Count == 0)
         {
             // Auto-create first empty tab — no empty state screen
-            await CreateNewTabAsync();
-            return; // CreateNewTabAsync already selects the tab
+            CreateNewTab();
+            return; // CreateNewTab already selects the tab
         }
 
         RebuildTabList();
@@ -638,10 +638,11 @@ public partial class MainWindow
     // ─── Tab Creation ───────────────────────────────────────────────────
 
     /// <summary>
-    /// Creates a new empty tab, inserts it into the database, adds to the tab list,
-    /// selects it, and focuses the editor.
+    /// Creates a new empty tab optimistically: it appears, is selected, and receives focus
+    /// immediately under a temporary negative id; the INSERT runs in the background and the
+    /// real id is swapped in (undo stack migrated) when it lands.
     /// </summary>
-    public async Task CreateNewTabAsync()
+    public void CreateNewTab()
     {
         if (!_tabsLoaded) return; // window shell is up but the DB isn't — ignore early Ctrl+T
 
@@ -661,12 +662,9 @@ public partial class MainWindow
             return;
         }
 
-        long newId = await NoteStore.InsertNoteAsync(
-            _desktopGuid, null, "", false, sortOrder);
-
         var newTab = new NoteTab
         {
-            Id = newId,
+            Id = NoteTab.NextTempId(),
             DesktopGuid = _desktopGuid,
             Content = "",
             Pinned = false,
@@ -674,11 +672,35 @@ public partial class MainWindow
             CreatedAt = DateTime.Now,
             UpdatedAt = DateTime.Now
         };
+        newTab.BeginPersistence();
 
         ViewModel.InsertNewTab(newTab, insertIndex);
         RebuildTabList();
         SelectTabByNote(newTab);
         Keyboard.Focus(ContentEditor);
+
+        BackgroundWriter.Run(async () =>
+        {
+            long tempId = newTab.Id;
+            long realId = await NoteStore.InsertNoteAsync(
+                _desktopGuid, null, "", false, sortOrder).ConfigureAwait(false);
+
+            // Id assignment raises PropertyChanged and the undo stack re-key must be atomic
+            // with it from the UI's perspective — do both on the dispatcher.
+            await Dispatcher.InvokeAsync(() =>
+            {
+                newTab.Id = realId;
+                UndoManager.Instance.MigrateStack(tempId, realId);
+            });
+            newTab.CompletePersistence();
+
+            // Catch-all: anything typed before the row existed lives only in the model.
+            string content = await Dispatcher.InvokeAsync(() => newTab.Content);
+            if (content.Length > 0)
+            {
+                await NoteStore.UpdateNoteContentAsync(realId, content).ConfigureAwait(false);
+            }
+        }, "create tab");
     }
 
     /// <summary>
@@ -688,14 +710,14 @@ public partial class MainWindow
     public void RequestNewTab()
     {
         LogService.Info("RequestNewTab called for desktop {DesktopGuid}", _desktopGuid);
-        _ = CreateNewTabAsync();
+        CreateNewTab();
     }
 
     // ─── New Tab Button ─────────────────────────────────────────────────
 
     private void NewTabButton_Click(object sender, RoutedEventArgs e)
     {
-        _ = CreateNewTabAsync();
+        CreateNewTab();
     }
 
     // ─── Pin/Unpin Toggle ───────────────────────────────────────────────
@@ -712,7 +734,7 @@ public partial class MainWindow
         // ReorderAfterPinToggle clears and repopulates the bound collection; guard so the transient
         // empty state doesn't fire SelectionChanged and blank the active tab. RebuildTabList reselects.
         MutateTabsGuarded(() => ViewModel.ReorderAfterPinToggle(tab));
-        await NoteStore.UpdateNoteSortOrdersAsync(_tabs.Select(t => (t.Id, t.SortOrder)));
+        await NoteStore.UpdateNoteSortOrdersAsync(_tabs.Where(t => t.Id > 0).Select(t => (t.Id, t.SortOrder)));
 
         RebuildTabList();
         UpdateToolbarState();
@@ -746,7 +768,7 @@ public partial class MainWindow
         };
 
         ViewModel.InsertNewTab(clone, insertIndex);
-        await NoteStore.UpdateNoteSortOrdersAsync(_tabs.Select(t => (t.Id, t.SortOrder)));
+        await NoteStore.UpdateNoteSortOrdersAsync(_tabs.Where(t => t.Id > 0).Select(t => (t.Id, t.SortOrder)));
 
         RebuildTabList();
         SelectTabByNote(clone);

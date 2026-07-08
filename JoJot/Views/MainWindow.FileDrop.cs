@@ -89,7 +89,7 @@ public partial class MainWindow
             if (_tabs.Count > pinnedCount)
             {
                 _ = NoteStore.UpdateNoteSortOrdersAsync(
-                    _tabs.Skip(pinnedCount).Select(t => (t.Id, t.SortOrder)));
+                    _tabs.Skip(pinnedCount).Where(t => t.Id > 0).Select(t => (t.Id, t.SortOrder)));
             }
 
             int insertOffset = 0;

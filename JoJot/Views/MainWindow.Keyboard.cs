@@ -31,7 +31,7 @@ public partial class MainWindow
     /// </summary>
     private void InitializeInputBindings()
     {
-        NewTabCommand = new RelayCommand(() => _ = CreateNewTabAsync());
+        NewTabCommand = new RelayCommand(() => CreateNewTab());
         CloseTabCommand = new RelayCommand(
             () => _ = DeleteTabAsync(_activeTab!),
             () => _activeTab is not null);

@@ -47,6 +47,28 @@ public sealed class NoteTab : ObservableObject
     /// </summary>
     public long Id { get; set; }
 
+    /// <summary>Decremented to hand out unique negative temporary ids for optimistic creation.</summary>
+    private static long _tempIdCounter;
+
+    /// <summary>Returns a unique negative temporary id for an optimistically created tab.</summary>
+    internal static long NextTempId() => Interlocked.Decrement(ref _tempIdCounter);
+
+    private TaskCompletionSource? _persistedTcs;
+
+    /// <summary>
+    /// Completed when this tab has a database row. Tabs loaded from the DB are always
+    /// completed; optimistically created tabs complete when their background INSERT lands.
+    /// Background operations keyed by <see cref="Id"/> must await this before persisting.
+    /// </summary>
+    public Task Persisted => _persistedTcs?.Task ?? Task.CompletedTask;
+
+    /// <summary>Marks this tab as not yet persisted (optimistic creation).</summary>
+    internal void BeginPersistence() =>
+        _persistedTcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+    /// <summary>Signals that the database row now exists and <see cref="Id"/> is real.</summary>
+    internal void CompletePersistence() => _persistedTcs?.TrySetResult();
+
     /// <summary>
     /// GUID string identifying the virtual desktop this note belongs to.
     /// </summary>

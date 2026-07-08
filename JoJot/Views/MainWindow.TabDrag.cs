@@ -197,7 +197,7 @@ public partial class MainWindow
                 if (ViewModel.MoveTab(oldIndex, newIndex))
                 {
                     _ = NoteStore.UpdateNoteSortOrdersAsync(
-                        _tabs.Select(t => (t.Id, t.SortOrder)));
+                        _tabs.Where(t => t.Id > 0).Select(t => (t.Id, t.SortOrder)));
 
                     // Mark tab for fade-in animation (handled in TabItemBorder_Loaded)
                     _fadeInTab = _dragTab;

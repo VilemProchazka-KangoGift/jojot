@@ -30,6 +30,9 @@ public partial class MainWindow
 
         foreach (var tab in pending.Tabs)
         {
+            // A tab may still be persisting its optimistic INSERT — wait so the delete can't race
+            // ahead of the insert and target a not-yet-existing (or wrong) row.
+            await tab.Persisted.ConfigureAwait(false);
             // ConfigureAwait(false): this method is sync-blocked via GetAwaiter().GetResult() on the
             // close path, so the continuation must not require the (blocked) UI thread or it deadlocks.
             await NoteStore.DeleteNoteAsync(tab.Id).ConfigureAwait(false);
@@ -57,7 +60,7 @@ public partial class MainWindow
         if (focusTarget is not null)
             await ApplyFocusCascadeAsync(focusTarget);
         else if (_tabs.Count == 0)
-            await CreateNewTabAsync();
+            CreateNewTab();
 
         var cts = new CancellationTokenSource();
         _pendingDeletion = new PendingDeletion([tab], [originalIndex], cts);
@@ -85,7 +88,7 @@ public partial class MainWindow
         if (focusTarget is not null)
             await ApplyFocusCascadeAsync(focusTarget);
         else if (_tabs.Count == 0)
-            await CreateNewTabAsync();
+            CreateNewTab();
 
         var cts = new CancellationTokenSource();
         _pendingDeletion = new PendingDeletion(removed, originalIndexes, cts);
@@ -158,7 +161,7 @@ public partial class MainWindow
         }
 
         // No tabs at all — auto-create
-        await CreateNewTabAsync();
+        CreateNewTab();
     }
 
     // ─── Toast Overlay ──────────────────────────────────────────────────

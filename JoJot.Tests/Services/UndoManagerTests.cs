@@ -186,4 +186,28 @@ public class UndoManagerTests
         entry.Content.Should().Be("hello");
         entry.CursorPosition.Should().Be(0);
     }
+
+    [Fact]
+    public void MigrateStack_RekeysStackAndActiveTab()
+    {
+        var mgr = CreateManager();
+        mgr.SetActiveTab(-5);
+        var stack = mgr.GetOrCreateStack(-5);
+        stack.PushInitialContent("hello");
+        stack.PushSnapshot("hello world");
+
+        mgr.MigrateStack(-5, 123);
+
+        // The old temp key is gone.
+        mgr.GetStack(-5).Should().BeNull("the old key must be gone");
+        mgr.CanUndo(-5).Should().BeFalse();
+
+        // The same stack object survives under the new real id, with its history intact.
+        mgr.GetStack(123).Should().BeSameAs(stack);
+        mgr.CanUndo(123).Should().BeTrue();
+
+        // Active-tab tracking followed the migration: pushing under the new id works.
+        mgr.PushSnapshot(123, "again");
+        mgr.CanUndo(123).Should().BeTrue();
+    }
 }

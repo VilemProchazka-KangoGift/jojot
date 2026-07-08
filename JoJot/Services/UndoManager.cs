@@ -92,6 +92,23 @@ public sealed class UndoManager
     }
 
     /// <summary>
+    /// Re-keys a tab's undo stack after an optimistic creation receives its database id.
+    /// If the tab is currently active, active-tab tracking follows the new id.
+    /// </summary>
+    /// <param name="oldTabId">The temporary (negative) id the stack is currently keyed under.</param>
+    /// <param name="newTabId">The real database id to re-key the stack under.</param>
+    public void MigrateStack(long oldTabId, long newTabId)
+    {
+        lock (_lock)
+        {
+            if (_stacks.Remove(oldTabId, out var stack))
+                _stacks[newTabId] = stack;
+            if (_activeTabId == oldTabId)
+                _activeTabId = newTabId;
+        }
+    }
+
+    /// <summary>
     /// Pushes a snapshot to the tab's undo stack and triggers memory-budget collapse if needed.
     /// </summary>
     /// <param name="tabId">The tab identifier.</param>

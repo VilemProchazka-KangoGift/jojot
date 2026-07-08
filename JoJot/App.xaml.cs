@@ -381,7 +381,7 @@ public partial class App : Application
                 {
                     w.WindowState = WindowState.Normal;
                     WindowActivationHelper.ActivateWindow(w);
-                    _ = w.CreateNewTabAsync();
+                    w.CreateNewTab();
                 }
                 else
                 {
