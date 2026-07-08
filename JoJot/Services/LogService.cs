@@ -26,12 +26,12 @@ public static class LogService
             .MinimumLevel.ControlledBy(LevelSwitch)
             .Enrich.WithThreadId()
             .Enrich.WithProcessId()
-            .WriteTo.File(
+            .WriteTo.Async(a => a.File(
                 path: Path.Combine(directory, "jojot.log"),
                 rollingInterval: RollingInterval.Day,
                 fileSizeLimitBytes: 5 * 1024 * 1024,
                 retainedFileCountLimit: 5,
-                outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff} [{Level:u5}] [{ThreadId}] {Message:lj}{NewLine}{Exception}")
+                outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff} [{Level:u5}] [{ThreadId}] {Message:lj}{NewLine}{Exception}"))
             .WriteTo.Debug(
                 outputTemplate: "[{Level:u5}] [{ThreadId}] {Message:lj}{NewLine}{Exception}")
             .CreateLogger();
