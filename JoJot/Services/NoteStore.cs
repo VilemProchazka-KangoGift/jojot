@@ -429,13 +429,23 @@ public static class NoteStore
     {
         if (desktopGuids.Count == 0) return [];
 
-        await using var context = DatabaseCore.CreateContext();
-        return await context.Notes
-            .AsNoTracking()
-            .Where(n => desktopGuids.Contains(n.DesktopGuid))
-            .GroupBy(n => n.DesktopGuid)
-            .Select(g => new { g.Key, Count = g.Count() })
-            .ToDictionaryAsync(x => x.Key, x => x.Count).ConfigureAwait(false);
+        try
+        {
+            await using var context = DatabaseCore.CreateContext();
+            return await context.Notes
+                .AsNoTracking()
+                .Where(n => desktopGuids.Contains(n.DesktopGuid))
+                .GroupBy(n => n.DesktopGuid)
+                .Select(g => new { g.Key, Count = g.Count() })
+                .ToDictionaryAsync(x => x.Key, x => x.Count).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            // Degrade like the single-desktop GetNoteCountForDesktopAsync: a transient DB error
+            // shows zero counts (callers use GetValueOrDefault) rather than breaking the recovery panel.
+            LogService.Error("GetNoteCountsForDesktopsAsync failed ({Count} guids)", desktopGuids.Count, ex);
+            return [];
+        }
     }
 
     /// <summary>
