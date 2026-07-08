@@ -390,6 +390,7 @@ public static class DatabaseCore
     {
         var options = new DbContextOptionsBuilder<JoJotDbContext>()
             .UseSqlite(_connectionString)
+            .UseModel(JoJot.Data.CompiledModels.JoJotDbContextModel.Instance)
             .AddInterceptors(new SqlitePragmaInterceptor())
             .Options;
         _contextFactory = new PooledDbContextFactory<JoJotDbContext>(options, poolSize: 4);

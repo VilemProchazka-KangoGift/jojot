@@ -55,6 +55,7 @@ public class JoJotDbContext : DbContext
         if (!optionsBuilder.IsConfigured && _connectionString is not null)
         {
             optionsBuilder.UseSqlite(_connectionString);
+            optionsBuilder.UseModel(CompiledModels.JoJotDbContextModel.Instance);
             optionsBuilder.AddInterceptors(new SqlitePragmaInterceptor());
         }
     }

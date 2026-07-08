@@ -125,3 +125,6 @@ Hand-rolled MVVM (no framework). Base classes in `JoJot/ViewModels/`: `Observabl
 - **Sealed classes**: All non-inherited classes are `sealed` (models, services, view models, adorners). Enables devirtualization.
 - **Parameterized SQL**: Raw SQL uses `@param` placeholders via `DatabaseCore.ExecuteNonQueryAsync(sql, ("@name", value))`. Never interpolate values into SQL strings.
 - **Build strictness**: `TreatWarningsAsErrors` and `EnforceCodeStyleInBuild` are enabled — warnings fail the build. `.editorconfig` enforces file-scoped namespaces, `_camelCase` fields, `var` preferences.
+- **EF compiled model**: `JoJot/Data/CompiledModels/` is generated. After ANY change to entity
+  classes or `OnModelCreating`, regenerate with:
+  `dotnet ef dbcontext optimize --project JoJot/JoJot.csproj --output-dir Data/CompiledModels --namespace JoJot.Data.CompiledModels --context JoJotDbContext`
