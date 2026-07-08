@@ -63,6 +63,17 @@ public partial class App : Application
         }
     }
 
+    /// <summary>Tracks the previous phase's elapsed time for startup delta logging.</summary>
+    private static long _lastPhaseMs;
+
+    /// <summary>Logs one startup phase with cumulative and delta milliseconds.</summary>
+    private static void LogPhase(Stopwatch sw, string phase)
+    {
+        long now = sw.ElapsedMilliseconds;
+        LogService.Info("Startup phase {Phase} at {TotalMs}ms (+{DeltaMs}ms)", phase, now, now - _lastPhaseMs);
+        _lastPhaseMs = now;
+    }
+
     /// <summary>
     /// Cancellation source signaled on application exit to stop the IPC server and other background work.
     /// </summary>
@@ -161,6 +172,7 @@ public partial class App : Application
             var dbPath = AppEnvironment.DatabasePath;
             await DatabaseCore.OpenAsync(dbPath);
             await DatabaseCore.EnsureSchemaAsync();
+            LogPhase(sw, "db-open+schema");
 
             // Integrity check with corruption recovery (before EF warmup to avoid wasted work)
             bool healthy = await DatabaseCore.VerifyIntegrityAsync();
@@ -172,6 +184,7 @@ public partial class App : Application
 
             // Warm up EF model after integrity is confirmed (must complete before first real query)
             await DatabaseCore.WarmupModelAsync();
+            LogPhase(sw, "integrity+warmup");
 
             // Restore log level from preferences
             var savedLogLevel = await PreferenceStore.GetPreferenceAsync("log_level").ConfigureAwait(false);
@@ -184,11 +197,13 @@ public partial class App : Application
 
             // Initialize language (sets CurrentUICulture before any UI is created)
             await LanguageService.InitializeAsync();
+            LogPhase(sw, "prefs+language");
 
             // Initialize theme and virtual desktop detection in parallel (independent of each other)
             var themeTask = ThemeService.InitializeAsync();
             await VirtualDesktopService.InitializeAsync();
             await themeTask;
+            LogPhase(sw, "theme+vd-init");
             if (VirtualDesktopService.IsAvailable)
             {
                 LogService.Info("Virtual desktop: {DesktopGuid} ({DesktopName})", VirtualDesktopService.CurrentDesktopGuid, VirtualDesktopService.CurrentDesktopName);
@@ -204,6 +219,7 @@ public partial class App : Application
             // Session matching — associate saved sessions with live desktops
             await VirtualDesktopService.MatchSessionsAsync();
             await VirtualDesktopService.EnsureCurrentDesktopSessionAsync();
+            LogPhase(sw, "session-matching");
 
             // Resolve pending moves from crash recovery
             await ResolvePendingMovesAsync();
@@ -213,6 +229,7 @@ public partial class App : Application
 
             // Welcome tab on first launch
             await StartupService.CreateWelcomeTabIfFirstLaunch();
+            LogPhase(sw, "recovery+autodelete+welcome");
 
             // Start IPC server
             IpcService.StartServer(HandleIpcCommand, _appShutdownCts.Token);
@@ -220,15 +237,18 @@ public partial class App : Application
             // Register the global hotkey once, on a dedicated message-only window owned by the app
             // (not any MainWindow) so it keeps working after all windows are closed.
             await HotkeyService.InitializeAsync(OnGlobalHotkeyPressed);
+            LogPhase(sw, "ipc+hotkey");
 
             // Run pending migrations before window restore.
             // Migrations must complete before GetWindowGeometryAsync (which reads
             // columns added by migrations like window_state).
             await StartupService.RunBackgroundMigrationsAsync();
+            LogPhase(sw, "migrations");
 
             // Create and show window for current desktop
             var currentDesktopGuid = VirtualDesktopService.CurrentDesktopGuid;
             var mainWindow = await CreateWindowForDesktop(currentDesktopGuid);
+            LogPhase(sw, "window-create+show");
 
             // Set orphan badge after session matching
             mainWindow.UpdateOrphanBadge();
