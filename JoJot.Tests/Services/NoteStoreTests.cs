@@ -215,6 +215,23 @@ public class NoteStoreTests : IAsyncLifetime
         count.Should().Be(0);
     }
 
+    // ─── GetNoteCountsForDesktops ─────────────────────────────────────
+
+    [Fact]
+    public async Task GetNoteCountsForDesktops_GroupsInOneQuery()
+    {
+        await NoteStore.InsertNoteAsync("dx", null, "1", false, 0);
+        await NoteStore.InsertNoteAsync("dx", null, "2", false, 1);
+        await NoteStore.InsertNoteAsync("dy", null, "3", false, 0);
+
+        var counts = await NoteStore.GetNoteCountsForDesktopsAsync(["dx", "dy", "dz"]);
+
+        counts.Should().HaveCount(2);
+        counts["dx"].Should().Be(2);
+        counts["dy"].Should().Be(1);
+        counts.Should().NotContainKey("dz");
+    }
+
     // ─── GetNoteNames ─────────────────────────────────────────────────
 
     [Fact]

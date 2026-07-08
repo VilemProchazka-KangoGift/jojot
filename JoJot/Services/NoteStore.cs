@@ -423,6 +423,21 @@ public static class NoteStore
         }
     }
 
+    /// <summary>Returns note counts for many desktops in one grouped query (recovery panel).</summary>
+    public static async Task<Dictionary<string, int>> GetNoteCountsForDesktopsAsync(
+        IReadOnlyCollection<string> desktopGuids)
+    {
+        if (desktopGuids.Count == 0) return [];
+
+        await using var context = DatabaseCore.CreateContext();
+        return await context.Notes
+            .AsNoTracking()
+            .Where(n => desktopGuids.Contains(n.DesktopGuid))
+            .GroupBy(n => n.DesktopGuid)
+            .Select(g => new { g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.Key, x => x.Count).ConfigureAwait(false);
+    }
+
     /// <summary>
     /// Updates all notes from one desktop_guid to another, preserving sort_order and pin state.
     /// </summary>

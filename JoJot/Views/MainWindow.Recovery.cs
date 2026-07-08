@@ -53,11 +53,19 @@ public partial class MainWindow
             RecoveryPanel.SessionList_.Children.Clear();
 
             var orphanList = orphanInfos.ToList();
+            var orphanListGuids = orphanList.Select(o => o.DesktopGuid).ToList();
+            var counts = await NoteStore.GetNoteCountsForDesktopsAsync(orphanListGuids);
+            var previewTasks = orphanListGuids
+                .Select(async guid => (guid,
+                    previews: await NoteStore.GetNotePreviewsForDesktopAsync(guid, 5)))
+                .ToList();
+            var previewsByGuid = (await Task.WhenAll(previewTasks)).ToDictionary(x => x.guid, x => x.previews);
+
             for (int i = 0; i < orphanList.Count; i++)
             {
                 var (guid, desktopName, tabCount, lastUpdated) = orphanList[i];
-                var tabPreviews = await NoteStore.GetNotePreviewsForDesktopAsync(guid, 5);
-                var totalCount = await NoteStore.GetNoteCountForDesktopAsync(guid);
+                var tabPreviews = previewsByGuid[guid];
+                int totalCount = counts.GetValueOrDefault(guid);
                 bool isLast = (i == orphanList.Count - 1);
                 RecoveryPanel.SessionList_.Children.Add(CreateRecoveryRow(guid, desktopName, tabCount, lastUpdated, tabPreviews, totalCount, isLast));
             }
@@ -340,11 +348,19 @@ public partial class MainWindow
             VirtualDesktopService.OrphanedSessionGuids);
         RecoveryPanel.SessionList_.Children.Clear();
         var orphanList = orphanInfos.ToList();
+        var orphanListGuids = orphanList.Select(o => o.DesktopGuid).ToList();
+        var counts = await NoteStore.GetNoteCountsForDesktopsAsync(orphanListGuids);
+        var previewTasks = orphanListGuids
+            .Select(async guid => (guid,
+                previews: await NoteStore.GetNotePreviewsForDesktopAsync(guid, 5)))
+            .ToList();
+        var previewsByGuid = (await Task.WhenAll(previewTasks)).ToDictionary(x => x.guid, x => x.previews);
+
         for (int i = 0; i < orphanList.Count; i++)
         {
             var (guid, name, tabCount, lastUpdated) = orphanList[i];
-            var tabPreviews = await NoteStore.GetNotePreviewsForDesktopAsync(guid, 5);
-            var totalCount = await NoteStore.GetNoteCountForDesktopAsync(guid);
+            var tabPreviews = previewsByGuid[guid];
+            int totalCount = counts.GetValueOrDefault(guid);
             bool isLast = (i == orphanList.Count - 1);
             RecoveryPanel.SessionList_.Children.Add(CreateRecoveryRow(guid, name, tabCount, lastUpdated, tabPreviews, totalCount, isLast));
         }
