@@ -206,6 +206,10 @@ public class UndoManagerTests
         mgr.GetStack(123).Should().BeSameAs(stack);
         mgr.CanUndo(123).Should().BeTrue();
 
+        // The stack's own TabId is re-keyed too (not just the dictionary key), so its
+        // collapse-exemption check (stack.TabId != _activeTabId) and logs use the real id.
+        stack.TabId.Should().Be(123, "the moved stack's own TabId must follow the migration");
+
         // Active-tab tracking followed the migration: pushing under the new id works.
         mgr.PushSnapshot(123, "again");
         mgr.CanUndo(123).Should().BeTrue();

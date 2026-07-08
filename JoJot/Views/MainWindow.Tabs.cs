@@ -682,23 +682,40 @@ public partial class MainWindow
         BackgroundWriter.Run(async () =>
         {
             long tempId = newTab.Id;
-            long realId = await NoteStore.InsertNoteAsync(
-                _desktopGuid, null, "", false, sortOrder).ConfigureAwait(false);
-
-            // Id assignment raises PropertyChanged and the undo stack re-key must be atomic
-            // with it from the UI's perspective — do both on the dispatcher.
-            await Dispatcher.InvokeAsync(() =>
+            try
             {
-                newTab.Id = realId;
-                UndoManager.Instance.MigrateStack(tempId, realId);
-            });
-            newTab.CompletePersistence();
+                long realId = await NoteStore.InsertNoteAsync(
+                    _desktopGuid, null, "", false, sortOrder).ConfigureAwait(false);
 
-            // Catch-all: anything typed before the row existed lives only in the model.
-            string content = await Dispatcher.InvokeAsync(() => newTab.Content);
-            if (content.Length > 0)
+                // Id assignment raises PropertyChanged and the undo stack re-key must be atomic
+                // with it from the UI's perspective — do both on the dispatcher.
+                await Dispatcher.InvokeAsync(() =>
+                {
+                    newTab.Id = realId;
+                    UndoManager.Instance.MigrateStack(tempId, realId);
+                });
+
+                // Catch-all: anything typed before the row existed lives only in the model.
+                string content = await Dispatcher.InvokeAsync(() => newTab.Content);
+                if (content.Length > 0)
+                {
+                    await NoteStore.UpdateNoteContentAsync(realId, content).ConfigureAwait(false);
+                }
+            }
+            finally
             {
-                await NoteStore.UpdateNoteContentAsync(realId, content).ConfigureAwait(false);
+                // Persisted MUST complete in every outcome — including a thrown INSERT. It gates
+                // CommitPendingDeletionAsync (which awaits tab.Persisted before DeleteNoteAsync),
+                // and that method is sync-blocked via GetAwaiter().GetResult() on the window-close/
+                // shutdown path. If Persisted never completed, that await would hang the UI thread
+                // forever; off the close path, one failed-insert tab at the head of a bulk deletion
+                // would block deletion of all its siblings. On failure the tab keeps its negative
+                // id, but every persist-by-id path is a no-op for negative ids (sort-order writes
+                // filter Id > 0; Update/Delete-by-id match zero rows; autosave skips tabId <= 0),
+                // so unblocking awaiters here writes no bogus data. We do NOT catch the exception:
+                // finally runs before it leaves the lambda, so Persisted completes AND BackgroundWriter
+                // still logs it and fires the "Saving failed — kept in memory" toast.
+                newTab.CompletePersistence();
             }
         }, "create tab");
     }

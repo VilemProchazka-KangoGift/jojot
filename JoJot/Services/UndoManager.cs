@@ -102,7 +102,13 @@ public sealed class UndoManager
         lock (_lock)
         {
             if (_stacks.Remove(oldTabId, out var stack))
+            {
+                // Re-key the stack's own TabId too, not just the dictionary key — CollapseOldest
+                // compares stack.TabId != _activeTabId for its collapse exemption, and logs print
+                // TabId. A stale temp id would strip the active tab's exemption and log the wrong id.
+                stack.TabId = newTabId;
                 _stacks[newTabId] = stack;
+            }
             if (_activeTabId == oldTabId)
                 _activeTabId = newTabId;
         }

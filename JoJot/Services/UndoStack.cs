@@ -33,8 +33,11 @@ public sealed class UndoStack(long tabId, IClock? clock = null)
     private DateTime _lastCheckpointTime = DateTime.MinValue;
     private long _estimatedBytes;              // Cached — updated incrementally on add/remove
 
-    /// <summary>The <c>NoteTab.Id</c> this stack belongs to.</summary>
-    public long TabId { get; } = tabId;
+    /// <summary>
+    /// The <c>NoteTab.Id</c> this stack belongs to. Settable only by <see cref="UndoManager"/>
+    /// (via <c>MigrateStack</c>) when an optimistic tab's temp id is swapped for its real DB id.
+    /// </summary>
+    public long TabId { get; internal set; } = tabId;
 
     /// <summary>Updated on any push, undo, or redo. Used by <see cref="UndoManager"/> for LRU collapse.</summary>
     public DateTime LastAccessTime { get; set; } = (clock ?? SystemClock.Instance).Now;
