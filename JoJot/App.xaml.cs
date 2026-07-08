@@ -647,6 +647,8 @@ public partial class App : Application
             window.FlushAndClose();
         }
 
+        BackgroundWriter.DrainAsync(TimeSpan.FromSeconds(2)).GetAwaiter().GetResult();
+
         Shutdown();
     }
 
@@ -663,6 +665,12 @@ public partial class App : Application
         HotkeyService.Shutdown();
         VirtualDesktopService.Shutdown();
         ThemeService.Shutdown();
+
+        bool drained = BackgroundWriter.DrainAsync(TimeSpan.FromSeconds(5)).GetAwaiter().GetResult();
+        if (!drained)
+        {
+            LogService.Warn("Shutdown: background writes did not drain within 5s");
+        }
 
         // Synchronous close in exit path — no async available here
         DatabaseCore.CloseAsync().GetAwaiter().GetResult();
