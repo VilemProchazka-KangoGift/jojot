@@ -195,6 +195,9 @@
             <Setter Property="Height" Value="28"/>
             <Setter Property="Padding" Value="0"/>
             <Setter Property="Cursor" Value="Hand"/>
+            <!-- Toolbar actions must not steal keyboard focus from the editor: otherwise clicking
+                 Copy/Pin/etc. deactivates the TextBox and drops the visible text selection. -->
+            <Setter Property="Focusable" Value="False"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
@@ -459,6 +462,7 @@
                          Foreground="{DynamicResource c-text-primary}"
                          CaretBrush="{DynamicResource c-text-primary}"
                          IsUndoEnabled="False"
+                         IsInactiveSelectionHighlightEnabled="True"
                          IsEnabled="False"/>
 
                 <!-- Font size tooltip — auto-dismissing overlay -->
