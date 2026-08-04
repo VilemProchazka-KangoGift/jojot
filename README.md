@@ -42,7 +42,7 @@ dotnet publish JoJot/JoJot.csproj -c Release -r win-x64 --self-contained
 
 JoJot is a WPF application (.NET 10) using hand-rolled MVVM, SQLite for local storage, and undocumented Windows COM APIs for virtual desktop integration. Each virtual desktop gets its own window instance with a separate note session. The app enforces single-instance via a global mutex and named-pipe IPC.
 
-See [`CLAUDE.md`](CLAUDE.md) for full architectural details, service descriptions, and coding conventions.
+See [`AGENTS.md`](AGENTS.md) for full architectural details, service descriptions, and coding conventions.
 
 ### Project Structure
 
@@ -62,7 +62,7 @@ installer/              # Inno Setup installer script
 
 ## Contributing
 
-Contributions are welcome. Please open an issue first to discuss what you'd like to change. See [`CLAUDE.md`](CLAUDE.md) for build commands, architecture, and coding conventions.
+Contributions are welcome. Please open an issue first to discuss what you'd like to change. See [`AGENTS.md`](AGENTS.md) for build commands, architecture, and coding conventions.
 
 ## Tech
 

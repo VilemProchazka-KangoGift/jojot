@@ -29,3 +29,9 @@ coverage*.xml
 Thumbs.db
 desktop.ini
 *.log
+
+# Codex skill-discovery link -> .claude/skills, created per clone/worktree by
+# Scripts/Setup-AgentSkills.ps1. Local dev artifact: a junction on Windows, a symlink
+# elsewhere, so never committed. The leading **/ is required -- a mid-string slash makes
+# git anchor the pattern to this file's own directory.
+**/.agents/skills
