@@ -1,14 +1,10 @@
 ---
 name: release
-description: Bump version, publish self-contained build, and compile Inno Setup installer
-argument-hint: "<version>"
-allowed-tools:
-  - Read
-  - Edit
-  - Bash
-  - Glob
-  - AskUserQuestion
+description: Bump version, publish self-contained build, and compile Inno Setup installer. Invoke explicitly with /release -- do not trigger this on your own judgment.
 ---
+
+**Argument:** <version>. Skills receive it as prose rather than a substituted
+token, so read it from the invocation itself.
 <objective>
 Build a release of JoJot: bump the version in csproj and installer script, run `dotnet publish`, and compile the Inno Setup installer to produce the Setup.exe.
 </objective>
@@ -16,7 +12,7 @@ Build a release of JoJot: bump the version in csproj and installer script, run `
 <process>
 ## 1. Determine version
 
-If `$ARGUMENTS` is provided, use it as the new version (expected format: `YYYY.M.N`, e.g. `2026.3.2`).
+If `the argument you were invoked with (the text after /release)` is provided, use it as the new version (expected format: `YYYY.M.N`, e.g. `2026.3.2`).
 
 If no argument is provided, read the current version from `JoJot/JoJot.csproj` and ask the user what the new version should be.
 
