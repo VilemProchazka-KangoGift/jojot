@@ -349,21 +349,26 @@ public partial class App : Application
         return window;
     }
 
-    /// <summary>Open → schema → integrity/corruption recovery → EF warmup, as one awaitable unit.</summary>
+    /// <summary>
+    /// Open → schema → integrity/corruption recovery → EF warmup, as one awaitable unit.
+    /// Every step runs on the DB worker thread. ConfigureAwait(false) keeps the chain from
+    /// bouncing through the dispatcher between steps (it touches no UI), so it progresses while
+    /// the UI thread is busy building the window.
+    /// </summary>
     private static async Task InitializeDatabaseAsync()
     {
         var dbPath = AppEnvironment.DatabasePath;
-        await DatabaseCore.OpenAsync(dbPath);
-        await DatabaseCore.EnsureSchemaAsync();
+        await DatabaseCore.OpenAsync(dbPath).ConfigureAwait(false);
+        await DatabaseCore.EnsureSchemaAsync().ConfigureAwait(false);
 
-        bool healthy = await DatabaseCore.VerifyIntegrityAsync();
+        bool healthy = await DatabaseCore.VerifyIntegrityAsync().ConfigureAwait(false);
         if (!healthy)
         {
             LogService.Error("Database integrity check failed — initiating corruption recovery");
-            await DatabaseCore.HandleCorruptionAsync(dbPath);
+            await DatabaseCore.HandleCorruptionAsync(dbPath).ConfigureAwait(false);
         }
 
-        await DatabaseCore.WarmupModelAsync();
+        await DatabaseCore.WarmupModelAsync().ConfigureAwait(false);
     }
 
     /// <summary>

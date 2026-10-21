@@ -72,7 +72,9 @@ public static partial class ThemeService
     /// </summary>
     public static async Task InitializeAsync()
     {
-        var saved = await PreferenceStore.GetPreferenceAsync("theme").ConfigureAwait(false);
+        // No ConfigureAwait(false): ApplyTheme touches Application.Current.Resources, so the
+        // continuation must stay on the UI thread. On a cache miss the read hops to the DB thread.
+        var saved = await PreferenceStore.GetPreferenceAsync("theme");
         _currentSetting = ParseThemePreference(saved);
 
         // Must apply theme on the UI thread

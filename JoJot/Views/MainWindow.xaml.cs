@@ -230,11 +230,23 @@ public partial class MainWindow : Window
             saveFunc: NoteStore.UpdateNoteContentAsync,
             onSaveCompleted: (tabId) =>
             {
-                var tab = _tabs.FirstOrDefault(t => t.Id == tabId);
-                if (tab is not null)
+                // FlushAsync / FlushInBackground complete on a background thread (the save ran on
+                // the DB thread); _tabs and the bound UpdatedAt are UI-affine. InvokeAsync, never
+                // Invoke: a UI thread sync-blocked on the close path must not deadlock this.
+                var savedAt = DateTime.Now;
+                void Apply()
                 {
-                    tab.UpdatedAt = DateTime.Now;
+                    var tab = _tabs.FirstOrDefault(t => t.Id == tabId);
+                    if (tab is not null)
+                    {
+                        tab.UpdatedAt = savedAt;
+                    }
                 }
+
+                if (Dispatcher.CheckAccess())
+                    Apply();
+                else
+                    Dispatcher.InvokeAsync(Apply);
             }
         );
 

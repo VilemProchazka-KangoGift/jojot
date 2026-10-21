@@ -11,7 +11,10 @@ public static class PendingMoveStore
     /// <summary>
     /// Inserts a pending_moves row when a window drag is detected.
     /// </summary>
-    public static async Task<long> InsertPendingMoveAsync(string windowId, string fromDesktop, string? toDesktop)
+    public static Task<long> InsertPendingMoveAsync(string windowId, string fromDesktop, string? toDesktop) =>
+        DatabaseCore.RunOnDbThreadAsync(() => InsertPendingMoveCoreAsync(windowId, fromDesktop, toDesktop));
+
+    private static async Task<long> InsertPendingMoveCoreAsync(string windowId, string fromDesktop, string? toDesktop)
     {
         await DatabaseCore.AcquireWriteLockAsync().ConfigureAwait(false);
         try
@@ -38,7 +41,10 @@ public static class PendingMoveStore
     /// <summary>
     /// Deletes the pending_moves row for a window after drag resolution.
     /// </summary>
-    public static async Task DeletePendingMoveAsync(string windowId)
+    public static Task DeletePendingMoveAsync(string windowId) =>
+        DatabaseCore.RunOnDbThreadAsync(() => DeletePendingMoveCoreAsync(windowId));
+
+    private static async Task DeletePendingMoveCoreAsync(string windowId)
     {
         await DatabaseCore.AcquireWriteLockAsync().ConfigureAwait(false);
         try
@@ -63,7 +69,10 @@ public static class PendingMoveStore
     /// <summary>
     /// Reads all pending_moves rows for crash recovery.
     /// </summary>
-    public static async Task<List<PendingMove>> GetPendingMovesAsync(CancellationToken ct = default)
+    public static Task<List<PendingMove>> GetPendingMovesAsync(CancellationToken ct = default) =>
+        DatabaseCore.RunOnDbThreadAsync(() => GetPendingMovesCoreAsync(ct));
+
+    private static async Task<List<PendingMove>> GetPendingMovesCoreAsync(CancellationToken ct = default)
     {
         await using var context = DatabaseCore.CreateContext();
         return await context.PendingMoves
@@ -74,7 +83,10 @@ public static class PendingMoveStore
     /// <summary>
     /// Deletes all pending_moves rows after crash recovery resolves them.
     /// </summary>
-    public static async Task DeleteAllPendingMovesAsync()
+    public static Task DeleteAllPendingMovesAsync() =>
+        DatabaseCore.RunOnDbThreadAsync(() => DeleteAllPendingMovesCoreAsync());
+
+    private static async Task DeleteAllPendingMovesCoreAsync()
     {
         await DatabaseCore.AcquireWriteLockAsync().ConfigureAwait(false);
         try

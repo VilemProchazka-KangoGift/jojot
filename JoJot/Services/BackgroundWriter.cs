@@ -40,12 +40,36 @@ public static class BackgroundWriter
     {
         try
         {
-            await operation().ConfigureAwait(false);
+            await StartWithoutSynchronizationContext(operation).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
             LogService.Error("Background write failed: {Operation}", operationName, ex);
             WriteFailed?.Invoke(operationName);
+        }
+    }
+
+    /// <summary>
+    /// Invokes <paramref name="operation"/> on the caller's thread (its synchronous prefix may read
+    /// UI state) but with no SynchronizationContext, so none of its awaits can resume on the UI
+    /// dispatcher. Store calls now really complete on the DB thread; a continuation posted to the
+    /// dispatcher would never run while the UI thread is sync-blocked in <see cref="DrainAsync"/>
+    /// or awaiting <c>NoteTab.Persisted</c> on the close path, which would deadlock shutdown.
+    /// Operations that must touch UI state afterwards marshal explicitly via Dispatcher.InvokeAsync.
+    /// </summary>
+    private static Task StartWithoutSynchronizationContext(Func<Task> operation)
+    {
+        var previous = SynchronizationContext.Current;
+        if (previous is null) return operation();
+
+        SynchronizationContext.SetSynchronizationContext(null);
+        try
+        {
+            return operation();
+        }
+        finally
+        {
+            SynchronizationContext.SetSynchronizationContext(previous);
         }
     }
 

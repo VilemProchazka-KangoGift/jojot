@@ -46,7 +46,7 @@ CalVer format: **`YYYY.M.Count`** (e.g. `2026.3.7`). Count increments per releas
 
 ### Data Storage
 
-SQLite database at `%LocalAppData%\JoJot\jojot.db`. WAL mode, NORMAL synchronous, foreign keys ON. All writes serialized through a `SemaphoreSlim(1,1)` in `DatabaseCore`. Key tables: `notes`, `app_state`, `preferences`, `pending_moves`. Domain stores: `NoteStore`, `SessionStore`, `PreferenceStore`, `PendingMoveStore`.
+SQLite database at `%LocalAppData%\JoJot\jojot.db`. WAL mode, NORMAL synchronous, foreign keys ON. All writes serialized through a `SemaphoreSlim(1,1)` in `DatabaseCore`. **All DB work runs on one dedicated background thread ("JoJot-DB")**: Microsoft.Data.Sqlite's async APIs complete synchronously, so every public store/`DatabaseCore` entry point hops via `DatabaseCore.RunOnDbThreadAsync` (FIFO channel; nested calls from the DB thread run inline) with the body in a private `...CoreAsync`. New store methods must follow that pattern, and code after a store `await` with `ConfigureAwait(false)` runs off the UI thread — marshal with `Dispatcher.InvokeAsync` (never `Invoke`: close paths sync-block the UI thread on DB tasks). `BackgroundWriter.Run` operations never resume on the UI context. Key tables: `notes`, `app_state`, `preferences`, `pending_moves`. Domain stores: `NoteStore`, `SessionStore`, `PreferenceStore`, `PendingMoveStore`.
 
 ### Application Lifecycle
 

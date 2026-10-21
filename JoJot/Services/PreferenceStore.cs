@@ -14,7 +14,10 @@ public static class PreferenceStore
     /// Loads every preference row into the in-memory cache. Called once at startup after the
     /// schema is ensured. Returns the loaded map so callers can reconcile external snapshots.
     /// </summary>
-    public static async Task<IReadOnlyDictionary<string, string>> InitializeCacheAsync(CancellationToken ct = default)
+    public static Task<IReadOnlyDictionary<string, string>> InitializeCacheAsync(CancellationToken ct = default) =>
+        DatabaseCore.RunOnDbThreadAsync(() => InitializeCacheCoreAsync(ct));
+
+    private static async Task<IReadOnlyDictionary<string, string>> InitializeCacheCoreAsync(CancellationToken ct = default)
     {
         await using var context = DatabaseCore.CreateContext();
         var all = await context.Preferences
@@ -22,7 +25,9 @@ public static class PreferenceStore
             .ToDictionaryAsync(p => p.Key, p => p.Value, ct).ConfigureAwait(false);
         lock (_cacheLock)
         {
-            _cache = all;
+            // The cache gets its own copy: SetPreferenceAsync mutates it on the DB thread while the
+            // caller may still be enumerating the returned map on the UI thread.
+            _cache = new Dictionary<string, string>(all);
         }
         return all;
     }
@@ -52,13 +57,19 @@ public static class PreferenceStore
     /// <summary>
     /// Gets a preference value by key. Returns null if the key doesn't exist.
     /// </summary>
-    public static async Task<string?> GetPreferenceAsync(string key, CancellationToken ct = default)
+    public static Task<string?> GetPreferenceAsync(string key, CancellationToken ct = default)
     {
+        // Cache hit: answered synchronously on the caller's thread (no DB hop, no thread switch).
         lock (_cacheLock)
         {
             if (_cache is not null)
-                return _cache.TryGetValue(key, out var cached) ? cached : null;
+                return Task.FromResult<string?>(_cache.TryGetValue(key, out var cached) ? cached : null);
         }
+        return DatabaseCore.RunOnDbThreadAsync(() => GetPreferenceCoreAsync(key, ct));
+    }
+
+    private static async Task<string?> GetPreferenceCoreAsync(string key, CancellationToken ct)
+    {
         try
         {
             await using var context = DatabaseCore.CreateContext();
@@ -78,7 +89,10 @@ public static class PreferenceStore
     /// <summary>
     /// Upserts a preference value. Uses raw SQL for ON CONFLICT upsert.
     /// </summary>
-    public static async Task SetPreferenceAsync(string key, string value)
+    public static Task SetPreferenceAsync(string key, string value) =>
+        DatabaseCore.RunOnDbThreadAsync(() => SetPreferenceCoreAsync(key, value));
+
+    private static async Task SetPreferenceCoreAsync(string key, string value)
     {
         await DatabaseCore.AcquireWriteLockAsync().ConfigureAwait(false);
         try

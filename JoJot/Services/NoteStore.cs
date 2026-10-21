@@ -34,7 +34,10 @@ public static class NoteStore
     /// <summary>
     /// Loads all notes for a desktop, ordered by pinned DESC then sort_order ASC.
     /// </summary>
-    public static async Task<List<NoteTab>> GetNotesForDesktopAsync(string desktopGuid, CancellationToken ct = default)
+    public static Task<List<NoteTab>> GetNotesForDesktopAsync(string desktopGuid, CancellationToken ct = default) =>
+        DatabaseCore.RunOnDbThreadAsync(() => GetNotesForDesktopCoreAsync(desktopGuid, ct));
+
+    private static async Task<List<NoteTab>> GetNotesForDesktopCoreAsync(string desktopGuid, CancellationToken ct = default)
     {
         try
         {
@@ -54,7 +57,10 @@ public static class NoteStore
     /// <summary>
     /// Inserts a new note and returns its auto-generated ID.
     /// </summary>
-    public static async Task<long> InsertNoteAsync(string desktopGuid, string? name, string content, bool pinned, int sortOrder, string? filePath = null)
+    public static Task<long> InsertNoteAsync(string desktopGuid, string? name, string content, bool pinned, int sortOrder, string? filePath = null) =>
+        DatabaseCore.RunOnDbThreadAsync(() => InsertNoteCoreAsync(desktopGuid, name, content, pinned, sortOrder, filePath));
+
+    private static async Task<long> InsertNoteCoreAsync(string desktopGuid, string? name, string content, bool pinned, int sortOrder, string? filePath = null)
     {
         await DatabaseCore.AcquireWriteLockAsync().ConfigureAwait(false);
         try
@@ -90,7 +96,10 @@ public static class NoteStore
     /// <summary>
     /// Updates a note's content and sets updated_at to now.
     /// </summary>
-    public static async Task UpdateNoteContentAsync(long noteId, string content)
+    public static Task UpdateNoteContentAsync(long noteId, string content) =>
+        DatabaseCore.RunOnDbThreadAsync(() => UpdateNoteContentCoreAsync(noteId, content));
+
+    private static async Task UpdateNoteContentCoreAsync(long noteId, string content)
     {
         await DatabaseCore.AcquireWriteLockAsync().ConfigureAwait(false);
         try
@@ -117,7 +126,10 @@ public static class NoteStore
     /// <summary>
     /// Updates a note's custom name. Pass null to clear the name.
     /// </summary>
-    public static async Task UpdateNoteNameAsync(long noteId, string? name)
+    public static Task UpdateNoteNameAsync(long noteId, string? name) =>
+        DatabaseCore.RunOnDbThreadAsync(() => UpdateNoteNameCoreAsync(noteId, name));
+
+    private static async Task UpdateNoteNameCoreAsync(long noteId, string? name)
     {
         await DatabaseCore.AcquireWriteLockAsync().ConfigureAwait(false);
         try
@@ -144,7 +156,10 @@ public static class NoteStore
     /// <summary>
     /// Updates a note's file path and name in a single DB round-trip.
     /// </summary>
-    public static async Task UpdateNoteFilePathAndNameAsync(long noteId, string? filePath, string? name)
+    public static Task UpdateNoteFilePathAndNameAsync(long noteId, string? filePath, string? name) =>
+        DatabaseCore.RunOnDbThreadAsync(() => UpdateNoteFilePathAndNameCoreAsync(noteId, filePath, name));
+
+    private static async Task UpdateNoteFilePathAndNameCoreAsync(long noteId, string? filePath, string? name)
     {
         await DatabaseCore.AcquireWriteLockAsync().ConfigureAwait(false);
         try
@@ -170,7 +185,10 @@ public static class NoteStore
     /// <summary>
     /// Updates a note's pinned status.
     /// </summary>
-    public static async Task UpdateNotePinnedAsync(long noteId, bool pinned)
+    public static Task UpdateNotePinnedAsync(long noteId, bool pinned) =>
+        DatabaseCore.RunOnDbThreadAsync(() => UpdateNotePinnedCoreAsync(noteId, pinned));
+
+    private static async Task UpdateNotePinnedCoreAsync(long noteId, bool pinned)
     {
         await DatabaseCore.AcquireWriteLockAsync().ConfigureAwait(false);
         try
@@ -197,10 +215,17 @@ public static class NoteStore
     /// <summary>
     /// Batch-updates sort_order for multiple notes in a single SQL statement.
     /// </summary>
-    public static async Task UpdateNoteSortOrdersAsync(IEnumerable<(long Id, int SortOrder)> updates)
+    public static Task UpdateNoteSortOrdersAsync(IEnumerable<(long Id, int SortOrder)> updates)
     {
-        var list = updates as IList<(long Id, int SortOrder)> ?? updates.ToList();
-        if (list.Count == 0) return;
+        // Materialize on the caller's thread: a lazy query over the UI's tab collection must not be
+        // enumerated later on the DB thread while the UI mutates it.
+        List<(long Id, int SortOrder)> list = [.. updates];
+        if (list.Count == 0) return Task.CompletedTask;
+        return DatabaseCore.RunOnDbThreadAsync(() => UpdateNoteSortOrdersCoreAsync(list));
+    }
+
+    private static async Task UpdateNoteSortOrdersCoreAsync(List<(long Id, int SortOrder)> list)
+    {
 
         await DatabaseCore.AcquireWriteLockAsync().ConfigureAwait(false);
         try
@@ -236,7 +261,10 @@ public static class NoteStore
     /// <summary>
     /// Deletes a note by ID.
     /// </summary>
-    public static async Task DeleteNoteAsync(long noteId)
+    public static Task DeleteNoteAsync(long noteId) =>
+        DatabaseCore.RunOnDbThreadAsync(() => DeleteNoteCoreAsync(noteId));
+
+    private static async Task DeleteNoteCoreAsync(long noteId)
     {
         await DatabaseCore.AcquireWriteLockAsync().ConfigureAwait(false);
         try
@@ -258,7 +286,14 @@ public static class NoteStore
     }
 
     /// <summary>Deletes multiple notes in a single statement. Returns the number of rows removed.</summary>
-    public static async Task<int> DeleteNotesAsync(IReadOnlyCollection<long> noteIds)
+    public static Task<int> DeleteNotesAsync(IReadOnlyCollection<long> noteIds)
+    {
+        // Snapshot on the caller's thread — the delete runs later on the DB thread.
+        long[] snapshot = [.. noteIds];
+        return DatabaseCore.RunOnDbThreadAsync(() => DeleteNotesCoreAsync(snapshot));
+    }
+
+    private static async Task<int> DeleteNotesCoreAsync(IReadOnlyCollection<long> noteIds)
     {
         if (noteIds.Count == 0) return 0;
 
@@ -285,7 +320,10 @@ public static class NoteStore
     /// Deletes all notes with empty or whitespace-only content for a given desktop.
     /// Pinned notes are preserved. Returns the number deleted.
     /// </summary>
-    public static async Task<int> DeleteEmptyNotesAsync(string desktopGuid)
+    public static Task<int> DeleteEmptyNotesAsync(string desktopGuid) =>
+        DatabaseCore.RunOnDbThreadAsync(() => DeleteEmptyNotesCoreAsync(desktopGuid));
+
+    private static async Task<int> DeleteEmptyNotesCoreAsync(string desktopGuid)
     {
         await DatabaseCore.AcquireWriteLockAsync().ConfigureAwait(false);
         try
@@ -315,7 +353,10 @@ public static class NoteStore
     /// Deletes all unpinned notes older than the specified cutoff date across all desktops.
     /// Returns the number deleted.
     /// </summary>
-    public static async Task<int> DeleteOldNotesAsync(DateTime cutoff)
+    public static Task<int> DeleteOldNotesAsync(DateTime cutoff) =>
+        DatabaseCore.RunOnDbThreadAsync(() => DeleteOldNotesCoreAsync(cutoff));
+
+    private static async Task<int> DeleteOldNotesCoreAsync(DateTime cutoff)
     {
         await DatabaseCore.AcquireWriteLockAsync().ConfigureAwait(false);
         try
@@ -339,7 +380,10 @@ public static class NoteStore
     /// <summary>
     /// Returns the maximum sort_order for notes in a desktop, or -1 if no notes exist.
     /// </summary>
-    public static async Task<int> GetMaxSortOrderAsync(string desktopGuid, CancellationToken ct = default)
+    public static Task<int> GetMaxSortOrderAsync(string desktopGuid, CancellationToken ct = default) =>
+        DatabaseCore.RunOnDbThreadAsync(() => GetMaxSortOrderCoreAsync(desktopGuid, ct));
+
+    private static async Task<int> GetMaxSortOrderCoreAsync(string desktopGuid, CancellationToken ct = default)
     {
         try
         {
@@ -356,7 +400,10 @@ public static class NoteStore
     /// <summary>
     /// Returns the first N note names for a desktop, ordered by sort_order.
     /// </summary>
-    public static async Task<List<string>> GetNoteNamesForDesktopAsync(string desktopGuid, int limit = 5, CancellationToken ct = default)
+    public static Task<List<string>> GetNoteNamesForDesktopAsync(string desktopGuid, int limit = 5, CancellationToken ct = default) =>
+        DatabaseCore.RunOnDbThreadAsync(() => GetNoteNamesForDesktopCoreAsync(desktopGuid, limit, ct));
+
+    private static async Task<List<string>> GetNoteNamesForDesktopCoreAsync(string desktopGuid, int limit = 5, CancellationToken ct = default)
     {
         try
         {
@@ -379,7 +426,10 @@ public static class NoteStore
     /// <summary>
     /// Returns tab previews (name + content excerpt) for the recovery panel.
     /// </summary>
-    public static async Task<List<(string? Name, string Excerpt, DateTime CreatedAt, DateTime UpdatedAt)>> GetNotePreviewsForDesktopAsync(string desktopGuid, int limit = 5, CancellationToken ct = default)
+    public static Task<List<(string? Name, string Excerpt, DateTime CreatedAt, DateTime UpdatedAt)>> GetNotePreviewsForDesktopAsync(string desktopGuid, int limit = 5, CancellationToken ct = default) =>
+        DatabaseCore.RunOnDbThreadAsync(() => GetNotePreviewsForDesktopCoreAsync(desktopGuid, limit, ct));
+
+    private static async Task<List<(string? Name, string Excerpt, DateTime CreatedAt, DateTime UpdatedAt)>> GetNotePreviewsForDesktopCoreAsync(string desktopGuid, int limit = 5, CancellationToken ct = default)
     {
         try
         {
@@ -409,7 +459,10 @@ public static class NoteStore
     /// <summary>
     /// Returns total note count for a desktop GUID.
     /// </summary>
-    public static async Task<int> GetNoteCountForDesktopAsync(string desktopGuid, CancellationToken ct = default)
+    public static Task<int> GetNoteCountForDesktopAsync(string desktopGuid, CancellationToken ct = default) =>
+        DatabaseCore.RunOnDbThreadAsync(() => GetNoteCountForDesktopCoreAsync(desktopGuid, ct));
+
+    private static async Task<int> GetNoteCountForDesktopCoreAsync(string desktopGuid, CancellationToken ct = default)
     {
         try
         {
@@ -424,7 +477,15 @@ public static class NoteStore
     }
 
     /// <summary>Returns note counts for many desktops in one grouped query (recovery panel).</summary>
-    public static async Task<Dictionary<string, int>> GetNoteCountsForDesktopsAsync(
+    public static Task<Dictionary<string, int>> GetNoteCountsForDesktopsAsync(
+        IReadOnlyCollection<string> desktopGuids)
+    {
+        // Snapshot on the caller's thread — the query runs later on the DB thread.
+        string[] snapshot = [.. desktopGuids];
+        return DatabaseCore.RunOnDbThreadAsync(() => GetNoteCountsForDesktopsCoreAsync(snapshot));
+    }
+
+    private static async Task<Dictionary<string, int>> GetNoteCountsForDesktopsCoreAsync(
         IReadOnlyCollection<string> desktopGuids)
     {
         if (desktopGuids.Count == 0) return [];
@@ -451,7 +512,10 @@ public static class NoteStore
     /// <summary>
     /// Updates all notes from one desktop_guid to another, preserving sort_order and pin state.
     /// </summary>
-    public static async Task MigrateNotesDesktopGuidAsync(string fromGuid, string toGuid)
+    public static Task MigrateNotesDesktopGuidAsync(string fromGuid, string toGuid) =>
+        DatabaseCore.RunOnDbThreadAsync(() => MigrateNotesDesktopGuidCoreAsync(fromGuid, toGuid));
+
+    private static async Task MigrateNotesDesktopGuidCoreAsync(string fromGuid, string toGuid)
     {
         await DatabaseCore.AcquireWriteLockAsync().ConfigureAwait(false);
         try
@@ -478,7 +542,10 @@ public static class NoteStore
     /// Migrates all notes from sourceGuid to targetGuid.
     /// Reassigns sort_order after target's max. Pinned tabs are un-pinned.
     /// </summary>
-    public static async Task MigrateTabsAsync(string sourceGuid, string targetGuid)
+    public static Task MigrateTabsAsync(string sourceGuid, string targetGuid) =>
+        DatabaseCore.RunOnDbThreadAsync(() => MigrateTabsCoreAsync(sourceGuid, targetGuid));
+
+    private static async Task MigrateTabsCoreAsync(string sourceGuid, string targetGuid)
     {
         await DatabaseCore.AcquireWriteLockAsync().ConfigureAwait(false);
         try
@@ -519,7 +586,10 @@ public static class NoteStore
     /// <summary>
     /// Migrates tabs from source to target desktop, preserving pin state.
     /// </summary>
-    public static async Task MigrateTabsPreservePinsAsync(string sourceGuid, string targetGuid)
+    public static Task MigrateTabsPreservePinsAsync(string sourceGuid, string targetGuid) =>
+        DatabaseCore.RunOnDbThreadAsync(() => MigrateTabsPreservePinsCoreAsync(sourceGuid, targetGuid));
+
+    private static async Task MigrateTabsPreservePinsCoreAsync(string sourceGuid, string targetGuid)
     {
         await DatabaseCore.AcquireWriteLockAsync().ConfigureAwait(false);
         try
