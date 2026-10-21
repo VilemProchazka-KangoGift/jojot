@@ -29,7 +29,7 @@ The solution file uses the `.slnx` format.
 dotnet test JoJot.Tests/JoJot.Tests.csproj
 ```
 
-Test project: `JoJot.Tests/` (xUnit + AwesomeAssertions + NSubstitute). 1244 tests. `InternalsVisibleTo("JoJot.Tests")` in JoJot.csproj.
+Test project: `JoJot.Tests/` (xUnit + AwesomeAssertions + NSubstitute). 1266 tests. `InternalsVisibleTo("JoJot.Tests")` in JoJot.csproj.
 
 ### Versioning
 
@@ -48,6 +48,8 @@ CalVer format: **`YYYY.M.Count`** (e.g. `2026.3.7`). Count increments per releas
 ### Data Storage
 
 SQLite database at `%LocalAppData%\JoJot\jojot.db`. WAL mode, NORMAL synchronous, foreign keys ON. All writes serialized through a `SemaphoreSlim(1,1)` in `DatabaseCore`. **All DB work runs on one dedicated background thread ("JoJot-DB")**: Microsoft.Data.Sqlite's async APIs complete synchronously, so every public store/`DatabaseCore` entry point hops via `DatabaseCore.RunOnDbThreadAsync` (FIFO channel; nested calls from the DB thread run inline) with the body in a private `...CoreAsync`. New store methods must follow that pattern, and code after a store `await` with `ConfigureAwait(false)` runs off the UI thread — marshal with `Dispatcher.InvokeAsync` (never `Invoke`: close paths sync-block the UI thread on DB tasks). `BackgroundWriter.Run` operations never resume on the UI context. Key tables: `notes`, `app_state`, `preferences`, `pending_moves`. Domain stores: `NoteStore`, `SessionStore`, `PreferenceStore`, `PendingMoveStore`.
+
+Schema is stamped in `PRAGMA user_version` (`DatabaseCore.CurrentSchemaVersion` = **2**; bump it and add a version-guarded step in `RunPendingMigrationsCoreAsync` for any schema change). Index `idx_notes_desktop` is `notes(desktop_guid, pinned DESC, sort_order)` — matching the tab-load `ORDER BY pinned DESC, sort_order` so SQLite walks it instead of sorting; it is declared in the EF model (`.IsDescending(false, true, false)`) and recreated by the migration (v<2: `DROP INDEX IF EXISTS` + `CREATE INDEX IF NOT EXISTS`, same name so they converge). `foreign_keys=ON` is set once on the raw connection only (the model has no FKs; there is no per-open EF interceptor). Startup `VerifyIntegrityAsync` checks the four tables with one `sqlite_master` query and runs `PRAGMA quick_check` only when `ShouldRunQuickCheck` says so: a `.clean-shutdown` marker next to the DB is deleted on open and written after a successful close (content = UTC date of the last quick_check); check runs when the marker was missing (crash/power loss/first run), its date is missing/unparseable/in the future, or ≥7 days old. In-memory DBs (tests) have no marker and always check. Only definite corruption (missing table / `quick_check != ok`) triggers `HandleCorruptionAsync`. `CloseAsync` runs `PRAGMA wal_checkpoint(TRUNCATE)` (best-effort, file DBs only) before closing so the next start does not replay a large WAL. Multi-row re-homing (`MigrateTabs*`) is set-based `ExecuteUpdateAsync` — never load `Content` just to change `desktop_guid`/`sort_order`.
 
 ### Application Lifecycle
 
@@ -87,7 +89,6 @@ SQLite database at `%LocalAppData%\JoJot\jojot.db`. WAL mode, NORMAL synchronous
 | `WindowActivationHelper` | Win32 `SetForegroundWindow` with `AllowSetForegroundWindow` |
 | `AppEnvironment` | Centralized paths, config flags, and environment detection |
 | `BackgroundWriter` | Tracks fire-and-forget persistence: failure logging/toast surfacing, shutdown drain |
-| `SqlitePragmaInterceptor` | EF Core interceptor for SQLite PRAGMA configuration |
 | `LanguageService` | Language selection (English/Czech), culture init, app restart on change, plural helper |
 | `IClock` / `IDebounceTimer` | Testability interfaces for time and debounce abstraction |
 

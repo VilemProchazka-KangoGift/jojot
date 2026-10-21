@@ -163,6 +163,44 @@ public class NoteStoreTests : IAsyncLifetime
         migrated.Should().AllSatisfy(n => n.SortOrder.Should().BeGreaterThan(5));
     }
 
+    [Fact]
+    public async Task MigrateTabs_OffsetsSortOrderByTargetMaxPlusOne_AndKeepsContent()
+    {
+        var src = "exact-src";
+        var tgt = "exact-tgt";
+        await NoteStore.InsertNoteAsync(tgt, "Existing", "keep", false, 5);
+        await NoteStore.InsertNoteAsync(src, "A", "content A", true, 0);
+        await NoteStore.InsertNoteAsync(src, "B", "content B", false, 3);
+        await NoteStore.InsertNoteAsync("bystander", "C", "content C", true, 0);
+
+        await NoteStore.MigrateTabsAsync(src, tgt);
+
+        var notes = await NoteStore.GetNotesForDesktopAsync(tgt);
+        notes.Select(n => (n.Name, n.SortOrder, n.Pinned, n.Content)).Should().Equal(
+            ("Existing", 5, false, "keep"),
+            ("A", 6, false, "content A"),
+            ("B", 9, false, "content B"));
+        (await NoteStore.GetNotesForDesktopAsync(src)).Should().BeEmpty();
+        (await NoteStore.GetNotesForDesktopAsync("bystander")).Should().ContainSingle()
+            .Which.Pinned.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task MigrateTabsPreservePins_EmptyTarget_OffsetsByOne_AndKeepsPins()
+    {
+        var src = "exactp-src";
+        var tgt = "exactp-tgt";
+        await NoteStore.InsertNoteAsync(src, "P", "content P", true, 0);
+        await NoteStore.InsertNoteAsync(src, "U", "content U", false, 2);
+
+        await NoteStore.MigrateTabsPreservePinsAsync(src, tgt);
+
+        var notes = await NoteStore.GetNotesForDesktopAsync(tgt);
+        notes.Select(n => (n.Name, n.SortOrder, n.Pinned, n.Content)).Should().Equal(
+            ("P", 1, true, "content P"),
+            ("U", 3, false, "content U"));
+    }
+
     // ─── GetNoteCount ─────────────────────────────────────────────────
 
     [Fact]

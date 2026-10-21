@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Threading.Channels;
@@ -28,6 +29,32 @@ public static class DatabaseCore
     private static string _connectionString = string.Empty;
     private static IClock _clock = SystemClock.Instance;
     private static PooledDbContextFactory<JoJotDbContext>? _contextFactory;
+
+    // ─── Clean-shutdown marker (quick_check policy) ─────────────────────
+
+    /// <summary>
+    /// File (next to the database) written after a successful close and deleted on open. Its
+    /// presence at open means the previous session shut down cleanly; its content is the UTC date
+    /// (ISO yyyy-MM-dd) of the last <c>PRAGMA quick_check</c>.
+    /// </summary>
+    internal const string CleanShutdownMarkerName = ".clean-shutdown";
+
+    /// <summary>Maximum days between quick_checks, even across a run of clean shutdowns.</summary>
+    internal const int QuickCheckMaxIntervalDays = 7;
+
+    private const string MarkerDateFormat = "yyyy-MM-dd";
+
+    /// <summary>Marker path for the open file database; null for in-memory/connection-string opens.</summary>
+    private static string? _markerPath;
+
+    /// <summary>Whether the marker existed when the current database was opened.</summary>
+    private static bool _markerExisted;
+
+    /// <summary>Date of the last quick_check (from the marker, or this session's run).</summary>
+    private static DateOnly? _lastQuickCheck;
+
+    /// <summary>True when the open database is in-memory (no WAL to checkpoint, no marker).</summary>
+    private static bool _isInMemory;
 
     /// <summary>Replaces the clock used for timestamps. For testing only.</summary>
     internal static void SetClock(IClock clock) => _clock = clock;
@@ -281,7 +308,14 @@ public static class DatabaseCore
     private static async Task OpenCoreAsync(string dbPath)
     {
         _dbPath = dbPath;
-        Directory.CreateDirectory(Path.GetDirectoryName(dbPath)!);
+        var dbDirectory = Path.GetDirectoryName(dbPath)!;
+        Directory.CreateDirectory(dbDirectory);
+
+        // Consume the clean-shutdown marker before opening: from here until a successful close,
+        // its absence on disk means "this session did not shut down cleanly".
+        _isInMemory = false;
+        _markerPath = Path.Combine(dbDirectory, CleanShutdownMarkerName);
+        (_markerExisted, _lastQuickCheck) = ConsumeCleanShutdownMarker(_markerPath);
 
         var connStrBuilder = new SqliteConnectionStringBuilder
         {
@@ -317,6 +351,10 @@ public static class DatabaseCore
     {
         _dbPath = ":memory:";
         _connectionString = connectionString;
+        _isInMemory = IsInMemoryConnectionString(connectionString);
+        _markerPath = null;
+        _markerExisted = false;
+        _lastQuickCheck = null;
 
         _rawConnection = new SqliteConnection(_connectionString);
         await _rawConnection.OpenAsync().ConfigureAwait(false);
@@ -352,11 +390,99 @@ public static class DatabaseCore
 
         if (_rawConnection is not null)
         {
+            if (!_isInMemory)
+            {
+                await CheckpointWalCoreAsync().ConfigureAwait(false);
+            }
+
             await _rawConnection.CloseAsync().ConfigureAwait(false);
             _rawConnection.Dispose();
             _rawConnection = null;
             LogService.Info("Database connection closed.");
+
+            if (_markerPath is not null)
+            {
+                WriteCleanShutdownMarker(_markerPath, _lastQuickCheck);
+            }
         }
+    }
+
+    /// <summary>
+    /// Folds the WAL back into the main file and truncates it, so the next startup does not replay
+    /// a multi-MB log. Best-effort: a failure (e.g. a reader still holding the WAL) only logs.
+    /// </summary>
+    private static async Task CheckpointWalCoreAsync()
+    {
+        try
+        {
+            await ExecuteRawPragmaAsync("PRAGMA wal_checkpoint(TRUNCATE);").ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            LogService.Warn("WAL checkpoint on close failed", ex);
+        }
+    }
+
+    /// <summary>
+    /// Reads and deletes the clean-shutdown marker. Returns whether it existed and the last
+    /// quick_check date it recorded. If it cannot be deleted it is treated as absent (so the
+    /// integrity check runs), because a marker left on disk would vouch for a later crash.
+    /// </summary>
+    private static (bool Existed, DateOnly? LastCheck) ConsumeCleanShutdownMarker(string markerPath)
+    {
+        try
+        {
+            if (!File.Exists(markerPath)) return (false, null);
+
+            string content = File.ReadAllText(markerPath).Trim();
+            File.Delete(markerPath);
+
+            DateOnly? lastCheck = DateOnly.TryParseExact(
+                content, MarkerDateFormat, CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsed)
+                ? parsed
+                : null;
+            return (true, lastCheck);
+        }
+        catch (Exception ex)
+        {
+            LogService.Warn("Could not consume clean-shutdown marker {MarkerPath}", markerPath, ex);
+            return (false, null);
+        }
+    }
+
+    /// <summary>Writes the clean-shutdown marker after a successful close. Best-effort.</summary>
+    private static void WriteCleanShutdownMarker(string markerPath, DateOnly? lastCheck)
+    {
+        try
+        {
+            File.WriteAllText(markerPath, lastCheck?.ToString(MarkerDateFormat, CultureInfo.InvariantCulture) ?? string.Empty);
+        }
+        catch (Exception ex)
+        {
+            LogService.Warn("Could not write clean-shutdown marker {MarkerPath}", markerPath, ex);
+        }
+    }
+
+    /// <summary>True for <c>:memory:</c>, empty data source, or <c>Mode=Memory</c> connection strings.</summary>
+    private static bool IsInMemoryConnectionString(string connectionString)
+    {
+        var builder = new SqliteConnectionStringBuilder(connectionString);
+        return builder.Mode == SqliteOpenMode.Memory
+            || string.IsNullOrEmpty(builder.DataSource)
+            || string.Equals(builder.DataSource, ":memory:", StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// The quick_check policy. Run it when the previous shutdown was not clean (no marker: crash,
+    /// power loss, first run), when the last-check date is unknown or in the future (clock moved
+    /// back), or when it is <see cref="QuickCheckMaxIntervalDays"/> or more days old.
+    /// </summary>
+    internal static bool ShouldRunQuickCheck(bool markerExisted, DateOnly? lastCheck, DateOnly today)
+    {
+        if (!markerExisted || lastCheck is not { } last) return true;
+
+        int daysSince = today.DayNumber - last.DayNumber;
+        return daysSince < 0 || daysSince >= QuickCheckMaxIntervalDays;
     }
 
     // ─── Schema ─────────────────────────────────────────────────────────
@@ -364,9 +490,11 @@ public static class DatabaseCore
     /// <summary>
     /// Current schema version stamped into PRAGMA user_version after EnsureCreated + migrations.
     /// v1 = base tables + window_state + file_path columns + idx_notes_desktop index.
+    /// v2 = idx_notes_desktop recreated as (desktop_guid, pinned DESC, sort_order) to match the
+    ///      tab-load ORDER BY pinned DESC, sort_order ASC (no temp b-tree sort).
     /// Increment when adding any schema change, and guard the new migration on the old version.
     /// </summary>
-    internal const int CurrentSchemaVersion = 1;
+    internal const int CurrentSchemaVersion = 2;
 
     /// <summary>Reads PRAGMA user_version (0 on a freshly created database).</summary>
     internal static Task<int> GetUserVersionAsync() => RunOnDbThreadAsync(GetUserVersionCoreAsync);
@@ -406,22 +534,28 @@ public static class DatabaseCore
     }
 
     /// <summary>
-    /// Checks that all expected tables exist in sqlite_master.
+    /// Checks page-level integrity (<c>PRAGMA quick_check</c>, when <see cref="ShouldRunQuickCheck"/>
+    /// says it is due) and that all expected tables exist in sqlite_master.
     /// Returns true if the database is healthy; false if corrupt or tables are missing.
     /// </summary>
     public static Task<bool> VerifyIntegrityAsync(CancellationToken ct = default) =>
         RunOnDbThreadAsync(() => VerifyIntegrityCoreAsync(ct));
 
+    private static readonly string[] RequiredTables = ["notes", "app_state", "pending_moves", "preferences"];
+
     private static async Task<bool> VerifyIntegrityCoreAsync(CancellationToken ct)
     {
-        string[] required = ["notes", "app_state", "pending_moves", "preferences"];
         await AcquireWriteLockAsync(ct).ConfigureAwait(false);
         try
         {
-            // Page-level integrity first: quick_check catches on-disk corruption that a
-            // table-existence check cannot. Run it unconditionally — it is fast for small DBs.
-            await using (var checkCmd = _rawConnection!.CreateCommand())
+            // Page-level integrity: quick_check catches on-disk corruption that a table-existence
+            // check cannot, but it reads every page. Skip it after a clean shutdown unless the last
+            // check is a week old; in-memory databases (tests) have no marker and always run it.
+            var today = DateOnly.FromDateTime(_clock.UtcNow);
+            bool runQuickCheck = _markerPath is null || ShouldRunQuickCheck(_markerExisted, _lastQuickCheck, today);
+            if (runQuickCheck)
             {
+                await using var checkCmd = _rawConnection!.CreateCommand();
                 checkCmd.CommandText = "PRAGMA quick_check;";
                 await using var reader = await checkCmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
                 if (!await reader.ReadAsync(ct).ConfigureAwait(false))
@@ -432,16 +566,29 @@ public static class DatabaseCore
                     LogService.Error("PRAGMA quick_check returned: {Result}", quickCheck);
                     return false;
                 }
+                _lastQuickCheck = today;
+            }
+            else
+            {
+                LogService.Info("Skipping PRAGMA quick_check (clean shutdown, last check {LastCheck})", _lastQuickCheck);
             }
 
-            // Schema completeness: every expected table must exist.
-            foreach (var table in required)
+            // Schema completeness: every expected table must exist (one sqlite_master query).
+            var present = new HashSet<string>(StringComparer.Ordinal);
+            await using (var cmd = _rawConnection!.CreateCommand())
             {
-                await using var cmd = _rawConnection!.CreateCommand();
-                cmd.CommandText = "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name=@name;";
-                cmd.Parameters.AddWithValue("@name", table);
-                var result = await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false);
-                if (Convert.ToInt64(result) == 0)
+                cmd.CommandText =
+                    "SELECT name FROM sqlite_master WHERE type='table' AND name IN ('notes','app_state','pending_moves','preferences');";
+                await using var reader = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+                while (await reader.ReadAsync(ct).ConfigureAwait(false))
+                {
+                    present.Add(reader.GetString(0));
+                }
+            }
+
+            foreach (var table in RequiredTables)
+            {
+                if (!present.Contains(table))
                 {
                     LogService.Warn("Expected table {Table} is missing", table);
                     return false;
@@ -587,7 +734,8 @@ public static class DatabaseCore
 
     private static async Task RunPendingMigrationsCoreAsync()
     {
-        if (await GetUserVersionCoreAsync().ConfigureAwait(false) == CurrentSchemaVersion)
+        int version = await GetUserVersionCoreAsync().ConfigureAwait(false);
+        if (version == CurrentSchemaVersion)
         {
             LogService.Info("Schema stamp current (v{Version}) — skipping migration probes", CurrentSchemaVersion);
             return;
@@ -610,8 +758,16 @@ public static class DatabaseCore
         // Index for the hot per-desktop note queries. EnsureCreated only adds indexes to a brand-new
         // database, so existing installs need this explicit, idempotent creation. Name matches the
         // model's HasDatabaseName so a fresh DB doesn't end up with two indexes on the same columns.
+        // v1 → v2: v1 created it all-ascending; drop and recreate with pinned DESC so the load query's
+        // ORDER BY pinned DESC, sort_order walks the index. Version 0 also rebuilds: it may be a
+        // pre-stamp install carrying the ascending index (on a fresh DB the rebuild is trivially cheap).
+        if (version < 2)
+        {
+            await ExecuteNonQueryCoreAsync("DROP INDEX IF EXISTS idx_notes_desktop;", []).ConfigureAwait(false);
+            LogService.Info("Migration v{FromVersion}→v2: rebuilding idx_notes_desktop with pinned DESC", version);
+        }
         await ExecuteNonQueryCoreAsync(
-            "CREATE INDEX IF NOT EXISTS idx_notes_desktop ON notes(desktop_guid, pinned, sort_order);", [])
+            "CREATE INDEX IF NOT EXISTS idx_notes_desktop ON notes(desktop_guid, pinned DESC, sort_order);", [])
             .ConfigureAwait(false);
 
         if (hasWindowState && hasFilePath)
@@ -631,7 +787,6 @@ public static class DatabaseCore
         var options = new DbContextOptionsBuilder<JoJotDbContext>()
             .UseSqlite(_connectionString)
             .UseModel(JoJot.Data.CompiledModels.JoJotDbContextModel.Instance)
-            .AddInterceptors(new SqlitePragmaInterceptor())
             .Options;
         _contextFactory = new PooledDbContextFactory<JoJotDbContext>(options, poolSize: 4);
     }

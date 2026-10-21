@@ -9,6 +9,12 @@
     <UseWPF>true</UseWPF>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <PublishReadyToRun>true</PublishReadyToRun>
+    <!-- Ship only the app's own UI languages: EF Core otherwise drops 13 satellite folders. -->
+    <SatelliteResourceLanguages>en;cs</SatelliteResourceLanguages>
+    <!-- Small heap: no background GC thread to spin up at startup. -->
+    <ConcurrentGarbageCollection>false</ConcurrentGarbageCollection>
+    <!-- Default since .NET 8; explicit so it is not lost to a future property change. -->
+    <TieredPGO>true</TieredPGO>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
 

@@ -51,4 +51,68 @@ public class SchemaVersionTests : IAsyncLifetime
         await DatabaseCore.RunPendingMigrationsAsync();
         (await DatabaseCore.GetUserVersionAsync()).Should().Be(DatabaseCore.CurrentSchemaVersion);
     }
+
+    // ─── v2: idx_notes_desktop (desktop_guid, pinned DESC, sort_order) ───
+
+    private const string IndexSqlQuery =
+        "SELECT sql FROM sqlite_master WHERE type='index' AND name='idx_notes_desktop'";
+
+    /// <summary>Returns "column:desc" for each key column of idx_notes_desktop, in index order.</summary>
+    private static async Task<string> GetIndexKeyColumnsAsync()
+    {
+        return await DatabaseCore.ExecuteScalarAsync<string>(
+            "SELECT group_concat(name || ':' || \"desc\", ',') FROM " +
+            "(SELECT name, \"desc\" FROM pragma_index_xinfo('idx_notes_desktop') WHERE key = 1 ORDER BY seqno)");
+    }
+
+    [Fact]
+    public void CurrentSchemaVersion_IsTwo()
+    {
+        DatabaseCore.CurrentSchemaVersion.Should().Be(2);
+    }
+
+    [Fact]
+    public async Task FreshDatabase_IndexHasPinnedDescending_AfterSchemaAndMigrations()
+    {
+        await DatabaseCore.RunPendingMigrationsAsync();
+
+        (await GetIndexKeyColumnsAsync()).Should().Be("desktop_guid:0,pinned:1,sort_order:0");
+        (await DatabaseCore.ExecuteScalarAsync<string>(IndexSqlQuery)).Should().Contain("DESC");
+        (await DatabaseCore.ExecuteScalarAsync<long>(
+            "SELECT COUNT(*) FROM sqlite_master WHERE type='index' AND tbl_name='notes' AND sql IS NOT NULL"))
+            .Should().Be(1, "the model index and the migration index must converge on one index");
+        (await DatabaseCore.GetUserVersionAsync()).Should().Be(2);
+    }
+
+    [Fact]
+    public async Task V1Database_IsMigratedToV2_WithDescendingIndex()
+    {
+        // Recreate the v1 shape: all-ascending index, stamped at version 1.
+        await DatabaseCore.ExecuteNonQueryAsync("DROP INDEX IF EXISTS idx_notes_desktop;");
+        await DatabaseCore.ExecuteNonQueryAsync(
+            "CREATE INDEX idx_notes_desktop ON notes(desktop_guid, pinned, sort_order);");
+        await DatabaseCore.ExecuteNonQueryAsync("PRAGMA user_version = 1;");
+        (await GetIndexKeyColumnsAsync()).Should().Be("desktop_guid:0,pinned:0,sort_order:0");
+
+        await DatabaseCore.RunPendingMigrationsAsync();
+
+        (await GetIndexKeyColumnsAsync()).Should().Be("desktop_guid:0,pinned:1,sort_order:0");
+        (await DatabaseCore.GetUserVersionAsync()).Should().Be(2);
+        (await DatabaseCore.VerifyIntegrityAsync()).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task V1Database_Migration_PreservesNotes()
+    {
+        await NoteStore.InsertNoteAsync("mig-desk", "Kept", "body", true, 4);
+        await DatabaseCore.ExecuteNonQueryAsync("DROP INDEX IF EXISTS idx_notes_desktop;");
+        await DatabaseCore.ExecuteNonQueryAsync(
+            "CREATE INDEX idx_notes_desktop ON notes(desktop_guid, pinned, sort_order);");
+        await DatabaseCore.ExecuteNonQueryAsync("PRAGMA user_version = 1;");
+
+        await DatabaseCore.RunPendingMigrationsAsync();
+
+        var notes = await NoteStore.GetNotesForDesktopAsync("mig-desk");
+        notes.Should().ContainSingle().Which.Content.Should().Be("body");
+    }
 }

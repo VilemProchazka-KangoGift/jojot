@@ -11,7 +11,7 @@ namespace JoJot.Data.CompiledModels
     public partial class JoJotDbContextModel
     {
         private JoJotDbContextModel()
-            : base(skipDetectChanges: false, modelId: new Guid("40c6474d-4ef4-4f26-9424-f44c6aaff451"), entityTypeCount: 4)
+            : base(skipDetectChanges: false, modelId: new Guid("1ec2b7f4-d1ba-4a3d-94e9-0ec6bb23f322"), entityTypeCount: 4)
         {
         }
 

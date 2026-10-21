@@ -518,26 +518,17 @@ public static class NoteStore
         try
         {
             await using var context = DatabaseCore.CreateContext();
-            var maxSortOrder = await context.Notes
-                .Where(n => n.DesktopGuid == targetGuid)
-                .Select(n => (int?)n.SortOrder)
-                .MaxAsync().ConfigureAwait(false) ?? 0;
+            int baseOrder = await GetMigrationBaseOrderAsync(context, targetGuid).ConfigureAwait(false);
 
-            int baseOrder = maxSortOrder + 1;
-
-            var sourceTabs = await context.Notes
+            // Set-based: never materializes the notes (or their Content) just to re-home them.
+            int affected = await context.Notes
                 .Where(n => n.DesktopGuid == sourceGuid)
-                .ToListAsync().ConfigureAwait(false);
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(n => n.DesktopGuid, targetGuid)
+                    .SetProperty(n => n.Pinned, false)
+                    .SetProperty(n => n.SortOrder, n => n.SortOrder + baseOrder)).ConfigureAwait(false);
 
-            foreach (var tab in sourceTabs)
-            {
-                tab.DesktopGuid = targetGuid;
-                tab.Pinned = false;
-                tab.SortOrder = baseOrder + tab.SortOrder;
-            }
-            await context.SaveChangesAsync().ConfigureAwait(false);
-
-            LogService.Info("Migrated tabs from {SourceGuid} to {TargetGuid} (base sort_order: {BaseOrder})", sourceGuid, targetGuid, baseOrder);
+            LogService.Info("Migrated {Affected} tabs from {SourceGuid} to {TargetGuid} (base sort_order: {BaseOrder})", affected, sourceGuid, targetGuid, baseOrder);
         }
         catch (Exception ex)
         {
@@ -562,25 +553,15 @@ public static class NoteStore
         try
         {
             await using var context = DatabaseCore.CreateContext();
-            var maxSortOrder = await context.Notes
-                .Where(n => n.DesktopGuid == targetGuid)
-                .Select(n => (int?)n.SortOrder)
-                .MaxAsync().ConfigureAwait(false) ?? 0;
+            int baseOrder = await GetMigrationBaseOrderAsync(context, targetGuid).ConfigureAwait(false);
 
-            int baseOrder = maxSortOrder + 1;
-
-            var sourceTabs = await context.Notes
+            int affected = await context.Notes
                 .Where(n => n.DesktopGuid == sourceGuid)
-                .ToListAsync().ConfigureAwait(false);
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(n => n.DesktopGuid, targetGuid)
+                    .SetProperty(n => n.SortOrder, n => n.SortOrder + baseOrder)).ConfigureAwait(false);
 
-            foreach (var tab in sourceTabs)
-            {
-                tab.DesktopGuid = targetGuid;
-                tab.SortOrder = baseOrder + tab.SortOrder;
-            }
-            await context.SaveChangesAsync().ConfigureAwait(false);
-
-            LogService.Info("Migrated tabs (preserving pins) from {SourceGuid} to {TargetGuid} (base sort_order: {BaseOrder})", sourceGuid, targetGuid, baseOrder);
+            LogService.Info("Migrated {Affected} tabs (preserving pins) from {SourceGuid} to {TargetGuid} (base sort_order: {BaseOrder})", affected, sourceGuid, targetGuid, baseOrder);
         }
         catch (Exception ex)
         {
@@ -591,5 +572,18 @@ public static class NoteStore
         {
             DatabaseCore.ReleaseWriteLock();
         }
+    }
+
+    /// <summary>
+    /// Offset added to each migrated tab's sort_order: one past the target's current max
+    /// (1 for an empty target), so migrated tabs land after the target's tabs in their own order.
+    /// </summary>
+    private static async Task<int> GetMigrationBaseOrderAsync(JoJotDbContext context, string targetGuid)
+    {
+        var maxSortOrder = await context.Notes
+            .Where(n => n.DesktopGuid == targetGuid)
+            .Select(n => (int?)n.SortOrder)
+            .MaxAsync().ConfigureAwait(false) ?? 0;
+        return maxSortOrder + 1;
     }
 }

@@ -34,6 +34,9 @@ Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
 ArchitecturesAllowed=x64compatible
+; Install the 64-bit app under Program Files, not Program Files (x86). Existing installs stay
+; where they are (Inno reuses the previous install dir) until uninstalled and reinstalled.
+ArchitecturesInstallIn64BitMode=x64compatible
 PrivilegesRequired=admin
 UsedUserAreasWarning=no
 CloseApplications=force
