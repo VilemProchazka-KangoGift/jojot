@@ -11,8 +11,8 @@ namespace JoJot.Interop;
 /// CRITICAL: Do NOT call Marshal.Release() on any parameters passed into these callbacks.
 /// Windows manages their lifetime during the callback invocation.
 ///
-/// Method order must match the IVirtualDesktopNotification vtable layout exactly.
-/// The interface GUID varies by Windows build; the vtable layout is stable across 22H2/23H2/24H2.
+/// Implements the 24H2+ (build 26100+) IVirtualDesktopNotification vtable — no `monitors`
+/// parameters. Only registered on builds whose GuidSet has SupportsNotifications=true.
 /// </summary>
 [ComVisible(true)]
 internal sealed class VirtualDesktopNotificationListener : IVirtualDesktopNotification
@@ -33,7 +33,7 @@ internal sealed class VirtualDesktopNotificationListener : IVirtualDesktopNotifi
     public event Action<IntPtr>? WindowViewChanged;
 
     /// <inheritdoc />
-    public int VirtualDesktopCreated(IntPtr monitors, IVirtualDesktop desktop)
+    public int VirtualDesktopCreated(IVirtualDesktop desktop)
     {
         try
         {
@@ -49,19 +49,19 @@ internal sealed class VirtualDesktopNotificationListener : IVirtualDesktopNotifi
     }
 
     /// <inheritdoc />
-    public int VirtualDesktopDestroyBegin(IntPtr monitors, IVirtualDesktop desktopDestroyed, IVirtualDesktop desktopFallback)
+    public int VirtualDesktopDestroyBegin(IVirtualDesktop desktopDestroyed, IVirtualDesktop desktopFallback)
     {
         return 0; // S_OK — no action needed
     }
 
     /// <inheritdoc />
-    public int VirtualDesktopDestroyFailed(IntPtr monitors, IVirtualDesktop desktopDestroyed, IVirtualDesktop desktopFallback)
+    public int VirtualDesktopDestroyFailed(IVirtualDesktop desktopDestroyed, IVirtualDesktop desktopFallback)
     {
         return 0; // S_OK — no action needed
     }
 
     /// <inheritdoc />
-    public int VirtualDesktopDestroyed(IntPtr monitors, IVirtualDesktop desktopDestroyed, IVirtualDesktop desktopFallback)
+    public int VirtualDesktopDestroyed(IVirtualDesktop desktopDestroyed, IVirtualDesktop desktopFallback)
     {
         try
         {
@@ -77,14 +77,14 @@ internal sealed class VirtualDesktopNotificationListener : IVirtualDesktopNotifi
     }
 
     /// <inheritdoc />
-    public int VirtualDesktopMoved(IntPtr monitors, IVirtualDesktop desktop, int oldIndex, int newIndex)
+    public int VirtualDesktopMoved(IVirtualDesktop desktop, long oldIndex, long newIndex)
     {
         LogService.Info("Notification: desktop moved (index {OldIndex} -> {NewIndex})", oldIndex, newIndex);
         return 0; // S_OK — index changes handled via session matching on next startup
     }
 
     /// <inheritdoc />
-    public int VirtualDesktopRenamed(IVirtualDesktop desktop, string newName)
+    public int VirtualDesktopNameChanged(IVirtualDesktop desktop, string newName)
     {
         try
         {
@@ -95,7 +95,7 @@ internal sealed class VirtualDesktopNotificationListener : IVirtualDesktopNotifi
         }
         catch (Exception ex)
         {
-            LogService.Warn("Error in VirtualDesktopRenamed callback: {ErrorMessage}", ex.Message);
+            LogService.Warn("Error in VirtualDesktopNameChanged callback: {ErrorMessage}", ex.Message);
         }
         return 0; // S_OK
     }
@@ -116,7 +116,7 @@ internal sealed class VirtualDesktopNotificationListener : IVirtualDesktopNotifi
     }
 
     /// <inheritdoc />
-    public int CurrentVirtualDesktopChanged(IntPtr monitors, IVirtualDesktop desktopOld, IVirtualDesktop desktopNew)
+    public int CurrentVirtualDesktopChanged(IVirtualDesktop desktopOld, IVirtualDesktop desktopNew)
     {
         try
         {
@@ -139,9 +139,9 @@ internal sealed class VirtualDesktopNotificationListener : IVirtualDesktopNotifi
     }
 
     /// <inheritdoc />
-    public int VirtualDesktopSwitchOverCompleted(IVirtualDesktop desktop)
+    public int VirtualDesktopSwitched(IVirtualDesktop desktop)
     {
-        return 0; // S_OK — switch animation complete, no action needed
+        return 0; // S_OK — CurrentVirtualDesktopChanged already carries the switch
     }
 
     /// <inheritdoc />

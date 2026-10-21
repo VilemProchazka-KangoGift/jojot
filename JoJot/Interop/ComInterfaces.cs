@@ -60,12 +60,14 @@ internal interface IVirtualDesktopManager
 // For other builds, the interop layer uses Marshal.QueryInterface with the
 // correct build-specific GUID from ComGuids.
 //
-// The vtable layout (method order) has been stable across 22H2/23H2/24H2.
-// Only the IID changes between builds.
+// The vtables declared here are the 24H2+ (build 26100+) layouts, matching the reference
+// implementation Ciantic/VirtualDesktopAccessor (rust branch, src/interfaces.rs). The 22H2/23H2
+// IVirtualDesktopNotification vtable differs (extra `monitors` parameters), so live notifications
+// are only registered on 26100+ (see ComGuids / GuidSet.SupportsNotifications).
 
 /// <summary>
 /// IVirtualDesktop — represents a single virtual desktop.
-/// Methods: IsViewVisible, GetId, GetName, GetWallpaperPath, IsRemote.
+/// Methods: IsViewVisible, GetId, GetName, GetWallpaperPath.
 /// GUID shown is for 24H2; actual GUID resolved at runtime.
 /// </summary>
 [ComImport]
@@ -83,9 +85,6 @@ internal interface IVirtualDesktop
 
     [return: MarshalAs(UnmanagedType.HString)]
     string GetWallpaperPath();
-
-    [PreserveSig]
-    int IsRemote(out bool isRemote);
 }
 
 /// <summary>
@@ -148,52 +147,51 @@ internal interface IVirtualDesktopManagerInternal
 /// renamed, switched, created, or destroyed.
 /// CRITICAL: Do NOT call Release() on any IntPtr/object parameters.
 /// Windows manages their lifetime during the callback.
-/// GUID shown is for 24H2; actual GUID resolved at runtime.
+/// GUID is for 24H2+ (build 26100+) and must equal ComGuids' 26100 entry: the RCW uses this
+/// [Guid] for QueryInterface when the shell casts the registered listener.
+/// CRITICAL: this is the 24H2+ vtable — NO leading `monitors` parameter on any method. Method
+/// order is the vtable; it is pinned by ComInterfaceLayoutTests. Do not reorder or insert.
 /// </summary>
 [ComImport]
 [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-[Guid("C179334C-4295-40D3-BEA1-C654D965605A")]
+[Guid("B9E5E94D-233E-49AB-AF5C-2B4541C3AADE")]
 internal interface IVirtualDesktopNotification
 {
     [PreserveSig]
-    int VirtualDesktopCreated(IntPtr monitors, [MarshalAs(UnmanagedType.Interface)] IVirtualDesktop desktop);
+    int VirtualDesktopCreated([MarshalAs(UnmanagedType.Interface)] IVirtualDesktop desktop);
 
     [PreserveSig]
     int VirtualDesktopDestroyBegin(
-        IntPtr monitors,
         [MarshalAs(UnmanagedType.Interface)] IVirtualDesktop desktopDestroyed,
         [MarshalAs(UnmanagedType.Interface)] IVirtualDesktop desktopFallback);
 
     [PreserveSig]
     int VirtualDesktopDestroyFailed(
-        IntPtr monitors,
         [MarshalAs(UnmanagedType.Interface)] IVirtualDesktop desktopDestroyed,
         [MarshalAs(UnmanagedType.Interface)] IVirtualDesktop desktopFallback);
 
     [PreserveSig]
     int VirtualDesktopDestroyed(
-        IntPtr monitors,
         [MarshalAs(UnmanagedType.Interface)] IVirtualDesktop desktopDestroyed,
         [MarshalAs(UnmanagedType.Interface)] IVirtualDesktop desktopFallback);
 
     [PreserveSig]
     int VirtualDesktopMoved(
-        IntPtr monitors,
         [MarshalAs(UnmanagedType.Interface)] IVirtualDesktop desktop,
-        int oldIndex,
-        int newIndex);
+        long oldIndex,
+        long newIndex);
 
     [PreserveSig]
-    int VirtualDesktopRenamed(
+    int VirtualDesktopNameChanged(
         [MarshalAs(UnmanagedType.Interface)] IVirtualDesktop desktop,
         [MarshalAs(UnmanagedType.HString)] string newName);
 
+    /// <summary>The parameter is an IApplicationView pointer (not an HWND); only the slot matters.</summary>
     [PreserveSig]
     int ViewVirtualDesktopChanged(IntPtr view);
 
     [PreserveSig]
     int CurrentVirtualDesktopChanged(
-        IntPtr monitors,
         [MarshalAs(UnmanagedType.Interface)] IVirtualDesktop desktopOld,
         [MarshalAs(UnmanagedType.Interface)] IVirtualDesktop desktopNew);
 
@@ -203,7 +201,7 @@ internal interface IVirtualDesktopNotification
         [MarshalAs(UnmanagedType.HString)] string path);
 
     [PreserveSig]
-    int VirtualDesktopSwitchOverCompleted(
+    int VirtualDesktopSwitched(
         [MarshalAs(UnmanagedType.Interface)] IVirtualDesktop desktop);
 
     [PreserveSig]
@@ -215,11 +213,11 @@ internal interface IVirtualDesktopNotification
 /// IVirtualDesktopNotificationService — registration point for notification callbacks.
 /// Register an IVirtualDesktopNotification implementation to receive desktop events.
 /// Register() returns a cookie (uint) for later Unregister().
-/// GUID shown is for 24H2; actual GUID resolved at runtime.
+/// GUID is for 24H2+ (build 26100+) and must equal ComGuids' 26100 entry.
 /// </summary>
 [ComImport]
 [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-[Guid("88846798-1611-4D18-946A-5B8B2B5B0B80")]
+[Guid("0CD45E71-D927-4F15-8B0A-8FEF525337BF")]
 internal interface IVirtualDesktopNotificationService
 {
     [PreserveSig]

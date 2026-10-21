@@ -18,7 +18,10 @@ public static class VirtualDesktopService
     private static VirtualDesktopNotificationListener? _notificationListener;
     private static uint _notificationCookie;
     private static bool _notificationsRegistered;
-    private static Timer? _pollingTimer;
+    private static System.Windows.Threading.DispatcherTimer? _pollingTimer;
+
+    /// <summary>Polling-fallback interval. Only used when COM notifications are unavailable.</summary>
+    internal const int PollingIntervalMs = 2000;
 
     /// <summary>
     /// Fired when a desktop is renamed. Args: (desktopGuid, newName).
@@ -493,7 +496,8 @@ public static class VirtualDesktopService
         var notifService = VirtualDesktopInterop.GetNotificationService();
         if (notifService is null)
         {
-            LogService.Warn("Notification service unavailable — falling back to polling");
+            LogService.Warn("Notification service unavailable on build {BuildNumber} — falling back to polling",
+                VirtualDesktopInterop.BuildNumber);
             StartDesktopPolling();
             return;
         }
@@ -512,56 +516,96 @@ public static class VirtualDesktopService
             int hr = notifService.Register(_notificationListener, out _notificationCookie);
             if (hr != 0)
             {
-                LogService.Warn("Notification registration failed (HRESULT: {HResult}) — falling back to polling", $"0x{hr:X8}");
+                LogService.Warn("Notification registration failed on build {BuildNumber} (HRESULT: {HResult}) — falling back to polling",
+                    VirtualDesktopInterop.BuildNumber, $"0x{hr:X8}");
                 _notificationListener = null;
                 StartDesktopPolling();
                 return;
             }
 
             _notificationsRegistered = true;
-            LogService.Info("Desktop notifications registered (cookie={Cookie})", _notificationCookie);
+            LogService.Info("Desktop notifications registered (cookie={Cookie}, build {BuildNumber})",
+                _notificationCookie, VirtualDesktopInterop.BuildNumber);
         }
         catch (Exception ex)
         {
-            LogService.Warn("Failed to subscribe to desktop notifications — falling back to polling: {ErrorMessage}", ex.Message);
+            LogService.Warn("Failed to subscribe to desktop notifications on build {BuildNumber} — falling back to polling: {ErrorMessage}",
+                VirtualDesktopInterop.BuildNumber, ex.Message);
             _notificationListener = null;
             StartDesktopPolling();
         }
     }
 
     /// <summary>
-    /// Starts polling GetCurrentDesktop() as a fallback when COM notifications are unavailable.
-    /// Detects desktop switches by comparing the polled GUID to the cached value.
+    /// Starts polling the current desktop GUID as a fallback when COM notifications are unavailable.
+    /// Runs on a <see cref="System.Windows.Threading.DispatcherTimer"/> bound to the calling (WPF UI / STA)
+    /// thread — the apartment that created the COM objects — so each tick is a direct call with no
+    /// cross-apartment marshaling. Each tick costs one GetCurrentDesktop + GetId.
     /// </summary>
     private static void StartDesktopPolling()
     {
-        _pollingTimer = new Timer(_ => PollDesktopChange(), null, 500, 500);
-        LogService.Info("Desktop polling started (500ms interval)");
+        _pollingTimer?.Stop();
+        _pollingTimer = new System.Windows.Threading.DispatcherTimer(
+            TimeSpan.FromMilliseconds(PollingIntervalMs),
+            System.Windows.Threading.DispatcherPriority.Background,
+            (_, _) => PollDesktopChange(VirtualDesktopInterop.GetCurrentDesktopId, VirtualDesktopInterop.GetCurrentDesktop),
+            System.Windows.Threading.Dispatcher.CurrentDispatcher);
+        LogService.Info("Desktop polling started ({IntervalMs}ms interval, UI dispatcher, build {BuildNumber})",
+            PollingIntervalMs, VirtualDesktopInterop.BuildNumber);
     }
 
     /// <summary>
-    /// Polls the current desktop and fires <see cref="CurrentDesktopChanged"/> if a switch is detected.
+    /// One polling tick: compares only the current desktop GUID to the cached value; on a change,
+    /// fetches name/index once, updates state and fires <see cref="CurrentDesktopChanged"/>.
+    /// Returns true when a switch was detected. Never throws.
     /// </summary>
-    private static void PollDesktopChange()
+    /// <param name="getCurrentDesktopId">Cheap GUID-only query (GetCurrentDesktop + GetId).</param>
+    /// <param name="getCurrentDesktop">Full query (name + index); called only after a change.</param>
+    internal static bool PollDesktopChange(
+        Func<Guid> getCurrentDesktopId,
+        Func<(Guid Id, string Name, int Index)> getCurrentDesktop)
     {
         try
         {
-            var (id, name, index) = VirtualDesktopInterop.GetCurrentDesktop();
-            string newGuid = id.ToString();
-            if (!newGuid.Equals(_currentDesktopGuid, StringComparison.OrdinalIgnoreCase))
+            string newGuid = getCurrentDesktopId().ToString();
+            string oldGuid = Volatile.Read(ref _currentDesktopGuid);
+            if (newGuid.Equals(oldGuid, StringComparison.OrdinalIgnoreCase))
             {
-                string oldGuid = Volatile.Read(ref _currentDesktopGuid);
-                Volatile.Write(ref _currentDesktopGuid, newGuid);
+                return false;
+            }
+
+            Volatile.Write(ref _currentDesktopGuid, newGuid);
+            try
+            {
+                var (_, name, index) = getCurrentDesktop();
                 _currentDesktopName = name;
                 _currentDesktopIndex = index;
-                LogService.Info("Poll: desktop switched {OldGuid} -> {NewGuid}", oldGuid, newGuid);
-                CurrentDesktopChanged?.Invoke(oldGuid, newGuid);
             }
+            catch (Exception ex)
+            {
+                LogService.Warn("Poll: failed to refresh desktop info after switch: {ErrorMessage}", ex.Message);
+            }
+
+            LogService.Info("Poll: desktop switched {OldGuid} -> {NewGuid}", oldGuid, newGuid);
+            CurrentDesktopChanged?.Invoke(oldGuid, newGuid);
+            return true;
         }
         catch (Exception ex)
         {
             LogService.Warn("Desktop polling failed: {ErrorMessage}", ex.Message);
+            return false;
         }
+    }
+
+    /// <summary>
+    /// Overwrites the cached current-desktop state. Test seam for <see cref="PollDesktopChange"/>
+    /// so tests can set up and restore the static state.
+    /// </summary>
+    internal static void SetCurrentDesktopState(string desktopGuid, string name, int index)
+    {
+        Volatile.Write(ref _currentDesktopGuid, desktopGuid);
+        _currentDesktopName = name;
+        _currentDesktopIndex = index;
     }
 
     /// <summary>
@@ -570,7 +614,7 @@ public static class VirtualDesktopService
     /// </summary>
     public static void UnsubscribeNotifications()
     {
-        _pollingTimer?.Dispose();
+        _pollingTimer?.Stop();
         _pollingTimer = null;
 
         if (!_notificationsRegistered)

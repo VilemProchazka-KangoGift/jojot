@@ -64,7 +64,40 @@ public class ComGuidsTests
     {
         var result = ComGuids.Resolve(26200);
         result.Should().NotBeNull();
-        result!.IVirtualDesktopNotification.Should().Be(new Guid("C179334C-4295-40D3-BEA1-C654D965605A"));
+        result!.IVirtualDesktopNotification.Should().Be(new Guid("B9E5E94D-233E-49AB-AF5C-2B4541C3AADE"));
+    }
+
+    [Fact]
+    public void Resolve_Build26300_Uses26100EntryWithReferenceIids()
+    {
+        // Values from Ciantic/VirtualDesktopAccessor (rust branch, src/interfaces.rs)
+        var result = ComGuids.Resolve(26300);
+        result.Should().NotBeNull();
+        result!.IVirtualDesktop.Should().Be(new Guid("3F07F4BE-B107-441A-AF0F-39D82529072C"));
+        result.IVirtualDesktopManagerInternal.Should().Be(new Guid("53F5CA0B-158F-4124-900C-057158060B27"));
+        result.IVirtualDesktopNotification.Should().Be(new Guid("B9E5E94D-233E-49AB-AF5C-2B4541C3AADE"));
+        result.IVirtualDesktopNotificationService.Should().Be(new Guid("0CD45E71-D927-4F15-8B0A-8FEF525337BF"));
+        result.SupportsNotifications.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Resolve_Build22631_Uses22621EntryWithoutNotifications()
+    {
+        var result = ComGuids.Resolve(22631);
+        result.Should().NotBeNull();
+        result.Should().BeSameAs(ComGuids.Resolve(22621));
+        result!.SupportsNotifications.Should().BeFalse("the 22H2/23H2 callback vtable has extra monitors parameters");
+    }
+
+    [Fact]
+    public void ComImportGuidAttributes_MatchThe26100Entry()
+    {
+        // The RCW QueryInterfaces with the [Guid] attribute, so it must agree with the resolved IID.
+        var set = ComGuids.Resolve(26100)!;
+        typeof(IVirtualDesktop).GUID.Should().Be(set.IVirtualDesktop);
+        typeof(IVirtualDesktopManagerInternal).GUID.Should().Be(set.IVirtualDesktopManagerInternal);
+        typeof(IVirtualDesktopNotification).GUID.Should().Be(set.IVirtualDesktopNotification);
+        typeof(IVirtualDesktopNotificationService).GUID.Should().Be(set.IVirtualDesktopNotificationService);
     }
 
     [Fact]
