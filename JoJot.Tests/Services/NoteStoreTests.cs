@@ -82,49 +82,6 @@ public class NoteStoreTests : IAsyncLifetime
         (await NoteStore.DeleteNotesAsync([])).Should().Be(0);
     }
 
-    // ─── DeleteEmptyNotes ─────────────────────────────────────────────
-
-    [Fact]
-    public async Task DeleteEmptyNotes_PreservesPinnedEmptyNotes()
-    {
-        var desk = "del-empty-pin";
-        await NoteStore.InsertNoteAsync(desk, null, "", true, 0);  // Pinned empty
-        await NoteStore.InsertNoteAsync(desk, null, "", false, 1); // Unpinned empty
-
-        var deleted = await NoteStore.DeleteEmptyNotesAsync(desk);
-
-        deleted.Should().Be(1);
-        var remaining = await NoteStore.GetNotesForDesktopAsync(desk);
-        remaining.Should().ContainSingle().Which.Pinned.Should().BeTrue();
-    }
-
-    [Fact]
-    public async Task DeleteEmptyNotes_PreservesWhitespaceContent_False()
-    {
-        var desk = "del-whitespace";
-        await NoteStore.InsertNoteAsync(desk, null, "   ", false, 0);
-
-        var deleted = await NoteStore.DeleteEmptyNotesAsync(desk);
-        deleted.Should().Be(1);
-    }
-
-    [Fact]
-    public async Task DeleteEmptyNotes_ReturnsZero_WhenAllHaveContent()
-    {
-        var desk = "del-has-content";
-        await NoteStore.InsertNoteAsync(desk, "Note", "Some content", false, 0);
-
-        var deleted = await NoteStore.DeleteEmptyNotesAsync(desk);
-        deleted.Should().Be(0);
-    }
-
-    [Fact]
-    public async Task DeleteEmptyNotes_ReturnsZero_WhenNoNotes()
-    {
-        var deleted = await NoteStore.DeleteEmptyNotesAsync("no-notes-desk");
-        deleted.Should().Be(0);
-    }
-
     // ─── MigrateNotesDesktopGuid ──────────────────────────────────────
 
     [Fact]

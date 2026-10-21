@@ -63,8 +63,19 @@ public partial class MainWindow
 
     private void TabItem_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
     {
+        bool wasDragging = _isDragging;
         if (_isDragging) e.Handled = true;
         CompleteDrag();
+
+        // A plain click on a tab (no drag) puts the caret in the editor so the user can type
+        // straight away. Deferred to Input priority so it runs after the ListBoxItem's own focus
+        // handling for this click; FocusEditorIfIdle re-checks rename/search/drag at that point
+        // (a double-click rename started in between keeps its focus). Pin/close clicks inside the
+        // item land here too — focusing the editor afterwards is intended.
+        if (!wasDragging && sender is ListBoxItem { Tag: NoteTab })
+        {
+            _ = Dispatcher.BeginInvoke(FocusEditorIfIdle, System.Windows.Threading.DispatcherPriority.Input);
+        }
     }
 
     /// <summary>

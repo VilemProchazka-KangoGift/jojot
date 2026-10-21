@@ -131,6 +131,9 @@ public partial class App : Application
             _startupStopwatch = Stopwatch.StartNew();
             _startupPhaseLoggingActive = true;
 
+            // Window title + session matching share one COM desktop enumeration during startup.
+            VirtualDesktopService.CacheDesktopsDuringStartup = true;
+
             // UI-thread guard: DatabaseCore logs a one-time warning per caller for DB work on the dispatcher.
             DatabaseCore.IsUiThread = () => Dispatcher.CheckAccess();
 
@@ -190,24 +193,36 @@ public partial class App : Application
             ReconcileSnapshotPreferences(dbPrefs);
             LogPhase("prefs-cache");
 
-            // Session matching — associate saved sessions with live desktops
-            await VirtualDesktopService.MatchSessionsAsync();
-            await VirtualDesktopService.EnsureCurrentDesktopSessionAsync();
-            LogPhase("session-match");
+            // ── Critical path: only what decides WHICH notes this desktop shows, then load them. ──
 
-            // Resolve pending moves from crash recovery, auto-delete old notes, welcome tab
-            await ResolvePendingMovesAsync();
+            // Session matching can re-home a stored session onto this desktop (Tier 2/3, when the
+            // desktop's GUID changed). Only then must it run before the load — a desktop whose GUID
+            // already has a session (the normal start) defers matching until the editor is live.
+            bool matchedBeforeLoad = false;
+            if (VirtualDesktopService.IsAvailable
+                && !await SessionStore.SessionExistsAsync(currentDesktopGuid))
+            {
+                await VirtualDesktopService.MatchSessionsAsync();
+                matchedBeforeLoad = true;
+                LogPhase("session-match");
+            }
+
+            // Keep the app_state row present for this desktop before any geometry save (INSERT OR IGNORE).
+            await VirtualDesktopService.EnsureCurrentDesktopSessionAsync();
+
+            // Schema migrations add columns the note query selects — must precede the load. A single
+            // PRAGMA read when the schema stamp is current (every start but the first after an upgrade).
+            await StartupService.RunBackgroundMigrationsAsync();
+
+            // Auto-delete (only does DB work when enabled) and the O(1) welcome check stay ahead of the
+            // load: deleting a note the user may already be typing in, or seeding the welcome note
+            // after the empty-desktop auto-tab exists, would both be wrong.
             await RunAutoDeleteAsync();
             await StartupService.CreateWelcomeTabIfFirstLaunch();
-            LogPhase("recovery+autodelete+welcome");
+            LogPhase("session-ensure+migrations+autodelete+welcome");
 
-            // Run pending migrations (no-op when schema is already stamped)
-            await StartupService.RunBackgroundMigrationsAsync();
-            LogPhase("migrations");
-
-            // Complete DB-dependent window setup behind the already-visible window.
+            // Tabs load, editor enabled and focused. Logs "tabs-loaded".
             await CompleteWindowInitAsync(mainWindow, currentDesktopGuid);
-            mainWindow.UpdateOrphanBadge();
 
             // Start IPC server
             IpcService.StartServer(HandleIpcCommand, _appShutdownCts.Token);
@@ -243,6 +258,9 @@ public partial class App : Application
             VirtualDesktopService.CurrentDesktopChanged += (oldGuid, newGuid) =>
                 LogService.Info("Desktop switched: {OldGuid} -> {NewGuid}", oldGuid, newGuid);
 
+            // ── Deferred tail: the editor is already live; none of this decides what it shows now. ──
+            await RunDeferredStartupWorkAsync(mainWindow, matchedBeforeLoad);
+
             // Log startup timing
             _startupStopwatch.Stop();
             LogService.Info("Tab containers realized during startup: {Count}", JoJot.MainWindow.TabContainersLoadedCount);
@@ -253,6 +271,46 @@ public partial class App : Application
         {
             _startupPhaseLoggingActive = false;
             LogService.Error("Fatal error during application startup", ex);
+        }
+        finally
+        {
+            // Startup is over (or failed): GetAllDesktops goes back to live COM enumeration.
+            VirtualDesktopService.CacheDesktopsDuringStartup = false;
+        }
+    }
+
+    /// <summary>
+    /// Startup work that runs after the editor is live: session matching (unless it had to run
+    /// before the load), crash-recovery of pending moves, the orphan badge and recovery toast.
+    /// If recovery moved notes, the window reloads its tabs (merge-preserving, focus untouched).
+    /// Failures are logged and never undo the already-usable window.
+    /// </summary>
+    private async Task RunDeferredStartupWorkAsync(MainWindow mainWindow, bool matchedBeforeLoad)
+    {
+        try
+        {
+            if (!matchedBeforeLoad)
+            {
+                await VirtualDesktopService.MatchSessionsAsync();
+                LogPhase("session-match");
+            }
+
+            bool recovered = await ResolvePendingMovesAsync();
+            LogPhase("recovery");
+
+            mainWindow.UpdateOrphanBadge();
+
+            if (recovered)
+            {
+                // Recovery migrated notes into/out of this desktop after its tabs were shown.
+                await mainWindow.LoadTabsAsync();
+                mainWindow.ShowInfoToast(JoJot.Resources.Strings.Toast_Recovery);
+                LogPhase("recovery-reload");
+            }
+        }
+        catch (Exception ex)
+        {
+            LogService.Error("Deferred startup work failed", ex);
         }
     }
 
@@ -309,7 +367,8 @@ public partial class App : Application
 
     /// <summary>
     /// Completes DB-dependent window setup: geometry fallback for desktops the snapshot has
-    /// never seen, tab loading, preferences panel, activation, and recovery toast.
+    /// never seen, preferences panel (font size), activation, then tab loading — last, so the
+    /// load's editor focus is not undone by ActivateWindow's window.Focus().
     /// Requires the database to be open.
     /// </summary>
     private async Task CompleteWindowInitAsync(MainWindow window, string desktopGuid)
@@ -324,18 +383,13 @@ public partial class App : Application
             }
         }
 
-        await window.LoadTabsAsync();
-        LogPhase("tabs-loaded");
-        await window.InitializePreferencesAsync();
+        await window.InitializePreferencesAsync(); // preference-cache hits: font size before first paint of text
         LogPhase("prefs-panel");
 
         WindowActivationHelper.ActivateWindow(window);
 
-        if (_pendingRecoveryToast)
-        {
-            _pendingRecoveryToast = false;
-            window.ShowInfoToast(JoJot.Resources.Strings.Toast_Recovery);
-        }
+        await window.LoadTabsAsync();
+        LogPhase("tabs-loaded");
     }
 
     /// <summary>
@@ -541,11 +595,6 @@ public partial class App : Application
     // ─── Window Drag Helper Methods ─────────────────────────────────────
 
     /// <summary>
-    /// Whether a recovery toast should be shown on the next window creation.
-    /// </summary>
-    private bool _pendingRecoveryToast;
-
-    /// <summary>
     /// Checks if a window exists for the given desktop GUID (used for merge checks).
     /// </summary>
     public bool HasWindowForDesktop(string desktopGuid)
@@ -592,15 +641,16 @@ public partial class App : Application
     /// <summary>
     /// Resolves any pending_moves rows left by a crash during a window drag.
     /// Reads all pending moves and attempts to restore windows to their origin desktop.
-    /// Called during startup after session matching, before window creation.
+    /// Called in the deferred startup tail (after the first tab load). Returns true when at least
+    /// one move was recovered, i.e. notes changed desktop and open windows may need a reload.
     /// </summary>
-    private async Task ResolvePendingMovesAsync()
+    private static async Task<bool> ResolvePendingMovesAsync()
     {
         var moves = await PendingMoveStore.GetPendingMovesAsync();
         if (moves.Count == 0)
         {
             LogService.Info("Pending moves check: none found");
-            return;
+            return false;
         }
 
         LogService.Info("Pending moves check: {MoveCount} unresolved move(s) found — recovering", moves.Count);
@@ -625,27 +675,26 @@ public partial class App : Application
 
         await PendingMoveStore.DeleteAllPendingMovesAsync();
 
-        if (recovered)
-        {
-            _pendingRecoveryToast = true;
-        }
         LogService.Info("Pending moves check: recovery complete");
+        return recovered;
     }
 
     /// <summary>
     /// Reads the auto_delete_days preference and deletes unpinned notes older than that many days.
-    /// Called once during startup before windows are created.
+    /// Called once during startup, before the first tab load. Returns the number deleted (0 when
+    /// the preference is unset — a preference-cache hit with no DB work).
     /// </summary>
-    private static async Task RunAutoDeleteAsync()
+    private static async Task<int> RunAutoDeleteAsync()
     {
         var saved = await PreferenceStore.GetPreferenceAsync("auto_delete_days").ConfigureAwait(false);
         if (string.IsNullOrWhiteSpace(saved) || !int.TryParse(saved, out int days) || days <= 0)
-            return;
+            return 0;
 
         var cutoff = DateTime.Now.AddDays(-days);
         int deleted = await NoteStore.DeleteOldNotesAsync(cutoff);
         if (deleted > 0)
             LogService.Info("Startup auto-delete: {DeletedCount} note(s) older than {Days} days removed", deleted, days);
+        return deleted;
     }
 
     /// <summary>

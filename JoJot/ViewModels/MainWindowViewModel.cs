@@ -211,6 +211,77 @@ public sealed class MainWindowViewModel : ObservableObject
     }
 
     /// <summary>
+    /// Startup cleanup, done in memory so the first tab load never waits on a DELETE: splits the
+    /// loaded notes into those to show and the empty (whitespace-only) unpinned ones to delete in
+    /// the background. If every note is empty, the first one is kept (it becomes the selected tab)
+    /// rather than deleting it and then inserting a brand-new empty tab.
+    /// </summary>
+    internal static (List<NoteTab> Keep, List<NoteTab> Empty) SplitEmptyStartupNotes(IReadOnlyList<NoteTab> notes)
+    {
+        var keep = new List<NoteTab>(notes.Count);
+        var empty = new List<NoteTab>();
+        foreach (var note in notes)
+        {
+            if (string.IsNullOrWhiteSpace(note.Content) && !note.Pinned)
+                empty.Add(note);
+            else
+                keep.Add(note);
+        }
+
+        if (keep.Count == 0 && empty.Count > 0)
+        {
+            keep.Add(empty[0]);
+            empty.RemoveAt(0);
+        }
+
+        return (keep, empty);
+    }
+
+    /// <summary>
+    /// Reconciles a tab reload from the database with the tabs already in memory. Database rows
+    /// decide which tabs exist and their order; a row whose tab is already loaded reuses that
+    /// in-memory object (its content, caret and identity are fresher than the row), taking only
+    /// Pinned/SortOrder from the database. Rows in <paramref name="excludedIds"/> (soft-deleted,
+    /// awaiting commit) are skipped. In-memory tabs that never persisted (id &lt;= 0) are kept:
+    /// pinned ones at the end of the pinned zone, unpinned ones at the end.
+    /// </summary>
+    internal static List<NoteTab> MergeReloadedTabs(
+        IReadOnlyList<NoteTab> current, IReadOnlyList<NoteTab> fromDb, IReadOnlySet<long> excludedIds)
+    {
+        var byId = new Dictionary<long, NoteTab>();
+        foreach (var tab in current)
+        {
+            if (tab.Id > 0) byId.TryAdd(tab.Id, tab);
+        }
+
+        var merged = new List<NoteTab>(fromDb.Count);
+        foreach (var row in fromDb)
+        {
+            if (excludedIds.Contains(row.Id)) continue;
+            if (byId.TryGetValue(row.Id, out var existing))
+            {
+                existing.Pinned = row.Pinned;
+                existing.SortOrder = row.SortOrder;
+                merged.Add(existing);
+            }
+            else
+            {
+                merged.Add(row);
+            }
+        }
+
+        var unsaved = current.Where(t => t.Id <= 0).ToList();
+        if (unsaved.Count > 0)
+        {
+            int pinnedEnd = merged.FindLastIndex(t => t.Pinned) + 1;
+            merged.InsertRange(pinnedEnd, unsaved.Where(t => t.Pinned));
+            merged.AddRange(unsaved.Where(t => !t.Pinned));
+        }
+
+        return merged;
+    }
+
+    /// <summary>
     /// Focus cascade after deleting the active tab:
     /// 1. First visible tab at or below the deleted position
     /// 2. Last visible tab (if no tab below)

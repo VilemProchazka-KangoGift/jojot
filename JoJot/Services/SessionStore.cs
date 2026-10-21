@@ -72,37 +72,38 @@ public static class SessionStore
     }
 
     /// <summary>
-    /// Creates a new desktop session in app_state.
+    /// Creates a desktop session in app_state if none exists for the GUID. An existing row is left
+    /// untouched (name, index and geometry are not overwritten). One INSERT OR IGNORE statement
+    /// against the UNIQUE desktop_guid index — no read-then-write round trip.
     /// </summary>
     public static Task CreateSessionAsync(string desktopGuid, string? desktopName, int? desktopIndex) =>
-        DatabaseCore.RunOnDbThreadAsync(() => CreateSessionCoreAsync(desktopGuid, desktopName, desktopIndex));
+        DatabaseCore.ExecuteNonQueryAsync(
+            "INSERT OR IGNORE INTO app_state (desktop_guid, desktop_name, desktop_index) VALUES (@guid, @name, @index);",
+            ("@guid", desktopGuid),
+            ("@name", (object?)desktopName ?? DBNull.Value),
+            ("@index", (object?)desktopIndex ?? DBNull.Value));
 
-    private static async Task CreateSessionCoreAsync(string desktopGuid, string? desktopName, int? desktopIndex)
+    /// <summary>
+    /// Returns true when an app_state row exists for the given desktop GUID (case-insensitive, like
+    /// session matching's GUID tier). Read-only — does not take the write lock.
+    /// </summary>
+    public static Task<bool> SessionExistsAsync(string desktopGuid) =>
+        DatabaseCore.RunOnDbThreadAsync(() => SessionExistsCoreAsync(desktopGuid));
+
+    private static async Task<bool> SessionExistsCoreAsync(string desktopGuid)
     {
-        await DatabaseCore.AcquireWriteLockAsync().ConfigureAwait(false);
+        string lowered = desktopGuid.ToLowerInvariant();
         try
         {
             await using var context = DatabaseCore.CreateContext();
-            bool exists = await context.AppStates.AnyAsync(a => a.DesktopGuid == desktopGuid).ConfigureAwait(false);
-            if (!exists)
-            {
-                context.AppStates.Add(new AppState
-                {
-                    DesktopGuid = desktopGuid,
-                    DesktopName = desktopName,
-                    DesktopIndex = desktopIndex
-                });
-                await context.SaveChangesAsync().ConfigureAwait(false);
-            }
+            return await context.AppStates
+                .AsNoTracking()
+                .AnyAsync(a => a.DesktopGuid.ToLower() == lowered).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
-            LogService.Error("CreateSessionAsync failed (guid={DesktopGuid})", desktopGuid, ex);
+            LogService.Error("SessionExistsAsync failed (guid={DesktopGuid})", desktopGuid, ex);
             throw;
-        }
-        finally
-        {
-            DatabaseCore.ReleaseWriteLock();
         }
     }
 

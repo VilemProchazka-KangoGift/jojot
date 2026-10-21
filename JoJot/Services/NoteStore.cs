@@ -317,39 +317,6 @@ public static class NoteStore
     }
 
     /// <summary>
-    /// Deletes all notes with empty or whitespace-only content for a given desktop.
-    /// Pinned notes are preserved. Returns the number deleted.
-    /// </summary>
-    public static Task<int> DeleteEmptyNotesAsync(string desktopGuid) =>
-        DatabaseCore.RunOnDbThreadAsync(() => DeleteEmptyNotesCoreAsync(desktopGuid));
-
-    private static async Task<int> DeleteEmptyNotesCoreAsync(string desktopGuid)
-    {
-        await DatabaseCore.AcquireWriteLockAsync().ConfigureAwait(false);
-        try
-        {
-            await using var context = DatabaseCore.CreateContext();
-            int deleted = await context.Notes
-                .Where(n => n.DesktopGuid == desktopGuid
-                    && (n.Content == null || n.Content.Trim() == "")
-                    && !n.Pinned)
-                .ExecuteDeleteAsync().ConfigureAwait(false);
-            if (deleted > 0)
-                LogService.Info("Startup cleanup: deleted {DeletedCount} empty note(s) for desktop {DesktopGuid}", deleted, desktopGuid);
-            return deleted;
-        }
-        catch (Exception ex)
-        {
-            LogService.Error("DeleteEmptyNotesAsync failed (guid={DesktopGuid})", desktopGuid, ex);
-            return 0;
-        }
-        finally
-        {
-            DatabaseCore.ReleaseWriteLock();
-        }
-    }
-
-    /// <summary>
     /// Deletes all unpinned notes older than the specified cutoff date across all desktops.
     /// Returns the number deleted.
     /// </summary>

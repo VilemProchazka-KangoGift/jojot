@@ -33,9 +33,24 @@ public partial class MainWindow
     /// </summary>
     private System.Windows.Data.ListCollectionView? _tabsView;
 
-    /// <summary>False until the first LoadTabsAsync — blocks tab creation while the window
-    /// shell is visible but the database is still opening.</summary>
+    /// <summary>False until LoadTabsAsync has populated the collection (and again while a reload is
+    /// in flight) — tab creation is deferred meanwhile, because the load's Clear/repopulate would
+    /// otherwise wipe a just-created tab from the UI while its INSERT still lands in the DB.</summary>
     private bool _tabsLoaded;
+
+    /// <summary>Set when CreateNewTab/RequestNewTab (Ctrl+T, hotkey, IPC) arrives while tabs are not
+    /// loaded; LoadTabsAsync honors it once the collection is populated.</summary>
+    private bool _newTabRequestedWhileLoading;
+
+    /// <summary>True while a LoadTabsAsync pass runs; a concurrent call only sets
+    /// <see cref="_reloadRequested"/> so the running pass loops once more.</summary>
+    private bool _loadTabsInProgress;
+
+    /// <summary>A LoadTabsAsync call arrived during a running load — reload once more at the end.</summary>
+    private bool _reloadRequested;
+
+    /// <summary>True after the first successful load; later loads are reloads (merge, recovery).</summary>
+    private bool _initialTabLoadDone;
 
     /// <summary>
     /// Resolves the realized ListBoxItem container for a tab, or null if the tab is virtualized
@@ -76,41 +91,154 @@ public partial class MainWindow
 
     /// <summary>
     /// Loads tabs from database for this desktop and populates the tab list.
-    /// Called by App.CreateWindowForDesktop after Show().
-    /// Auto-creates an empty tab if no notes exist (per CONTEXT.md).
+    /// Called by App.CompleteWindowInitAsync after Show(), and again as a reload after a merge or
+    /// startup crash recovery. Auto-creates an empty tab if no notes exist (per CONTEXT.md).
+    /// Re-entrancy safe: a call while a load is running makes the running load loop once more,
+    /// and new-tab requests that arrive mid-load are queued and honored at the end.
     /// </summary>
     public async Task LoadTabsAsync()
     {
-        // Restore persisted tab panel width
+        if (_loadTabsInProgress)
+        {
+            _reloadRequested = true;
+            return;
+        }
+
+        _loadTabsInProgress = true;
+        try
+        {
+            do
+            {
+                _reloadRequested = false;
+                await LoadTabsOnceAsync();
+            }
+            while (_reloadRequested);
+        }
+        finally
+        {
+            _loadTabsInProgress = false;
+            _tabsLoaded = true; // never leave tab creation blocked, even if a load threw
+        }
+
+        if (_newTabRequestedWhileLoading)
+        {
+            _newTabRequestedWhileLoading = false;
+            CreateNewTab();
+        }
+    }
+
+    /// <summary>
+    /// One load pass. First load: query, drop empty unpinned notes in memory, populate, select the
+    /// first tab, focus the editor — then delete the dropped rows in the background. Reload: flush
+    /// the editor, then merge DB rows with the in-memory tabs, keeping the active tab selected.
+    /// </summary>
+    private async Task LoadTabsOnceAsync()
+    {
+        bool isReload = _initialTabLoadDone;
+        _tabsLoaded = false;
+
+        // Restore persisted tab panel width (preference-cache hit — no DB round trip)
         await RestoreTabPanelWidthAsync();
 
         // Bind the virtualized collection view before mutating _tabs so the ListBox tracks changes.
         EnsureTabsViewBound();
-        _tabsLoaded = true;
 
-        // Silently delete empty unpinned notes before loading
-        await NoteStore.DeleteEmptyNotesAsync(_desktopGuid);
+        long? keepActiveId = null;
+        if (isReload)
+        {
+            // Queue the editor's latest content ahead of the read (DB work is FIFO), and wait for
+            // in-flight optimistic INSERTs so every in-memory tab carries its real id for the merge.
+            SaveCurrentTabContent();
+            foreach (var tab in _tabs.ToList())
+                await tab.Persisted;
+            keepActiveId = _activeTab?.Id;
+        }
 
         var notes = await NoteStore.GetNotesForDesktopAsync(_desktopGuid);
+
+        List<NoteTab> toShow;
+        List<NoteTab> emptyNotes = [];
+        if (isReload)
+        {
+            var excluded = _pendingDeletion is { } pending
+                ? pending.Tabs.Select(t => t.Id).ToHashSet()
+                : [];
+            toShow = ViewModels.MainWindowViewModel.MergeReloadedTabs(_tabs, notes, excluded);
+        }
+        else
+        {
+            (toShow, emptyNotes) = ViewModels.MainWindowViewModel.SplitEmptyStartupNotes(notes);
+        }
+
         MutateTabsGuarded(() =>
         {
             _tabs.Clear();
-            foreach (var note in notes)
+            foreach (var note in toShow)
                 _tabs.Add(note);
         });
+        _tabsLoaded = true;
+        _initialTabLoadDone = true;
+
+        // Startup cleanup: the empty unpinned notes were never shown — delete them off the critical path.
+        if (emptyNotes.Count > 0)
+            DeleteEmptyStartupNotesInBackground(emptyNotes);
 
         if (_tabs.Count == 0)
         {
             // Auto-create first empty tab — no empty state screen
             CreateNewTab();
-            return; // CreateNewTab already selects the tab
+            return; // CreateNewTab already selects and focuses the tab
         }
 
         RebuildTabList();
 
-        // Select first tab
-        if (TabList.Items.Count > 0)
+        var target = keepActiveId is long id ? _tabs.FirstOrDefault(t => t.Id == id) : null;
+        if (target is not null)
+            SelectTabByNote(target);
+        else if (TabList.Items.Count > 0)
             TabList.SelectedIndex = 0;
+
+        // Launch lands the caret in the editor (a reload never moves focus). SelectionChanged has
+        // run synchronously above and enabled the editor.
+        if (!isReload)
+            FocusEditorIfIdle();
+    }
+
+    /// <summary>
+    /// Focuses the editor unless the user is somewhere that must keep focus: an active rename,
+    /// the search box, a drag, a tab-list rebuild, or an open confirmation dialog. No-op while the
+    /// editor is disabled.
+    /// </summary>
+    private void FocusEditorIfIdle()
+    {
+        if (_activeRename is not null || _isDragging || _isRebuildingTabList) return;
+        if (SearchBox.IsKeyboardFocusWithin || ConfirmationOverlay.IsOpen) return;
+        if (!ContentEditor.IsEnabled) return;
+        Keyboard.Focus(ContentEditor);
+    }
+
+    /// <summary>
+    /// Deletes the empty unpinned notes that startup dropped from the list, in one batched
+    /// statement on the DB thread. Failures are logged only — these rows were never shown.
+    /// </summary>
+    private void DeleteEmptyStartupNotesInBackground(List<NoteTab> emptyNotes)
+    {
+        var ids = emptyNotes.Where(t => t.Id > 0).Select(t => t.Id).ToList();
+        if (ids.Count == 0) return;
+        string desktopGuid = _desktopGuid;
+        BackgroundWriter.Run(async () =>
+        {
+            try
+            {
+                int deleted = await NoteStore.DeleteNotesAsync(ids).ConfigureAwait(false);
+                if (deleted > 0)
+                    LogService.Info("Startup cleanup: deleted {DeletedCount} empty note(s) for desktop {DesktopGuid}", deleted, desktopGuid);
+            }
+            catch (Exception ex)
+            {
+                LogService.Warn("Startup cleanup of empty notes failed for desktop {DesktopGuid}", desktopGuid, ex);
+            }
+        }, "startup empty-note cleanup");
     }
 
     // ─── Tab List Building ──────────────────────────────────────────────
@@ -651,7 +779,13 @@ public partial class MainWindow
     /// </summary>
     public void CreateNewTab()
     {
-        if (!_tabsLoaded) return; // window shell is up but the DB isn't — ignore early Ctrl+T
+        if (!_tabsLoaded)
+        {
+            // Window shell is up but tabs aren't loaded (DB still opening, or a reload is mid-flight):
+            // remember the request; LoadTabsAsync creates the tab once the collection is populated.
+            _newTabRequestedWhileLoading = true;
+            return;
+        }
 
         // An active search filter would hide the new (empty) tab — it can't match the query, so the
         // view filters it out and "nothing happens". Clear the search first, then create.

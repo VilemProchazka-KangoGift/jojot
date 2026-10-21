@@ -10,12 +10,13 @@ public static class StartupService
 {
     /// <summary>
     /// Inserts a "Welcome to JoJot" note on the very first launch (when the notes table is empty).
-    /// Runs synchronously in the startup path so the welcome tab is visible immediately.
+    /// Runs in the startup path before the first tab load so the welcome tab is visible immediately.
+    /// The emptiness probe is an O(1) EXISTS (stops at the first row), not a full COUNT(*).
     /// </summary>
     public static async Task CreateWelcomeTabIfFirstLaunch()
     {
-        long count = await DatabaseCore.ExecuteScalarAsync<long>("SELECT COUNT(*) FROM notes;").ConfigureAwait(false);
-        if (count > 0)
+        long anyNotes = await DatabaseCore.ExecuteScalarAsync<long>("SELECT EXISTS(SELECT 1 FROM notes);").ConfigureAwait(false);
+        if (anyNotes != 0)
         {
             return;
         }

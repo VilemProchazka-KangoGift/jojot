@@ -299,16 +299,6 @@ public class CoverageBoostTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task DeleteEmptyNotes_NullContent_DeletesNote()
-    {
-        // Insert a note then set content to NULL via raw SQL
-        await NoteStore.InsertNoteAsync("null-content", null, "", false, 0);
-
-        var deleted = await NoteStore.DeleteEmptyNotesAsync("null-content");
-        deleted.Should().Be(1);
-    }
-
-    [Fact]
     public async Task UpdateNoteSortOrders_EmptyList_NoOp()
     {
         await NoteStore.UpdateNoteSortOrdersAsync([]);
