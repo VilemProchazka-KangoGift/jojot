@@ -156,7 +156,8 @@ public partial class App : Application
             IpcService.StartServer(HandleIpcCommand, _appShutdownCts.Token);
             LogPhase("ipc-server");
 
-            // Kick off the entire DB pipeline immediately; it runs while the window appears.
+            // Kick off the entire DB pipeline immediately (including the preference-cache load and its
+            // first EF query compilation); it runs while the window appears.
             var dbInitTask = InitializeDatabaseAsync();
 
             // Fast path: snapshot seeds the preference cache so language/theme resolve instantly.
@@ -168,6 +169,7 @@ public partial class App : Application
             else
             {
                 // First launch (or lost snapshot): preferences must come from the DB before any UI.
+                // The pipeline loads the real cache; the post-window await reuses its result.
                 await dbInitTask;
             }
             LogPhase("db-kickoff+snapshot");
@@ -198,13 +200,14 @@ public partial class App : Application
             var mainWindow = CreateWindowShell(currentDesktopGuid);
             LogPhase("window-shell-shown");
 
-            await dbInitTask;
-            LogPhase("db-ready");
+            // The pipeline already replaced the provisional cache with DB truth; this await only
+            // collects the loaded map (and is a no-op re-read of the completed task on first launch).
+            var dbPrefs = await dbInitTask;
+            LogPhase("db-ready+prefs-cache");
 
             // Reconcile provisional (snapshot) preferences against database truth.
-            var dbPrefs = await PreferenceStore.InitializeCacheAsync();
             ReconcileSnapshotPreferences(dbPrefs);
-            LogPhase("prefs-cache");
+            LogPhase("prefs-reconcile");
 
             // ── Critical path: only what decides WHICH notes this desktop shows, then load them. ──
 
@@ -437,12 +440,18 @@ public partial class App : Application
     }
 
     /// <summary>
-    /// Open → schema → integrity/corruption recovery → EF warmup, as one awaitable unit.
-    /// Every step runs on the DB worker thread. ConfigureAwait(false) keeps the chain from
-    /// bouncing through the dispatcher between steps (it touches no UI), so it progresses while
-    /// the UI thread is busy building the window.
+    /// Open → schema → integrity/corruption recovery → EF warmup → preference-cache load, as one
+    /// awaitable unit. Every step runs on the DB worker thread. ConfigureAwait(false) keeps the chain
+    /// from bouncing through the dispatcher between steps (it touches no UI), so it progresses while
+    /// the UI thread is busy building the window. Returns the preferences loaded from the database.
     /// </summary>
-    private static async Task InitializeDatabaseAsync()
+    /// <remarks>
+    /// The cache load swaps the provisional snapshot cache for DB truth in one locked reference
+    /// assignment, so a concurrent UI read sees either the snapshot or DB truth, never an empty
+    /// cache. If it lands before <c>PreloadProvisional</c>, that call is a no-op (<c>??=</c>).
+    /// The DB thread runs items strictly FIFO, so no SetPreferenceAsync can interleave with it.
+    /// </remarks>
+    private static async Task<IReadOnlyDictionary<string, string>> InitializeDatabaseAsync()
     {
         var dbPath = AppEnvironment.DatabasePath;
         await DatabaseCore.OpenAsync(dbPath).ConfigureAwait(false);
@@ -456,6 +465,9 @@ public partial class App : Application
         }
 
         await DatabaseCore.WarmupModelAsync().ConfigureAwait(false);
+
+        // First EF LINQ query of the process (query compilation) — off the UI critical path here.
+        return await PreferenceStore.InitializeCacheAsync().ConfigureAwait(false);
     }
 
     /// <summary>
