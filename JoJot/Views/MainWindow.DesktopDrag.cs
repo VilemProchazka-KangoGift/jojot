@@ -108,7 +108,7 @@ public partial class MainWindow
             ? Strings.Drag_ConflictMessage
             : Strings.Drag_KeepOrGoMessage;
 
-        DragOverlay.Show(
+        DragOverlayLazy.Show(
             string.Format(Strings.Drag_From, sourceLabel),
             string.Format(Strings.Drag_MovedTo, displayName),
             message,
@@ -134,7 +134,7 @@ public partial class MainWindow
             if (app?.HasWindowForDesktop(newGuid) == true)
             {
                 // Refresh overlay with keep-here hidden and merge visible
-                DragOverlay.UpdateContent(Strings.Drag_AnotherWindowOpened,
+                DragOverlayLazy.UpdateContent(Strings.Drag_AnotherWindowOpened,
                     showKeepHere: false, showMerge: true);
                 return;
             }
@@ -207,7 +207,7 @@ public partial class MainWindow
 
             // Hide overlay and close this window
             ViewModel.ResetDragState();
-            DragOverlay.HideImmediate();
+            _dragOverlay?.HideImmediate();
 
             // Unsubscribe from events before closing
             VirtualDesktopService.WindowMovedToDesktop -= OnWindowMovedToDesktop;
@@ -255,7 +255,7 @@ public partial class MainWindow
             else
             {
                 // Cancel failed — show retry + instruction
-                DragOverlay.ShowRetryMode();
+                DragOverlayLazy.ShowRetryMode();
 
                 LogService.Warn("Cancel failed: could not move window back to {DesktopGuid}", _dragFromDesktopGuid);
             }
@@ -271,7 +271,9 @@ public partial class MainWindow
     /// </summary>
     private async Task HideDragOverlayAsync()
     {
-        await DragOverlay.HideAsync();
+        // Never shown → never created → already hidden; don't build it just to hide it.
+        if (_dragOverlay is not null)
+            await _dragOverlay.HideAsync();
         ViewModel.ResetDragState();
     }
 

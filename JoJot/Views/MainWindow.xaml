@@ -103,12 +103,8 @@
                                        VerticalAlignment="Center"/>
                         </StackPanel>
 
-                        <!-- Hidden rename TextBox — shares title column -->
-                        <TextBox x:Name="RenameBox" Grid.Column="0"
-                                 FontSize="13" MinWidth="80"
-                                 Visibility="Collapsed"
-                                 Padding="2,0,2,0"
-                                 VerticalAlignment="Center"/>
+                        <!-- Rename: one shared TextBox is inserted here at TitlePanel's column on
+                             demand (MainWindow.Rename.cs), not one per item. -->
 
                         <!-- Close/delete button — Col2, hidden by default -->
                         <Border x:Name="CloseBtn" Grid.Column="2"
@@ -169,7 +165,6 @@
                     <Setter TargetName="Col1" Property="Width" Value="*"/>
                     <Setter TargetName="PinBtn" Property="Grid.Column" Value="0"/>
                     <Setter TargetName="TitlePanel" Property="Grid.Column" Value="1"/>
-                    <Setter TargetName="RenameBox" Property="Grid.Column" Value="1"/>
                     <Setter TargetName="PinBtn" Property="Visibility" Value="Visible"/>
                     <Setter TargetName="PinBtn" Property="Opacity" Value="1"/>
                     <Setter TargetName="PinBtn" Property="ToolTip" Value="{x:Static res:Strings.Tooltip_UnpinShort}"/>
@@ -499,8 +494,10 @@
 
                 </Grid>
 
-                <!-- Find & Replace panel (Col 1) — inline, shrinks editor -->
-                <controls:FindReplacePanel x:Name="FindReplacePanel" Grid.Column="1" Width="280"/>
+                <!-- Find & Replace panel (Col 1) — inline, shrinks editor. Lazy host: the
+                     FindReplacePanel is created on first use (MainWindow.LazyPanels.cs) and the
+                     host's Visibility follows it, so it takes no column space while hidden. -->
+                <Border x:Name="FindReplaceHost" Grid.Column="1" Width="280" Visibility="Collapsed"/>
             </Grid>
         </Grid>
 
@@ -604,24 +601,29 @@
             </Border>
         </Popup>
 
+        <!-- Lazy hosts for the overlays/side panels below: each control starts hidden, so it is
+             created on first use (MainWindow.LazyPanels.cs) instead of in InitializeComponent.
+             The host keeps the layout (span, ZIndex, width, alignment, sibling order) and its
+             Visibility is bound to the control's once created. -->
+
         <!-- Bulk delete confirmation overlay -->
-        <controls:ConfirmationOverlay x:Name="ConfirmationOverlay" Grid.ColumnSpan="3" Panel.ZIndex="100"/>
+        <Border x:Name="ConfirmationHost" Grid.ColumnSpan="3" Panel.ZIndex="100" Visibility="Collapsed"/>
         <!-- Lock overlay for window drag resolution -->
-        <controls:DragOverlay x:Name="DragOverlay" Grid.ColumnSpan="3" Panel.ZIndex="200"/>
+        <Border x:Name="DragOverlayHost" Grid.ColumnSpan="3" Panel.ZIndex="200" Visibility="Collapsed"/>
         <!-- Preferences slide-in panel -->
-        <controls:PreferencesPanel x:Name="PreferencesPanel" Width="300" HorizontalAlignment="Right"
-                                    Grid.ColumnSpan="3" Panel.ZIndex="80"/>
+        <Border x:Name="PreferencesHost" Width="300" HorizontalAlignment="Right"
+                Grid.ColumnSpan="3" Panel.ZIndex="80" Visibility="Collapsed"/>
 
         <!-- Help overlay — keyboard shortcuts reference (Ctrl+?) -->
-        <controls:HelpOverlay x:Name="HelpOverlay" Grid.ColumnSpan="3" Panel.ZIndex="200"/>
+        <Border x:Name="HelpOverlayHost" Grid.ColumnSpan="3" Panel.ZIndex="200" Visibility="Collapsed"/>
 
         <!-- Recovery sidebar — slide-in from right -->
-        <controls:RecoveryPanel x:Name="RecoveryPanel" Width="320" HorizontalAlignment="Right"
-                                 Grid.ColumnSpan="3" Panel.ZIndex="85"/>
+        <Border x:Name="RecoveryHost" Width="320" HorizontalAlignment="Right"
+                Grid.ColumnSpan="3" Panel.ZIndex="85" Visibility="Collapsed"/>
 
         <!-- Cleanup panel — slide-in from right -->
-        <controls:CleanupPanel x:Name="CleanupPanel" Width="320" HorizontalAlignment="Right"
-                                Grid.ColumnSpan="3" Panel.ZIndex="85"/>
+        <Border x:Name="CleanupHost" Width="320" HorizontalAlignment="Right"
+                Grid.ColumnSpan="3" Panel.ZIndex="85" Visibility="Collapsed"/>
 
     </Grid>
 </Window>

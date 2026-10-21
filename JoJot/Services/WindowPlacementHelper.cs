@@ -2,7 +2,6 @@ using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Interop;
 using JoJot.Models;
-using WinForms = System.Windows.Forms;
 
 namespace JoJot.Services;
 
@@ -144,37 +143,110 @@ public static partial class WindowPlacementHelper
     /// intersects any screen's working area.
     /// </summary>
     /// <param name="geo">The geometry to validate and potentially correct.</param>
-    public static WindowGeometry ClampToNearestScreen(WindowGeometry geo)
+    public static WindowGeometry ClampToNearestScreen(WindowGeometry geo) =>
+        ClampToWorkAreas(geo, GetMonitorWorkAreas());
+
+    /// <summary>
+    /// A monitor working area in virtual-screen pixels (MONITORINFO.rcWork — the same values
+    /// WinForms <c>Screen.WorkingArea</c> reported, which this replaced).
+    /// </summary>
+    internal readonly record struct WorkArea(int Left, int Top, int Right, int Bottom)
     {
-        var testRect = new Rectangle(
-            (int)geo.Left, (int)geo.Top, 50, 50);
+        /// <summary>Same semantics as System.Drawing.Rectangle.IntersectsWith (edges exclusive).</summary>
+        public bool IntersectsWith(int x, int y, int width, int height) =>
+            x < Right && Left < x + width && y < Bottom && Top < y + height;
+    }
 
-        bool visible = WinForms.Screen.AllScreens.Any(s =>
-            s.WorkingArea.IntersectsWith(testRect));
+    /// <summary>
+    /// Pure core of <see cref="ClampToNearestScreen"/>: keeps <paramref name="geo"/> if its
+    /// top-left 50x50 region intersects any work area, otherwise moves it onto the nearest one
+    /// (Manhattan distance from the top-left). With no work areas, returns it unchanged.
+    /// </summary>
+    internal static WindowGeometry ClampToWorkAreas(WindowGeometry geo, IReadOnlyList<WorkArea> workAreas)
+    {
+        if (workAreas.Count == 0)
+        {
+            return geo;
+        }
 
-        if (visible)
+        int left = (int)geo.Left;
+        int top = (int)geo.Top;
+
+        if (workAreas.Any(wa => wa.IntersectsWith(left, top, 50, 50)))
         {
             return geo;
         }
 
         // Find nearest screen by Manhattan distance from saved top-left
-        var nearest = WinForms.Screen.AllScreens
+        var wa = workAreas
             .OrderBy(s =>
             {
-                int dx = Math.Max(s.WorkingArea.Left - (int)geo.Left, 0) +
-                         Math.Max((int)geo.Left - s.WorkingArea.Right, 0);
-                int dy = Math.Max(s.WorkingArea.Top - (int)geo.Top, 0) +
-                         Math.Max((int)geo.Top - s.WorkingArea.Bottom, 0);
+                int dx = Math.Max(s.Left - left, 0) + Math.Max(left - s.Right, 0);
+                int dy = Math.Max(s.Top - top, 0) + Math.Max(top - s.Bottom, 0);
                 return dx + dy;
             })
             .First();
 
-        var wa = nearest.WorkingArea;
         double newLeft = Math.Clamp(geo.Left, wa.Left, Math.Max(wa.Left, wa.Right - geo.Width));
         double newTop = Math.Clamp(geo.Top, wa.Top, Math.Max(wa.Top, wa.Bottom - geo.Height));
 
         LogService.Info("Off-screen recovery: ({OldLeft},{OldTop}) -> ({NewLeft},{NewTop})", geo.Left, geo.Top, newLeft, newTop);
         return geo with { Left = newLeft, Top = newTop };
+    }
+
+    // ─── Monitor enumeration (replaces WinForms Screen.AllScreens) ──────
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct MONITORINFO
+    {
+        public int cbSize;
+        public RECT rcMonitor;
+        public RECT rcWork;
+        public uint dwFlags;
+    }
+
+    [LibraryImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static unsafe partial bool EnumDisplayMonitors(
+        IntPtr hdc, IntPtr lprcClip,
+        delegate* unmanaged<IntPtr, IntPtr, RECT*, IntPtr, int> lpfnEnum, IntPtr dwData);
+
+    [LibraryImport("user32.dll", EntryPoint = "GetMonitorInfoW")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static partial bool GetMonitorInfo(IntPtr hMonitor, ref MONITORINFO lpmi);
+
+    /// <summary>
+    /// Returns the working area of every connected monitor, as <c>EnumDisplayMonitors</c> +
+    /// <c>GetMonitorInfo(rcWork)</c> — the same calls WinForms Screen.AllScreens made, so the
+    /// coordinate space is unchanged.
+    /// </summary>
+    internal static unsafe List<WorkArea> GetMonitorWorkAreas()
+    {
+        var areas = new List<WorkArea>();
+        var handle = GCHandle.Alloc(areas);
+        try
+        {
+            EnumDisplayMonitors(IntPtr.Zero, IntPtr.Zero, &CollectMonitorWorkArea, GCHandle.ToIntPtr(handle));
+        }
+        finally
+        {
+            handle.Free();
+        }
+        return areas;
+    }
+
+    [UnmanagedCallersOnly]
+    private static unsafe int CollectMonitorWorkArea(IntPtr hMonitor, IntPtr hdc, RECT* lprcMonitor, IntPtr dwData)
+    {
+        if (GCHandle.FromIntPtr(dwData).Target is List<WorkArea> areas)
+        {
+            var mi = new MONITORINFO { cbSize = sizeof(MONITORINFO) };
+            if (GetMonitorInfo(hMonitor, ref mi))
+            {
+                areas.Add(new WorkArea(mi.rcWork.Left, mi.rcWork.Top, mi.rcWork.Right, mi.rcWork.Bottom));
+            }
+        }
+        return 1; // continue enumeration
     }
 
     // Constants

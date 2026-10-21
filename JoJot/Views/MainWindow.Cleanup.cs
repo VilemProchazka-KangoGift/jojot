@@ -21,18 +21,18 @@ public partial class MainWindow
         if (_recoveryPanelOpen) HideRecoveryPanel();
         if (_findPanelOpen) HideFindPanel();
 
-        CleanupPanel.ResetFilters();
+        CleanupPanelLazy.ResetFilters();
         try
         {
             var savedAutoDeleteDays = await PreferenceStore.GetPreferenceAsync("auto_delete_days");
-            CleanupPanel.SetAutoDeleteDays(savedAutoDeleteDays);
+            CleanupPanelLazy.SetAutoDeleteDays(savedAutoDeleteDays);
         }
         catch (Exception ex)
         {
             LogService.Warn("Failed to load auto_delete_days preference: {ErrorMessage}", ex.Message);
         }
         _cleanupPanelOpen = true;
-        CleanupPanel.Show();
+        CleanupPanelLazy.Show();
         RefreshCleanupPreview();
     }
 
@@ -40,12 +40,12 @@ public partial class MainWindow
     {
         if (!_cleanupPanelOpen) return;
         _cleanupPanelOpen = false;
-        CleanupPanel.Hide();
+        _cleanupPanel?.Hide();
     }
 
     private void RefreshCleanupPreview()
     {
-        CleanupPanel.RefreshPreview(GetCleanupCandidates());
+        CleanupPanelLazy.RefreshPreview(GetCleanupCandidates());
     }
 
     /// <summary>
@@ -53,10 +53,10 @@ public partial class MainWindow
     /// </summary>
     private DateTime? GetCleanupCutoffDate()
     {
-        if (!int.TryParse(CleanupPanel.AgeText, out int age))
+        if (!int.TryParse(CleanupPanelLazy.AgeText, out int age))
             return null;
 
-        return ViewModels.MainWindowViewModel.GetCleanupCutoffDate(age, CleanupPanel.UnitIndex, DateTime.Now);
+        return ViewModels.MainWindowViewModel.GetCleanupCutoffDate(age, CleanupPanelLazy.UnitIndex, DateTime.Now);
     }
 
     /// <summary>
@@ -67,7 +67,7 @@ public partial class MainWindow
         var cutoff = GetCleanupCutoffDate();
         if (cutoff is null) return [];
 
-        return ViewModel.GetCleanupCandidates(cutoff.Value, CleanupPanel.IncludePinned);
+        return ViewModel.GetCleanupCandidates(cutoff.Value, CleanupPanelLazy.IncludePinned);
     }
 
     /// <summary>

@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -45,7 +46,9 @@ public partial class MainWindow : Window
     }
 
     // ─── Rename state ───────────────────────────────────────────────────
-    private (ListBoxItem Item, NoteTab Tab, TextBox Box, TextBlock Label)? _activeRename;
+    // One shared TextBox (MainWindow.Rename.cs) is inserted into the renamed item, replacing
+    // its TitlePanel while active; Title is that hidden TitlePanel.
+    private (ListBoxItem Item, NoteTab Tab, TextBox Box, FrameworkElement Title)? _activeRename;
 
     // ─── Drag-to-reorder state ──────────────────────────────────────────
     private bool _isDragging;
@@ -181,48 +184,9 @@ public partial class MainWindow : Window
 
         // Register with ThemeService for title bar dark mode tracking
         ThemeService.RegisterWindow(this);
-        HelpOverlay.CloseRequested += (_, _) => ViewModel.IsHelpOpen = false;
-        CleanupPanel.CloseRequested += (_, _) => HideCleanupPanel();
-        RecoveryPanel.CloseRequested += (_, _) => HideRecoveryPanel();
-        DragOverlay.KeepHereClicked += (_, _) => DragKeepHere_Handler();
-        DragOverlay.MergeClicked += (_, _) => DragMerge_Handler();
-        DragOverlay.CancelClicked += (_, _) => DragCancel_Handler();
-        CleanupPanel.FilterChanged += (_, _) => { if (_cleanupPanelOpen) RefreshCleanupPreview(); };
-        CleanupPanel.DeleteRequested += (_, candidates) =>
-        {
-            int pinnedCount = candidates.Count(t => t.Pinned);
-            string pinnedNote = pinnedCount > 0 ? string.Format(Strings.Cleanup_ConfirmPinnedNote, pinnedCount) : "";
-            var msgFmt = LanguageService.Plural(Strings.Cleanup_ConfirmMessage_One, Strings.Cleanup_ConfirmMessage_Few, Strings.Cleanup_ConfirmMessage, candidates.Count);
-            string message = string.Format(msgFmt, candidates.Count, pinnedNote);
-            ShowConfirmation(Strings.Cleanup_ConfirmTitle, message, () => _ = ExecuteCleanupDeleteAsync(candidates));
-        };
-        PreferencesPanel.CloseRequested += (_, _) => HidePreferencesPanel();
-        PreferencesPanel.ThemeChangeRequested += (_, theme) => _ = ThemeService.SetThemeAsync(theme);
-        PreferencesPanel.LanguageChangeRequested += (_, lang) =>
-        {
-            if (lang == LanguageService.Current) return;
-            ShowConfirmation(
-                Strings.Language_RestartTitle,
-                Strings.Language_RestartMessage,
-                () => _ = LanguageService.SetLanguageAsync(lang),
-                Strings.Language_RestartButton,
-                useDangerStyle: false);
-        };
-        PreferencesPanel.FontSizeChangeRequested += (_, delta) => _ = ChangeFontSizeAsync(delta);
-        PreferencesPanel.FontSizeResetRequested += (_, _) => _ = SetFontSizeAsync(13);
-        PreferencesPanel.HotkeyRecordingChanged += (_, isRecording) =>
-        {
-            if (isRecording) HotkeyService.PauseHotkey();
-            else HotkeyService.ResumeHotkey();
-        };
-        CleanupPanel.AutoDeleteDaysChanged += (_, value) =>
-        {
-            if (string.IsNullOrWhiteSpace(value))
-                _ = PreferenceStore.SetPreferenceAsync("auto_delete_days", "");
-            else if (int.TryParse(value, out int days) && days > 0)
-                _ = PreferenceStore.SetPreferenceAsync("auto_delete_days", days.ToString());
-        };
-        WireUpFindPanelEvents();
+        // Side panels/overlays are created lazily on first use (MainWindow.LazyPanels.cs),
+        // which also wires their events. Only the editor-side find adorner hooks go here.
+        WireUpFindAdornerEvents();
 
         // Configure autosave service (undo snapshots are pushed per-keystroke in ContentEditor_TextChanged)
         _autosaveService.Configure(
@@ -634,6 +598,21 @@ public partial class MainWindow : Window
 
     // ─── Editor Mouse Helpers ───────────────────────────────────────────
 
+    // System double-click time/rectangle (formerly WinForms SystemInformation.DoubleClickTime /
+    // DoubleClickSize, which wrap these same Win32 calls). Read once per process.
+    private const int SM_CXDOUBLECLK = 36;
+    private const int SM_CYDOUBLECLK = 37;
+
+    [LibraryImport("user32.dll")]
+    private static partial uint GetDoubleClickTime();
+
+    [LibraryImport("user32.dll")]
+    private static partial int GetSystemMetrics(int nIndex);
+
+    private static readonly long DoubleClickTimeMs = GetDoubleClickTime();
+    private static readonly int DoubleClickWidth = GetSystemMetrics(SM_CXDOUBLECLK);
+    private static readonly int DoubleClickHeight = GetSystemMetrics(SM_CYDOUBLECLK);
+
     private bool _suppressNextEditorMouseUp;
     private int _editorClickStreak;
     private long _lastEditorClickTicks;
@@ -653,10 +632,9 @@ public partial class MainWindow : Window
         // Manual click-streak tracking using the system double-click time and rectangle.
         var pos = e.GetPosition(ContentEditor);
         long now = Environment.TickCount64;
-        var dcSize = System.Windows.Forms.SystemInformation.DoubleClickSize;
-        bool chained = now - _lastEditorClickTicks <= System.Windows.Forms.SystemInformation.DoubleClickTime
-            && Math.Abs(pos.X - _lastEditorClickPos.X) <= dcSize.Width
-            && Math.Abs(pos.Y - _lastEditorClickPos.Y) <= dcSize.Height;
+        bool chained = now - _lastEditorClickTicks <= DoubleClickTimeMs
+            && Math.Abs(pos.X - _lastEditorClickPos.X) <= DoubleClickWidth
+            && Math.Abs(pos.Y - _lastEditorClickPos.Y) <= DoubleClickHeight;
         _editorClickStreak = chained ? _editorClickStreak + 1 : 1;
         _lastEditorClickTicks = now;
         _lastEditorClickPos = pos;

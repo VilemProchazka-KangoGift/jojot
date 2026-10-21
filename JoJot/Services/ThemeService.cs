@@ -96,20 +96,49 @@ public static partial class ThemeService
 
         var dictionaries = Application.Current.Resources.MergedDictionaries;
 
-        if (dictionaries.Count > 0 &&
-            dictionaries[0].Source?.OriginalString.Contains("Theme.xaml") == true)
-        {
-            dictionaries.RemoveAt(0);
-        }
-
         var uri = effective == AppTheme.Dark
             ? new Uri("Themes/DarkTheme.xaml", UriKind.Relative)
             : new Uri("Themes/LightTheme.xaml", UriKind.Relative);
 
-        dictionaries.Insert(0, new ResourceDictionary { Source = uri });
+        // App.xaml already merges LightTheme.xaml at index 0: re-parsing the same dictionary
+        // at startup (or on a System-mode re-apply with no actual change) is pure waste.
+        var current = dictionaries.Count > 0 ? dictionaries[0].Source : null;
+        if (ShouldSwapDictionary(current, uri))
+        {
+            if (current?.OriginalString.Contains("Theme.xaml") == true)
+            {
+                dictionaries.RemoveAt(0);
+            }
+
+            dictionaries.Insert(0, new ResourceDictionary { Source = uri });
+        }
 
         ApplyTitleBarToAllWindows();
         ThemeChanged?.Invoke(null, EventArgs.Empty);
+    }
+
+    /// <summary>
+    /// Decides whether the theme dictionary at MergedDictionaries[0] must be replaced to show
+    /// <paramref name="requestedSource"/>. Compares file names only (case-insensitive), because
+    /// the same dictionary can be referenced by a relative or a pack URI.
+    /// Returns true when there is no current theme dictionary or it is a different file.
+    /// </summary>
+    internal static bool ShouldSwapDictionary(Uri? currentSource, Uri requestedSource)
+    {
+        if (currentSource is null) return true;
+        return !string.Equals(
+            GetUriFileName(currentSource),
+            GetUriFileName(requestedSource),
+            StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string GetUriFileName(Uri uri)
+    {
+        var path = uri.OriginalString;
+        int cut = path.IndexOfAny(['?', '#']);
+        if (cut >= 0) path = path[..cut];
+        int slash = path.LastIndexOfAny(['/', '\\']);
+        return slash >= 0 ? path[(slash + 1)..] : path;
     }
 
     /// <summary>

@@ -37,7 +37,8 @@ CalVer format: **`YYYY.M.Count`** (e.g. `2026.3.7`). Count increments per releas
 
 ## Architecture
 
-- **Framework**: WPF (.NET 10), with WinForms enabled only for `SystemEvents` access (ambiguous global usings are removed in `.csproj`)
+- **Framework**: WPF (.NET 10) only — WinForms is not referenced (`UseWindowsForms` is off). `SystemEvents` comes from `Microsoft.Win32.SystemEvents`, which ships with WPF; monitor work areas and double-click metrics are Win32 P/Invokes (`WindowPlacementHelper`, `MainWindow`). Don't reintroduce `System.Windows.Forms`/`System.Drawing`: it loads the WinForms assemblies at startup
+- **Lazy panels**: the seven hidden side panels/overlays (Find, Confirmation, Drag, Preferences, Help, Recovery, Cleanup) are created on first use (`MainWindow.LazyPanels.cs`) into Collapsed `Border` hosts in `MainWindow.xaml`. Use the `...Lazy` accessors to act on one and the null-aware helpers (`IsConfirmationOpen`, `IsRecordingHotkey`, `_x?.Hide()`) in guards/hide paths so a keystroke never builds a panel. Tab rename uses one shared on-demand `TextBox` (`MainWindow.Rename.cs`), not a per-item template element
 - **Single-project solution**: All source under `JoJot/`. The `.slnx` file is also inside `JoJot/` (not repo root)
 - **Nullable reference types**: Enabled
 - **Implicit usings**: Enabled

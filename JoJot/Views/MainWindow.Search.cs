@@ -122,19 +122,12 @@ public partial class MainWindow
     }
 
     /// <summary>
-    /// Wires FindReplacePanel events, scroll tracking, and theme-change invalidation for the adorner.
-    /// Called from MainWindow constructor after InitializeComponent.
+    /// Wires scroll tracking and theme-change invalidation for the find highlight adorner.
+    /// Called from MainWindow constructor after InitializeComponent. The FindReplacePanel's own
+    /// events are wired when the panel is lazily created (CreateFindReplacePanel).
     /// </summary>
-    internal void WireUpFindPanelEvents()
+    internal void WireUpFindAdornerEvents()
     {
-        // Subscribe to FindReplacePanel events
-        FindReplacePanel.CloseRequested += (_, _) => HideFindPanel();
-        FindReplacePanel.FindTextChanged += OnFindTextChanged;
-        FindReplacePanel.FindNextRequested += (_, _) => CycleFindMatch(forward: true);
-        FindReplacePanel.FindPreviousRequested += (_, _) => CycleFindMatch(forward: false);
-        FindReplacePanel.ReplaceRequested += (_, _) => PerformReplace();
-        FindReplacePanel.ReplaceAllRequested += (_, _) => PerformReplaceAll();
-
         // Re-render adorner when TextBox scrolls — throttle to ~30fps to avoid expensive
         // GetRectFromCharacterIndex calls on every frame during rapid scrolling
         ContentEditor.AddHandler(ScrollViewer.ScrollChangedEvent, new ScrollChangedEventHandler((_, _) =>
@@ -178,22 +171,22 @@ public partial class MainWindow
             int newline = seed.IndexOfAny(['\r', '\n']);
             if (newline >= 0) seed = seed[..newline];
             if (seed.Length > 0)
-                FindReplacePanel.SetFindText(seed);
+                FindPanelLazy.SetFindText(seed);
         }
 
-        FindReplacePanel.Show();
+        FindPanelLazy.Show();
 
-        var query = FindReplacePanel.GetFindText();
+        var query = FindPanelLazy.GetFindText();
         if (!string.IsNullOrEmpty(query))
         {
-            _ = RunSearchAsync(query, FindReplacePanel.CaseSensitive, FindReplacePanel.WholeWord);
+            _ = RunSearchAsync(query, FindPanelLazy.CaseSensitive, FindPanelLazy.WholeWord);
         }
     }
 
     // ContentEditor.Select() steals focus — restore at Input priority so it runs after
     // the Normal-priority async continuation that called Select().
     private void RestoreFindFocusAfterSelect() =>
-        Dispatcher.BeginInvoke(FindReplacePanel.FocusFindInput, DispatcherPriority.Input);
+        Dispatcher.BeginInvoke(FindPanelLazy.FocusFindInput, DispatcherPriority.Input);
 
     private void HideFindPanel()
     {
@@ -201,7 +194,7 @@ public partial class MainWindow
         _findTextChangeDebounce?.Stop();
         CancelPendingSearch();
         _findPanelOpen = false;
-        FindReplacePanel.Hide();
+        _findReplacePanel?.Hide();
         _findMatches.Clear();
         _currentFindIndex = -1;
         _findQueryLength = 0;
@@ -221,7 +214,7 @@ public partial class MainWindow
             _findMatches.Clear();
             _findQueryLength = 0;
             _currentFindIndex = -1;
-            FindReplacePanel.UpdateMatches(_findMatches, _currentFindIndex);
+            FindPanelLazy.UpdateMatches(_findMatches, _currentFindIndex);
             _highlightAdorner?.Clear();
             return;
         }
@@ -247,9 +240,9 @@ public partial class MainWindow
                 _findDebounceTimer.Stop();
                 if (_findPanelOpen && _activeTab is not null)
                 {
-                    var q = FindReplacePanel.GetFindText();
+                    var q = FindPanelLazy.GetFindText();
                     if (!string.IsNullOrEmpty(q))
-                        _ = RunSearchAsync(q, FindReplacePanel.CaseSensitive, FindReplacePanel.WholeWord);
+                        _ = RunSearchAsync(q, FindPanelLazy.CaseSensitive, FindPanelLazy.WholeWord);
                 }
             };
         }
@@ -300,7 +293,7 @@ public partial class MainWindow
         _findQueryLength = queryLength;
         _currentFindIndex = _findMatches.Count > 0 ? 0 : -1;
 
-        FindReplacePanel.UpdateMatches(_findMatches, _currentFindIndex);
+        FindPanelLazy.UpdateMatches(_findMatches, _currentFindIndex);
 
         if (_findMatches.Count > 0)
         {
@@ -332,7 +325,7 @@ public partial class MainWindow
         var lineIndex = ContentEditor.GetLineIndexFromCharacterIndex(pos);
         if (lineIndex >= 0) ContentEditor.ScrollToLine(lineIndex);
 
-        FindReplacePanel.UpdateMatches(_findMatches, _currentFindIndex);
+        FindPanelLazy.UpdateMatches(_findMatches, _currentFindIndex);
         _highlightAdorner?.Update(_findMatches, _currentFindIndex, _findQueryLength);
 
         RestoreFindFocusAfterSelect();
@@ -344,7 +337,7 @@ public partial class MainWindow
     {
         if (_findMatches.Count == 0 || _currentFindIndex < 0 || _activeTab is null) return;
 
-        string replacement = FindReplacePanel.GetReplaceText();
+        string replacement = FindPanelLazy.GetReplaceText();
         int matchPos = _findMatches[_currentFindIndex];
 
         // Push undo snapshot before replacement
@@ -364,10 +357,10 @@ public partial class MainWindow
         _autosaveService.NotifyTextChanged();
 
         // Re-run search to update match positions after replacement
-        var query = FindReplacePanel.GetFindText();
+        var query = FindPanelLazy.GetFindText();
         if (!string.IsNullOrEmpty(query))
         {
-            _ = RunSearchAsync(query, FindReplacePanel.CaseSensitive, FindReplacePanel.WholeWord);
+            _ = RunSearchAsync(query, FindPanelLazy.CaseSensitive, FindPanelLazy.WholeWord);
         }
     }
 
@@ -375,8 +368,8 @@ public partial class MainWindow
     {
         if (_findMatches.Count == 0 || _activeTab is null) return;
 
-        string query = FindReplacePanel.GetFindText();
-        string replacement = FindReplacePanel.GetReplaceText();
+        string query = FindPanelLazy.GetFindText();
+        string replacement = FindPanelLazy.GetReplaceText();
 
         // Push undo snapshot BEFORE replacement so Replace All is a single undo action
         FlushPendingUndoSnapshot();
@@ -385,7 +378,7 @@ public partial class MainWindow
 
         var (newContent, count) = ViewModels.MainWindowViewModel.ReplaceAll(
             ContentEditor.Text, query, replacement,
-            FindReplacePanel.CaseSensitive, FindReplacePanel.WholeWord);
+            FindPanelLazy.CaseSensitive, FindPanelLazy.WholeWord);
 
         // TextChanged is suppressed during the assignment, so mark dirty explicitly so the
         // Replace All result is persisted rather than silently reverting on window close.
@@ -404,7 +397,7 @@ public partial class MainWindow
         // Re-run search to refresh (should find 0 if all replaced)
         if (!string.IsNullOrEmpty(query))
         {
-            _ = RunSearchAsync(query, FindReplacePanel.CaseSensitive, FindReplacePanel.WholeWord);
+            _ = RunSearchAsync(query, FindPanelLazy.CaseSensitive, FindPanelLazy.WholeWord);
         }
     }
 
@@ -427,10 +420,10 @@ public partial class MainWindow
     {
         if (!_findPanelOpen) return;
 
-        var query = FindReplacePanel.GetFindText();
+        var query = FindPanelLazy.GetFindText();
         if (!string.IsNullOrEmpty(query))
         {
-            _ = RunSearchAsync(query, FindReplacePanel.CaseSensitive, FindReplacePanel.WholeWord);
+            _ = RunSearchAsync(query, FindPanelLazy.CaseSensitive, FindPanelLazy.WholeWord);
         }
     }
 
@@ -443,13 +436,13 @@ public partial class MainWindow
     {
         if (!_findPanelOpen) return;
 
-        var query = FindReplacePanel.GetFindText();
+        var query = FindPanelLazy.GetFindText();
         if (string.IsNullOrEmpty(query))
         {
             _findTextChangeDebounce?.Stop();
             CancelPendingSearch();
             _highlightAdorner?.Clear();
-            FindReplacePanel.UpdateMatches([], -1);
+            FindPanelLazy.UpdateMatches([], -1);
             return;
         }
 
@@ -461,7 +454,7 @@ public partial class MainWindow
                 _findTextChangeDebounce.Stop();
                 if (_findPanelOpen && _activeTab is not null)
                 {
-                    var q = FindReplacePanel.GetFindText();
+                    var q = FindPanelLazy.GetFindText();
                     if (!string.IsNullOrEmpty(q))
                         _ = RefreshFindOnTextChangeAsync(q);
                 }
@@ -478,8 +471,8 @@ public partial class MainWindow
         _findCts = cts;
 
         string content = ContentEditor.Text;
-        bool caseSensitive = FindReplacePanel.CaseSensitive;
-        bool wholeWord = FindReplacePanel.WholeWord;
+        bool caseSensitive = FindPanelLazy.CaseSensitive;
+        bool wholeWord = FindPanelLazy.WholeWord;
         int savedIndex = _currentFindIndex;
 
         List<int> matches;
@@ -508,7 +501,7 @@ public partial class MainWindow
         else
             _currentFindIndex = savedIndex;
 
-        FindReplacePanel.UpdateMatches(_findMatches, _currentFindIndex);
+        FindPanelLazy.UpdateMatches(_findMatches, _currentFindIndex);
 
         // Defer adorner update to after WPF layout pass (GetRectFromCharacterIndex needs updated layout)
         _ = Dispatcher.BeginInvoke(() =>

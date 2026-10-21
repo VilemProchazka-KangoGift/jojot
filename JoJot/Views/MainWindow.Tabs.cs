@@ -212,7 +212,7 @@ public partial class MainWindow
     private void FocusEditorIfIdle()
     {
         if (_activeRename is not null || _isDragging || _isRebuildingTabList) return;
-        if (SearchBox.IsKeyboardFocusWithin || ConfirmationOverlay.IsOpen) return;
+        if (SearchBox.IsKeyboardFocusWithin || IsConfirmationOpen) return;
         if (!ContentEditor.IsEnabled) return;
         Keyboard.Focus(ContentEditor);
     }
