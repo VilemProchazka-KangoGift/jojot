@@ -13,10 +13,16 @@ public partial class MainWindow
         var savedFontSize = await PreferenceStore.GetPreferenceAsync("font_size");
         _currentFontSize = ViewModels.MainWindowViewModel.ParseFontSize(savedFontSize);
         ContentEditor.FontSize = _currentFontSize;
-        PreferencesPanel.RefreshValues(_currentFontSize, ThemeService.CurrentSetting, LanguageService.Current, HotkeyService.GetHotkeyDisplayString());
 
-        var savedAutoDeleteDays = await PreferenceStore.GetPreferenceAsync("auto_delete_days");
-        CleanupPanel.SetAutoDeleteDays(savedAutoDeleteDays);
+        // The panels are created lazily and refresh their values when opened
+        // (ShowPreferencesPanel / ShowCleanupPanel), so only update ones that already exist.
+        _preferencesPanel?.RefreshValues(_currentFontSize, ThemeService.CurrentSetting, LanguageService.Current, HotkeyService.GetHotkeyDisplayString());
+
+        if (_cleanupPanel is not null)
+        {
+            var savedAutoDeleteDays = await PreferenceStore.GetPreferenceAsync("auto_delete_days");
+            _cleanupPanel.SetAutoDeleteDays(savedAutoDeleteDays);
+        }
     }
 
     private void MenuPreferences_Click(object sender, MouseButtonEventArgs e)
@@ -35,16 +41,16 @@ public partial class MainWindow
         if (_findPanelOpen) HideFindPanel();
 
         _preferencesOpen = true;
-        PreferencesPanel.RefreshValues(_currentFontSize, ThemeService.CurrentSetting, LanguageService.Current, HotkeyService.GetHotkeyDisplayString());
-        PreferencesPanel.Show();
+        PreferencesPanelLazy.RefreshValues(_currentFontSize, ThemeService.CurrentSetting, LanguageService.Current, HotkeyService.GetHotkeyDisplayString());
+        PreferencesPanelLazy.Show();
     }
 
     private void HidePreferencesPanel()
     {
         _preferencesOpen = false;
-        if (PreferencesPanel.IsRecordingHotkey)
+        if (IsRecordingHotkey)
             HotkeyService.ResumeHotkey();
-        PreferencesPanel.Hide();
+        _preferencesPanel?.Hide();
     }
 
     // ─── Font size logic ────────────────────────────────────────────────
@@ -59,7 +65,7 @@ public partial class MainWindow
     {
         _currentFontSize = size;
         ContentEditor.FontSize = size;
-        PreferencesPanel.UpdateFontSizeDisplay(size);
+        _preferencesPanel?.UpdateFontSizeDisplay(size);
         await PreferenceStore.SetPreferenceAsync("font_size", size.ToString());
         ShowFontSizeTooltip(size);
     }

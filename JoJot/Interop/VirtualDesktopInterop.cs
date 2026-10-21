@@ -14,7 +14,11 @@ internal static class VirtualDesktopInterop
     private static IVirtualDesktopManagerInternal? _managerInternal;
     private static IVirtualDesktopNotificationService? _notificationService;
     private static GuidSet? _guidSet;
+    private static int _buildNumber;
     private static bool _initialized;
+
+    /// <summary>OS build number captured by <see cref="Initialize"/> (0 before initialization).</summary>
+    public static int BuildNumber => _buildNumber;
 
     /// <summary>
     /// Initializes COM interfaces for virtual desktop interaction.
@@ -30,6 +34,7 @@ internal static class VirtualDesktopInterop
         }
 
         int buildNumber = Environment.OSVersion.Version.Build;
+        _buildNumber = buildNumber;
         LogService.Info("VirtualDesktopInterop: initializing for build {BuildNumber}", buildNumber);
 
         _guidSet = ComGuids.Resolve(buildNumber);
@@ -78,22 +83,34 @@ internal static class VirtualDesktopInterop
             Marshal.GetObjectForIUnknown(internalPtr);
         Marshal.Release(internalPtr);
 
-        // 4. Query for IVirtualDesktopNotificationService — uses its OWN CLSID, not the manager's
-        var clsidNotifService = ComGuids.CLSID_IVirtualNotificationService;
-        var iidNotifService = _guidSet.IVirtualDesktopNotificationService;
-        hr = provider.QueryService(ref clsidNotifService, ref iidNotifService, out IntPtr notifPtr);
-        if (hr != 0 || notifPtr == IntPtr.Zero)
+        // 4. Query for IVirtualDesktopNotificationService — uses its OWN CLSID, not the manager's.
+        //    24H2+ only: the managed callback vtable does not match older builds (see ComGuids).
+        if (!_guidSet.SupportsNotifications)
         {
-            // Notification service is optional — title updates won't work but detection still does
-            LogService.Warn(
-                "QueryService for IVirtualDesktopNotificationService failed (HRESULT: {HResult}) — live notifications disabled", $"0x{hr:X8}");
+            LogService.Info(
+                "Live desktop notifications not supported on build {BuildNumber} (24H2+ callback vtable only) — polling fallback will be used",
+                buildNumber);
             _notificationService = null;
         }
         else
         {
-            _notificationService = (IVirtualDesktopNotificationService)
-                Marshal.GetObjectForIUnknown(notifPtr);
-            Marshal.Release(notifPtr);
+            var clsidNotifService = ComGuids.CLSID_IVirtualNotificationService;
+            var iidNotifService = _guidSet.IVirtualDesktopNotificationService;
+            hr = provider.QueryService(ref clsidNotifService, ref iidNotifService, out IntPtr notifPtr);
+            if (hr != 0 || notifPtr == IntPtr.Zero)
+            {
+                // Notification service is optional — title updates won't work but detection still does
+                LogService.Warn(
+                    "QueryService for IVirtualDesktopNotificationService failed on build {BuildNumber} (HRESULT: {HResult}) — live notifications disabled",
+                    buildNumber, $"0x{hr:X8}");
+                _notificationService = null;
+            }
+            else
+            {
+                _notificationService = (IVirtualDesktopNotificationService)
+                    Marshal.GetObjectForIUnknown(notifPtr);
+                Marshal.Release(notifPtr);
+            }
         }
 
         _initialized = true;
@@ -146,7 +163,27 @@ internal static class VirtualDesktopInterop
     }
 
     /// <summary>
+    /// Gets only the current virtual desktop's GUID: GetCurrentDesktop + GetId, nothing else.
+    /// No name lookup, no enumeration, no registry read — cheap enough for the polling fallback
+    /// and the second-instance path.
+    /// </summary>
+    public static Guid GetCurrentDesktopId()
+    {
+        EnsureInitialized();
+
+        int hr = _managerInternal!.GetCurrentDesktop(out IVirtualDesktop desktop);
+        if (hr != 0)
+        {
+            throw new COMException($"GetCurrentDesktop failed (HRESULT: 0x{hr:X8})", hr);
+        }
+
+        return desktop.GetId();
+    }
+
+    /// <summary>
     /// Gets the current virtual desktop's GUID, name, and index.
+    /// Enumerates all desktops (and may read the registry per desktop) — use
+    /// <see cref="GetCurrentDesktopId"/> when only the GUID is needed.
     /// </summary>
     public static (Guid Id, string Name, int Index) GetCurrentDesktop()
     {
@@ -277,6 +314,7 @@ internal static class VirtualDesktopInterop
         }
 
         _guidSet = null;
+        _buildNumber = 0;
         _initialized = false;
     }
 

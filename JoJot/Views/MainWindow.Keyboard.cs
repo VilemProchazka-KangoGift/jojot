@@ -85,7 +85,7 @@ public partial class MainWindow
         // WPF keyboard navigation from stealing Shift+Enter as focus-backward.
         // Skip when the editor has focus: there Enter must insert a newline as usual.
         var realKey = e.Key == Key.System ? e.SystemKey : e.Key;
-        if ((realKey == Key.Enter || realKey == Key.Return) && _findPanelOpen && !ConfirmationOverlay.IsOpen
+        if ((realKey == Key.Enter || realKey == Key.Return) && _findPanelOpen && !IsConfirmationOpen
             && !ContentEditor.IsKeyboardFocusWithin)
         {
             if ((Keyboard.Modifiers & ModifierKeys.Shift) != 0)
@@ -113,7 +113,7 @@ public partial class MainWindow
         }
 
         // Confirmation dialog keyboard handling — intercept before all other shortcuts
-        if (ConfirmationOverlay.IsOpen)
+        if (IsConfirmationOpen)
         {
             if (e.Key == Key.Escape)
             {
@@ -122,7 +122,7 @@ public partial class MainWindow
             }
             else if (e.Key == Key.Enter)
             {
-                ConfirmationOverlay.Confirm();
+                ConfirmationOverlayLazy.Confirm();
                 e.Handled = true;
             }
             else
@@ -173,7 +173,7 @@ public partial class MainWindow
         }
 
         // Hotkey recording — capture key combination in preferences panel
-        if (PreferencesPanel.IsRecordingHotkey)
+        if (IsRecordingHotkey)
         {
             var mods = Keyboard.Modifiers;
             var key = e.Key == Key.System ? e.SystemKey : e.Key;
@@ -185,7 +185,7 @@ public partial class MainWindow
             // Escape cancels recording
             if (key == Key.Escape)
             {
-                PreferencesPanel.StopRecording();
+                PreferencesPanelLazy.StopRecording();
                 HotkeyService.ResumeHotkey();
                 e.Handled = true;
                 return;
@@ -317,8 +317,8 @@ public partial class MainWindow
     private async Task ApplyRecordedHotkeyAsync(uint modifiers, uint vk)
     {
         bool success = await HotkeyService.UpdateHotkeyAsync(modifiers, vk);
-        PreferencesPanel.StopRecording();
-        PreferencesPanel.UpdateHotkeyDisplay(HotkeyService.GetHotkeyDisplayString());
+        PreferencesPanelLazy.StopRecording();
+        PreferencesPanelLazy.UpdateHotkeyDisplay(HotkeyService.GetHotkeyDisplayString());
         if (!success)
         {
             ShowInfoToast(Strings.Toast_HotkeyInUse);

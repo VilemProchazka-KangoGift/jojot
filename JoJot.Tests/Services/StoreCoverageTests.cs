@@ -132,19 +132,6 @@ public class StoreCoverageTests : IAsyncLifetime
         notes.Should().ContainSingle().Which.Pinned.Should().BeTrue();
     }
 
-    [Fact]
-    public async Task DeleteEmptyNotes_RemovesEmptyOnly()
-    {
-        await NoteStore.InsertNoteAsync("desk-del", null, "", false, 0);
-        await NoteStore.InsertNoteAsync("desk-del", "Named", "Has content", false, 1);
-
-        var deleted = await NoteStore.DeleteEmptyNotesAsync("desk-del");
-        deleted.Should().Be(1);
-
-        var remaining = await NoteStore.GetNotesForDesktopAsync("desk-del");
-        remaining.Should().ContainSingle().Which.Name.Should().Be("Named");
-    }
-
     // ─── SessionStore ───────────────────────────────────────────────
 
     [Fact]

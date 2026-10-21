@@ -15,9 +15,12 @@ public sealed class AutosaveService
     private int _debounceMs = 500;
     private TimeSpan _debounceInterval = TimeSpan.FromMilliseconds(500);
     private int _maxWaitMs = 3000;
-    private DateTime _lastWriteCompleted;
+    // Ticks of the last completed write. Written from DB-thread continuations (FlushAsync /
+    // FlushInBackground) and read on the UI thread, so accessed via Volatile.
+    private long _lastWriteCompletedTicks;
     private DateTime _firstDirtyAt = DateTime.MinValue;
-    private bool _isDirty;
+    // Cleared/restored by save continuations that may run off the UI thread.
+    private volatile bool _isDirty;
     private Func<(long TabId, string Content)>? _contentProvider;
     private Func<long, string, Task>? _saveFunc;
     private Action<long, string>? _onSnapshot;
@@ -32,7 +35,7 @@ public sealed class AutosaveService
     {
         _clock = clock ?? SystemClock.Instance;
         _timer = timer ?? new DispatcherDebounceTimer();
-        _lastWriteCompleted = DateTime.MinValue;
+        LastWriteCompleted = DateTime.MinValue;
 
         _timer.Interval = TimeSpan.FromMilliseconds(_debounceMs);
         _timer.Tick += OnTimerTick;
@@ -61,6 +64,12 @@ public sealed class AutosaveService
     {
         get => _maxWaitMs;
         set => _maxWaitMs = value;
+    }
+
+    private DateTime LastWriteCompleted
+    {
+        get => new(Volatile.Read(ref _lastWriteCompletedTicks));
+        set => Volatile.Write(ref _lastWriteCompletedTicks, value.Ticks);
     }
 
     /// <summary>Whether there are unsaved changes pending.</summary>
@@ -103,7 +112,7 @@ public sealed class AutosaveService
         if (!_isDirty)
             _firstDirtyAt = now;
 
-        var elapsed = now - _lastWriteCompleted;
+        var elapsed = now - LastWriteCompleted;
         if (elapsed.TotalMilliseconds < _debounceMs && _timer.IsEnabled)
         {
             // Within cooldown and timer already scheduled; don't reset
@@ -145,10 +154,21 @@ public sealed class AutosaveService
             return;
         }
 
-        await _saveFunc(tabId, content).ConfigureAwait(false);
-        _lastWriteCompleted = _clock.Now;
+        // Clear BEFORE the save: the write now runs on the DB thread, so the user can keep typing
+        // while it is in flight. Clearing afterwards would erase the dirty flag of those new edits.
         _isDirty = false;
+        try
+        {
+            await _saveFunc(tabId, content).ConfigureAwait(false);
+        }
+        catch
+        {
+            _isDirty = true; // save failed — keep the content flagged for a retry
+            throw;
+        }
+        LastWriteCompleted = _clock.Now;
 
+        // Runs off the UI thread (ConfigureAwait(false)) — callback owners marshal as needed.
         _onSnapshot?.Invoke(tabId, content);
         _onSaveCompleted?.Invoke(tabId);
     }
@@ -182,7 +202,8 @@ public sealed class AutosaveService
         BackgroundWriter.Run(async () =>
         {
             await save(tabId, content).ConfigureAwait(false);
-            _lastWriteCompleted = _clock.Now; // benign race: only feeds the write-frequency cap
+            LastWriteCompleted = _clock.Now; // benign race: only feeds the write-frequency cap
+            // Runs off the UI thread — callback owners marshal as needed.
             snapshot?.Invoke(tabId, content);
             completed?.Invoke(tabId);
         }, "autosave flush");
@@ -215,18 +236,24 @@ public sealed class AutosaveService
             return;
         }
 
+        // Clear BEFORE the save: the write runs on the DB thread and the UI stays responsive, so
+        // keystrokes can land while it is in flight. Clearing afterwards would erase their dirty
+        // flag and the re-armed timer would then find nothing to save.
+        _isDirty = false;
         try
         {
+            // No ConfigureAwait(false): the dispatcher timer ticks on the UI thread and the
+            // continuation resumes there, so the callbacks below run on the UI thread in the app.
             await _saveFunc(tabId, content);
-            _lastWriteCompleted = _clock.Now;
-            _isDirty = false;
+            LastWriteCompleted = _clock.Now;
 
             _onSnapshot?.Invoke(tabId, content);
             _onSaveCompleted?.Invoke(tabId);
         }
         catch (Exception ex)
         {
-            // Keep _isDirty = true so the next tick retries the save
+            // Restore _isDirty = true so the next tick retries the save
+            _isDirty = true;
             LogService.Error("AutosaveService tick failed for tab {TabId} — will retry on next tick", tabId, ex);
         }
     }

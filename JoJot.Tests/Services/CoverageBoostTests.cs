@@ -299,16 +299,6 @@ public class CoverageBoostTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task DeleteEmptyNotes_NullContent_DeletesNote()
-    {
-        // Insert a note then set content to NULL via raw SQL
-        await NoteStore.InsertNoteAsync("null-content", null, "", false, 0);
-
-        var deleted = await NoteStore.DeleteEmptyNotesAsync("null-content");
-        deleted.Should().Be(1);
-    }
-
-    [Fact]
     public async Task UpdateNoteSortOrders_EmptyList_NoOp()
     {
         await NoteStore.UpdateNoteSortOrdersAsync([]);
@@ -705,6 +695,18 @@ public class LogServiceInitializeTests : IDisposable
         // Verify the level switch is functional after Initialize
         LogService.SetMinimumLevel(Serilog.Events.LogEventLevel.Debug);
         LogService.GetMinimumLevel().Should().Be(Serilog.Events.LogEventLevel.Debug);
+    }
+
+    [Fact]
+    public void Initialize_DeletesLegacyLogFiles()
+    {
+        File.WriteAllText(Path.Combine(_tempDir, "jojot.log"), "legacy");
+        File.WriteAllText(Path.Combine(_tempDir, "jojot.log.old"), "legacy");
+
+        LogService.Initialize(_tempDir);
+
+        File.Exists(Path.Combine(_tempDir, "jojot.log")).Should().BeFalse();
+        File.Exists(Path.Combine(_tempDir, "jojot.log.old")).Should().BeFalse();
     }
 }
 

@@ -50,7 +50,7 @@ public partial class MainWindow
             }
 
             var orphanInfos = await SessionStore.GetOrphanedSessionInfoAsync(orphanGuids);
-            RecoveryPanel.SessionList_.Children.Clear();
+            RecoveryPanelLazy.SessionList_.Children.Clear();
 
             var orphanList = orphanInfos.ToList();
             var orphanListGuids = orphanList.Select(o => o.DesktopGuid).ToList();
@@ -67,16 +67,16 @@ public partial class MainWindow
                 var tabPreviews = previewsByGuid[guid];
                 int totalCount = counts.GetValueOrDefault(guid);
                 bool isLast = (i == orphanList.Count - 1);
-                RecoveryPanel.SessionList_.Children.Add(CreateRecoveryRow(guid, desktopName, tabCount, lastUpdated, tabPreviews, totalCount, isLast));
+                RecoveryPanelLazy.SessionList_.Children.Add(CreateRecoveryRow(guid, desktopName, tabCount, lastUpdated, tabPreviews, totalCount, isLast));
             }
 
-            if (RecoveryPanel.SessionList_.Children.Count == 0)
+            if (RecoveryPanelLazy.SessionList_.Children.Count == 0)
             {
                 return;
             }
 
             _recoveryPanelOpen = true;
-            RecoveryPanel.Show();
+            RecoveryPanelLazy.Show();
         }
         catch (Exception ex)
         {
@@ -88,7 +88,7 @@ public partial class MainWindow
     {
         if (!_recoveryPanelOpen) return;
         _recoveryPanelOpen = false;
-        RecoveryPanel.Hide();
+        _recoveryPanel?.Hide();
     }
 
     /// <summary>
@@ -346,7 +346,7 @@ public partial class MainWindow
         // Refresh rows for remaining orphans
         var orphanInfos = await SessionStore.GetOrphanedSessionInfoAsync(
             VirtualDesktopService.OrphanedSessionGuids);
-        RecoveryPanel.SessionList_.Children.Clear();
+        RecoveryPanelLazy.SessionList_.Children.Clear();
         var orphanList = orphanInfos.ToList();
         var orphanListGuids = orphanList.Select(o => o.DesktopGuid).ToList();
         var counts = await NoteStore.GetNoteCountsForDesktopsAsync(orphanListGuids);
@@ -362,7 +362,7 @@ public partial class MainWindow
             var tabPreviews = previewsByGuid[guid];
             int totalCount = counts.GetValueOrDefault(guid);
             bool isLast = (i == orphanList.Count - 1);
-            RecoveryPanel.SessionList_.Children.Add(CreateRecoveryRow(guid, name, tabCount, lastUpdated, tabPreviews, totalCount, isLast));
+            RecoveryPanelLazy.SessionList_.Children.Add(CreateRecoveryRow(guid, name, tabCount, lastUpdated, tabPreviews, totalCount, isLast));
         }
 
         // Reload tabs in case Adopt added new tabs to this desktop

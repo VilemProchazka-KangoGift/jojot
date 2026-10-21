@@ -11,7 +11,10 @@ public static class SessionStore
     /// <summary>
     /// Returns all desktop sessions from app_state.
     /// </summary>
-    public static async Task<List<(string DesktopGuid, string? DesktopName, int? DesktopIndex)>> GetAllSessionsAsync(CancellationToken ct = default)
+    public static Task<List<(string DesktopGuid, string? DesktopName, int? DesktopIndex)>> GetAllSessionsAsync(CancellationToken ct = default) =>
+        DatabaseCore.RunOnDbThreadAsync(() => GetAllSessionsCoreAsync(ct));
+
+    private static async Task<List<(string DesktopGuid, string? DesktopName, int? DesktopIndex)>> GetAllSessionsCoreAsync(CancellationToken ct = default)
     {
         try
         {
@@ -33,7 +36,10 @@ public static class SessionStore
     /// Updates a session's desktop identity after successful matching.
     /// Updates both app_state and notes tables to keep the FK consistent.
     /// </summary>
-    public static async Task UpdateSessionAsync(string oldGuid, string newGuid, string? name, int? index)
+    public static Task UpdateSessionAsync(string oldGuid, string newGuid, string? name, int? index) =>
+        DatabaseCore.RunOnDbThreadAsync(() => UpdateSessionCoreAsync(oldGuid, newGuid, name, index));
+
+    private static async Task UpdateSessionCoreAsync(string oldGuid, string newGuid, string? name, int? index)
     {
         await DatabaseCore.AcquireWriteLockAsync().ConfigureAwait(false);
         try
@@ -66,41 +72,48 @@ public static class SessionStore
     }
 
     /// <summary>
-    /// Creates a new desktop session in app_state.
+    /// Creates a desktop session in app_state if none exists for the GUID. An existing row is left
+    /// untouched (name, index and geometry are not overwritten). One INSERT OR IGNORE statement
+    /// against the UNIQUE desktop_guid index — no read-then-write round trip.
     /// </summary>
-    public static async Task CreateSessionAsync(string desktopGuid, string? desktopName, int? desktopIndex)
+    public static Task CreateSessionAsync(string desktopGuid, string? desktopName, int? desktopIndex) =>
+        DatabaseCore.ExecuteNonQueryAsync(
+            "INSERT OR IGNORE INTO app_state (desktop_guid, desktop_name, desktop_index) VALUES (@guid, @name, @index);",
+            ("@guid", desktopGuid),
+            ("@name", (object?)desktopName ?? DBNull.Value),
+            ("@index", (object?)desktopIndex ?? DBNull.Value));
+
+    /// <summary>
+    /// Returns true when an app_state row exists for the given desktop GUID (case-insensitive, like
+    /// session matching's GUID tier). Read-only — does not take the write lock.
+    /// </summary>
+    public static Task<bool> SessionExistsAsync(string desktopGuid) =>
+        DatabaseCore.RunOnDbThreadAsync(() => SessionExistsCoreAsync(desktopGuid));
+
+    private static async Task<bool> SessionExistsCoreAsync(string desktopGuid)
     {
-        await DatabaseCore.AcquireWriteLockAsync().ConfigureAwait(false);
+        string lowered = desktopGuid.ToLowerInvariant();
         try
         {
             await using var context = DatabaseCore.CreateContext();
-            bool exists = await context.AppStates.AnyAsync(a => a.DesktopGuid == desktopGuid).ConfigureAwait(false);
-            if (!exists)
-            {
-                context.AppStates.Add(new AppState
-                {
-                    DesktopGuid = desktopGuid,
-                    DesktopName = desktopName,
-                    DesktopIndex = desktopIndex
-                });
-                await context.SaveChangesAsync().ConfigureAwait(false);
-            }
+            return await context.AppStates
+                .AsNoTracking()
+                .AnyAsync(a => a.DesktopGuid.ToLower() == lowered).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
-            LogService.Error("CreateSessionAsync failed (guid={DesktopGuid})", desktopGuid, ex);
+            LogService.Error("SessionExistsAsync failed (guid={DesktopGuid})", desktopGuid, ex);
             throw;
-        }
-        finally
-        {
-            DatabaseCore.ReleaseWriteLock();
         }
     }
 
     /// <summary>
     /// Updates the desktop_name for a session identified by its GUID.
     /// </summary>
-    public static async Task UpdateDesktopNameAsync(string desktopGuid, string newName)
+    public static Task UpdateDesktopNameAsync(string desktopGuid, string newName) =>
+        DatabaseCore.RunOnDbThreadAsync(() => UpdateDesktopNameCoreAsync(desktopGuid, newName));
+
+    private static async Task UpdateDesktopNameCoreAsync(string desktopGuid, string newName)
     {
         await DatabaseCore.AcquireWriteLockAsync().ConfigureAwait(false);
         try
@@ -125,7 +138,10 @@ public static class SessionStore
     /// <summary>
     /// Returns the desktop name for a given GUID from the app_state table.
     /// </summary>
-    public static async Task<string?> GetDesktopNameAsync(string desktopGuid, CancellationToken ct = default)
+    public static Task<string?> GetDesktopNameAsync(string desktopGuid, CancellationToken ct = default) =>
+        DatabaseCore.RunOnDbThreadAsync(() => GetDesktopNameCoreAsync(desktopGuid, ct));
+
+    private static async Task<string?> GetDesktopNameCoreAsync(string desktopGuid, CancellationToken ct = default)
     {
         try
         {
@@ -147,7 +163,10 @@ public static class SessionStore
     /// Updates a session's desktop identity in app_state.
     /// Deletes any existing session for newGuid first to avoid UNIQUE constraint violations.
     /// </summary>
-    public static async Task UpdateSessionDesktopAsync(string oldGuid, string newGuid, string? name, int? index)
+    public static Task UpdateSessionDesktopAsync(string oldGuid, string newGuid, string? name, int? index) =>
+        DatabaseCore.RunOnDbThreadAsync(() => UpdateSessionDesktopCoreAsync(oldGuid, newGuid, name, index));
+
+    private static async Task UpdateSessionDesktopCoreAsync(string oldGuid, string newGuid, string? name, int? index)
     {
         await DatabaseCore.AcquireWriteLockAsync().ConfigureAwait(false);
         try
@@ -184,7 +203,10 @@ public static class SessionStore
     /// Reads the saved window geometry for a desktop session.
     /// Returns null if no geometry is saved.
     /// </summary>
-    public static async Task<WindowGeometry?> GetWindowGeometryAsync(string desktopGuid, CancellationToken ct = default)
+    public static Task<WindowGeometry?> GetWindowGeometryAsync(string desktopGuid, CancellationToken ct = default) =>
+        DatabaseCore.RunOnDbThreadAsync(() => GetWindowGeometryCoreAsync(desktopGuid, ct));
+
+    private static async Task<WindowGeometry?> GetWindowGeometryCoreAsync(string desktopGuid, CancellationToken ct = default)
     {
         try
         {
@@ -214,7 +236,10 @@ public static class SessionStore
     /// <summary>
     /// Persists window geometry for a desktop session.
     /// </summary>
-    public static async Task SaveWindowGeometryAsync(string desktopGuid, WindowGeometry geo)
+    public static Task SaveWindowGeometryAsync(string desktopGuid, WindowGeometry geo) =>
+        DatabaseCore.RunOnDbThreadAsync(() => SaveWindowGeometryCoreAsync(desktopGuid, geo));
+
+    private static async Task SaveWindowGeometryCoreAsync(string desktopGuid, WindowGeometry geo)
     {
         await DatabaseCore.AcquireWriteLockAsync().ConfigureAwait(false);
         try
@@ -247,8 +272,16 @@ public static class SessionStore
     /// <summary>
     /// Returns info for each orphaned session: desktop GUID, desktop name, tab count, and last updated date.
     /// </summary>
-    public static async Task<List<(string DesktopGuid, string? DesktopName, int TabCount, DateTime LastUpdated)>> GetOrphanedSessionInfoAsync(
+    public static Task<List<(string DesktopGuid, string? DesktopName, int TabCount, DateTime LastUpdated)>> GetOrphanedSessionInfoAsync(
         IReadOnlyList<string> orphanGuids, CancellationToken ct = default)
+    {
+        // Snapshot on the caller's thread — the query runs later on the DB thread.
+        string[] snapshot = [.. orphanGuids];
+        return DatabaseCore.RunOnDbThreadAsync(() => GetOrphanedSessionInfoCoreAsync(snapshot, ct));
+    }
+
+    private static async Task<List<(string DesktopGuid, string? DesktopName, int TabCount, DateTime LastUpdated)>> GetOrphanedSessionInfoCoreAsync(
+        IReadOnlyList<string> orphanGuids, CancellationToken ct)
     {
         if (orphanGuids.Count == 0) return [];
 
@@ -297,7 +330,10 @@ public static class SessionStore
     /// <summary>
     /// Permanently deletes an orphaned session and all its notes.
     /// </summary>
-    public static async Task DeleteSessionAndNotesAsync(string desktopGuid)
+    public static Task DeleteSessionAndNotesAsync(string desktopGuid) =>
+        DatabaseCore.RunOnDbThreadAsync(() => DeleteSessionAndNotesCoreAsync(desktopGuid));
+
+    private static async Task DeleteSessionAndNotesCoreAsync(string desktopGuid)
     {
         await DatabaseCore.AcquireWriteLockAsync().ConfigureAwait(false);
         try

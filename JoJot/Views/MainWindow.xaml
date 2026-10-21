@@ -20,10 +20,11 @@
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis"/>
 
-        <!-- Tab list item container style: transparent template (highlight handled in code-behind),
-             exposes the bound NoteTab via Tag, and carries the per-item mouse handlers that were
-             previously wired imperatively in CreateTabListItem. Applied via ItemContainerStyle so
-             WPF generates (and virtualizes) the containers from ItemsSource. -->
+        <!-- Tab list item container style: transparent template (highlight is a TabItemTemplate
+             trigger), exposes the bound NoteTab via Tag (re-bound when a container is recycled),
+             and carries the per-item mouse handlers, which resolve the tab from the sender's Tag
+             at event time. Applied via ItemContainerStyle so WPF generates (and virtualizes and
+             recycles) the containers from ItemsSource. -->
         <Style x:Key="TabItemContainerStyle" TargetType="ListBoxItem">
             <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
             <Setter Property="Padding" Value="0"/>
@@ -44,7 +45,13 @@
             </Setter>
         </Style>
 
-        <!-- Tab item DataTemplate -->
+        <!-- Tab item DataTemplate. The list uses container RECYCLING, so nothing here may hold
+             per-item state: every handler below resolves its NoteTab from DataContext at event
+             time (no closures), and all per-state visuals are triggers that re-evaluate when a
+             recycled container gets a new item. Pin/close buttons: hidden by default; shown by
+             the Pinned (pin only) and IsSelected triggers; hover fades them in/out via animations
+             started in TabItemBorder_MouseEnter/Leave (MainWindow.Tabs.cs), which never set local
+             values, so the trigger-driven base state always wins once an animation ends. -->
         <DataTemplate x:Key="TabItemTemplate" DataType="{x:Type models:NoteTab}">
           <StackPanel>
             <!-- Zone divider above the first unpinned tab (replaces the old separator item) -->
@@ -52,7 +59,8 @@
                     Background="{DynamicResource c-border}"
                     Visibility="{Binding ShowUnpinnedSeparator, Converter={StaticResource BoolToVis}}"/>
             <Border x:Name="OuterBorder" Padding="8,6,8,6" BorderThickness="0"
-                    Background="Transparent" Loaded="TabItemBorder_Loaded">
+                    Background="Transparent" Loaded="TabItemBorder_Loaded"
+                    MouseEnter="TabItemBorder_MouseEnter" MouseLeave="TabItemBorder_MouseLeave">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
@@ -76,13 +84,39 @@
                                 IsHitTestVisible="True" Margin="0,0,0,0"
                                 VerticalAlignment="Center"
                                 Opacity="0" Visibility="Collapsed"
+                                MouseLeftButtonDown="TabPinBtn_MouseLeftButtonDown"
                                 ToolTip="{x:Static res:Strings.Tooltip_PinShort}">
+                            <!-- Hover: pinned → red unpin glyph; unpinned → accent pin glyph.
+                                 Text/Foreground live in the Style (not attributes) so the
+                                 Style triggers can override them. -->
                             <TextBlock x:Name="PinIcon"
-                                       Text="&#xE718;"
                                        FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
                                        FontSize="12"
-                                       Foreground="{DynamicResource c-text-muted}"
-                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                       HorizontalAlignment="Center" VerticalAlignment="Center">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Text" Value="&#xE718;"/>
+                                        <Setter Property="Foreground" Value="{DynamicResource c-text-muted}"/>
+                                        <Style.Triggers>
+                                            <MultiDataTrigger>
+                                                <MultiDataTrigger.Conditions>
+                                                    <Condition Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=Border}}" Value="True"/>
+                                                    <Condition Binding="{Binding Pinned}" Value="True"/>
+                                                </MultiDataTrigger.Conditions>
+                                                <Setter Property="Text" Value="&#xE77A;"/>
+                                                <Setter Property="Foreground" Value="{DynamicResource c-danger}"/>
+                                            </MultiDataTrigger>
+                                            <MultiDataTrigger>
+                                                <MultiDataTrigger.Conditions>
+                                                    <Condition Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=Border}}" Value="True"/>
+                                                    <Condition Binding="{Binding Pinned}" Value="False"/>
+                                                </MultiDataTrigger.Conditions>
+                                                <Setter Property="Foreground" Value="{DynamicResource c-accent}"/>
+                                            </MultiDataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
                         </Border>
 
                         <!-- Title label + file icon — default in Col0 -->
@@ -103,12 +137,8 @@
                                        VerticalAlignment="Center"/>
                         </StackPanel>
 
-                        <!-- Hidden rename TextBox — shares title column -->
-                        <TextBox x:Name="RenameBox" Grid.Column="0"
-                                 FontSize="13" MinWidth="80"
-                                 Visibility="Collapsed"
-                                 Padding="2,0,2,0"
-                                 VerticalAlignment="Center"/>
+                        <!-- Rename: one shared TextBox is inserted here at TitlePanel's column on
+                             demand (MainWindow.Rename.cs), not one per item. -->
 
                         <!-- Close/delete button — Col2, hidden by default -->
                         <Border x:Name="CloseBtn" Grid.Column="2"
@@ -116,13 +146,24 @@
                                 Background="Transparent" Cursor="Hand"
                                 IsHitTestVisible="True" Margin="0,0,0,0"
                                 VerticalAlignment="Center"
-                                Opacity="0" Visibility="Collapsed">
+                                Opacity="0" Visibility="Collapsed"
+                                MouseLeftButtonDown="TabCloseBtn_MouseLeftButtonDown">
                             <TextBlock x:Name="CloseIcon"
                                        Text="&#xE711;"
                                        FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
                                        FontSize="12"
-                                       Foreground="{DynamicResource c-text-muted}"
-                                       HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                       HorizontalAlignment="Right" VerticalAlignment="Center">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Foreground" Value="{DynamicResource c-text-muted}"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=Border}}" Value="True">
+                                                <Setter Property="Foreground" Value="{DynamicResource c-danger}"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
                         </Border>
                     </Grid>
 
@@ -153,8 +194,13 @@
                 <!-- Selection + hover background — declarative so it survives virtualization and
                      scroll-out/scroll-in. Code-behind must never set OuterBorder.Background locally:
                      a local value would permanently override these triggers. -->
+                <!-- Selected: highlight background and always show the pin/close buttons. -->
                 <DataTrigger Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" Value="True">
                     <Setter TargetName="OuterBorder" Property="Background" Value="{DynamicResource c-selected-bg}"/>
+                    <Setter TargetName="PinBtn" Property="Visibility" Value="Visible"/>
+                    <Setter TargetName="PinBtn" Property="Opacity" Value="1"/>
+                    <Setter TargetName="CloseBtn" Property="Visibility" Value="Visible"/>
+                    <Setter TargetName="CloseBtn" Property="Opacity" Value="1"/>
                 </DataTrigger>
                 <MultiDataTrigger>
                     <MultiDataTrigger.Conditions>
@@ -169,7 +215,6 @@
                     <Setter TargetName="Col1" Property="Width" Value="*"/>
                     <Setter TargetName="PinBtn" Property="Grid.Column" Value="0"/>
                     <Setter TargetName="TitlePanel" Property="Grid.Column" Value="1"/>
-                    <Setter TargetName="RenameBox" Property="Grid.Column" Value="1"/>
                     <Setter TargetName="PinBtn" Property="Visibility" Value="Visible"/>
                     <Setter TargetName="PinBtn" Property="Opacity" Value="1"/>
                     <Setter TargetName="PinBtn" Property="ToolTip" Value="{x:Static res:Strings.Tooltip_UnpinShort}"/>
@@ -287,14 +332,15 @@
                      tab would silently select the next one while our guard suppresses the handler,
                      leaving the editor stuck on the deleted tab.
                      ScrollUnit=Pixel: smooth pixel scrolling instead of snapping whole items. -->
-                <!-- VirtualizationMode=Standard (NOT Recycling): the per-item handlers/closures are
-                     wired in TabItemBorder_Loaded, and recycled containers do not re-fire Loaded —
-                     recycling would leave stale closures (pin/close acting on the wrong tab) and
-                     stale visuals. Standard mode creates fresh containers, so Loaded always fires. -->
+                <!-- VirtualizationMode=Recycling: scrolling reuses containers instead of building new
+                     ones. Safe because the item template carries no per-item state: its handlers
+                     resolve the NoteTab from DataContext at event time and its visual state is
+                     trigger-driven (see TabItemTemplate). Recycled containers do NOT re-fire Loaded,
+                     so never put per-item wiring in TabItemBorder_Loaded. -->
                 <ListBox x:Name="TabList" BorderThickness="0" Background="Transparent"
                      HorizontalContentAlignment="Stretch"
                      VirtualizingStackPanel.IsVirtualizing="True"
-                     VirtualizingStackPanel.VirtualizationMode="Standard"
+                     VirtualizingStackPanel.VirtualizationMode="Recycling"
                      VirtualizingPanel.ScrollUnit="Pixel"
                      ScrollViewer.CanContentScroll="True"
                      IsSynchronizedWithCurrentItem="False"
@@ -499,8 +545,10 @@
 
                 </Grid>
 
-                <!-- Find & Replace panel (Col 1) — inline, shrinks editor -->
-                <controls:FindReplacePanel x:Name="FindReplacePanel" Grid.Column="1" Width="280"/>
+                <!-- Find & Replace panel (Col 1) — inline, shrinks editor. Lazy host: the
+                     FindReplacePanel is created on first use (MainWindow.LazyPanels.cs) and the
+                     host's Visibility follows it, so it takes no column space while hidden. -->
+                <Border x:Name="FindReplaceHost" Grid.Column="1" Width="280" Visibility="Collapsed"/>
             </Grid>
         </Grid>
 
@@ -604,24 +652,29 @@
             </Border>
         </Popup>
 
+        <!-- Lazy hosts for the overlays/side panels below: each control starts hidden, so it is
+             created on first use (MainWindow.LazyPanels.cs) instead of in InitializeComponent.
+             The host keeps the layout (span, ZIndex, width, alignment, sibling order) and its
+             Visibility is bound to the control's once created. -->
+
         <!-- Bulk delete confirmation overlay -->
-        <controls:ConfirmationOverlay x:Name="ConfirmationOverlay" Grid.ColumnSpan="3" Panel.ZIndex="100"/>
+        <Border x:Name="ConfirmationHost" Grid.ColumnSpan="3" Panel.ZIndex="100" Visibility="Collapsed"/>
         <!-- Lock overlay for window drag resolution -->
-        <controls:DragOverlay x:Name="DragOverlay" Grid.ColumnSpan="3" Panel.ZIndex="200"/>
+        <Border x:Name="DragOverlayHost" Grid.ColumnSpan="3" Panel.ZIndex="200" Visibility="Collapsed"/>
         <!-- Preferences slide-in panel -->
-        <controls:PreferencesPanel x:Name="PreferencesPanel" Width="300" HorizontalAlignment="Right"
-                                    Grid.ColumnSpan="3" Panel.ZIndex="80"/>
+        <Border x:Name="PreferencesHost" Width="300" HorizontalAlignment="Right"
+                Grid.ColumnSpan="3" Panel.ZIndex="80" Visibility="Collapsed"/>
 
         <!-- Help overlay — keyboard shortcuts reference (Ctrl+?) -->
-        <controls:HelpOverlay x:Name="HelpOverlay" Grid.ColumnSpan="3" Panel.ZIndex="200"/>
+        <Border x:Name="HelpOverlayHost" Grid.ColumnSpan="3" Panel.ZIndex="200" Visibility="Collapsed"/>
 
         <!-- Recovery sidebar — slide-in from right -->
-        <controls:RecoveryPanel x:Name="RecoveryPanel" Width="320" HorizontalAlignment="Right"
-                                 Grid.ColumnSpan="3" Panel.ZIndex="85"/>
+        <Border x:Name="RecoveryHost" Width="320" HorizontalAlignment="Right"
+                Grid.ColumnSpan="3" Panel.ZIndex="85" Visibility="Collapsed"/>
 
         <!-- Cleanup panel — slide-in from right -->
-        <controls:CleanupPanel x:Name="CleanupPanel" Width="320" HorizontalAlignment="Right"
-                                Grid.ColumnSpan="3" Panel.ZIndex="85"/>
+        <Border x:Name="CleanupHost" Width="320" HorizontalAlignment="Right"
+                Grid.ColumnSpan="3" Panel.ZIndex="85" Visibility="Collapsed"/>
 
     </Grid>
 </Window>

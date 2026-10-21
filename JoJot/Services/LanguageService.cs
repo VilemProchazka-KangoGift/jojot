@@ -49,7 +49,9 @@ public static class LanguageService
     /// </summary>
     public static async Task InitializeAsync()
     {
-        var saved = await PreferenceStore.GetPreferenceAsync("language").ConfigureAwait(false);
+        // No ConfigureAwait(false): the Thread.CurrentThread culture assignments below must land on
+        // the UI thread. On a cache miss the read hops to the DB thread and resumes here.
+        var saved = await PreferenceStore.GetPreferenceAsync("language");
         Current = ParsePreference(saved);
 
         var culture = Current == AppLanguage.Czech
@@ -71,7 +73,9 @@ public static class LanguageService
     /// </summary>
     public static async Task SetLanguageAsync(AppLanguage lang)
     {
-        await PreferenceStore.SetPreferenceAsync("language", ToPreferenceString(lang)).ConfigureAwait(false);
+        // No ConfigureAwait(false): the write runs on the DB thread; RestartApp (mutex release,
+        // Environment.Exit) must run back on the calling (UI) thread, as it did before.
+        await PreferenceStore.SetPreferenceAsync("language", ToPreferenceString(lang));
         RestartApp();
     }
 

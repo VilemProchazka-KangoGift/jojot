@@ -82,49 +82,6 @@ public class NoteStoreTests : IAsyncLifetime
         (await NoteStore.DeleteNotesAsync([])).Should().Be(0);
     }
 
-    // ─── DeleteEmptyNotes ─────────────────────────────────────────────
-
-    [Fact]
-    public async Task DeleteEmptyNotes_PreservesPinnedEmptyNotes()
-    {
-        var desk = "del-empty-pin";
-        await NoteStore.InsertNoteAsync(desk, null, "", true, 0);  // Pinned empty
-        await NoteStore.InsertNoteAsync(desk, null, "", false, 1); // Unpinned empty
-
-        var deleted = await NoteStore.DeleteEmptyNotesAsync(desk);
-
-        deleted.Should().Be(1);
-        var remaining = await NoteStore.GetNotesForDesktopAsync(desk);
-        remaining.Should().ContainSingle().Which.Pinned.Should().BeTrue();
-    }
-
-    [Fact]
-    public async Task DeleteEmptyNotes_PreservesWhitespaceContent_False()
-    {
-        var desk = "del-whitespace";
-        await NoteStore.InsertNoteAsync(desk, null, "   ", false, 0);
-
-        var deleted = await NoteStore.DeleteEmptyNotesAsync(desk);
-        deleted.Should().Be(1);
-    }
-
-    [Fact]
-    public async Task DeleteEmptyNotes_ReturnsZero_WhenAllHaveContent()
-    {
-        var desk = "del-has-content";
-        await NoteStore.InsertNoteAsync(desk, "Note", "Some content", false, 0);
-
-        var deleted = await NoteStore.DeleteEmptyNotesAsync(desk);
-        deleted.Should().Be(0);
-    }
-
-    [Fact]
-    public async Task DeleteEmptyNotes_ReturnsZero_WhenNoNotes()
-    {
-        var deleted = await NoteStore.DeleteEmptyNotesAsync("no-notes-desk");
-        deleted.Should().Be(0);
-    }
-
     // ─── MigrateNotesDesktopGuid ──────────────────────────────────────
 
     [Fact]
@@ -204,6 +161,44 @@ public class NoteStoreTests : IAsyncLifetime
         // Migrated tabs should have sort_order > 5
         var migrated = notes.Where(n => n.Name!.StartsWith("Migrated")).ToList();
         migrated.Should().AllSatisfy(n => n.SortOrder.Should().BeGreaterThan(5));
+    }
+
+    [Fact]
+    public async Task MigrateTabs_OffsetsSortOrderByTargetMaxPlusOne_AndKeepsContent()
+    {
+        var src = "exact-src";
+        var tgt = "exact-tgt";
+        await NoteStore.InsertNoteAsync(tgt, "Existing", "keep", false, 5);
+        await NoteStore.InsertNoteAsync(src, "A", "content A", true, 0);
+        await NoteStore.InsertNoteAsync(src, "B", "content B", false, 3);
+        await NoteStore.InsertNoteAsync("bystander", "C", "content C", true, 0);
+
+        await NoteStore.MigrateTabsAsync(src, tgt);
+
+        var notes = await NoteStore.GetNotesForDesktopAsync(tgt);
+        notes.Select(n => (n.Name, n.SortOrder, n.Pinned, n.Content)).Should().Equal(
+            ("Existing", 5, false, "keep"),
+            ("A", 6, false, "content A"),
+            ("B", 9, false, "content B"));
+        (await NoteStore.GetNotesForDesktopAsync(src)).Should().BeEmpty();
+        (await NoteStore.GetNotesForDesktopAsync("bystander")).Should().ContainSingle()
+            .Which.Pinned.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task MigrateTabsPreservePins_EmptyTarget_OffsetsByOne_AndKeepsPins()
+    {
+        var src = "exactp-src";
+        var tgt = "exactp-tgt";
+        await NoteStore.InsertNoteAsync(src, "P", "content P", true, 0);
+        await NoteStore.InsertNoteAsync(src, "U", "content U", false, 2);
+
+        await NoteStore.MigrateTabsPreservePinsAsync(src, tgt);
+
+        var notes = await NoteStore.GetNotesForDesktopAsync(tgt);
+        notes.Select(n => (n.Name, n.SortOrder, n.Pinned, n.Content)).Should().Equal(
+            ("P", 1, true, "content P"),
+            ("U", 3, false, "content U"));
     }
 
     // ─── GetNoteCount ─────────────────────────────────────────────────

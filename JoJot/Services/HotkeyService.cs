@@ -101,8 +101,10 @@ public static partial class HotkeyService
         _source.AddHook(WndProc);
         _hwnd = _source.Handle;
 
-        var savedModifiers = await PreferenceStore.GetPreferenceAsync("hotkey_modifiers").ConfigureAwait(false);
-        var savedVk = await PreferenceStore.GetPreferenceAsync("hotkey_vk").ConfigureAwait(false);
+        // No ConfigureAwait(false): RegisterHotKey below must run on the thread that owns _hwnd
+        // (the UI thread). On a cache miss the reads hop to the DB thread and resume here.
+        var savedModifiers = await PreferenceStore.GetPreferenceAsync("hotkey_modifiers");
+        var savedVk = await PreferenceStore.GetPreferenceAsync("hotkey_vk");
 
         if (savedModifiers is not null && uint.TryParse(savedModifiers, out var mod))
         {

@@ -18,7 +18,10 @@ public static class VirtualDesktopService
     private static VirtualDesktopNotificationListener? _notificationListener;
     private static uint _notificationCookie;
     private static bool _notificationsRegistered;
-    private static Timer? _pollingTimer;
+    private static System.Windows.Threading.DispatcherTimer? _pollingTimer;
+
+    /// <summary>Polling-fallback interval. Only used when COM notifications are unavailable.</summary>
+    internal const int PollingIntervalMs = 2000;
 
     /// <summary>
     /// Fired when a desktop is renamed. Args: (desktopGuid, newName).
@@ -95,9 +98,47 @@ public static class VirtualDesktopService
         return Task.CompletedTask;
     }
 
+    // ─── Startup desktop-list cache ─────────────────────────────────────
+
+    private static readonly Lock _desktopCacheLock = new();
+    private static bool _cacheDesktopsDuringStartup;
+    private static IReadOnlyList<DesktopInfo>? _cachedDesktops;
+    private static int _desktopCacheGeneration; // bumped on every invalidation
+
+    /// <summary>
+    /// While true, <see cref="GetAllDesktops"/> memoizes its (COM-enumerated) result so the several
+    /// startup callers (window title, session matching) share one enumeration. Set true at the top
+    /// of startup and false when startup completes; every flip drops the cached list. Desktop
+    /// create/destroy/rename notifications also invalidate it.
+    /// </summary>
+    internal static bool CacheDesktopsDuringStartup
+    {
+        get { lock (_desktopCacheLock) return _cacheDesktopsDuringStartup; }
+        set
+        {
+            lock (_desktopCacheLock)
+            {
+                _cacheDesktopsDuringStartup = value;
+                _cachedDesktops = null;
+                _desktopCacheGeneration++;
+            }
+        }
+    }
+
+    /// <summary>Drops the memoized desktop list (desktop created/destroyed/renamed).</summary>
+    internal static void InvalidateDesktopCache()
+    {
+        lock (_desktopCacheLock)
+        {
+            _cachedDesktops = null;
+            _desktopCacheGeneration++;
+        }
+    }
+
     /// <summary>
     /// Returns information about all live virtual desktops.
     /// In fallback mode, returns a single-element list with a default desktop.
+    /// Memoized while <see cref="CacheDesktopsDuringStartup"/> is set.
     /// </summary>
     public static IReadOnlyList<DesktopInfo> GetAllDesktops()
     {
@@ -106,13 +147,30 @@ public static class VirtualDesktopService
             return [new DesktopInfo(Guid.Empty, "", 0)];
         }
 
+        int generation;
+        lock (_desktopCacheLock)
+        {
+            if (_cacheDesktopsDuringStartup && _cachedDesktops is not null)
+                return _cachedDesktops;
+            generation = _desktopCacheGeneration;
+        }
+
         try
         {
             var desktops = VirtualDesktopInterop.GetAllDesktopsInternal();
-            return desktops
+            IReadOnlyList<DesktopInfo> result = desktops
                 .Select(d => new DesktopInfo(d.Id, d.Name, d.Index))
                 .ToList()
                 .AsReadOnly();
+
+            // Only successful enumerations are cached — a failure fallback is never memoized — and
+            // only if no invalidation raced the enumeration (it could reflect the old desktop set).
+            lock (_desktopCacheLock)
+            {
+                if (_cacheDesktopsDuringStartup && generation == _desktopCacheGeneration)
+                    _cachedDesktops = result;
+            }
+            return result;
         }
         catch (Exception ex)
         {
@@ -174,47 +232,94 @@ public static class VirtualDesktopService
     {
         if (!_isAvailable)
         {
-            LogService.Info("Session matching skipped (fallback mode)");
-            await SessionStore.CreateSessionAsync(DefaultDesktopGuid, null, null).ConfigureAwait(false);
-
-            // Fallback orphan detection: any session that isn't the default is orphaned
-            var fallbackSessions = await SessionStore.GetAllSessionsAsync().ConfigureAwait(false);
-            var fallbackOrphanCandidates = fallbackSessions
-                .Where(s => !s.DesktopGuid.Equals(DefaultDesktopGuid, StringComparison.OrdinalIgnoreCase))
-                .Select(s => s.DesktopGuid)
-                .ToList();
-
-            // Auto-delete empty orphans (no tabs) — no point offering recovery
-            var fallbackOrphans = new List<string>();
-            foreach (var guid in fallbackOrphanCandidates)
-            {
-                int tabCount = await NoteStore.GetNoteCountForDesktopAsync(guid, cancellationToken).ConfigureAwait(false);
-                if (tabCount == 0)
-                {
-                    await SessionStore.DeleteSessionAndNotesAsync(guid).ConfigureAwait(false);
-                    LogService.Info("Auto-deleted empty orphaned session {DesktopGuid}", guid);
-                }
-                else
-                {
-                    fallbackOrphans.Add(guid);
-                }
-            }
-            OrphanedSessionGuids = fallbackOrphans;
-            if (fallbackOrphans.Count > 0)
-            {
-                LogService.Info("Fallback orphan detection: {OrphanCount} orphaned session(s)", fallbackOrphans.Count);
-            }
-
+            await MatchSessionsFallbackAsync(cancellationToken).ConfigureAwait(false);
             return;
         }
 
+        // Enumerate on the caller's thread before any await (COM shell objects are STA).
         var liveDesktops = GetAllDesktops();
-        var storedSessions = await SessionStore.GetAllSessionsAsync().ConfigureAwait(false);
+        await MatchSessionsCoreAsync(liveDesktops, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Fallback-mode matching (virtual desktop API unavailable): ensures the "default" session
+    /// exists and treats every other stored session as an orphan; empty orphans are auto-deleted.
+    /// </summary>
+    private static async Task MatchSessionsFallbackAsync(CancellationToken cancellationToken)
+    {
+        LogService.Info("Session matching skipped (fallback mode)");
+        await SessionStore.CreateSessionAsync(DefaultDesktopGuid, null, null).ConfigureAwait(false);
+
+        // Fallback orphan detection: any session that isn't the default is orphaned
+        var fallbackSessions = await SessionStore.GetAllSessionsAsync(cancellationToken).ConfigureAwait(false);
+        var fallbackOrphanCandidates = fallbackSessions
+            .Where(s => !s.DesktopGuid.Equals(DefaultDesktopGuid, StringComparison.OrdinalIgnoreCase))
+            .Select(s => s.DesktopGuid)
+            .ToList();
+
+        var fallbackOrphans = await RemoveEmptyOrphansAsync(fallbackOrphanCandidates).ConfigureAwait(false);
+        OrphanedSessionGuids = fallbackOrphans;
+        if (fallbackOrphans.Count > 0)
+        {
+            LogService.Info("Fallback orphan detection: {OrphanCount} orphaned session(s)", fallbackOrphans.Count);
+        }
+    }
+
+    /// <summary>
+    /// Auto-deletes orphan sessions that have no notes (no point offering recovery) and returns the
+    /// non-empty ones. One grouped count query for all candidates instead of one query per orphan.
+    /// </summary>
+    private static async Task<List<string>> RemoveEmptyOrphansAsync(List<string> candidates)
+    {
+        if (candidates.Count == 0) return [];
+
+        var counts = await NoteStore.GetNoteCountsForDesktopsAsync(candidates).ConfigureAwait(false);
+        var nonEmpty = new List<string>();
+        foreach (var guid in candidates)
+        {
+            if (counts.GetValueOrDefault(guid) == 0)
+            {
+                await SessionStore.DeleteSessionAndNotesAsync(guid).ConfigureAwait(false);
+                LogService.Info("Auto-deleted empty orphaned session {DesktopGuid}", guid);
+            }
+            else
+            {
+                nonEmpty.Add(guid);
+            }
+        }
+        return nonEmpty;
+    }
+
+    /// <summary>Outcome of one session-matching pass (diagnostics and tests).</summary>
+    internal sealed record SessionMatchResult(
+        int Tier1Matched,
+        int Tier1Updated,
+        int Tier2Matched,
+        int Tier3Matched,
+        int NewSessions,
+        IReadOnlyList<string> Orphans);
+
+    /// <summary>
+    /// Whether a Tier-1 (GUID) match needs its stored name/index refreshed. Unchanged rows are
+    /// skipped so a normal start issues no per-desktop write transactions. A stored null name and a
+    /// live empty name (unnamed desktop) count as equal.
+    /// </summary>
+    internal static bool NeedsSessionRefresh(string? storedName, int? storedIndex, DesktopInfo live) =>
+        !string.Equals(storedName ?? "", live.Name ?? "", StringComparison.Ordinal) || storedIndex != live.Index;
+
+    /// <summary>
+    /// The three matching tiers against an explicit live-desktop list. Touches no COM, so it can be
+    /// exercised directly against a test database.
+    /// </summary>
+    internal static async Task<SessionMatchResult> MatchSessionsCoreAsync(
+        IReadOnlyList<DesktopInfo> liveDesktops, CancellationToken cancellationToken = default)
+    {
+        var storedSessions = await SessionStore.GetAllSessionsAsync(cancellationToken).ConfigureAwait(false);
 
         var matchedSessionGuids = new HashSet<string>();
         var matchedDesktopIds = new HashSet<string>();
 
-        int tier1Count = 0, tier2Count = 0, tier3Count = 0;
+        int tier1Count = 0, tier1Updated = 0, tier2Count = 0, tier3Count = 0;
 
         // ─── Tier 1: GUID match (exact) ─────────────────────────────────
         foreach (var session in storedSessions)
@@ -227,12 +332,16 @@ public static class VirtualDesktopService
                 matchedSessionGuids.Add(session.DesktopGuid);
                 matchedDesktopIds.Add(matchingDesktop.Id.ToString());
 
-                // Update name and index in case they changed
-                await SessionStore.UpdateSessionAsync(
-                    session.DesktopGuid,
-                    session.DesktopGuid,
-                    matchingDesktop.Name,
-                    matchingDesktop.Index).ConfigureAwait(false);
+                // Refresh name and index only when they changed — usually a no-op, so skip the write.
+                if (NeedsSessionRefresh(session.DesktopName, session.DesktopIndex, matchingDesktop))
+                {
+                    await SessionStore.UpdateSessionAsync(
+                        session.DesktopGuid,
+                        session.DesktopGuid,
+                        matchingDesktop.Name,
+                        matchingDesktop.Index).ConfigureAwait(false);
+                    tier1Updated++;
+                }
 
                 tier1Count++;
             }
@@ -343,26 +452,17 @@ public static class VirtualDesktopService
             .ToList();
 
         // Auto-delete empty orphans (no tabs) — no point offering recovery
-        var nonEmptyOrphans = new List<string>();
-        foreach (var guid in orphanedGuids)
-        {
-            int tabCount = await NoteStore.GetNoteCountForDesktopAsync(guid, cancellationToken).ConfigureAwait(false);
-            if (tabCount == 0)
-            {
-                await SessionStore.DeleteSessionAndNotesAsync(guid).ConfigureAwait(false);
-                LogService.Info("Auto-deleted empty orphaned session {DesktopGuid}", guid);
-            }
-            else
-            {
-                nonEmptyOrphans.Add(guid);
-            }
-        }
+        var nonEmptyOrphans = await RemoveEmptyOrphansAsync(orphanedGuids).ConfigureAwait(false);
         OrphanedSessionGuids = nonEmptyOrphans;
         int orphanedCount = nonEmptyOrphans.Count;
 
         LogService.Info(
             "Session matching complete: Tier 1 (GUID): {Tier1}, Tier 2 (Name): {Tier2}, Tier 3 (Index): {Tier3}, Orphaned: {Orphaned}, New: {New}",
             tier1Count, tier2Count, tier3Count, orphanedCount, newCount);
+        if (tier1Updated > 0)
+            LogService.Info("Session matching: refreshed name/index for {Tier1Updated} GUID-matched session(s)", tier1Updated);
+
+        return new SessionMatchResult(tier1Count, tier1Updated, tier2Count, tier3Count, newCount, nonEmptyOrphans);
     }
 
     /// <summary>
@@ -396,7 +496,8 @@ public static class VirtualDesktopService
         var notifService = VirtualDesktopInterop.GetNotificationService();
         if (notifService is null)
         {
-            LogService.Warn("Notification service unavailable — falling back to polling");
+            LogService.Warn("Notification service unavailable on build {BuildNumber} — falling back to polling",
+                VirtualDesktopInterop.BuildNumber);
             StartDesktopPolling();
             return;
         }
@@ -409,60 +510,102 @@ public static class VirtualDesktopService
             _notificationListener.DesktopRenamed += OnDesktopRenamed;
             _notificationListener.CurrentDesktopChanged += OnCurrentDesktopChanged;
             _notificationListener.WindowViewChanged += OnWindowViewChanged;
+            _notificationListener.DesktopCreated += OnDesktopSetChanged;
+            _notificationListener.DesktopDestroyed += OnDesktopSetChanged;
 
             int hr = notifService.Register(_notificationListener, out _notificationCookie);
             if (hr != 0)
             {
-                LogService.Warn("Notification registration failed (HRESULT: {HResult}) — falling back to polling", $"0x{hr:X8}");
+                LogService.Warn("Notification registration failed on build {BuildNumber} (HRESULT: {HResult}) — falling back to polling",
+                    VirtualDesktopInterop.BuildNumber, $"0x{hr:X8}");
                 _notificationListener = null;
                 StartDesktopPolling();
                 return;
             }
 
             _notificationsRegistered = true;
-            LogService.Info("Desktop notifications registered (cookie={Cookie})", _notificationCookie);
+            LogService.Info("Desktop notifications registered (cookie={Cookie}, build {BuildNumber})",
+                _notificationCookie, VirtualDesktopInterop.BuildNumber);
         }
         catch (Exception ex)
         {
-            LogService.Warn("Failed to subscribe to desktop notifications — falling back to polling: {ErrorMessage}", ex.Message);
+            LogService.Warn("Failed to subscribe to desktop notifications on build {BuildNumber} — falling back to polling: {ErrorMessage}",
+                VirtualDesktopInterop.BuildNumber, ex.Message);
             _notificationListener = null;
             StartDesktopPolling();
         }
     }
 
     /// <summary>
-    /// Starts polling GetCurrentDesktop() as a fallback when COM notifications are unavailable.
-    /// Detects desktop switches by comparing the polled GUID to the cached value.
+    /// Starts polling the current desktop GUID as a fallback when COM notifications are unavailable.
+    /// Runs on a <see cref="System.Windows.Threading.DispatcherTimer"/> bound to the calling (WPF UI / STA)
+    /// thread — the apartment that created the COM objects — so each tick is a direct call with no
+    /// cross-apartment marshaling. Each tick costs one GetCurrentDesktop + GetId.
     /// </summary>
     private static void StartDesktopPolling()
     {
-        _pollingTimer = new Timer(_ => PollDesktopChange(), null, 500, 500);
-        LogService.Info("Desktop polling started (500ms interval)");
+        _pollingTimer?.Stop();
+        _pollingTimer = new System.Windows.Threading.DispatcherTimer(
+            TimeSpan.FromMilliseconds(PollingIntervalMs),
+            System.Windows.Threading.DispatcherPriority.Background,
+            (_, _) => PollDesktopChange(VirtualDesktopInterop.GetCurrentDesktopId, VirtualDesktopInterop.GetCurrentDesktop),
+            System.Windows.Threading.Dispatcher.CurrentDispatcher);
+        LogService.Info("Desktop polling started ({IntervalMs}ms interval, UI dispatcher, build {BuildNumber})",
+            PollingIntervalMs, VirtualDesktopInterop.BuildNumber);
     }
 
     /// <summary>
-    /// Polls the current desktop and fires <see cref="CurrentDesktopChanged"/> if a switch is detected.
+    /// One polling tick: compares only the current desktop GUID to the cached value; on a change,
+    /// fetches name/index once, updates state and fires <see cref="CurrentDesktopChanged"/>.
+    /// Returns true when a switch was detected. Never throws.
     /// </summary>
-    private static void PollDesktopChange()
+    /// <param name="getCurrentDesktopId">Cheap GUID-only query (GetCurrentDesktop + GetId).</param>
+    /// <param name="getCurrentDesktop">Full query (name + index); called only after a change.</param>
+    internal static bool PollDesktopChange(
+        Func<Guid> getCurrentDesktopId,
+        Func<(Guid Id, string Name, int Index)> getCurrentDesktop)
     {
         try
         {
-            var (id, name, index) = VirtualDesktopInterop.GetCurrentDesktop();
-            string newGuid = id.ToString();
-            if (!newGuid.Equals(_currentDesktopGuid, StringComparison.OrdinalIgnoreCase))
+            string newGuid = getCurrentDesktopId().ToString();
+            string oldGuid = Volatile.Read(ref _currentDesktopGuid);
+            if (newGuid.Equals(oldGuid, StringComparison.OrdinalIgnoreCase))
             {
-                string oldGuid = Volatile.Read(ref _currentDesktopGuid);
-                Volatile.Write(ref _currentDesktopGuid, newGuid);
+                return false;
+            }
+
+            Volatile.Write(ref _currentDesktopGuid, newGuid);
+            try
+            {
+                var (_, name, index) = getCurrentDesktop();
                 _currentDesktopName = name;
                 _currentDesktopIndex = index;
-                LogService.Info("Poll: desktop switched {OldGuid} -> {NewGuid}", oldGuid, newGuid);
-                CurrentDesktopChanged?.Invoke(oldGuid, newGuid);
             }
+            catch (Exception ex)
+            {
+                LogService.Warn("Poll: failed to refresh desktop info after switch: {ErrorMessage}", ex.Message);
+            }
+
+            LogService.Info("Poll: desktop switched {OldGuid} -> {NewGuid}", oldGuid, newGuid);
+            CurrentDesktopChanged?.Invoke(oldGuid, newGuid);
+            return true;
         }
         catch (Exception ex)
         {
             LogService.Warn("Desktop polling failed: {ErrorMessage}", ex.Message);
+            return false;
         }
+    }
+
+    /// <summary>
+    /// Overwrites the cached current-desktop state. Test seam for <see cref="PollDesktopChange"/>
+    /// so tests can set up and restore the static state.
+    /// </summary>
+    internal static void SetCurrentDesktopState(string desktopGuid, string name, int index)
+    {
+        Volatile.Write(ref _currentDesktopGuid, desktopGuid);
+        _currentDesktopName = name;
+        _currentDesktopIndex = index;
     }
 
     /// <summary>
@@ -471,7 +614,7 @@ public static class VirtualDesktopService
     /// </summary>
     public static void UnsubscribeNotifications()
     {
-        _pollingTimer?.Dispose();
+        _pollingTimer?.Stop();
         _pollingTimer = null;
 
         if (!_notificationsRegistered)
@@ -498,11 +641,16 @@ public static class VirtualDesktopService
             _notificationListener.DesktopRenamed -= OnDesktopRenamed;
             _notificationListener.CurrentDesktopChanged -= OnCurrentDesktopChanged;
             _notificationListener.WindowViewChanged -= OnWindowViewChanged;
+            _notificationListener.DesktopCreated -= OnDesktopSetChanged;
+            _notificationListener.DesktopDestroyed -= OnDesktopSetChanged;
             _notificationListener = null;
         }
 
         _notificationsRegistered = false;
     }
+
+    /// <summary>Desktop created/destroyed: the memoized startup desktop list is stale.</summary>
+    private static void OnDesktopSetChanged(Guid desktopId) => InvalidateDesktopCache();
 
     /// <summary>
     /// Handles desktop rename: updates internal state, persists to database,
@@ -511,6 +659,7 @@ public static class VirtualDesktopService
     /// </summary>
     private static void OnDesktopRenamed(Guid desktopId, string newName)
     {
+        InvalidateDesktopCache(); // before the public event — its handler re-reads GetAllDesktops
         string guidStr = desktopId.ToString();
 
         // Update internal state if this is our current desktop

@@ -65,4 +65,36 @@ public class PreferenceStoreCacheTests : IAsyncLifetime
         await PreferenceStore.InitializeCacheAsync();
         (await PreferenceStore.GetPreferenceAsync("theme")).Should().Be("light");
     }
+
+    [Fact]
+    public async Task PreloadProvisional_IsNoOp_WhenDbCacheLoadedFirst()
+    {
+        // Startup runs the cache load inside the DB pipeline, which can win the race against the
+        // UI thread's snapshot preload. DB truth must then survive the later preload.
+        await DatabaseCore.ExecuteNonQueryAsync(
+            "INSERT INTO preferences (key, value) VALUES ('theme', 'light');");
+        await PreferenceStore.InitializeCacheAsync();
+
+        PreferenceStore.PreloadProvisional(new Dictionary<string, string> { ["theme"] = "dark" });
+
+        (await PreferenceStore.GetPreferenceAsync("theme")).Should().Be("light");
+    }
+
+    [Fact]
+    public async Task CacheLoad_ConcurrentWithReads_NeverExposesEmptyCache()
+    {
+        await DatabaseCore.ExecuteNonQueryAsync(
+            "INSERT INTO preferences (key, value) VALUES ('theme', 'light');");
+        PreferenceStore.PreloadProvisional(new Dictionary<string, string> { ["theme"] = "dark" });
+
+        var load = PreferenceStore.InitializeCacheAsync();
+        while (!load.IsCompleted)
+        {
+            // A read during the swap sees the snapshot or DB truth, never a missing value.
+            (await PreferenceStore.GetPreferenceAsync("theme")).Should().BeOneOf("dark", "light");
+        }
+        await load;
+
+        (await PreferenceStore.GetPreferenceAsync("theme")).Should().Be("light");
+    }
 }

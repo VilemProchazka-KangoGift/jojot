@@ -8,11 +8,6 @@
     <UseWPF>true</UseWPF>
   </PropertyGroup>
 
-  <!-- Exclude WinForms global using to match main project -->
-  <ItemGroup>
-    <Using Remove="System.Windows.Forms" />
-  </ItemGroup>
-
   <ItemGroup>
     <PackageReference Include="coverlet.collector" Version="8.0.0">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>

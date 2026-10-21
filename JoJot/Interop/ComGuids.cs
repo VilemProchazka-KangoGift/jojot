@@ -10,11 +10,16 @@ namespace JoJot.Interop;
 /// <param name="IVirtualDesktopManagerInternal">IID for the IVirtualDesktopManagerInternal interface.</param>
 /// <param name="IVirtualDesktopNotification">IID for the IVirtualDesktopNotification callback interface.</param>
 /// <param name="IVirtualDesktopNotificationService">IID for the IVirtualDesktopNotificationService registration interface.</param>
+/// <param name="SupportsNotifications">
+/// True when the managed <see cref="IVirtualDesktopNotification"/> declaration (24H2+ vtable) matches this
+/// build's callback layout, so registering a listener is safe. False skips registration (polling fallback).
+/// </param>
 internal sealed record GuidSet(
     Guid IVirtualDesktop,
     Guid IVirtualDesktopManagerInternal,
     Guid IVirtualDesktopNotification,
-    Guid IVirtualDesktopNotificationService);
+    Guid IVirtualDesktopNotificationService,
+    bool SupportsNotifications);
 
 /// <summary>
 /// Build-number dispatch for Windows 11 virtual desktop COM GUIDs.
@@ -52,22 +57,35 @@ internal static class ComGuids
         new("A5CD92FF-29BE-454C-8D04-D82879FB3F1B");
 
     // ─── Build-specific GUIDs ───────────────────────────────────────────
+    //
+    // Reference: Ciantic/VirtualDesktopAccessor (rust branch, src/interfaces.rs), verified by its
+    // author on 25H2 build 26200. The 26100 entry is the set JoJot actually targets.
+    //
+    // Live notifications are 24H2+-only. The managed IVirtualDesktopNotification declaration in
+    // ComInterfaces.cs uses the 24H2+ vtable (no leading `monitors` parameter). The 22H2/23H2
+    // callback vtable still carries `monitors` on Created/DestroyBegin/DestroyFailed/Destroyed/Moved/
+    // CurrentChanged, and one C# interface cannot express both layouts: registering the 24H2 listener
+    // on 22621 would shift every argument. The 22621 entry therefore sets SupportsNotifications=false —
+    // desktop detection still works there, but registration is skipped and the polling fallback runs.
+    // The 22621 notification IIDs below are unverified and are never queried.
 
     private static readonly SortedDictionary<int, GuidSet> _buildMap = new()
     {
-        // Windows 11 22H2 / 23H2 (build 22621 / 22631)
+        // Windows 11 22H2 / 23H2 (build 22621 / 22631) — detection only, no live notifications
         [22621] = new GuidSet(
             IVirtualDesktop: new("3F07F4BE-B107-441A-AF0F-39D82529072C"),
             IVirtualDesktopManagerInternal: new("B2F925B9-5A0F-4D2E-9F4D-2B1507593C10"),
             IVirtualDesktopNotification: new("CD403E52-DEED-4C13-B437-B98380F2B1E8"),
-            IVirtualDesktopNotificationService: new("0CD45DE4-2F0F-4211-ACE2-1B3C7C750E13")),
+            IVirtualDesktopNotificationService: new("0CD45DE4-2F0F-4211-ACE2-1B3C7C750E13"),
+            SupportsNotifications: false),
 
-        // Windows 11 24H2 (build 26100+)
+        // Windows 11 24H2 / 25H2 and later (build 26100+, incl. 26200 / 26300)
         [26100] = new GuidSet(
             IVirtualDesktop: new("3F07F4BE-B107-441A-AF0F-39D82529072C"),
             IVirtualDesktopManagerInternal: new("53F5CA0B-158F-4124-900C-057158060B27"),
-            IVirtualDesktopNotification: new("C179334C-4295-40D3-BEA1-C654D965605A"),
-            IVirtualDesktopNotificationService: new("88846798-1611-4D18-946A-5B8B2B5B0B80")),
+            IVirtualDesktopNotification: new("B9E5E94D-233E-49AB-AF5C-2B4541C3AADE"),
+            IVirtualDesktopNotificationService: new("0CD45E71-D927-4F15-8B0A-8FEF525337BF"),
+            SupportsNotifications: true),
     };
 
     /// <summary>

@@ -1,3 +1,4 @@
+using JoJot.Models;
 using JoJot.Services;
 using JoJot.Tests.Helpers;
 
@@ -32,6 +33,53 @@ public class SessionStoreTests : IAsyncLifetime
 
         var sessions = await SessionStore.GetAllSessionsAsync();
         sessions.Count(s => s.DesktopGuid == "dup-1").Should().Be(1);
+    }
+
+    [Fact]
+    public async Task CreateSession_ExistingRow_LeavesNameIndexAndGeometryUntouched()
+    {
+        await SessionStore.CreateSessionAsync("keep-1", "Original", 2);
+        await SessionStore.SaveWindowGeometryAsync("keep-1", new WindowGeometry(10, 20, 300, 400, false));
+
+        await SessionStore.CreateSessionAsync("keep-1", "Overwritten?", 9);
+
+        var session = (await SessionStore.GetAllSessionsAsync()).Single(s => s.DesktopGuid == "keep-1");
+        session.DesktopName.Should().Be("Original");
+        session.DesktopIndex.Should().Be(2);
+        var geo = await SessionStore.GetWindowGeometryAsync("keep-1");
+        geo.Should().NotBeNull();
+        geo!.Width.Should().Be(300);
+    }
+
+    [Fact]
+    public async Task CreateSession_NewGuid_CreatesRowAlongsideExisting()
+    {
+        await SessionStore.CreateSessionAsync("first", "One", 0);
+
+        await SessionStore.CreateSessionAsync("second", "Two", 1);
+
+        var sessions = await SessionStore.GetAllSessionsAsync();
+        sessions.Select(s => s.DesktopGuid).Should().BeEquivalentTo(["first", "second"]);
+        sessions.Single(s => s.DesktopGuid == "second").DesktopName.Should().Be("Two");
+    }
+
+    // ─── SessionExists ────────────────────────────────────────────────
+
+    [Fact]
+    public async Task SessionExists_TrueForStoredGuid_FalseOtherwise()
+    {
+        await SessionStore.CreateSessionAsync("exists-guid", null, null);
+
+        (await SessionStore.SessionExistsAsync("exists-guid")).Should().BeTrue();
+        (await SessionStore.SessionExistsAsync("missing-guid")).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task SessionExists_IsCaseInsensitive()
+    {
+        await SessionStore.CreateSessionAsync("abcdef-guid", null, null);
+
+        (await SessionStore.SessionExistsAsync("ABCDEF-GUID")).Should().BeTrue();
     }
 
     [Fact]

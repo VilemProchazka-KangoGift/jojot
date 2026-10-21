@@ -51,6 +51,28 @@ public class StartupServiceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task CreateWelcomeTab_EmptyDb_CreatesExactlyOne_ThenNoneOnLaterStarts()
+    {
+        await StartupService.CreateWelcomeTabIfFirstLaunch();
+        await StartupService.CreateWelcomeTabIfFirstLaunch();
+
+        var notes = await NoteStore.GetNotesForDesktopAsync(VirtualDesktopService.CurrentDesktopGuid);
+        notes.Should().ContainSingle().Which.Name.Should().Be("Welcome to JoJot");
+    }
+
+    [Fact]
+    public async Task CreateWelcomeTab_SkipsWhenOnlyAnEmptyNoteExists()
+    {
+        // Any row means "not a first launch" — even an empty one (EXISTS, not a content check).
+        await NoteStore.InsertNoteAsync("another-desktop", null, "", false, 0);
+
+        await StartupService.CreateWelcomeTabIfFirstLaunch();
+
+        var count = await DatabaseCore.ExecuteScalarAsync<long>("SELECT COUNT(*) FROM notes;");
+        count.Should().Be(1);
+    }
+
+    [Fact]
     public async Task RunBackgroundMigrations_DoesNotThrow()
     {
         // Should complete without error on a fresh schema

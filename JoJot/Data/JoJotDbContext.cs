@@ -1,6 +1,5 @@
 using Microsoft.EntityFrameworkCore;
 using JoJot.Models;
-using JoJot.Services;
 
 namespace JoJot.Data;
 
@@ -47,7 +46,7 @@ public class JoJotDbContext : DbContext
     public DbSet<PendingMove> PendingMoves { get; set; } = null!;
 
     /// <summary>
-    /// Configures the SQLite provider and registers the WAL/pragma interceptor.
+    /// Configures the SQLite provider and the compiled model (non-pooled fallback path).
     /// </summary>
     /// <param name="optionsBuilder">The options builder provided by EF Core.</param>
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
@@ -56,7 +55,6 @@ public class JoJotDbContext : DbContext
         {
             optionsBuilder.UseSqlite(_connectionString);
             optionsBuilder.UseModel(CompiledModels.JoJotDbContextModel.Instance);
-            optionsBuilder.AddInterceptors(new SqlitePragmaInterceptor());
         }
     }
 
@@ -97,7 +95,10 @@ public class JoJotDbContext : DbContext
             // Covering index for the hot per-desktop ordered read (pinned DESC, sort_order ASC) and
             // every desktop_guid-filtered query. Same name as the index created in
             // RunPendingMigrationsAsync so fresh and pre-existing databases converge on one index.
-            e.HasIndex(n => new { n.DesktopGuid, n.Pinned, n.SortOrder }).HasDatabaseName("idx_notes_desktop");
+            // pinned is DESC to match that ORDER BY, so SQLite walks the index instead of sorting.
+            e.HasIndex(n => new { n.DesktopGuid, n.Pinned, n.SortOrder })
+                .HasDatabaseName("idx_notes_desktop")
+                .IsDescending(false, true, false);
 
             // Computed / UI-only properties are not mapped to the database
             e.Ignore(n => n.DisplayLabel);

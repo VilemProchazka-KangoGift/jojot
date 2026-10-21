@@ -119,12 +119,17 @@ public partial class MainWindow
         }
         stack.Children.Add(renameItem);
 
+        // The items below act on the right-clicked tab by selecting it first. Never assign
+        // _activeTab before SelectTabByNote: TabList_SelectionChanged saves the OUTGOING editor
+        // text into _activeTab, so pointing it at the target first overwrote the right-clicked
+        // note with the previously active note's text (and autosave persisted it).
+        // SelectTabByNote switches _activeTab through the normal selection path.
+
         // Pin/Unpin (dynamic text based on tab state)
         string pinText = tab.Pinned ? Strings.Ctx_Unpin : Strings.Ctx_Pin;
         string pinIcon = tab.Pinned ? "\uE77A" : "\uE718";
         stack.Children.Add(CreateCtxItem(pinIcon, pinText, "Ctrl+P", () =>
         {
-            _activeTab = tab;
             SelectTabByNote(tab);
             ToolbarPin_Click(this, new RoutedEventArgs());
         }));
@@ -132,7 +137,6 @@ public partial class MainWindow
         // Clone to new tab
         stack.Children.Add(CreateCtxItem("\uF413", Strings.Ctx_Clone, "Ctrl+K", () =>
         {
-            _activeTab = tab;
             SelectTabByNote(tab);
             ToolbarClone_Click(this, new RoutedEventArgs());
         }));
@@ -140,7 +144,6 @@ public partial class MainWindow
         // Save
         stack.Children.Add(CreateCtxItem("\uE74E", Strings.Ctx_Save, "Ctrl+S", () =>
         {
-            _activeTab = tab;
             SelectTabByNote(tab);
             SaveNote();
         }));
@@ -148,7 +151,6 @@ public partial class MainWindow
         // Save As
         stack.Children.Add(CreateCtxItem("\uE792", Strings.Ctx_SaveAs, "Ctrl+Shift+S", () =>
         {
-            _activeTab = tab;
             SelectTabByNote(tab);
             SaveAsDialog();
         }));

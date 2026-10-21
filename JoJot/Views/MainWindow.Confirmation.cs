@@ -6,11 +6,11 @@ public partial class MainWindow
 
     private void ShowConfirmation(string title, string message, Action? onConfirm, string? confirmText = null, bool useDangerStyle = true)
     {
-        ConfirmationOverlay.Show(title, message, onConfirm, confirmText, useDangerStyle);
+        ConfirmationOverlayLazy.Show(title, message, onConfirm, confirmText, useDangerStyle);
     }
 
     private void HideConfirmation()
     {
-        ConfirmationOverlay.Hide();
+        _confirmationOverlay?.Hide();
     }
 }

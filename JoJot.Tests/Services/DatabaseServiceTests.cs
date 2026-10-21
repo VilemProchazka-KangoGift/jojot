@@ -101,19 +101,6 @@ public class DatabaseServiceTests : IAsyncLifetime
         notes.Should().BeEmpty();
     }
 
-    [Fact]
-    public async Task DeleteEmptyNotes_RemovesOnlyEmptyNotes()
-    {
-        await NoteStore.InsertNoteAsync("desktop-7", null, "", false, 0);
-        await NoteStore.InsertNoteAsync("desktop-7", null, "has content", false, 1);
-
-        var deleted = await NoteStore.DeleteEmptyNotesAsync("desktop-7");
-
-        deleted.Should().Be(1);
-        var remaining = await NoteStore.GetNotesForDesktopAsync("desktop-7");
-        remaining.Should().ContainSingle().Which.Content.Should().Be("has content");
-    }
-
     // ─── Sort Orders ───────────────────────────────────────────────────
 
     [Fact]

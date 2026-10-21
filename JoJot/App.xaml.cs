@@ -10,8 +10,8 @@ namespace JoJot;
 
 /// <summary>
 /// Application entry point.
-/// Orchestrates the full startup sequence: mutex guard, logging, database initialization,
-/// IPC server start, window creation, startup timing, and background migrations.
+/// Orchestrates the full startup sequence: IPC server start (first, queuing early commands),
+/// database initialization, window creation, startup timing, and background migrations.
 /// ShutdownMode is OnExplicitShutdown — the process stays alive when all windows are closed.
 /// Per-desktop window registry maps each virtual desktop to its own MainWindow instance.
 /// </summary>
@@ -72,10 +72,20 @@ public partial class App : Application
     /// <summary>Tracks the previous phase's elapsed time for startup delta logging.</summary>
     private static long _lastPhaseMs;
 
+    /// <summary>Startup stopwatch, started at the top of OnAppStartup.</summary>
+    private static Stopwatch _startupStopwatch = new();
+
+    /// <summary>
+    /// True only while OnAppStartup runs. CreateWindowShell / CompleteWindowInitAsync are also
+    /// used later (IPC/hotkey windows), where startup phase logging must stay silent.
+    /// </summary>
+    private static bool _startupPhaseLoggingActive;
+
     /// <summary>Logs one startup phase with cumulative and delta milliseconds.</summary>
-    private static void LogPhase(Stopwatch sw, string phase)
+    private static void LogPhase(string phase)
     {
-        long now = sw.ElapsedMilliseconds;
+        if (!_startupPhaseLoggingActive) return;
+        long now = _startupStopwatch.ElapsedMilliseconds;
         LogService.Info("Startup phase {Phase} at {TotalMs}ms (+{DeltaMs}ms)", phase, now, now - _lastPhaseMs);
         _lastPhaseMs = now;
     }
@@ -84,6 +94,13 @@ public partial class App : Application
     /// Cancellation source signaled on application exit to stop the IPC server and other background work.
     /// </summary>
     private readonly CancellationTokenSource _appShutdownCts = new();
+
+    /// <summary>
+    /// IPC commands that arrived (the pipe server starts before the DB opens) while their target
+    /// window did not exist yet; replayed when startup completes. Becomes "ready" — nothing is
+    /// deferred any more — at the same moment (the startup-completed flag).
+    /// </summary>
+    private readonly IpcCommandQueue _ipcQueue = new();
 
     /// <summary>
     /// Per-desktop window registry. Key is desktop GUID string (case-insensitive).
@@ -118,7 +135,14 @@ public partial class App : Application
 
         try
         {
-            var sw = Stopwatch.StartNew();
+            _startupStopwatch = Stopwatch.StartNew();
+            _startupPhaseLoggingActive = true;
+
+            // Window title + session matching share one COM desktop enumeration during startup.
+            VirtualDesktopService.CacheDesktopsDuringStartup = true;
+
+            // UI-thread guard: DatabaseCore logs a one-time warning per caller for DB work on the dispatcher.
+            DatabaseCore.IsUiThread = () => Dispatcher.CheckAccess();
 
             // Explicit shutdown mode — process stays alive when all windows are closed
             ShutdownMode = ShutdownMode.OnExplicitShutdown;
@@ -126,7 +150,14 @@ public partial class App : Application
             // Handle OS shutdown/logoff so JoJot does not block Windows session end
             SessionEnding += OnSessionEnding;
 
-            // Kick off the entire DB pipeline immediately; it runs while the window appears.
+            // IPC server FIRST — before the DB opens — so a second instance launched during this
+            // cold start connects at once instead of timing out and treating us as a zombie.
+            // HandleIpcCommand queues commands whose window does not exist yet until startup completes.
+            IpcService.StartServer(HandleIpcCommand, _appShutdownCts.Token);
+            LogPhase("ipc-server");
+
+            // Kick off the entire DB pipeline immediately (including the preference-cache load and its
+            // first EF query compilation); it runs while the window appears.
             var dbInitTask = InitializeDatabaseAsync();
 
             // Fast path: snapshot seeds the preference cache so language/theme resolve instantly.
@@ -138,9 +169,10 @@ public partial class App : Application
             else
             {
                 // First launch (or lost snapshot): preferences must come from the DB before any UI.
+                // The pipeline loads the real cache; the post-window await reuses its result.
                 await dbInitTask;
             }
-            LogPhase(sw, "db-kickoff+snapshot");
+            LogPhase("db-kickoff+snapshot");
 
             var savedLogLevel = await PreferenceStore.GetPreferenceAsync("log_level");
             var parsedLevel = ParseLogLevel(savedLogLevel);
@@ -153,7 +185,7 @@ public partial class App : Application
             await ThemeService.InitializeAsync();       // reads "theme" from cache — instant on fast path
             await VirtualDesktopService.InitializeAsync();
             VirtualDesktopService.SubscribeNotifications();
-            LogPhase(sw, "prefs+language+theme+vd-init");
+            LogPhase("prefs+language+theme+vd-init");
             if (VirtualDesktopService.IsAvailable)
             {
                 LogService.Info("Virtual desktop: {DesktopGuid} ({DesktopName})", VirtualDesktopService.CurrentDesktopGuid, VirtualDesktopService.CurrentDesktopName);
@@ -166,40 +198,52 @@ public partial class App : Application
             // Window appears NOW — before the database is ready on the fast path.
             var currentDesktopGuid = VirtualDesktopService.CurrentDesktopGuid;
             var mainWindow = CreateWindowShell(currentDesktopGuid);
-            LogPhase(sw, "window-shell-shown");
+            LogPhase("window-shell-shown");
 
-            await dbInitTask;
-            LogPhase(sw, "db-ready");
+            // The pipeline already replaced the provisional cache with DB truth; this await only
+            // collects the loaded map (and is a no-op re-read of the completed task on first launch).
+            var dbPrefs = await dbInitTask;
+            LogPhase("db-ready+prefs-cache");
 
             // Reconcile provisional (snapshot) preferences against database truth.
-            var dbPrefs = await PreferenceStore.InitializeCacheAsync();
             ReconcileSnapshotPreferences(dbPrefs);
+            LogPhase("prefs-reconcile");
 
-            // Session matching — associate saved sessions with live desktops
-            await VirtualDesktopService.MatchSessionsAsync();
+            // ── Critical path: only what decides WHICH notes this desktop shows, then load them. ──
+
+            // Session matching can re-home a stored session onto this desktop (Tier 2/3, when the
+            // desktop's GUID changed). Only then must it run before the load — a desktop whose GUID
+            // already has a session (the normal start) defers matching until the editor is live.
+            bool matchedBeforeLoad = false;
+            if (VirtualDesktopService.IsAvailable
+                && !await SessionStore.SessionExistsAsync(currentDesktopGuid))
+            {
+                await VirtualDesktopService.MatchSessionsAsync();
+                matchedBeforeLoad = true;
+                LogPhase("session-match");
+            }
+
+            // Keep the app_state row present for this desktop before any geometry save (INSERT OR IGNORE).
             await VirtualDesktopService.EnsureCurrentDesktopSessionAsync();
 
-            // Resolve pending moves from crash recovery, auto-delete old notes, welcome tab
-            await ResolvePendingMovesAsync();
+            // Schema migrations add columns the note query selects — must precede the load. A single
+            // PRAGMA read when the schema stamp is current (every start but the first after an upgrade).
+            await StartupService.RunBackgroundMigrationsAsync();
+
+            // Auto-delete (only does DB work when enabled) and the O(1) welcome check stay ahead of the
+            // load: deleting a note the user may already be typing in, or seeding the welcome note
+            // after the empty-desktop auto-tab exists, would both be wrong.
             await RunAutoDeleteAsync();
             await StartupService.CreateWelcomeTabIfFirstLaunch();
+            LogPhase("session-ensure+migrations+autodelete+welcome");
 
-            // Run pending migrations (no-op when schema is already stamped)
-            await StartupService.RunBackgroundMigrationsAsync();
-            LogPhase(sw, "session+recovery+migrations");
-
-            // Complete DB-dependent window setup behind the already-visible window.
+            // Tabs load, editor enabled and focused. Logs "tabs-loaded".
             await CompleteWindowInitAsync(mainWindow, currentDesktopGuid);
-            mainWindow.UpdateOrphanBadge();
-            LogPhase(sw, "tabs-loaded");
-
-            // Start IPC server
-            IpcService.StartServer(HandleIpcCommand, _appShutdownCts.Token);
 
             // Register the global hotkey once, on a dedicated message-only window owned by the app
             // (not any MainWindow) so it keeps working after all windows are closed.
             await HotkeyService.InitializeAsync(OnGlobalHotkeyPressed);
-            LogPhase(sw, "ipc+hotkey");
+            LogPhase("hotkey");
 
             // Wire desktop event handlers
             // Live title updates when desktop is renamed in Windows Settings
@@ -227,13 +271,82 @@ public partial class App : Application
             VirtualDesktopService.CurrentDesktopChanged += (oldGuid, newGuid) =>
                 LogService.Info("Desktop switched: {OldGuid} -> {NewGuid}", oldGuid, newGuid);
 
+            // ── Deferred tail: the editor is already live; none of this decides what it shows now. ──
+            await RunDeferredStartupWorkAsync(mainWindow, matchedBeforeLoad);
+
             // Log startup timing
-            sw.Stop();
-            LogService.Info("Startup complete in {ElapsedMs}ms", sw.ElapsedMilliseconds);
+            _startupStopwatch.Stop();
+            LogService.Info("Tab containers realized during startup: {Count}", JoJot.MainWindow.TabContainersLoadedCount);
+            LogService.Info("Startup complete in {ElapsedMs}ms", _startupStopwatch.ElapsedMilliseconds);
+            _startupPhaseLoggingActive = false;
         }
         catch (Exception ex)
         {
+            _startupPhaseLoggingActive = false;
             LogService.Error("Fatal error during application startup", ex);
+        }
+        finally
+        {
+            // Startup is over (or failed): GetAllDesktops goes back to live COM enumeration.
+            VirtualDesktopService.CacheDesktopsDuringStartup = false;
+
+            // Also on failure: otherwise every later IPC command would be queued forever.
+            ReplayQueuedIpcCommands();
+        }
+    }
+
+    /// <summary>
+    /// Marks startup complete for IPC (nothing is deferred from now on) and replays, in arrival
+    /// order, the commands that arrived before their target window existed. A command for the
+    /// first window's desktop now finds that window; any other desktop goes through
+    /// CreateWindowForDesktop, which works because the DB is open by now.
+    /// </summary>
+    private void ReplayQueuedIpcCommands()
+    {
+        var queued = _ipcQueue.MarkReady();
+        if (queued.Count == 0) return;
+
+        LogService.Info("IPC: replaying {QueuedCount} command(s) received during startup", queued.Count);
+        foreach (var message in queued)
+        {
+            // Sequential on the UI thread: a window created by one replayed command is registered
+            // in _windows synchronously, so a later command for the same desktop reuses it.
+            HandleIpcCommand(message);
+        }
+    }
+
+    /// <summary>
+    /// Startup work that runs after the editor is live: session matching (unless it had to run
+    /// before the load), crash-recovery of pending moves, the orphan badge and recovery toast.
+    /// If recovery moved notes, the window reloads its tabs (merge-preserving, focus untouched).
+    /// Failures are logged and never undo the already-usable window.
+    /// </summary>
+    private async Task RunDeferredStartupWorkAsync(MainWindow mainWindow, bool matchedBeforeLoad)
+    {
+        try
+        {
+            if (!matchedBeforeLoad)
+            {
+                await VirtualDesktopService.MatchSessionsAsync();
+                LogPhase("session-match");
+            }
+
+            bool recovered = await ResolvePendingMovesAsync();
+            LogPhase("recovery");
+
+            mainWindow.UpdateOrphanBadge();
+
+            if (recovered)
+            {
+                // Recovery migrated notes into/out of this desktop after its tabs were shown.
+                await mainWindow.LoadTabsAsync();
+                mainWindow.ShowInfoToast(JoJot.Resources.Strings.Toast_Recovery);
+                LogPhase("recovery-reload");
+            }
+        }
+        catch (Exception ex)
+        {
+            LogService.Error("Deferred startup work failed", ex);
         }
     }
 
@@ -246,6 +359,7 @@ public partial class App : Application
     private MainWindow CreateWindowShell(string desktopGuid)
     {
         var window = new MainWindow(desktopGuid);
+        LogPhase("window-ctor");
 
         window.Closed += (_, _) =>
         {
@@ -270,6 +384,7 @@ public partial class App : Application
 
         _windows[desktopGuid] = window;
         window.Show();
+        LogPhase("window-shown");
 
         if (geo is not null)
         {
@@ -281,13 +396,15 @@ public partial class App : Application
             var hwnd = new WindowInteropHelper(window).Handle;
             VirtualDesktopService.TryMoveWindowToDesktop(hwnd, desktopGuid);
         }
+        LogPhase("window-moved");
 
         return window;
     }
 
     /// <summary>
     /// Completes DB-dependent window setup: geometry fallback for desktops the snapshot has
-    /// never seen, tab loading, preferences panel, activation, and recovery toast.
+    /// never seen, preferences panel (font size), activation, then tab loading — last, so the
+    /// load's editor focus is not undone by ActivateWindow's window.Focus().
     /// Requires the database to be open.
     /// </summary>
     private async Task CompleteWindowInitAsync(MainWindow window, string desktopGuid)
@@ -302,16 +419,13 @@ public partial class App : Application
             }
         }
 
-        await window.LoadTabsAsync();
-        await window.InitializePreferencesAsync();
+        await window.InitializePreferencesAsync(); // preference-cache hits: font size before first paint of text
+        LogPhase("prefs-panel");
 
         WindowActivationHelper.ActivateWindow(window);
 
-        if (_pendingRecoveryToast)
-        {
-            _pendingRecoveryToast = false;
-            window.ShowInfoToast(JoJot.Resources.Strings.Toast_Recovery);
-        }
+        await window.LoadTabsAsync();
+        LogPhase("tabs-loaded");
     }
 
     /// <summary>
@@ -325,21 +439,35 @@ public partial class App : Application
         return window;
     }
 
-    /// <summary>Open → schema → integrity/corruption recovery → EF warmup, as one awaitable unit.</summary>
-    private static async Task InitializeDatabaseAsync()
+    /// <summary>
+    /// Open → schema → integrity/corruption recovery → EF warmup → preference-cache load, as one
+    /// awaitable unit. Every step runs on the DB worker thread. ConfigureAwait(false) keeps the chain
+    /// from bouncing through the dispatcher between steps (it touches no UI), so it progresses while
+    /// the UI thread is busy building the window. Returns the preferences loaded from the database.
+    /// </summary>
+    /// <remarks>
+    /// The cache load swaps the provisional snapshot cache for DB truth in one locked reference
+    /// assignment, so a concurrent UI read sees either the snapshot or DB truth, never an empty
+    /// cache. If it lands before <c>PreloadProvisional</c>, that call is a no-op (<c>??=</c>).
+    /// The DB thread runs items strictly FIFO, so no SetPreferenceAsync can interleave with it.
+    /// </remarks>
+    private static async Task<IReadOnlyDictionary<string, string>> InitializeDatabaseAsync()
     {
         var dbPath = AppEnvironment.DatabasePath;
-        await DatabaseCore.OpenAsync(dbPath);
-        await DatabaseCore.EnsureSchemaAsync();
+        await DatabaseCore.OpenAsync(dbPath).ConfigureAwait(false);
+        await DatabaseCore.EnsureSchemaAsync().ConfigureAwait(false);
 
-        bool healthy = await DatabaseCore.VerifyIntegrityAsync();
+        bool healthy = await DatabaseCore.VerifyIntegrityAsync().ConfigureAwait(false);
         if (!healthy)
         {
             LogService.Error("Database integrity check failed — initiating corruption recovery");
-            await DatabaseCore.HandleCorruptionAsync(dbPath);
+            await DatabaseCore.HandleCorruptionAsync(dbPath).ConfigureAwait(false);
         }
 
-        await DatabaseCore.WarmupModelAsync();
+        await DatabaseCore.WarmupModelAsync().ConfigureAwait(false);
+
+        // First EF LINQ query of the process (query compilation) — off the UI critical path here.
+        return await PreferenceStore.InitializeCacheAsync().ConfigureAwait(false);
     }
 
     /// <summary>
@@ -401,6 +529,10 @@ public partial class App : Application
     /// Routes incoming IPC commands to the correct desktop's window.
     /// Resolves the current desktop GUID at handle time (live state, not send time).
     /// Always called on the UI Dispatcher (IpcService ensures this).
+    /// The pipe server starts before the DB opens: while startup is still running, a command whose
+    /// target desktop has no window yet is queued (<see cref="_ipcQueue"/>) and replayed when
+    /// startup completes. A command for an existing window is handled at once — the window queues
+    /// a new-tab request itself until its tabs have loaded.
     /// Entire body is wrapped in try/catch since this is an async void handler.
     /// </summary>
     private async void HandleIpcCommand(IpcMessage message)
@@ -408,6 +540,16 @@ public partial class App : Application
         try
         {
             var desktopGuid = VirtualDesktopService.CurrentDesktopGuid;
+
+            var deferTarget = message is NewTabCommand pending
+                ? ResolveTargetDesktop(pending.DesktopGuid, desktopGuid)
+                : desktopGuid;
+            if (_ipcQueue.TryDefer(message, targetWindowExists: _windows.ContainsKey(deferTarget)))
+            {
+                LogService.Info("IPC: {CommandType} for desktop {TargetDesktop} arrived during startup — queued ({QueuedCount} pending)",
+                    message.GetType().Name, deferTarget, _ipcQueue.Count);
+                return;
+            }
 
             switch (message)
             {
@@ -512,11 +654,6 @@ public partial class App : Application
     // ─── Window Drag Helper Methods ─────────────────────────────────────
 
     /// <summary>
-    /// Whether a recovery toast should be shown on the next window creation.
-    /// </summary>
-    private bool _pendingRecoveryToast;
-
-    /// <summary>
     /// Checks if a window exists for the given desktop GUID (used for merge checks).
     /// </summary>
     public bool HasWindowForDesktop(string desktopGuid)
@@ -563,15 +700,16 @@ public partial class App : Application
     /// <summary>
     /// Resolves any pending_moves rows left by a crash during a window drag.
     /// Reads all pending moves and attempts to restore windows to their origin desktop.
-    /// Called during startup after session matching, before window creation.
+    /// Called in the deferred startup tail (after the first tab load). Returns true when at least
+    /// one move was recovered, i.e. notes changed desktop and open windows may need a reload.
     /// </summary>
-    private async Task ResolvePendingMovesAsync()
+    private static async Task<bool> ResolvePendingMovesAsync()
     {
         var moves = await PendingMoveStore.GetPendingMovesAsync();
         if (moves.Count == 0)
         {
             LogService.Info("Pending moves check: none found");
-            return;
+            return false;
         }
 
         LogService.Info("Pending moves check: {MoveCount} unresolved move(s) found — recovering", moves.Count);
@@ -596,27 +734,26 @@ public partial class App : Application
 
         await PendingMoveStore.DeleteAllPendingMovesAsync();
 
-        if (recovered)
-        {
-            _pendingRecoveryToast = true;
-        }
         LogService.Info("Pending moves check: recovery complete");
+        return recovered;
     }
 
     /// <summary>
     /// Reads the auto_delete_days preference and deletes unpinned notes older than that many days.
-    /// Called once during startup before windows are created.
+    /// Called once during startup, before the first tab load. Returns the number deleted (0 when
+    /// the preference is unset — a preference-cache hit with no DB work).
     /// </summary>
-    private static async Task RunAutoDeleteAsync()
+    private static async Task<int> RunAutoDeleteAsync()
     {
         var saved = await PreferenceStore.GetPreferenceAsync("auto_delete_days").ConfigureAwait(false);
         if (string.IsNullOrWhiteSpace(saved) || !int.TryParse(saved, out int days) || days <= 0)
-            return;
+            return 0;
 
         var cutoff = DateTime.Now.AddDays(-days);
         int deleted = await NoteStore.DeleteOldNotesAsync(cutoff);
         if (deleted > 0)
             LogService.Info("Startup auto-delete: {DeletedCount} note(s) older than {Days} days removed", deleted, days);
+        return deleted;
     }
 
     /// <summary>

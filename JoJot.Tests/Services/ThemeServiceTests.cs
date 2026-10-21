@@ -85,4 +85,45 @@ public class ThemeServiceTests
         var parsed = ThemeService.ParseThemePreference(str);
         parsed.Should().Be(theme);
     }
+
+    // ─── ShouldSwapDictionary ────────────────────────────────────
+
+    private static readonly Uri LightUri = new("Themes/LightTheme.xaml", UriKind.Relative);
+    private static readonly Uri DarkUri = new("Themes/DarkTheme.xaml", UriKind.Relative);
+
+    [Fact]
+    public void ShouldSwapDictionary_SameFile_NoSwap()
+    {
+        ThemeService.ShouldSwapDictionary(LightUri, LightUri).Should().BeFalse();
+    }
+
+    [Fact]
+    public void ShouldSwapDictionary_DifferentFile_Swaps()
+    {
+        ThemeService.ShouldSwapDictionary(LightUri, DarkUri).Should().BeTrue();
+        ThemeService.ShouldSwapDictionary(DarkUri, LightUri).Should().BeTrue();
+    }
+
+    [Fact]
+    public void ShouldSwapDictionary_NoCurrentSource_Swaps()
+    {
+        ThemeService.ShouldSwapDictionary(null, LightUri).Should().BeTrue();
+    }
+
+    [Theory]
+    [InlineData("/JoJot;component/Themes/LightTheme.xaml")]
+    [InlineData("themes/lighttheme.xaml")]
+    [InlineData("LightTheme.xaml")]
+    public void ShouldSwapDictionary_EquivalentReferenceToSameFile_NoSwap(string current)
+    {
+        ThemeService.ShouldSwapDictionary(new Uri(current, UriKind.RelativeOrAbsolute), LightUri)
+            .Should().BeFalse();
+    }
+
+    [Fact]
+    public void ShouldSwapDictionary_UnrelatedDictionary_Swaps()
+    {
+        ThemeService.ShouldSwapDictionary(new Uri("Themes/Controls.xaml", UriKind.Relative), LightUri)
+            .Should().BeTrue();
+    }
 }

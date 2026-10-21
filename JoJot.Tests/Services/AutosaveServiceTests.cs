@@ -289,6 +289,26 @@ public class AutosaveServiceTests
         service.IsDirty.Should().BeTrue("content of an unpersisted tab must stay flagged for a later flush");
     }
 
+    [Fact]
+    public async Task FlushInBackground_TwiceForOneEdit_WritesOnce()
+    {
+        // The new-tab / clone / delete path: SaveCurrentTabContent flushes the outgoing tab, then
+        // the SelectionChanged that follows flushes again. Only the first may write.
+        var saved = new List<(long TabId, string Content)>();
+        var service = new AutosaveService(new TestClock(), new TestTimer());
+        service.Configure(
+            contentProvider: () => (5L, "edited"),
+            saveFunc: (id, content) => { lock (saved) saved.Add((id, content)); return Task.CompletedTask; });
+
+        service.NotifyTextChanged();
+        service.FlushInBackground(); // SaveCurrentTabContent
+        service.FlushInBackground(); // TabList_SelectionChanged
+
+        (await BackgroundWriter.DrainAsync(TimeSpan.FromSeconds(2))).Should().BeTrue();
+        saved.Should().ContainSingle().Which.Should().Be((5L, "edited"));
+        service.IsDirty.Should().BeFalse();
+    }
+
     // ─── Stop ──────────────────────────────────────────────────────────
 
     [Fact]
@@ -382,5 +402,64 @@ public class AutosaveServiceTests
 
         savedTabId.Should().Be(1);
         svc.IsDirty.Should().BeFalse();
+    }
+
+    // ─── Edits during an in-flight save (saves really run on the DB thread) ───
+
+    [Fact]
+    public async Task TimerTick_EditDuringInFlightSave_StaysDirty()
+    {
+        var svc = CreateService();
+        var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var saved = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        svc.Configure(
+            () => (1L, "content"),
+            (_, _) => gate.Task,
+            onSaveCompleted: _ => saved.TrySetResult());
+
+        svc.NotifyTextChanged();
+        _timer.Fire();          // save starts and is now in flight
+        svc.NotifyTextChanged(); // user keeps typing while the DB thread writes
+
+        gate.SetResult();
+        await saved.Task.WaitAsync(TimeSpan.FromSeconds(5));
+
+        svc.IsDirty.Should().BeTrue("the edit made during the save has not been persisted yet");
+    }
+
+    [Fact]
+    public async Task FlushAsync_EditDuringInFlightSave_StaysDirty()
+    {
+        var svc = CreateService();
+        var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        svc.Configure(
+            () => (1L, "content"),
+            (_, _) => gate.Task);
+
+        svc.NotifyTextChanged();
+        var flush = svc.FlushAsync();
+        svc.NotifyTextChanged();
+
+        gate.SetResult();
+        await flush.WaitAsync(TimeSpan.FromSeconds(5));
+
+        svc.IsDirty.Should().BeTrue("the edit made during the flush has not been persisted yet");
+    }
+
+    [Fact]
+    public async Task FlushAsync_SaveFails_RestoresDirty_AndRethrows()
+    {
+        var svc = CreateService();
+        svc.Configure(
+            () => (1L, "content"),
+            (_, _) => Task.FromException(new InvalidOperationException("DB locked")));
+
+        svc.NotifyTextChanged();
+        var act = () => svc.FlushAsync();
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        svc.IsDirty.Should().BeTrue();
     }
 }

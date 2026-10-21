@@ -104,4 +104,74 @@ public class WindowPlacementHelperTests
         result.Left.Should().BeLessThan(99999);
         result.Top.Should().BeLessThan(99999);
     }
+
+    // ─── Monitor enumeration / ClampToWorkAreas (pure) ────────────────
+
+    [Fact]
+    public void GetMonitorWorkAreas_ReturnsAtLeastOneNonEmptyArea()
+    {
+        var areas = WindowPlacementHelper.GetMonitorWorkAreas();
+
+        areas.Should().NotBeEmpty();
+        areas.Should().OnlyContain(a => a.Right > a.Left && a.Bottom > a.Top);
+    }
+
+    private static readonly WindowPlacementHelper.WorkArea Primary = new(0, 0, 1920, 1040);
+    private static readonly WindowPlacementHelper.WorkArea RightMonitor = new(1920, 0, 3840, 1040);
+
+    [Fact]
+    public void ClampToWorkAreas_Visible_ReturnsUnchanged()
+    {
+        var geo = new JoJot.Models.WindowGeometry(2000, 100, 800, 600, false);
+
+        WindowPlacementHelper.ClampToWorkAreas(geo, [Primary, RightMonitor]).Should().Be(geo);
+    }
+
+    [Fact]
+    public void ClampToWorkAreas_TopLeftJustInsideEdge_CountsAsVisible()
+    {
+        // 50x50 probe at (-49,-49) overlaps the primary by 1px
+        var geo = new JoJot.Models.WindowGeometry(-49, -49, 800, 600, false);
+
+        WindowPlacementHelper.ClampToWorkAreas(geo, [Primary]).Should().Be(geo);
+    }
+
+    [Fact]
+    public void ClampToWorkAreas_ProbeTouchingEdgeOnly_IsOffScreen()
+    {
+        LogService.InitializeNoop();
+
+        // Probe spans [-50,0): touches the left edge but does not intersect (edges exclusive)
+        var geo = new JoJot.Models.WindowGeometry(-50, 100, 800, 600, false);
+
+        var result = WindowPlacementHelper.ClampToWorkAreas(geo, [Primary]);
+
+        result.Left.Should().Be(0);
+        result.Top.Should().Be(100);
+    }
+
+    [Fact]
+    public void ClampToWorkAreas_OffScreen_SnapsToNearestArea()
+    {
+        LogService.InitializeNoop();
+
+        // Far right of the right monitor: nearest is RightMonitor, clamped so the window fits
+        var geo = new JoJot.Models.WindowGeometry(9000, 200, 800, 600, true);
+
+        var result = WindowPlacementHelper.ClampToWorkAreas(geo, [Primary, RightMonitor]);
+
+        result.Left.Should().Be(3840 - 800);
+        result.Top.Should().Be(200);
+        result.Width.Should().Be(800);
+        result.Height.Should().Be(600);
+        result.IsMaximized.Should().BeTrue();
+    }
+
+    [Fact]
+    public void ClampToWorkAreas_NoAreas_ReturnsUnchanged()
+    {
+        var geo = new JoJot.Models.WindowGeometry(-5000, -5000, 800, 600, false);
+
+        WindowPlacementHelper.ClampToWorkAreas(geo, []).Should().Be(geo);
+    }
 }

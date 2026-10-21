@@ -1,11 +1,11 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Media.Animation;
 using JoJot.Models;
 using JoJot.Resources;
 using JoJot.Services;
@@ -45,7 +45,9 @@ public partial class MainWindow : Window
     }
 
     // ─── Rename state ───────────────────────────────────────────────────
-    private (ListBoxItem Item, NoteTab Tab, TextBox Box, TextBlock Label)? _activeRename;
+    // One shared TextBox (MainWindow.Rename.cs) is inserted into the renamed item, replacing
+    // its TitlePanel while active; Title is that hidden TitlePanel.
+    private (ListBoxItem Item, NoteTab Tab, TextBox Box, FrameworkElement Title)? _activeRename;
 
     // ─── Drag-to-reorder state ──────────────────────────────────────────
     private bool _isDragging;
@@ -162,7 +164,8 @@ public partial class MainWindow : Window
     {
         ViewModel = new MainWindowViewModel(desktopGuid);
 
-        // Initialize checkpoint timer before InitializeComponent
+        // Initialize checkpoint timer before InitializeComponent. Started by typing when idle,
+        // stopped by its own tick (see CheckpointTimer_Tick).
         _checkpointTimer = new System.Windows.Threading.DispatcherTimer
         {
             Interval = TimeSpan.FromMinutes(5)
@@ -181,60 +184,35 @@ public partial class MainWindow : Window
 
         // Register with ThemeService for title bar dark mode tracking
         ThemeService.RegisterWindow(this);
-        HelpOverlay.CloseRequested += (_, _) => ViewModel.IsHelpOpen = false;
-        CleanupPanel.CloseRequested += (_, _) => HideCleanupPanel();
-        RecoveryPanel.CloseRequested += (_, _) => HideRecoveryPanel();
-        DragOverlay.KeepHereClicked += (_, _) => DragKeepHere_Handler();
-        DragOverlay.MergeClicked += (_, _) => DragMerge_Handler();
-        DragOverlay.CancelClicked += (_, _) => DragCancel_Handler();
-        CleanupPanel.FilterChanged += (_, _) => { if (_cleanupPanelOpen) RefreshCleanupPreview(); };
-        CleanupPanel.DeleteRequested += (_, candidates) =>
-        {
-            int pinnedCount = candidates.Count(t => t.Pinned);
-            string pinnedNote = pinnedCount > 0 ? string.Format(Strings.Cleanup_ConfirmPinnedNote, pinnedCount) : "";
-            var msgFmt = LanguageService.Plural(Strings.Cleanup_ConfirmMessage_One, Strings.Cleanup_ConfirmMessage_Few, Strings.Cleanup_ConfirmMessage, candidates.Count);
-            string message = string.Format(msgFmt, candidates.Count, pinnedNote);
-            ShowConfirmation(Strings.Cleanup_ConfirmTitle, message, () => _ = ExecuteCleanupDeleteAsync(candidates));
-        };
-        PreferencesPanel.CloseRequested += (_, _) => HidePreferencesPanel();
-        PreferencesPanel.ThemeChangeRequested += (_, theme) => _ = ThemeService.SetThemeAsync(theme);
-        PreferencesPanel.LanguageChangeRequested += (_, lang) =>
-        {
-            if (lang == LanguageService.Current) return;
-            ShowConfirmation(
-                Strings.Language_RestartTitle,
-                Strings.Language_RestartMessage,
-                () => _ = LanguageService.SetLanguageAsync(lang),
-                Strings.Language_RestartButton,
-                useDangerStyle: false);
-        };
-        PreferencesPanel.FontSizeChangeRequested += (_, delta) => _ = ChangeFontSizeAsync(delta);
-        PreferencesPanel.FontSizeResetRequested += (_, _) => _ = SetFontSizeAsync(13);
-        PreferencesPanel.HotkeyRecordingChanged += (_, isRecording) =>
-        {
-            if (isRecording) HotkeyService.PauseHotkey();
-            else HotkeyService.ResumeHotkey();
-        };
-        CleanupPanel.AutoDeleteDaysChanged += (_, value) =>
-        {
-            if (string.IsNullOrWhiteSpace(value))
-                _ = PreferenceStore.SetPreferenceAsync("auto_delete_days", "");
-            else if (int.TryParse(value, out int days) && days > 0)
-                _ = PreferenceStore.SetPreferenceAsync("auto_delete_days", days.ToString());
-        };
-        WireUpFindPanelEvents();
+        // Side panels/overlays are created lazily on first use (MainWindow.LazyPanels.cs),
+        // which also wires their events. Only the editor-side find adorner hooks go here.
+        WireUpFindAdornerEvents();
 
-        // Configure autosave service (undo snapshots are pushed per-keystroke in ContentEditor_TextChanged)
+        // Configure autosave service. The content provider reads the editor text when a save
+        // actually runs (tick/flush), never per keystroke. Undo snapshots are coalesced separately
+        // (ScheduleUndoSnapshot).
         _autosaveService.Configure(
             contentProvider: () => _activeTab is not null ? (_activeTab.Id, ContentEditor.Text) : (0L, ""),
             saveFunc: NoteStore.UpdateNoteContentAsync,
             onSaveCompleted: (tabId) =>
             {
-                var tab = _tabs.FirstOrDefault(t => t.Id == tabId);
-                if (tab is not null)
+                // FlushAsync / FlushInBackground complete on a background thread (the save ran on
+                // the DB thread); _tabs and the bound UpdatedAt are UI-affine. InvokeAsync, never
+                // Invoke: a UI thread sync-blocked on the close path must not deadlock this.
+                var savedAt = DateTime.Now;
+                void Apply()
                 {
-                    tab.UpdatedAt = DateTime.Now;
+                    var tab = _tabs.FirstOrDefault(t => t.Id == tabId);
+                    if (tab is not null)
+                    {
+                        tab.UpdatedAt = savedAt;
+                    }
                 }
+
+                if (Dispatcher.CheckAccess())
+                    Apply();
+                else
+                    Dispatcher.InvokeAsync(Apply);
             }
         );
 
@@ -434,67 +412,6 @@ public partial class MainWindow : Window
         return _cachedContentScrollViewer ??= FindDescendant<ScrollViewer>(ContentEditor);
     }
 
-    // Cached frozen animations for tab button hover (avoids allocation per hover cycle)
-    private static readonly DoubleAnimation FadeIn100ms = CreateFrozenAnim(0, 1, 100);
-    private static readonly DoubleAnimation FadeOut100ms = CreateFrozenAnim(1, 0, 100);
-
-    private static DoubleAnimation CreateFrozenAnim(double from, double to, int ms)
-    {
-        var a = new DoubleAnimation(from, to, TimeSpan.FromMilliseconds(ms));
-        a.Freeze();
-        return a;
-    }
-
-    /// <summary>
-    /// Animates the Opacity property of a UIElement from one value to another over durationMs.
-    /// Uses cached frozen animations for the common 100ms fade in/out pattern.
-    /// </summary>
-    private static void AnimateOpacity(UIElement element, double from, double to, int durationMs)
-    {
-        // Use cached animation for common hover pattern
-        if (durationMs == 100)
-        {
-            // ReSharper disable CompareOfFloatsByEqualityOperator
-            if (from == 0 && to == 1) { element.BeginAnimation(OpacityProperty, FadeIn100ms); return; }
-            if (from == 1 && to == 0) { element.BeginAnimation(OpacityProperty, FadeOut100ms); return; }
-            // ReSharper restore CompareOfFloatsByEqualityOperator
-        }
-        var anim = new DoubleAnimation(from, to, TimeSpan.FromMilliseconds(durationMs));
-        element.BeginAnimation(OpacityProperty, anim);
-    }
-
-    private System.Windows.Threading.DispatcherTimer? _collapseTimer;
-    private readonly List<UIElement> _pendingCollapses = [];
-
-    /// <summary>
-    /// Collapses an element after a short delay (allows fade-out animation to complete).
-    /// Reuses a single timer for all pending collapses.
-    /// </summary>
-    private void DelayedCollapse(UIElement element)
-    {
-        _pendingCollapses.Add(element);
-
-        if (_collapseTimer is null)
-        {
-            _collapseTimer = new System.Windows.Threading.DispatcherTimer
-            {
-                Interval = TimeSpan.FromMilliseconds(100)
-            };
-            _collapseTimer.Tick += (_, _) =>
-            {
-                _collapseTimer.Stop();
-                foreach (var el in _pendingCollapses)
-                {
-                    if (el.Opacity == 0)
-                        el.Visibility = Visibility.Collapsed;
-                }
-                _pendingCollapses.Clear();
-            };
-        }
-        _collapseTimer.Stop();
-        _collapseTimer.Start();
-    }
-
     // ─── Window Title ───────────────────────────────────────────────────
 
     /// <summary>
@@ -541,6 +458,9 @@ public partial class MainWindow : Window
 
         // Commit pending deletion synchronously before close
         CommitPendingDeletionAsync().GetAwaiter().GetResult();
+        // Persist synchronously first (explicit exit must not depend on a background write), then
+        // capture the editor state into the model — SaveCurrentTabContent finds nothing dirty.
+        PersistActiveContentSync();
         SaveCurrentTabContent();
         Close();
     }
@@ -573,7 +493,6 @@ public partial class MainWindow : Window
         _findDebounceTimer?.Stop();
         _findTextChangeDebounce?.Stop();
         _searchDebounceTimer?.Stop();
-        _collapseTimer?.Stop();
         CancelPendingSearch();
 
         // Synchronous flush — block until save completes (no data loss).
@@ -602,10 +521,14 @@ public partial class MainWindow : Window
     /// </summary>
     private void PersistActiveContentSync()
     {
-        FlushContentSync();
-        if (_activeTab is null || !_autosaveService.IsDirty) return;
+        if (_activeTab is null || !_autosaveService.IsDirty)
+        {
+            FlushContentSync();
+            return;
+        }
 
         string content = ContentEditor.Text;
+        CancelContentSync(); // superseded by the assignment below
         _activeTab.Content = content;
         _activeTab.CursorPosition = ContentEditor.CaretIndex;
         _activeTab.UpdatedAt = DateTime.Now;
@@ -621,6 +544,21 @@ public partial class MainWindow : Window
     internal void FlushContentForShutdown() => PersistActiveContentSync();
 
     // ─── Editor Mouse Helpers ───────────────────────────────────────────
+
+    // System double-click time/rectangle (formerly WinForms SystemInformation.DoubleClickTime /
+    // DoubleClickSize, which wrap these same Win32 calls). Read once per process.
+    private const int SM_CXDOUBLECLK = 36;
+    private const int SM_CYDOUBLECLK = 37;
+
+    [LibraryImport("user32.dll")]
+    private static partial uint GetDoubleClickTime();
+
+    [LibraryImport("user32.dll")]
+    private static partial int GetSystemMetrics(int nIndex);
+
+    private static readonly long DoubleClickTimeMs = GetDoubleClickTime();
+    private static readonly int DoubleClickWidth = GetSystemMetrics(SM_CXDOUBLECLK);
+    private static readonly int DoubleClickHeight = GetSystemMetrics(SM_CYDOUBLECLK);
 
     private bool _suppressNextEditorMouseUp;
     private int _editorClickStreak;
@@ -641,10 +579,9 @@ public partial class MainWindow : Window
         // Manual click-streak tracking using the system double-click time and rectangle.
         var pos = e.GetPosition(ContentEditor);
         long now = Environment.TickCount64;
-        var dcSize = System.Windows.Forms.SystemInformation.DoubleClickSize;
-        bool chained = now - _lastEditorClickTicks <= System.Windows.Forms.SystemInformation.DoubleClickTime
-            && Math.Abs(pos.X - _lastEditorClickPos.X) <= dcSize.Width
-            && Math.Abs(pos.Y - _lastEditorClickPos.Y) <= dcSize.Height;
+        bool chained = now - _lastEditorClickTicks <= DoubleClickTimeMs
+            && Math.Abs(pos.X - _lastEditorClickPos.X) <= DoubleClickWidth
+            && Math.Abs(pos.Y - _lastEditorClickPos.Y) <= DoubleClickHeight;
         _editorClickStreak = chained ? _editorClickStreak + 1 : 1;
         _lastEditorClickTicks = now;
         _lastEditorClickPos = pos;
@@ -694,28 +631,40 @@ public partial class MainWindow : Window
     // ─── Autosave & Undo Helpers ────────────────────────────────────────
 
     /// <summary>
-    /// TextChanged handler for autosave debounce trigger and per-keystroke undo snapshots.
+    /// TextChanged handler: arms the autosave debounce, the coalesced undo snapshot, the model sync
+    /// and the checkpoint timer.
     /// Only fires for user-initiated changes (suppressed during programmatic text assignment).
     /// </summary>
+    /// <remarks>
+    /// Deliberately does NOT read <c>ContentEditor.Text</c>: every read materializes the whole
+    /// document as a new string (O(n) per keystroke, large-object-heap garbage above ~42K chars).
+    /// The consumers only need the text when their timers tick, so they read it then: the undo
+    /// sampler (600 ms), the model sync (100 ms), autosave (500 ms debounce, via its content
+    /// provider) and the checkpoint timer (5 min). The handler only records WHICH tab was edited;
+    /// a tick that finds a different active tab drops its work (the editor no longer shows that
+    /// tab's text), and tab switches flush both pending ticks before the editor text changes.
+    /// No running timer is restarted per keystroke except the find-refresh and autosave debounces,
+    /// whose contract is "after a pause".
+    /// </remarks>
     private void ContentEditor_TextChanged(object sender, TextChangedEventArgs e)
     {
         if (_suppressTextChanged || _activeTab is null) return;
-
-        string text = ContentEditor.Text;
-        int cursor = ContentEditor.CaretIndex;
+        var tab = _activeTab;
 
         // Coalesce undo snapshots to ~one per 600ms of typing instead of a full-content copy on
         // every keystroke — the per-keystroke copy is O(n) and makes large-note editing O(n²).
-        ScheduleUndoSnapshot(_activeTab.Id, text, cursor);
+        ScheduleUndoSnapshot(tab);
 
         // Throttle model sync — DisplayLabel binding doesn't need per-character updates
-        ThrottleContentSync(text);
+        ThrottleContentSync(tab);
 
         _autosaveService.NotifyTextChanged();
 
-        // Start/reset checkpoint timer on user input
-        _checkpointTimer.Stop();
-        _checkpointTimer.Start();
+        // Checkpoint: "5 minutes since the last checkpoint while editing". The tick checks the
+        // stack's last-checkpoint timestamp, so starting an idle timer is enough — restarting it
+        // on every keystroke would only push the checkpoint out until the user pauses.
+        if (!_checkpointTimer.IsEnabled)
+            _checkpointTimer.Start();
 
         // Re-run find highlights if panel is open
         RefreshFindOnTextChange();
@@ -723,27 +672,27 @@ public partial class MainWindow : Window
 
     private ScrollViewer? _cachedContentScrollViewer;
     private System.Windows.Threading.DispatcherTimer? _contentSyncTimer;
-    private string? _pendingContentSync;
+
+    /// <summary>Tab whose edited text still has to be copied into its model (null = nothing pending).</summary>
+    private NoteTab? _contentSyncTab;
 
     // ─── Undo snapshot coalescing ───────────────────────────────────────
     private System.Windows.Threading.DispatcherTimer? _undoCoalesceTimer;
-    private long _pendingUndoTabId;
-    private string? _pendingUndoText;
-    private int _pendingUndoCursor;
+
+    /// <summary>Tab with typing not yet pushed as an undo snapshot (null = nothing pending).
+    /// A NoteTab reference, not an id: an optimistic tab's id changes when its INSERT lands.</summary>
+    private NoteTab? _pendingUndoTab;
     private const int UndoCoalesceMs = 600;
 
     /// <summary>
-    /// Records the latest editor state and ensures a coalescing timer is running. The timer is
-    /// deliberately NOT reset on each keystroke, so during a continuous typing burst it fires
-    /// periodically (~every 600ms) rather than being pushed out to the end of the burst — giving
-    /// reasonable undo granularity while capping snapshot frequency. The tab id is captured here so
-    /// a late tick can never push a snapshot onto a tab the user has since switched away from.
+    /// Records that <paramref name="tab"/> has typing to snapshot and ensures a coalescing timer is
+    /// running. The timer is deliberately NOT reset on each keystroke, so during a continuous typing
+    /// burst it fires periodically (~every 600ms) rather than being pushed out to the end of the
+    /// burst — giving reasonable undo granularity while capping snapshot frequency.
     /// </summary>
-    private void ScheduleUndoSnapshot(long tabId, string text, int cursor)
+    private void ScheduleUndoSnapshot(NoteTab tab)
     {
-        _pendingUndoTabId = tabId;
-        _pendingUndoText = text;
-        _pendingUndoCursor = cursor;
+        _pendingUndoTab = tab;
 
         if (_undoCoalesceTimer is null)
         {
@@ -751,32 +700,41 @@ public partial class MainWindow : Window
             {
                 Interval = TimeSpan.FromMilliseconds(UndoCoalesceMs)
             };
-            _undoCoalesceTimer.Tick += (_, _) => FlushPendingUndoSnapshot();
+            _undoCoalesceTimer.Tick += (_, _) =>
+            {
+                FlushPendingUndoSnapshot();
+                UpdateToolbarState(); // typing made Undo available — the button would stay disabled otherwise
+            };
         }
         if (!_undoCoalesceTimer.IsEnabled)
             _undoCoalesceTimer.Start();
     }
 
     /// <summary>
-    /// Pushes any pending coalesced undo snapshot immediately and stops the timer. Call before
-    /// undo/redo, replace, save, and tab switch so the latest typed state is captured and no stale
-    /// tick fires afterward (which would corrupt the redo chain or target the wrong tab).
+    /// Pushes any pending coalesced undo snapshot immediately (reading the editor text now) and
+    /// stops the timer. Call before undo/redo, replace, save, and tab switch — while the editor
+    /// still shows the edited tab — so the latest typed state is captured and no stale tick fires
+    /// afterward (which would corrupt the redo chain or target the wrong tab). If the active tab is
+    /// no longer the edited one, the snapshot is dropped: the editor text belongs to another tab.
     /// </summary>
-    private void FlushPendingUndoSnapshot()
+    /// <param name="currentText">The editor text if the caller already materialized it.</param>
+    private void FlushPendingUndoSnapshot(string? currentText = null)
     {
         _undoCoalesceTimer?.Stop();
-        if (_pendingUndoText is null) return;
-        UndoManager.Instance.PushSnapshot(_pendingUndoTabId, _pendingUndoText, _pendingUndoCursor);
-        _pendingUndoText = null;
+        if (_pendingUndoTab is not { } tab) return;
+        _pendingUndoTab = null;
+        if (!ReferenceEquals(tab, _activeTab)) return;
+        UndoManager.Instance.PushSnapshot(tab.Id, currentText ?? ContentEditor.Text, ContentEditor.CaretIndex);
     }
 
     /// <summary>
     /// Defers <c>_activeTab.Content</c> assignment (and its PropertyChanged / DisplayLabel
-    /// recomputation) so it fires at most once per ~100 ms instead of on every keystroke.
+    /// recomputation, and the editor-text read) so it happens at most once per ~100 ms instead of
+    /// on every keystroke.
     /// </summary>
-    private void ThrottleContentSync(string text)
+    private void ThrottleContentSync(NoteTab tab)
     {
-        _pendingContentSync = text;
+        _contentSyncTab = tab;
 
         if (_contentSyncTimer is not null && _contentSyncTimer.IsEnabled) return;
 
@@ -786,52 +744,48 @@ public partial class MainWindow : Window
             {
                 Interval = TimeSpan.FromMilliseconds(100)
             };
-            _contentSyncTimer.Tick += (_, _) =>
-            {
-                _contentSyncTimer.Stop();
-                if (_activeTab is not null && _pendingContentSync is not null)
-                {
-                    _activeTab.Content = _pendingContentSync;
-                    _pendingContentSync = null;
-                }
-            };
+            _contentSyncTimer.Tick += (_, _) => FlushContentSync();
         }
         _contentSyncTimer.Start();
     }
 
     /// <summary>
-    /// Flushes any pending throttled content sync immediately.
-    /// Call before operations that need <c>_activeTab.Content</c> to be current
-    /// (tab switch, save, export).
+    /// Flushes any pending throttled content sync immediately (copies the editor text into the
+    /// edited tab's model). Call before operations that need <c>_activeTab.Content</c> to be
+    /// current (save, export). Dropped if the active tab is no longer the edited one.
     /// </summary>
     private void FlushContentSync()
     {
         _contentSyncTimer?.Stop();
-        if (_activeTab is not null && _pendingContentSync is not null)
-        {
-            _activeTab.Content = _pendingContentSync;
-            _pendingContentSync = null;
-        }
+        if (_contentSyncTab is not { } tab) return;
+        _contentSyncTab = null;
+        if (ReferenceEquals(tab, _activeTab))
+            tab.Content = ContentEditor.Text;
     }
 
     /// <summary>
-    /// 5-minute checkpoint timer tick. Creates a tier-2 checkpoint if content
-    /// has changed since the last checkpoint.
+    /// Discards a pending throttled content sync — for callers that assign
+    /// <c>_activeTab.Content</c> from the editor text themselves right after.
+    /// </summary>
+    private void CancelContentSync()
+    {
+        _contentSyncTimer?.Stop();
+        _contentSyncTab = null;
+    }
+
+    /// <summary>
+    /// Checkpoint timer tick (5 minutes after editing resumed). Creates a tier-2 checkpoint when
+    /// the last one is at least 5 minutes old. Not restarted here: the next keystroke restarts it,
+    /// so an idle editor runs no timer and a checkpoint lands every ~5 minutes while editing.
     /// </summary>
     private void CheckpointTimer_Tick(object? sender, EventArgs e)
     {
         _checkpointTimer.Stop();
         if (_activeTab is null) return;
 
-        var stack = UndoManager.Instance.GetStack(_activeTab.Id);
-        if (stack is not null && stack.ShouldCreateCheckpoint())
-        {
-            string content = ContentEditor.Text;
-            stack.PushCheckpoint(content);
-        }
-
-        // Restart for next 5-minute interval
-        _checkpointTimer.Start();
+        long tabId = _activeTab.Id;
+        if (UndoManager.Instance.IsCheckpointDue(tabId))
+            UndoManager.Instance.PushCheckpoint(tabId, ContentEditor.Text, ContentEditor.CaretIndex);
     }
 
     /// <summary>
@@ -842,11 +796,12 @@ public partial class MainWindow : Window
     {
         if (_activeTab is null) return;
         FlushContentSync();
-        FlushPendingUndoSnapshot(); // capture any coalesced typing and stop the sampler first
+        string current = ContentEditor.Text;
+        FlushPendingUndoSnapshot(current); // capture any coalesced typing and stop the sampler first
 
         // Capture current editor content so redo can restore it.
         // PushSnapshot deduplicates if content matches the current index.
-        UndoManager.Instance.PushSnapshot(_activeTab.Id, ContentEditor.Text, ContentEditor.CaretIndex);
+        UndoManager.Instance.PushSnapshot(_activeTab.Id, current, ContentEditor.CaretIndex);
 
         var entry = UndoManager.Instance.Undo(_activeTab.Id);
         if (entry is null) return;

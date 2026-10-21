@@ -7,12 +7,12 @@ public partial class MainWindow
     private void ShowHelpOverlay()
     {
         ViewModel.IsHelpOpen = true;
-        HelpOverlay.Show();
+        HelpOverlayLazy.Show();
     }
 
     private void HideHelpOverlay()
     {
         ViewModel.IsHelpOpen = false;
-        HelpOverlay.Hide();
+        _helpOverlay?.Hide();
     }
 }
