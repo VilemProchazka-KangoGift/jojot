@@ -26,6 +26,10 @@ public sealed class UndoStack(long tabId, IClock? clock = null)
     /// <summary>Sample rate within the promotion batch (every Nth entry is promoted to tier-2).</summary>
     internal const int PromotionSampleRate = 10;
 
+    /// <summary>Default per-tab byte cap (16 MB). One very large note cannot hold more undo history
+    /// than this, so it can never push the global budget over its collapse threshold on its own.</summary>
+    public const long DefaultMaxBytes = 16L * 1024 * 1024;
+
     private readonly IClock _clock = clock ?? SystemClock.Instance;
     private readonly List<UndoEntry> _tier1 = []; // Fine-grained snapshots
     private readonly List<UndoEntry> _tier2 = []; // Coarse checkpoints
@@ -42,8 +46,14 @@ public sealed class UndoStack(long tabId, IClock? clock = null)
     /// <summary>Updated on any push, undo, or redo. Used by <see cref="UndoManager"/> for LRU collapse.</summary>
     public DateTime LastAccessTime { get; set; } = (clock ?? SystemClock.Instance).Now;
 
+    /// <summary>
+    /// Per-tab byte cap. When a push takes the stack above it, the oldest entries are dropped
+    /// (never the current one). Defaults to <see cref="DefaultMaxBytes"/>.
+    /// </summary>
+    public long MaxBytes { get; set; } = DefaultMaxBytes;
+
     /// <summary>Total entries across both tiers.</summary>
-    private int TotalCount => _tier2.Count + _tier1.Count;
+    internal int TotalCount => _tier2.Count + _tier1.Count;
 
     /// <summary>Returns <c>true</c> if there is a previous state to undo to.</summary>
     public bool CanUndo => _currentIndex > 0;
@@ -118,6 +128,7 @@ public sealed class UndoStack(long tabId, IClock? clock = null)
 
         _currentIndex = TotalCount - 1;
         LastAccessTime = _clock.Now;
+        EnforceByteCap();
     }
 
     /// <summary>
@@ -149,6 +160,61 @@ public sealed class UndoStack(long tabId, IClock? clock = null)
 
         _lastCheckpointTime = _clock.Now;
         LastAccessTime = _clock.Now;
+        EnforceByteCap();
+    }
+
+    /// <summary>
+    /// Drops the oldest entries (the front of the logical sequence: tier-2 first, then tier-1)
+    /// while the stack is above <see cref="MaxBytes"/>. Never drops the current entry, so a single
+    /// entry larger than the cap is kept.
+    /// </summary>
+    private void EnforceByteCap()
+    {
+        while (_estimatedBytes > MaxBytes && _currentIndex > 0)
+        {
+            if (_tier2.Count > 0)
+            {
+                _estimatedBytes -= EntryBytes(_tier2[0]);
+                _tier2.RemoveAt(0);
+            }
+            else
+            {
+                _estimatedBytes -= EntryBytes(_tier1[0]);
+                _tier1.RemoveAt(0);
+            }
+            _currentIndex--;
+        }
+    }
+
+    /// <summary>
+    /// Whether a memory-pressure collapse could free anything from this stack. An inactive stack
+    /// can collapse tier-1 (2+ entries) or evict tier-2; the active stack only gives up tier-2
+    /// entries older than its current position, so its recent fine-grained history is kept.
+    /// </summary>
+    /// <param name="isActive">True for the active tab's stack.</param>
+    internal bool CanFreeMemory(bool isActive) =>
+        isActive
+            ? Math.Min(_tier2.Count, _currentIndex) > 0
+            : _tier1.Count > 1 || _tier2.Count > 0;
+
+    /// <summary>
+    /// Evicts up to <paramref name="count"/> of the oldest tier-2 entries that lie strictly before
+    /// the current position — used for the active tab, whose current entry must survive.
+    /// </summary>
+    /// <param name="count">Maximum number of entries to evict.</param>
+    internal void EvictOldestTier2BeforeCurrent(int count)
+    {
+        int toRemove = Math.Min(count, Math.Min(_tier2.Count, _currentIndex));
+        if (toRemove <= 0)
+        {
+            return;
+        }
+
+        for (int i = 0; i < toRemove; i++)
+            _estimatedBytes -= EntryBytes(_tier2[i]);
+
+        _tier2.RemoveRange(0, toRemove);
+        _currentIndex -= toRemove;
     }
 
     /// <summary>

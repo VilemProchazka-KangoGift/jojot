@@ -33,7 +33,7 @@ public partial class MainWindow
             _searchDebounceTimer.Tick += (_, _) =>
             {
                 _searchDebounceTimer.Stop();
-                RebuildTabList();
+                RebuildTabList(refreshFilter: true);
             };
         }
         _searchDebounceTimer.Stop();
@@ -52,7 +52,7 @@ public partial class MainWindow
         _searchDebounceTimer?.Stop(); // cancel it — refresh right now instead
         _searchText = "";
         SearchPlaceholder.Visibility = Visibility.Visible;
-        RebuildTabList();
+        RebuildTabList(refreshFilter: true);
     }
 
     /// <summary>
@@ -219,18 +219,15 @@ public partial class MainWindow
             return;
         }
 
-        // Debounce short queries that produce many matches in large texts
+        // Debounce every query so typing a word doesn't start a full-text scan (and a materialized
+        // copy of the editor text) per keystroke; short queries, which produce many matches in
+        // large texts, wait longer.
         var delay = e.Query.Length switch
         {
             1 => TimeSpan.FromMilliseconds(400),
             2 => TimeSpan.FromMilliseconds(200),
-            _ => TimeSpan.Zero
+            _ => TimeSpan.FromMilliseconds(150)
         };
-        if (delay == TimeSpan.Zero)
-        {
-            _ = RunSearchAsync(e.Query, e.CaseSensitive, e.WholeWord);
-            return;
-        }
 
         if (_findDebounceTimer is null)
         {
@@ -340,13 +337,13 @@ public partial class MainWindow
         string replacement = FindPanelLazy.GetReplaceText();
         int matchPos = _findMatches[_currentFindIndex];
 
-        // Push undo snapshot before replacement
-        FlushPendingUndoSnapshot();
-        var stack = UndoManager.Instance.GetOrCreateStack(_activeTab.Id);
-        stack.PushSnapshot(ContentEditor.Text);
+        // Push undo snapshot before replacement (through UndoManager so its byte accounting holds)
+        string before = ContentEditor.Text;
+        FlushPendingUndoSnapshot(before);
+        UndoManager.Instance.PushSnapshot(_activeTab.Id, before, ContentEditor.CaretIndex);
 
         string newContent = ViewModels.MainWindowViewModel.ReplaceSingle(
-            ContentEditor.Text, matchPos, _findQueryLength, replacement);
+            before, matchPos, _findQueryLength, replacement);
 
         // TextChanged is suppressed during the assignment, so the autosave trigger is skipped —
         // mark dirty explicitly so the replacement is persisted (and survives window close).
@@ -372,12 +369,13 @@ public partial class MainWindow
         string replacement = FindPanelLazy.GetReplaceText();
 
         // Push undo snapshot BEFORE replacement so Replace All is a single undo action
-        FlushPendingUndoSnapshot();
-        var stack = UndoManager.Instance.GetOrCreateStack(_activeTab.Id);
-        stack.PushSnapshot(ContentEditor.Text);
+        // (through UndoManager so its byte accounting holds)
+        string before = ContentEditor.Text;
+        FlushPendingUndoSnapshot(before);
+        UndoManager.Instance.PushSnapshot(_activeTab.Id, before, ContentEditor.CaretIndex);
 
         var (newContent, count) = ViewModels.MainWindowViewModel.ReplaceAll(
-            ContentEditor.Text, query, replacement,
+            before, query, replacement,
             FindPanelLazy.CaseSensitive, FindPanelLazy.WholeWord);
 
         // TextChanged is suppressed during the assignment, so mark dirty explicitly so the

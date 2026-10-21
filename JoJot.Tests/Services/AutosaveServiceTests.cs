@@ -289,6 +289,26 @@ public class AutosaveServiceTests
         service.IsDirty.Should().BeTrue("content of an unpersisted tab must stay flagged for a later flush");
     }
 
+    [Fact]
+    public async Task FlushInBackground_TwiceForOneEdit_WritesOnce()
+    {
+        // The new-tab / clone / delete path: SaveCurrentTabContent flushes the outgoing tab, then
+        // the SelectionChanged that follows flushes again. Only the first may write.
+        var saved = new List<(long TabId, string Content)>();
+        var service = new AutosaveService(new TestClock(), new TestTimer());
+        service.Configure(
+            contentProvider: () => (5L, "edited"),
+            saveFunc: (id, content) => { lock (saved) saved.Add((id, content)); return Task.CompletedTask; });
+
+        service.NotifyTextChanged();
+        service.FlushInBackground(); // SaveCurrentTabContent
+        service.FlushInBackground(); // TabList_SelectionChanged
+
+        (await BackgroundWriter.DrainAsync(TimeSpan.FromSeconds(2))).Should().BeTrue();
+        saved.Should().ContainSingle().Which.Should().Be((5L, "edited"));
+        service.IsDirty.Should().BeFalse();
+    }
+
     // ─── Stop ──────────────────────────────────────────────────────────
 
     [Fact]

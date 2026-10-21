@@ -22,6 +22,7 @@ public sealed class TextBoxHighlightAdorner : Adorner
     private int _queryLength;
     private Brush? _cachedMatchBrush;
     private Brush? _cachedActiveBrush;
+    private readonly RectangleGeometry _clipGeometry = new();
 
     public TextBoxHighlightAdorner(TextBox textBox) : base(textBox)
     {
@@ -71,38 +72,43 @@ public sealed class TextBoxHighlightAdorner : Adorner
             ? lastLineStart + lastLineLength
             : _textBox.Text.Length;
 
-        // Clip to TextBox bounds so highlights don't bleed over toolbar
-        var clipRect = new Rect(0, 0, _textBox.ActualWidth, _textBox.ActualHeight);
-        drawingContext.PushClip(new RectangleGeometry(clipRect));
+        if (_cachedMatchBrush is not { } matchBrush || _cachedActiveBrush is not { } activeBrush) return;
 
-        if (_cachedMatchBrush is null || _cachedActiveBrush is null) return;
-
-        if (_matches.Count > HighlightThreshold)
+        // Clip to TextBox bounds so highlights don't bleed over toolbar. One geometry is reused
+        // across renders (only its Rect changes) instead of allocating one per render.
+        _clipGeometry.Rect = new Rect(0, 0, _textBox.ActualWidth, _textBox.ActualHeight);
+        drawingContext.PushClip(_clipGeometry);
+        try
         {
-            // Too many matches — only highlight the active one to stay responsive
-            if (_activeIndex >= 0 && _activeIndex < _matches.Count)
+            if (_matches.Count > HighlightThreshold)
             {
-                int pos = _matches[_activeIndex];
-                if (pos + _queryLength >= visibleStart && pos <= visibleEnd)
-                    DrawMatch(drawingContext, pos, _cachedActiveBrush);
+                // Too many matches — only highlight the active one to stay responsive
+                if (_activeIndex >= 0 && _activeIndex < _matches.Count)
+                {
+                    int pos = _matches[_activeIndex];
+                    if (pos + _queryLength >= visibleStart && pos <= visibleEnd)
+                        DrawMatch(drawingContext, pos, activeBrush);
+                }
+            }
+            else
+            {
+                // Binary search for first match in visible range
+                int startIdx = BinarySearchFirstVisible(visibleStart);
+
+                for (int i = startIdx; i < _matches.Count; i++)
+                {
+                    int pos = _matches[i];
+                    if (pos > visibleEnd) break;
+
+                    var brush = (i == _activeIndex) ? activeBrush : matchBrush;
+                    DrawMatch(drawingContext, pos, brush);
+                }
             }
         }
-        else
+        finally
         {
-            // Binary search for first match in visible range
-            int startIdx = BinarySearchFirstVisible(visibleStart);
-
-            for (int i = startIdx; i < _matches.Count; i++)
-            {
-                int pos = _matches[i];
-                if (pos > visibleEnd) break;
-
-                var brush = (i == _activeIndex) ? _cachedActiveBrush : _cachedMatchBrush;
-                DrawMatch(drawingContext, pos, brush);
-            }
+            drawingContext.Pop(); // balance PushClip on every path
         }
-
-        drawingContext.Pop();
     }
 
     private void DrawMatch(DrawingContext drawingContext, int pos, Brush brush)

@@ -156,6 +156,42 @@ public sealed class MainWindowViewModel : ObservableObject
     }
 
     /// <summary>
+    /// Recomputes every tab's <see cref="NoteTab.ShowUnpinnedSeparator"/>: the first tab matching
+    /// the search that is unpinned shows the zone divider when at least one matching pinned tab
+    /// exists. Computed over the search-filtered set so an active search never leaves the divider
+    /// on a hidden tab. Only writes a flag when it changes — the bound template updates itself
+    /// through PropertyChanged, so no collection-view refresh (container rebuild) is needed.
+    /// </summary>
+    /// <returns>The number of tabs whose flag changed.</returns>
+    internal int UpdateZoneSeparators()
+    {
+        bool hasVisiblePinned = false;
+        foreach (var tab in Tabs)
+        {
+            if (tab.Pinned && MatchesSearch(tab)) { hasVisiblePinned = true; break; }
+        }
+
+        int changed = 0;
+        bool firstUnpinnedSeen = false;
+        foreach (var tab in Tabs)
+        {
+            bool show = false;
+            if (hasVisiblePinned && !firstUnpinnedSeen && !tab.Pinned && MatchesSearch(tab))
+            {
+                show = true;
+                firstUnpinnedSeen = true;
+            }
+
+            if (tab.ShowUnpinnedSeparator != show)
+            {
+                tab.ShowUnpinnedSeparator = show;
+                changed++;
+            }
+        }
+        return changed;
+    }
+
+    /// <summary>
     /// Removes a tab from the collection and returns the focus cascade target.
     /// Does NOT delete from database — caller handles that.
     /// </summary>
