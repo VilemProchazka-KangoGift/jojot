@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.IO;
 using System.Runtime.CompilerServices;
 using JoJot.Interop;
@@ -20,7 +21,11 @@ public static class Program
     {
         Directory.CreateDirectory(AppEnvironment.AppDataDirectory);
         LogService.Initialize(AppEnvironment.AppDataDirectory);
-        LogService.Info("JoJot starting...");
+        using (var process = Process.GetCurrentProcess())
+        {
+            var preMainMs = (long)(DateTime.Now - process.StartTime).TotalMilliseconds;
+            LogService.Info("JoJot starting... ({PreMainMs}ms since process start)", preMainMs);
+        }
 
         bool createdNew = IpcService.TryAcquireMutex(out var mutex);
         if (!createdNew)

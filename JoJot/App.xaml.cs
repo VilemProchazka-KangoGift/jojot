@@ -72,10 +72,20 @@ public partial class App : Application
     /// <summary>Tracks the previous phase's elapsed time for startup delta logging.</summary>
     private static long _lastPhaseMs;
 
+    /// <summary>Startup stopwatch, started at the top of OnAppStartup.</summary>
+    private static Stopwatch _startupStopwatch = new();
+
+    /// <summary>
+    /// True only while OnAppStartup runs. CreateWindowShell / CompleteWindowInitAsync are also
+    /// used later (IPC/hotkey windows), where startup phase logging must stay silent.
+    /// </summary>
+    private static bool _startupPhaseLoggingActive;
+
     /// <summary>Logs one startup phase with cumulative and delta milliseconds.</summary>
-    private static void LogPhase(Stopwatch sw, string phase)
+    private static void LogPhase(string phase)
     {
-        long now = sw.ElapsedMilliseconds;
+        if (!_startupPhaseLoggingActive) return;
+        long now = _startupStopwatch.ElapsedMilliseconds;
         LogService.Info("Startup phase {Phase} at {TotalMs}ms (+{DeltaMs}ms)", phase, now, now - _lastPhaseMs);
         _lastPhaseMs = now;
     }
@@ -118,7 +128,11 @@ public partial class App : Application
 
         try
         {
-            var sw = Stopwatch.StartNew();
+            _startupStopwatch = Stopwatch.StartNew();
+            _startupPhaseLoggingActive = true;
+
+            // UI-thread guard: DatabaseCore logs a one-time warning per caller for DB work on the dispatcher.
+            DatabaseCore.IsUiThread = () => Dispatcher.CheckAccess();
 
             // Explicit shutdown mode — process stays alive when all windows are closed
             ShutdownMode = ShutdownMode.OnExplicitShutdown;
@@ -140,7 +154,7 @@ public partial class App : Application
                 // First launch (or lost snapshot): preferences must come from the DB before any UI.
                 await dbInitTask;
             }
-            LogPhase(sw, "db-kickoff+snapshot");
+            LogPhase("db-kickoff+snapshot");
 
             var savedLogLevel = await PreferenceStore.GetPreferenceAsync("log_level");
             var parsedLevel = ParseLogLevel(savedLogLevel);
@@ -153,7 +167,7 @@ public partial class App : Application
             await ThemeService.InitializeAsync();       // reads "theme" from cache — instant on fast path
             await VirtualDesktopService.InitializeAsync();
             VirtualDesktopService.SubscribeNotifications();
-            LogPhase(sw, "prefs+language+theme+vd-init");
+            LogPhase("prefs+language+theme+vd-init");
             if (VirtualDesktopService.IsAvailable)
             {
                 LogService.Info("Virtual desktop: {DesktopGuid} ({DesktopName})", VirtualDesktopService.CurrentDesktopGuid, VirtualDesktopService.CurrentDesktopName);
@@ -166,32 +180,34 @@ public partial class App : Application
             // Window appears NOW — before the database is ready on the fast path.
             var currentDesktopGuid = VirtualDesktopService.CurrentDesktopGuid;
             var mainWindow = CreateWindowShell(currentDesktopGuid);
-            LogPhase(sw, "window-shell-shown");
+            LogPhase("window-shell-shown");
 
             await dbInitTask;
-            LogPhase(sw, "db-ready");
+            LogPhase("db-ready");
 
             // Reconcile provisional (snapshot) preferences against database truth.
             var dbPrefs = await PreferenceStore.InitializeCacheAsync();
             ReconcileSnapshotPreferences(dbPrefs);
+            LogPhase("prefs-cache");
 
             // Session matching — associate saved sessions with live desktops
             await VirtualDesktopService.MatchSessionsAsync();
             await VirtualDesktopService.EnsureCurrentDesktopSessionAsync();
+            LogPhase("session-match");
 
             // Resolve pending moves from crash recovery, auto-delete old notes, welcome tab
             await ResolvePendingMovesAsync();
             await RunAutoDeleteAsync();
             await StartupService.CreateWelcomeTabIfFirstLaunch();
+            LogPhase("recovery+autodelete+welcome");
 
             // Run pending migrations (no-op when schema is already stamped)
             await StartupService.RunBackgroundMigrationsAsync();
-            LogPhase(sw, "session+recovery+migrations");
+            LogPhase("migrations");
 
             // Complete DB-dependent window setup behind the already-visible window.
             await CompleteWindowInitAsync(mainWindow, currentDesktopGuid);
             mainWindow.UpdateOrphanBadge();
-            LogPhase(sw, "tabs-loaded");
 
             // Start IPC server
             IpcService.StartServer(HandleIpcCommand, _appShutdownCts.Token);
@@ -199,7 +215,7 @@ public partial class App : Application
             // Register the global hotkey once, on a dedicated message-only window owned by the app
             // (not any MainWindow) so it keeps working after all windows are closed.
             await HotkeyService.InitializeAsync(OnGlobalHotkeyPressed);
-            LogPhase(sw, "ipc+hotkey");
+            LogPhase("ipc+hotkey");
 
             // Wire desktop event handlers
             // Live title updates when desktop is renamed in Windows Settings
@@ -228,11 +244,14 @@ public partial class App : Application
                 LogService.Info("Desktop switched: {OldGuid} -> {NewGuid}", oldGuid, newGuid);
 
             // Log startup timing
-            sw.Stop();
-            LogService.Info("Startup complete in {ElapsedMs}ms", sw.ElapsedMilliseconds);
+            _startupStopwatch.Stop();
+            LogService.Info("Tab containers realized during startup: {Count}", JoJot.MainWindow.TabContainersLoadedCount);
+            LogService.Info("Startup complete in {ElapsedMs}ms", _startupStopwatch.ElapsedMilliseconds);
+            _startupPhaseLoggingActive = false;
         }
         catch (Exception ex)
         {
+            _startupPhaseLoggingActive = false;
             LogService.Error("Fatal error during application startup", ex);
         }
     }
@@ -246,6 +265,7 @@ public partial class App : Application
     private MainWindow CreateWindowShell(string desktopGuid)
     {
         var window = new MainWindow(desktopGuid);
+        LogPhase("window-ctor");
 
         window.Closed += (_, _) =>
         {
@@ -270,6 +290,7 @@ public partial class App : Application
 
         _windows[desktopGuid] = window;
         window.Show();
+        LogPhase("window-shown");
 
         if (geo is not null)
         {
@@ -281,6 +302,7 @@ public partial class App : Application
             var hwnd = new WindowInteropHelper(window).Handle;
             VirtualDesktopService.TryMoveWindowToDesktop(hwnd, desktopGuid);
         }
+        LogPhase("window-moved");
 
         return window;
     }
@@ -303,7 +325,9 @@ public partial class App : Application
         }
 
         await window.LoadTabsAsync();
+        LogPhase("tabs-loaded");
         await window.InitializePreferencesAsync();
+        LogPhase("prefs-panel");
 
         WindowActivationHelper.ActivateWindow(window);
 

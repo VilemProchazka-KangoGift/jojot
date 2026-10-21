@@ -15,6 +15,12 @@ public partial class MainWindow
     private static readonly SolidColorBrush DangerBrush =
         new(System.Windows.Media.Color.FromRgb(0xe7, 0x4c, 0x3c));
 
+    /// <summary>Number of TabItemBorder_Loaded calls (tab container realizations). Diagnostic only.</summary>
+    private static int _tabContainersLoadedCount;
+
+    /// <summary>Tab containers realized so far (measures container churn during startup).</summary>
+    internal static int TabContainersLoadedCount => Volatile.Read(ref _tabContainersLoadedCount);
+
     static MainWindow()
     {
         DangerBrush.Freeze(); // frozen brushes are cheaper to render and thread-safe
@@ -172,6 +178,7 @@ public partial class MainWindow
     /// </summary>
     private void TabItemBorder_Loaded(object sender, RoutedEventArgs e)
     {
+        Interlocked.Increment(ref _tabContainersLoadedCount);
         var outerBorder = (Border)sender;
         if (outerBorder.DataContext is not NoteTab tab) return;
 

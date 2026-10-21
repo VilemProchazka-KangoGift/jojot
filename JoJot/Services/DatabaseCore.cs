@@ -1,4 +1,5 @@
 using System.IO;
+using System.Runtime.CompilerServices;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
@@ -25,8 +26,36 @@ public static class DatabaseCore
 
     internal static IClock Clock => _clock;
 
-    internal static async Task AcquireWriteLockAsync(CancellationToken ct = default)
+    /// <summary>
+    /// Optional UI-thread probe (set by App at startup; null in tests). When it returns true,
+    /// DB entry points log a one-time warning per caller so the log shows which code paths
+    /// still run database work on the WPF dispatcher thread.
+    /// </summary>
+    internal static Func<bool>? IsUiThread;
+
+    private static readonly HashSet<string> _uiThreadCallersWarned = new(StringComparer.Ordinal);
+    private static readonly Lock _uiThreadWarnLock = new();
+
+    /// <summary>Logs a warning the first time <paramref name="caller"/> touches the DB on the UI thread.</summary>
+    private static void WarnIfUiThread(string caller)
     {
+        if (IsUiThread?.Invoke() != true) return;
+
+        bool firstTime;
+        lock (_uiThreadWarnLock)
+        {
+            firstTime = _uiThreadCallersWarned.Add(caller);
+        }
+        if (firstTime)
+        {
+            LogService.Warn("DB access on UI thread from {Caller}", caller);
+        }
+    }
+
+    internal static async Task AcquireWriteLockAsync(CancellationToken ct = default, [CallerMemberName] string caller = "")
+    {
+        WarnIfUiThread(caller);
+
         // Fast path: no external cancellation token — skip linked CTS allocation
         if (ct == default)
         {
@@ -51,8 +80,11 @@ public static class DatabaseCore
 
     internal static void ReleaseWriteLock() => _writeLock.Release();
 
-    internal static JoJotDbContext CreateContext() =>
-        _contextFactory?.CreateDbContext() ?? new JoJotDbContext(_connectionString);
+    internal static JoJotDbContext CreateContext([CallerMemberName] string caller = "")
+    {
+        WarnIfUiThread(caller);
+        return _contextFactory?.CreateDbContext() ?? new JoJotDbContext(_connectionString);
+    }
 
     /// <summary>The current connection string. Exposed for test verification only.</summary>
     internal static string ConnectionString => _connectionString;
@@ -437,8 +469,9 @@ public static class DatabaseCore
         return found;
     }
 
-    private static async Task ExecuteRawPragmaAsync(string sql)
+    private static async Task ExecuteRawPragmaAsync(string sql, [CallerMemberName] string caller = "")
     {
+        WarnIfUiThread(caller);
         await using var cmd = _rawConnection!.CreateCommand();
         cmd.CommandText = sql;
         await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
