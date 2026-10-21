@@ -696,6 +696,18 @@ public class LogServiceInitializeTests : IDisposable
         LogService.SetMinimumLevel(Serilog.Events.LogEventLevel.Debug);
         LogService.GetMinimumLevel().Should().Be(Serilog.Events.LogEventLevel.Debug);
     }
+
+    [Fact]
+    public void Initialize_DeletesLegacyLogFiles()
+    {
+        File.WriteAllText(Path.Combine(_tempDir, "jojot.log"), "legacy");
+        File.WriteAllText(Path.Combine(_tempDir, "jojot.log.old"), "legacy");
+
+        LogService.Initialize(_tempDir);
+
+        File.Exists(Path.Combine(_tempDir, "jojot.log")).Should().BeFalse();
+        File.Exists(Path.Combine(_tempDir, "jojot.log.old")).Should().BeFalse();
+    }
 }
 
 /// <summary>

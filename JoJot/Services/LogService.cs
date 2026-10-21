@@ -6,9 +6,11 @@ using Serilog.Events;
 namespace JoJot.Services;
 
 /// <summary>
-/// Dual-output logging service backed by Serilog.
-/// Writes to a rolling log file and <see cref="System.Diagnostics.Debug"/> output.
-/// Thread-safe. Log files rotate daily and when exceeding 5 MB, retaining 5 files.
+/// Logging service backed by Serilog.
+/// Writes to a rolling daily log file (<c>jojot{yyyyMMdd}.log</c>) and, in Debug builds only,
+/// to <see cref="System.Diagnostics.Debug"/> output. Thread-safe. Retains 5 files; each file is
+/// capped at 5 MB. The file is opened in shared mode so the primary instance and a short-lived
+/// second instance append to the same file (lines carry the process id).
 /// Supports structured message templates, configurable minimum level, and per-service context.
 /// </summary>
 public static class LogService
@@ -16,25 +18,83 @@ public static class LogService
     private static readonly LoggingLevelSwitch LevelSwitch = new(LogEventLevel.Information);
 
     /// <summary>
-    /// Initializes the Serilog pipeline with file and debug sinks, enrichers, and level control.
+    /// Log files from an older naming scheme. The current retention only applies to the
+    /// <c>jojot{Date}.log</c> pattern, so these were never deleted (one was seen at 71 MB).
+    /// </summary>
+    internal static readonly string[] LegacyLogFileNames = ["jojot.log", "jojot.log.old"];
+
+    /// <summary>
+    /// Initializes the Serilog pipeline with the file sink (plus the debug sink in Debug builds),
+    /// enrichers, and level control, then removes legacy log files.
     /// Must be called before any other logging methods.
     /// </summary>
-    /// <param name="directory">Directory where <c>jojot.log</c> will be written.</param>
+    /// <param name="directory">Directory where the <c>jojot{Date}.log</c> files are written.</param>
     public static void Initialize(string directory)
     {
-        Log.Logger = new LoggerConfiguration()
+        Log.Logger = CreateConfiguration(directory).CreateLogger();
+
+        var deleted = CleanupLegacyLogs(directory);
+        if (deleted.Count > 0)
+        {
+            Info("LogService: deleted legacy log file(s) {LegacyFiles}", string.Join(", ", deleted));
+        }
+    }
+
+    /// <summary>
+    /// Builds the production pipeline (sinks, enrichers, level switch) without installing it, so
+    /// tests can create an independent logger with the exact production file-sink options.
+    /// </summary>
+    internal static LoggerConfiguration CreateConfiguration(string directory)
+    {
+        var config = new LoggerConfiguration()
             .MinimumLevel.ControlledBy(LevelSwitch)
             .Enrich.WithThreadId()
             .Enrich.WithProcessId()
+            // shared: true — a second instance (taskbar "new note") logs while the primary holds the
+            // file. Exclusive mode made Serilog spill each second instance into a jojot{Date}_001.log
+            // file, eating the 5-file retention. Shared mode is compatible with rollingInterval and
+            // fileSizeLimitBytes; it only rules out buffered: true (left at its false default) and
+            // file lifecycle hooks (none used).
             .WriteTo.Async(a => a.File(
                 path: Path.Combine(directory, "jojot.log"),
                 rollingInterval: RollingInterval.Day,
                 fileSizeLimitBytes: 5 * 1024 * 1024,
                 retainedFileCountLimit: 5,
-                outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff} [{Level:u5}] [{ThreadId}] {Message:lj}{NewLine}{Exception}"))
-            .WriteTo.Debug(
-                outputTemplate: "[{Level:u5}] [{ThreadId}] {Message:lj}{NewLine}{Exception}")
-            .CreateLogger();
+                shared: true,
+                outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff} [{Level:u5}] [{ProcessId}:{ThreadId}] {Message:lj}{NewLine}{Exception}"));
+#if DEBUG
+        // The Debug sink writes synchronously on the logging thread — Debug builds only.
+        config = config.WriteTo.Debug(
+            outputTemplate: "[{Level:u5}] [{ThreadId}] {Message:lj}{NewLine}{Exception}");
+#endif
+        return config;
+    }
+
+    /// <summary>
+    /// Deletes exactly the <see cref="LegacyLogFileNames"/> from <paramref name="directory"/> if
+    /// present. Never throws: a file that cannot be deleted (locked, access denied) is skipped and
+    /// retried on the next start. Returns the names that were deleted.
+    /// </summary>
+    internal static IReadOnlyList<string> CleanupLegacyLogs(string directory)
+    {
+        var deleted = new List<string>();
+        foreach (var name in LegacyLogFileNames)
+        {
+            try
+            {
+                var path = Path.Combine(directory, name);
+                if (File.Exists(path))
+                {
+                    File.Delete(path);
+                    deleted.Add(name);
+                }
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                Warn("LogService: could not delete legacy log file {LegacyFile}", name, ex);
+            }
+        }
+        return deleted;
     }
 
     /// <summary>

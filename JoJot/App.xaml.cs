@@ -10,8 +10,8 @@ namespace JoJot;
 
 /// <summary>
 /// Application entry point.
-/// Orchestrates the full startup sequence: mutex guard, logging, database initialization,
-/// IPC server start, window creation, startup timing, and background migrations.
+/// Orchestrates the full startup sequence: IPC server start (first, queuing early commands),
+/// database initialization, window creation, startup timing, and background migrations.
 /// ShutdownMode is OnExplicitShutdown — the process stays alive when all windows are closed.
 /// Per-desktop window registry maps each virtual desktop to its own MainWindow instance.
 /// </summary>
@@ -96,6 +96,13 @@ public partial class App : Application
     private readonly CancellationTokenSource _appShutdownCts = new();
 
     /// <summary>
+    /// IPC commands that arrived (the pipe server starts before the DB opens) while their target
+    /// window did not exist yet; replayed when startup completes. Becomes "ready" — nothing is
+    /// deferred any more — at the same moment (the startup-completed flag).
+    /// </summary>
+    private readonly IpcCommandQueue _ipcQueue = new();
+
+    /// <summary>
     /// Per-desktop window registry. Key is desktop GUID string (case-insensitive).
     /// Windows are added on creation and removed on Closed event.
     /// </summary>
@@ -142,6 +149,12 @@ public partial class App : Application
 
             // Handle OS shutdown/logoff so JoJot does not block Windows session end
             SessionEnding += OnSessionEnding;
+
+            // IPC server FIRST — before the DB opens — so a second instance launched during this
+            // cold start connects at once instead of timing out and treating us as a zombie.
+            // HandleIpcCommand queues commands whose window does not exist yet until startup completes.
+            IpcService.StartServer(HandleIpcCommand, _appShutdownCts.Token);
+            LogPhase("ipc-server");
 
             // Kick off the entire DB pipeline immediately; it runs while the window appears.
             var dbInitTask = InitializeDatabaseAsync();
@@ -224,13 +237,10 @@ public partial class App : Application
             // Tabs load, editor enabled and focused. Logs "tabs-loaded".
             await CompleteWindowInitAsync(mainWindow, currentDesktopGuid);
 
-            // Start IPC server
-            IpcService.StartServer(HandleIpcCommand, _appShutdownCts.Token);
-
             // Register the global hotkey once, on a dedicated message-only window owned by the app
             // (not any MainWindow) so it keeps working after all windows are closed.
             await HotkeyService.InitializeAsync(OnGlobalHotkeyPressed);
-            LogPhase("ipc+hotkey");
+            LogPhase("hotkey");
 
             // Wire desktop event handlers
             // Live title updates when desktop is renamed in Windows Settings
@@ -276,6 +286,29 @@ public partial class App : Application
         {
             // Startup is over (or failed): GetAllDesktops goes back to live COM enumeration.
             VirtualDesktopService.CacheDesktopsDuringStartup = false;
+
+            // Also on failure: otherwise every later IPC command would be queued forever.
+            ReplayQueuedIpcCommands();
+        }
+    }
+
+    /// <summary>
+    /// Marks startup complete for IPC (nothing is deferred from now on) and replays, in arrival
+    /// order, the commands that arrived before their target window existed. A command for the
+    /// first window's desktop now finds that window; any other desktop goes through
+    /// CreateWindowForDesktop, which works because the DB is open by now.
+    /// </summary>
+    private void ReplayQueuedIpcCommands()
+    {
+        var queued = _ipcQueue.MarkReady();
+        if (queued.Count == 0) return;
+
+        LogService.Info("IPC: replaying {QueuedCount} command(s) received during startup", queued.Count);
+        foreach (var message in queued)
+        {
+            // Sequential on the UI thread: a window created by one replayed command is registered
+            // in _windows synchronously, so a later command for the same desktop reuses it.
+            HandleIpcCommand(message);
         }
     }
 
@@ -484,6 +517,10 @@ public partial class App : Application
     /// Routes incoming IPC commands to the correct desktop's window.
     /// Resolves the current desktop GUID at handle time (live state, not send time).
     /// Always called on the UI Dispatcher (IpcService ensures this).
+    /// The pipe server starts before the DB opens: while startup is still running, a command whose
+    /// target desktop has no window yet is queued (<see cref="_ipcQueue"/>) and replayed when
+    /// startup completes. A command for an existing window is handled at once — the window queues
+    /// a new-tab request itself until its tabs have loaded.
     /// Entire body is wrapped in try/catch since this is an async void handler.
     /// </summary>
     private async void HandleIpcCommand(IpcMessage message)
@@ -491,6 +528,16 @@ public partial class App : Application
         try
         {
             var desktopGuid = VirtualDesktopService.CurrentDesktopGuid;
+
+            var deferTarget = message is NewTabCommand pending
+                ? ResolveTargetDesktop(pending.DesktopGuid, desktopGuid)
+                : desktopGuid;
+            if (_ipcQueue.TryDefer(message, targetWindowExists: _windows.ContainsKey(deferTarget)))
+            {
+                LogService.Info("IPC: {CommandType} for desktop {TargetDesktop} arrived during startup — queued ({QueuedCount} pending)",
+                    message.GetType().Name, deferTarget, _ipcQueue.Count);
+                return;
+            }
 
             switch (message)
             {
