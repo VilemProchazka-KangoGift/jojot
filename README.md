@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="resources/icon-jj-3.png" width="80" alt="JoJot" />
+  <img src="resources/icon-jj-satin.png" width="80" alt="JoJot" />
   <h1>JoJot</h1>
   <p><strong>Notes that follow your virtual desktops.</strong><br>
   Switch desktops, switch context — your notes are already there.</p>
