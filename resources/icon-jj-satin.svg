@@ -10,13 +10,15 @@
       <stop offset="1" stop-color="#0759D0"/>
     </linearGradient>
   </defs>
-  <rect x="101" y="91" width="371" height="371" rx="67" transform="rotate(6 286.5 276.5)" fill="url(#rear)"/>
-  <g transform="rotate(-7 247 247)">
-    <rect x="62" y="62" width="371" height="371" rx="67" fill="#064AA9" opacity=".13" transform="translate(6 8)"/>
-    <rect x="62" y="62" width="371" height="371" rx="67" fill="url(#front)"/>
-    <g transform="rotate(7 247 247)" fill="none" stroke="#F4FBFF" stroke-width="37" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M117 300C127 320 142 330 163 330C188 330 202 313 202 285V184H157"/>
-      <path d="M269 300C279 320 294 330 315 330C340 330 354 313 354 285V184H309"/>
+  <g transform="translate(-26 -26) scale(1.1)">
+    <rect x="101" y="91" width="371" height="371" rx="67" transform="rotate(6 286.5 276.5)" fill="url(#rear)"/>
+    <g transform="rotate(-7 247 247)">
+      <rect x="62" y="62" width="371" height="371" rx="67" fill="#064AA9" opacity=".13" transform="translate(6 8)"/>
+      <rect x="62" y="62" width="371" height="371" rx="67" fill="url(#front)"/>
+      <g transform="rotate(7 247 247)" fill="none" stroke="#F4FBFF" stroke-width="37" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M117 300C127 320 142 330 163 330C188 330 202 313 202 285V184H157"/>
+        <path d="M269 300C279 320 294 330 315 330C340 330 354 313 354 285V184H309"/>
+      </g>
     </g>
   </g>
 </svg>
