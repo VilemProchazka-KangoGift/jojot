@@ -1,5 +1,6 @@
 using System.IO;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using JoJot.Models;
 
 namespace JoJot.Services;
@@ -14,7 +15,7 @@ namespace JoJot.Services;
 /// </summary>
 public static class StartupSnapshot
 {
-    private sealed class SnapshotData
+    internal sealed class SnapshotData
     {
         public Dictionary<string, string> Preferences { get; set; } = [];
         public Dictionary<string, WindowGeometry> Geometry { get; set; } = new(StringComparer.OrdinalIgnoreCase);
@@ -44,7 +45,7 @@ public static class StartupSnapshot
         try
         {
             if (!File.Exists(FilePath)) return false;
-            var loaded = JsonSerializer.Deserialize<SnapshotData>(File.ReadAllText(FilePath));
+            var loaded = JsonSerializer.Deserialize(File.ReadAllText(FilePath), StartupSnapshotJsonContext.Default.SnapshotData);
             if (loaded is null) return false;
             // System.Text.Json builds a fresh case-sensitive dictionary; restore ordinal-ignore-case
             // so GetGeometry lookups behave the same as a freshly-constructed SnapshotData.
@@ -104,7 +105,7 @@ public static class StartupSnapshot
             string json;
             lock (_lock)
             {
-                json = JsonSerializer.Serialize(_data);
+                json = JsonSerializer.Serialize(_data, StartupSnapshotJsonContext.Default.SnapshotData);
             }
             string tmp = FilePath + ".tmp";
             await File.WriteAllTextAsync(tmp, json).ConfigureAwait(false);
@@ -132,3 +133,6 @@ public static class StartupSnapshot
         }
     }
 }
+
+[JsonSerializable(typeof(StartupSnapshot.SnapshotData))]
+internal sealed partial class StartupSnapshotJsonContext : JsonSerializerContext;

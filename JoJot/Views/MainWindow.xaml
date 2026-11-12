@@ -18,6 +18,88 @@
         PreviewDragEnter="OnFileDragEnter" PreviewDragOver="OnFileDragOver"
         PreviewDragLeave="OnFileDragLeave" Drop="OnFileDrop">
     <Window.Resources>
+        <!-- Deferred until the menu is first opened. -->
+        <DataTemplate x:Key="HamburgerMenuTemplate">
+            <Border Background="{DynamicResource c-sidebar-bg}"
+                    BorderBrush="{DynamicResource c-border}" BorderThickness="1"
+                    CornerRadius="6" Padding="4" MinWidth="220">
+                <Border.Effect>
+                    <DropShadowEffect BlurRadius="12" Opacity="0.25" ShadowDepth="4" Direction="270"/>
+                </Border.Effect>
+                <StackPanel>
+                    <!-- Recover sessions -->
+                    <Border x:Name="MenuRecover" Padding="8,6" Cursor="Hand" Background="Transparent"
+                            MouseEnter="MenuItem_MouseEnter" MouseLeave="MenuItem_MouseLeave"
+                            MouseLeftButtonDown="MenuRecover_Click">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="28"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="&#xE72C;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                       FontSize="14" Foreground="{DynamicResource c-toolbar-icon}" VerticalAlignment="Center"/>
+                            <TextBlock x:Name="MenuRecoverText" Grid.Column="1" Text="{x:Static res:Strings.Menu_Recover}" FontSize="13"
+                                       Foreground="{DynamicResource c-text-primary}" VerticalAlignment="Center"/>
+                        </Grid>
+                    </Border>
+
+                    <!-- Separator -->
+                    <Separator Margin="4,2" Background="{DynamicResource c-border}"/>
+
+                    <!-- Clean up tabs -->
+                    <Border x:Name="MenuCleanup" Padding="8,6" Cursor="Hand" Background="Transparent"
+                            MouseEnter="MenuItem_MouseEnter" MouseLeave="MenuItem_MouseLeave"
+                            MouseLeftButtonDown="MenuCleanup_Click">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="28"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="&#xE74D;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                       FontSize="14" Foreground="{DynamicResource c-toolbar-icon}" VerticalAlignment="Center"/>
+                            <TextBlock Grid.Column="1" Text="{x:Static res:Strings.Menu_Cleanup}" FontSize="13"
+                                       Foreground="{DynamicResource c-text-primary}" VerticalAlignment="Center"/>
+                        </Grid>
+                    </Border>
+
+                    <!-- Separator -->
+                    <Separator Margin="4,2" Background="{DynamicResource c-border}"/>
+
+                    <!-- Preferences -->
+                    <Border x:Name="MenuPreferences" Padding="8,6" Cursor="Hand" Background="Transparent"
+                            MouseEnter="MenuItem_MouseEnter" MouseLeave="MenuItem_MouseLeave"
+                            MouseLeftButtonDown="MenuPreferences_Click">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="28"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="&#xE713;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                       FontSize="14" Foreground="{DynamicResource c-toolbar-icon}" VerticalAlignment="Center"/>
+                            <TextBlock Grid.Column="1" Text="{x:Static res:Strings.Menu_Preferences}" FontSize="13"
+                                       Foreground="{DynamicResource c-text-primary}" VerticalAlignment="Center"/>
+                        </Grid>
+                    </Border>
+
+                    <!-- Exit -->
+                    <Border x:Name="MenuExit" Padding="8,6" Cursor="Hand" Background="Transparent"
+                            MouseEnter="MenuItem_MouseEnter" MouseLeave="MenuItem_MouseLeave"
+                            MouseLeftButtonDown="MenuExit_Click">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="28"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="&#xE7E8;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                       FontSize="14" Foreground="{DynamicResource c-toolbar-icon}" VerticalAlignment="Center"/>
+                            <TextBlock Grid.Column="1" Text="{x:Static res:Strings.Menu_Exit}" FontSize="13"
+                                       Foreground="{DynamicResource c-text-primary}" VerticalAlignment="Center"/>
+                        </Grid>
+                    </Border>
+                </StackPanel>
+            </Border>
+        </DataTemplate>
+
         <BooleanToVisibilityConverter x:Key="BoolToVis"/>
 
         <!-- Tab list item container style: transparent template (highlight is a TabItemTemplate
@@ -568,90 +650,10 @@
             </Border>
         </Grid>
 
-        <!-- Hamburger menu popup (MENU-01) -->
+        <!-- The popup content is loaded on first open from HamburgerMenuTemplate. -->
         <Popup x:Name="HamburgerMenu" StaysOpen="False" AllowsTransparency="True"
                PlacementTarget="{Binding ElementName=HamburgerButton}"
-               Placement="Bottom" HorizontalOffset="-4" VerticalOffset="2">
-            <Border Background="{DynamicResource c-sidebar-bg}"
-                    BorderBrush="{DynamicResource c-border}" BorderThickness="1"
-                    CornerRadius="6" Padding="4" MinWidth="220">
-                <Border.Effect>
-                    <DropShadowEffect BlurRadius="12" Opacity="0.25" ShadowDepth="4" Direction="270"/>
-                </Border.Effect>
-                <StackPanel>
-                    <!-- Recover sessions -->
-                    <Border x:Name="MenuRecover" Padding="8,6" Cursor="Hand" Background="Transparent"
-                            MouseEnter="MenuItem_MouseEnter" MouseLeave="MenuItem_MouseLeave"
-                            MouseLeftButtonDown="MenuRecover_Click">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="28"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="&#xE72C;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
-                                       FontSize="14" Foreground="{DynamicResource c-toolbar-icon}" VerticalAlignment="Center"/>
-                            <TextBlock x:Name="MenuRecoverText" Grid.Column="1" Text="{x:Static res:Strings.Menu_Recover}" FontSize="13"
-                                       Foreground="{DynamicResource c-text-primary}" VerticalAlignment="Center"/>
-                        </Grid>
-                    </Border>
-
-                    <!-- Separator -->
-                    <Separator Margin="4,2" Background="{DynamicResource c-border}"/>
-
-                    <!-- Clean up tabs -->
-                    <Border x:Name="MenuCleanup" Padding="8,6" Cursor="Hand" Background="Transparent"
-                            MouseEnter="MenuItem_MouseEnter" MouseLeave="MenuItem_MouseLeave"
-                            MouseLeftButtonDown="MenuCleanup_Click">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="28"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="&#xE74D;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
-                                       FontSize="14" Foreground="{DynamicResource c-toolbar-icon}" VerticalAlignment="Center"/>
-                            <TextBlock Grid.Column="1" Text="{x:Static res:Strings.Menu_Cleanup}" FontSize="13"
-                                       Foreground="{DynamicResource c-text-primary}" VerticalAlignment="Center"/>
-                        </Grid>
-                    </Border>
-
-                    <!-- Separator -->
-                    <Separator Margin="4,2" Background="{DynamicResource c-border}"/>
-
-                    <!-- Preferences -->
-                    <Border x:Name="MenuPreferences" Padding="8,6" Cursor="Hand" Background="Transparent"
-                            MouseEnter="MenuItem_MouseEnter" MouseLeave="MenuItem_MouseLeave"
-                            MouseLeftButtonDown="MenuPreferences_Click">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="28"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="&#xE713;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
-                                       FontSize="14" Foreground="{DynamicResource c-toolbar-icon}" VerticalAlignment="Center"/>
-                            <TextBlock Grid.Column="1" Text="{x:Static res:Strings.Menu_Preferences}" FontSize="13"
-                                       Foreground="{DynamicResource c-text-primary}" VerticalAlignment="Center"/>
-                        </Grid>
-                    </Border>
-
-                    <!-- Exit -->
-                    <Border x:Name="MenuExit" Padding="8,6" Cursor="Hand" Background="Transparent"
-                            MouseEnter="MenuItem_MouseEnter" MouseLeave="MenuItem_MouseLeave"
-                            MouseLeftButtonDown="MenuExit_Click">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="28"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="&#xE7E8;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
-                                       FontSize="14" Foreground="{DynamicResource c-toolbar-icon}" VerticalAlignment="Center"/>
-                            <TextBlock Grid.Column="1" Text="{x:Static res:Strings.Menu_Exit}" FontSize="13"
-                                       Foreground="{DynamicResource c-text-primary}" VerticalAlignment="Center"/>
-                        </Grid>
-                    </Border>
-                </StackPanel>
-            </Border>
-        </Popup>
-
+               Placement="Bottom" HorizontalOffset="-4" VerticalOffset="2"/>
         <!-- Lazy hosts for the overlays/side panels below: each control starts hidden, so it is
              created on first use (MainWindow.LazyPanels.cs) instead of in InitializeComponent.
              The host keeps the layout (span, ZIndex, width, alignment, sibling order) and its

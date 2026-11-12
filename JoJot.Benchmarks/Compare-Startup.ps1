@@ -1,12 +1,14 @@
 [CmdletBinding()]
 param(
-    [Parameter(Mandatory)] [string] $Baseline,
+    [string] $Baseline,
     [string] $Candidate = (Join-Path $PSScriptRoot '..'),
     [string] $Dotnet = 'dotnet',
     [string] $PackageSource,
     [string] $OutputRoot = (Join-Path $PSScriptRoot '..' '.local' 'startup-benchmark'),
     [ValidateRange(1, 200)] [int] $Samples = 20,
     [ValidateRange(0, 20)] [int] $Warmups = 3,
+    [switch] $WindowProfile,
+    [switch] $ControlGeometry,
     [switch] $PrepareOnly,
     [string] $PreparedRun,
     [string] $MeasurementRoot,
@@ -14,6 +16,12 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+if ($ControlGeometry -and -not $WindowProfile) {
+    throw '-ControlGeometry requires -WindowProfile.'
+}
+if (-not $Baseline -and -not $PreparedRun) {
+    throw 'Supply -Baseline when building a new comparison.'
+}
 $publishRoot = if ($PreparedRun) {
     (Resolve-Path -LiteralPath $PreparedRun).Path
 } else {
@@ -31,7 +39,7 @@ $runRoot = if ($MeasurementRoot) {
 Write-Host "Startup benchmark artifacts are in $runRoot"
 
 function Copy-Project([string] $Source, [string] $Destination) {
-    robocopy $Source $Destination /E /XD bin obj /NJH /NJS /NDL /NFL /NP
+    robocopy $Source $Destination /E /XD bin obj /XF '*.user' build.log /NJH /NJS /NDL /NFL /NP
     if ($LASTEXITCODE -gt 7) {
         throw "Could not copy $Source (robocopy exit $LASTEXITCODE)."
     }
@@ -80,6 +88,39 @@ LogService.Info("Startup complete in {ElapsedMs}ms", _startupStopwatch.ElapsedMi
 LogService.Error("Fatal error during application startup", ex);
             StartupProbe.Fail(this, ex);
 '@
+    if ($WindowProfile) {
+        $window = Join-Path $AppSource 'Views' 'MainWindow.xaml.cs'
+        Replace-Once $program 'LogService.Initialize(AppEnvironment.AppDataDirectory);' 'LogService.Initialize(AppEnvironment.AppDataDirectory); StartupProbe.Mark("LoggingInitialized");'
+        Replace-Once $program 'RunPrimary(mutex, tookOverFromZombie: !createdNew);' 'StartupProbe.Mark("PrimaryStarting"); RunPrimary(mutex, tookOverFromZombie: !createdNew);'
+        Replace-Once $program 'var app = new App();' 'StartupProbe.Mark("WpfEntry"); var app = new App();'
+        Replace-Once $program 'app.InitializeComponent();' 'StartupProbe.Mark("AppConstructed"); app.InitializeComponent();'
+        Replace-Once $program 'app.Run();' 'StartupProbe.Mark("AppXamlLoaded"); app.Run();'
+        Replace-Once $app '_startupStopwatch = Stopwatch.StartNew();' 'StartupProbe.Mark("AppStartup"); _startupStopwatch = Stopwatch.StartNew();'
+        Replace-Once $app 'bool haveSnapshot = StartupSnapshot.TryLoad();' 'StartupProbe.Mark("SnapshotStarting"); bool haveSnapshot = StartupSnapshot.TryLoad();'
+        Replace-Once $app 'if (haveSnapshot)' 'StartupProbe.Mark("SnapshotFinished"); if (haveSnapshot)'
+        Replace-Once $app 'LogPhase("db-kickoff+snapshot");' 'StartupProbe.Mark("PreferencesAvailable"); LogPhase("db-kickoff+snapshot");'
+        Replace-Once $app 'await ThemeService.InitializeAsync();' 'StartupProbe.Mark("ThemeStarting"); await ThemeService.InitializeAsync();'
+        Replace-Once $app 'await VirtualDesktopService.InitializeAsync();' 'StartupProbe.Mark("ThemeFinished"); await VirtualDesktopService.InitializeAsync();'
+        Replace-Once $app 'VirtualDesktopService.SubscribeNotifications();' 'VirtualDesktopService.SubscribeNotifications(); StartupProbe.Mark("DesktopInitialized");'
+        Replace-Once $app 'var window = new MainWindow(desktopGuid);' 'StartupProbe.Mark("WindowConstructing"); var window = new MainWindow(desktopGuid);'
+        Replace-Once $app 'LogPhase("window-ctor");' 'StartupProbe.Mark("WindowConstructed"); LogPhase("window-ctor");'
+        Replace-Once $app 'window.Show();' 'StartupProbe.Mark("WindowShowing"); window.Show();'
+        Replace-Once $app 'LogPhase("window-shown");' 'StartupProbe.Mark("WindowShown"); LogPhase("window-shown");'
+        Replace-Once $app 'WindowPlacementHelper.ApplyGeometry(window, geo); // SetWindowPlacement needs the HWND' 'StartupProbe.Mark("PlacementStarting"); WindowPlacementHelper.ApplyGeometry(window, geo); StartupProbe.Mark("PlacementFinished");'
+        Replace-Once $app 'VirtualDesktopService.TryMoveWindowToDesktop(hwnd, desktopGuid);' 'StartupProbe.Mark("DesktopMoveStarting"); VirtualDesktopService.TryMoveWindowToDesktop(hwnd, desktopGuid); StartupProbe.Mark("DesktopMoveFinished");'
+        Replace-Once $app 'LogPhase("window-moved");' 'StartupProbe.Mark("WindowPositioned"); LogPhase("window-moved");'
+        Replace-Once $window 'ViewModel = new MainWindowViewModel(desktopGuid);' 'StartupProbe.Mark("WindowConstructorEntered"); ViewModel = new MainWindowViewModel(desktopGuid);'
+        Replace-Once $window '// Initialize checkpoint timer before InitializeComponent.' 'StartupProbe.Mark("ViewModelConstructed"); // Initialize checkpoint timer before InitializeComponent.'
+        Replace-Once $window 'InitializeComponent();' 'StartupProbe.Mark("WindowXamlStarting"); InitializeComponent();'
+        Replace-Once $window 'InitializeInputBindings();' 'StartupProbe.Mark("WindowXamlLoaded"); InitializeInputBindings();'
+        Replace-Once $app 'var geo = StartupSnapshot.GetGeometry(desktopGuid);' 'var geo = StartupSnapshot.GetGeometry(desktopGuid) ?? StartupProbe.ProfileGeometry;'
+        Replace-Once $app '                WindowPlacementHelper.ApplyGeometry(window, geo);' @'
+                if (StartupProbe.ProfileGeometry is null)
+                {
+                    WindowPlacementHelper.ApplyGeometry(window, geo);
+                }
+'@
+    }
     $placement = Join-Path $AppSource 'Services' 'WindowPlacementHelper.cs'
     Replace-Once $placement 'showCmd = corrected.IsMaximized ? SW_SHOWMAXIMIZED : SW_SHOWNORMAL,' 'showCmd = 4, // SW_SHOWNOACTIVATE for the startup probe'
     $tabs = Join-Path $AppSource 'Views' 'MainWindow.Tabs.cs'
@@ -105,6 +146,7 @@ function Invoke-Sample([string] $Executable, [string] $DataDirectory, [string[]]
     $info.RedirectStandardOutput = $true
     $info.RedirectStandardError = $true
     $info.Environment['JOJOT_STARTUP_PROBE_DATA'] = $DataDirectory
+    $info.Environment['JOJOT_STARTUP_PROBE_FIXED_GEOMETRY'] = if ($ControlGeometry) { '1' } else { '0' }
     foreach ($argument in $Arguments) {
         $info.ArgumentList.Add($argument)
     }
@@ -140,8 +182,13 @@ if (-not $PreparedRun) {
         $copy = Join-Path $publishRoot $variant
         $appSource = Join-Path $copy 'JoJot'
         Copy-Project (Join-Path $source 'JoJot') $appSource
-        Copy-Project $PSScriptRoot (Join-Path $copy 'JoJot.Benchmarks')
+        $benchmarkCopy = New-Item -ItemType Directory -Path (Join-Path $copy 'JoJot.Benchmarks')
+        Copy-Item -Path (Join-Path $PSScriptRoot '*.cs'), (Join-Path $PSScriptRoot '*.csproj') -Destination $benchmarkCopy
         Copy-Item -LiteralPath (Join-Path $source '.editorconfig') -Destination $copy
+        @(Get-Item -LiteralPath (Join-Path $copy '.editorconfig')) + @(Get-ChildItem -LiteralPath $appSource -File -Recurse) | Sort-Object FullName | ForEach-Object {
+            $path = [IO.Path]::GetRelativePath($copy, $_.FullName).Replace('\', '/')
+            '{0}  {1}' -f (Get-FileHash -LiteralPath $_.FullName).Hash.ToLowerInvariant(), $path
+        } | Set-Content -LiteralPath (Join-Path $publishRoot "$variant-source.sha256")
         Publish-Project (Join-Path $copy 'JoJot.Benchmarks' 'JoJot.Benchmarks.csproj') (Join-Path $copy 'database')
         if ($Scenario -ne 'Database') {
             Add-StartupProbe $appSource
@@ -173,18 +220,29 @@ $scenarios = switch ($Scenario) {
     'WpfBoth' { 'wpf'; 'wpf-without-snapshot' }
     'All' { 'database'; 'wpf'; 'wpf-without-snapshot' }
 }
+$fieldsByScenario = @{}
 foreach ($benchmarkScenario in $scenarios) {
     $raw = Join-Path $runRoot "$benchmarkScenario.csv"
     if (Test-Path -LiteralPath $raw) {
         throw "Measurements already exist in $raw. Choose a new prepared run."
     }
-    $fields = if ($benchmarkScenario -ne 'database') {
+    $fieldsByScenario[$benchmarkScenario] = if ($benchmarkScenario -ne 'database') {
         @('FirstRenderMs', 'EditorReadyMs', 'ReadyToUseMs', 'StartupCompleteMs')
+        if ($WindowProfile) { 'EditorRenderingMs' }
     } else {
         @('ProcessToNotesMs', 'StorageToNotesMs')
     }
-    for ($round = 1 - $Warmups; $round -le $Samples; $round++) {
-        $variants = if ($round % 2 -eq 0) { @('candidate', 'baseline') } else { @('baseline', 'candidate') }
+}
+for ($round = 1 - $Warmups; $round -le $Samples; $round++) {
+    $roundScenarios = @($scenarios)
+    if ($round % 2 -eq 0) {
+        [Array]::Reverse($roundScenarios)
+    }
+    # Vary first scenario and first variant independently over four rounds.
+    $variants = if ([Math]::Floor($round / 2) % 2 -eq 0) { @('candidate', 'baseline') } else { @('baseline', 'candidate') }
+    foreach ($benchmarkScenario in $roundScenarios) {
+        $raw = Join-Path $runRoot "$benchmarkScenario.csv"
+        $fields = $fieldsByScenario[$benchmarkScenario]
         foreach ($variant in $variants) {
             $data = Join-Path $runRoot 'runs' $benchmarkScenario "$round" $variant
             New-Item -ItemType Directory -Path $data | Out-Null
@@ -221,10 +279,40 @@ foreach ($benchmarkScenario in $scenarios) {
                 }
                 $row[$field] = $measurement.$field
             }
+            if ($WindowProfile -and $benchmarkScenario -ne 'database') {
+                if (-not $measurement.Phases.WindowShown) {
+                    throw 'Build and measure with -WindowProfile.'
+                }
+                foreach ($phase in $measurement.Phases.PSObject.Properties) {
+                    $row[$phase.Name + 'Ms'] = $phase.Value
+                }
+                $row['FirstRenderLeft'] = $measurement.FirstRenderLeft
+                $row['FirstRenderTop'] = $measurement.FirstRenderTop
+                $row['FirstRenderWidth'] = $measurement.FirstRenderWidth
+                $row['FirstRenderHeight'] = $measurement.FirstRenderHeight
+            }
             [pscustomobject]$row | Export-Csv -LiteralPath $raw -NoTypeInformation -Append
         }
     }
-
+}
+if ($ControlGeometry) {
+    $renderBounds = foreach ($benchmarkScenario in $scenarios | Where-Object { $_ -ne 'database' }) {
+        Import-Csv -LiteralPath (Join-Path $runRoot "$benchmarkScenario.csv") | ForEach-Object {
+            if (-not $_.FirstRenderLeft -or -not $_.FirstRenderTop -or
+                [double]$_.FirstRenderWidth -le 0 -or [double]$_.FirstRenderHeight -le 0) {
+                throw 'Controlled geometry probe did not report valid first-render bounds.'
+            }
+            "$($_.FirstRenderLeft),$($_.FirstRenderTop),$($_.FirstRenderWidth),$($_.FirstRenderHeight)"
+        }
+    }
+    $rectangles = @($renderBounds | Sort-Object -Unique)
+    if ($rectangles.Count -gt 1) {
+        throw "First-render bounds differed across controlled samples: $($rectangles -join '; ')."
+    }
+}
+foreach ($benchmarkScenario in $scenarios) {
+    $raw = Join-Path $runRoot "$benchmarkScenario.csv"
+    $fields = $fieldsByScenario[$benchmarkScenario]
     $statistics = foreach ($variant in @('baseline', 'candidate')) {
         $measured = Import-Csv -LiteralPath $raw | Where-Object { [int]$_.Round -gt 0 -and $_.Variant -eq $variant }
         foreach ($field in $fields) {

@@ -1,0 +1,67 @@
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
+using System.Windows.Input;
+using System.Windows.Threading;
+using JoJot;
+using JoJot.Services;
+using JoJot.Resources;
+using System.Globalization;
+using System.Windows.Media;
+
+static class Program
+{
+    [STAThread]
+    static int Main()
+    {
+        try
+        {
+
+            var app = new App();
+            app.InitializeComponent();
+            LogService.InitializeNoop();
+            Strings.Culture = CultureInfo.GetCultureInfo("cs");
+            ThemeService.ApplyTheme(ThemeService.AppTheme.Dark);
+            var window = new MainWindow("smoke-desktop");
+            var popup = (Popup)window.FindName("HamburgerMenu");
+            var button = (Button)window.FindName("HamburgerButton");
+            var preferencesHost = (Border)window.FindName("PreferencesHost");
+            var recoveryHost = (Border)window.FindName("RecoveryHost");
+            VirtualDesktopService.SetOrphanedSessionGuids([]);
+            window.UpdateOrphanBadge();
+            Check(popup.Child is null && preferencesHost.Child is null && recoveryHost.Child is null, "menu or panel created eagerly");
+            window.ShowActivated = false;
+            window.Show();
+            button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            var content = popup.Child as FrameworkElement ?? throw new InvalidOperationException("menu content missing");
+            Check(popup.IsOpen, "menu failed to open");
+            var recover = (Border)content.FindName("MenuRecover");
+            var preferences = (Border)content.FindName("MenuPreferences");
+            var recoverText = (TextBlock)content.FindName("MenuRecoverText");
+            Check(recoverText.Text == Strings.Menu_Recover, "localized menu text differs");
+            Check(Equals(content.GetValue(Border.BackgroundProperty), app.FindResource("c-sidebar-bg")), "initial theme not applied");
+            var darkBackground = content.GetValue(Border.BackgroundProperty);
+            ThemeService.ApplyTheme(ThemeService.AppTheme.Light);
+            Check(Equals(content.GetValue(Border.BackgroundProperty), app.FindResource("c-sidebar-bg")), "theme change not applied");
+            Check(!Equals(darkBackground, content.GetValue(Border.BackgroundProperty)), "theme background did not change");
+            Check(recover.Visibility == Visibility.Collapsed, "empty orphan menu item initially visible");
+            VirtualDesktopService.SetOrphanedSessionGuids(["orphan"]);
+            window.UpdateOrphanBadge();
+            Check(recover.Visibility == Visibility.Visible, "orphan menu item hidden");
+            VirtualDesktopService.SetOrphanedSessionGuids([]);
+            window.UpdateOrphanBadge();
+            Check(recover.Visibility == Visibility.Collapsed, "orphan menu item still visible");
+            popup.IsOpen = false;
+            typeof(MainWindow).GetField("_hamburgerClosedAt", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.SetValue(window, DateTime.MinValue);
+            button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Check(ReferenceEquals(content, popup.Child) && popup.IsOpen, "menu tree not reused");
+            preferences.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice, 0, MouseButton.Left) { RoutedEvent = UIElement.MouseLeftButtonDownEvent });
+            Check(preferencesHost.Child is not null && recoveryHost.Child is null && !popup.IsOpen, "preferences action not wired");
+            Console.WriteLine("PASS: deferred menu, orphan updates, reuse, preferences action");
+            Environment.Exit(0);
+            return 0;
+        }
+        catch (Exception ex) { Console.Error.WriteLine(ex); return 1; }
+    }
+    static void Check(bool condition, string message) { if (!condition) throw new InvalidOperationException(message); }
+}

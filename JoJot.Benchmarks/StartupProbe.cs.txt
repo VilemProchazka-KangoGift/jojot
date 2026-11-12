@@ -3,6 +3,8 @@ using System.IO;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
+using JoJot.Models;
 using JoJot.Services;
 
 namespace JoJot;
@@ -11,10 +13,16 @@ namespace JoJot;
 internal static class StartupProbe
 {
     private static readonly TaskCompletionSource<double> FirstRender = new();
+    private static readonly TaskCompletionSource<double> EditorRendering = new();
+    private static readonly Dictionary<string, long> Phases = new(32, StringComparer.Ordinal);
     private static long _start;
     private static TimeSpan _timeBeforeMain;
     private static double _editorReady;
     private static int _loadedTabs;
+    private static double _firstRenderLeft;
+    private static double _firstRenderTop;
+    private static double _firstRenderWidth;
+    private static double _firstRenderHeight;
 
     internal static IpcService.SendResult RejectSecondInstance() =>
         throw new InvalidOperationException("Startup probe mutex collision.");
@@ -24,13 +32,30 @@ internal static class StartupProbe
         using var process = Process.GetCurrentProcess();
         _timeBeforeMain = DateTime.UtcNow - process.StartTime.ToUniversalTime();
         _start = Stopwatch.GetTimestamp();
+        Mark("ProgramEntry");
     }
 
     internal static void ObserveWindow(Window window)
     {
         window.ShowActivated = false;
-        window.ContentRendered += (_, _) => FirstRender.TrySetResult(ElapsedMs());
+        window.ContentRendered += (_, _) =>
+        {
+            var elapsed = ElapsedMs();
+            _firstRenderLeft = window.Left;
+            _firstRenderTop = window.Top;
+            _firstRenderWidth = window.ActualWidth;
+            _firstRenderHeight = window.ActualHeight;
+            FirstRender.TrySetResult(elapsed);
+        };
     }
+
+    // Matches the seeded fixture for the controlled-geometry experiment.
+    internal static WindowGeometry? ProfileGeometry { get; } =
+        Environment.GetEnvironmentVariable("JOJOT_STARTUP_PROBE_FIXED_GEOMETRY") == "1"
+            ? new(80, 80, 850, 560, false)
+            : null;
+
+    internal static void Mark(string phase) => Phases.Add(phase, Stopwatch.GetTimestamp());
 
     internal static void MarkEditorReady(Window window)
     {
@@ -43,18 +68,40 @@ internal static class StartupProbe
             throw new InvalidOperationException("The editor did not load the 100-note startup fixture.");
         }
         _loadedTabs = tabs.Items.Count;
+        if (Phases.ContainsKey("WindowShown"))
+        {
+            CompositionTarget.Rendering += OnEditorRendering;
+        }
+    }
+
+    private static void OnEditorRendering(object? sender, EventArgs e)
+    {
+        var elapsed = ElapsedMs();
+        CompositionTarget.Rendering -= OnEditorRendering;
+        EditorRendering.TrySetResult(elapsed);
     }
 
     internal static async Task CompleteAsync(Application app)
     {
         var complete = ElapsedMs();
         var render = await FirstRender.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        var editorRender = Phases.ContainsKey("WindowShown")
+            ? await EditorRendering.Task.WaitAsync(TimeSpan.FromSeconds(10))
+            : 0;
         File.WriteAllText(ResultPath, JsonSerializer.Serialize(new
         {
             FirstRenderMs = render,
             EditorReadyMs = _editorReady,
+            EditorRenderingMs = editorRender,
+            FirstRenderLeft = double.IsFinite(_firstRenderLeft) ? (double?)_firstRenderLeft : null,
+            FirstRenderTop = double.IsFinite(_firstRenderTop) ? (double?)_firstRenderTop : null,
+            FirstRenderWidth = _firstRenderWidth,
+            FirstRenderHeight = _firstRenderHeight,
             StartupCompleteMs = complete,
-            Notes = _loadedTabs
+            Notes = _loadedTabs,
+            Phases = Phases.ToDictionary(
+                phase => phase.Key,
+                phase => (_timeBeforeMain + Stopwatch.GetElapsedTime(_start, phase.Value)).TotalMilliseconds)
         }));
         await StartupSnapshot.FlushForTestsAsync();
         app.Shutdown();

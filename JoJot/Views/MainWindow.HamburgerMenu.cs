@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
+using JoJot.Services;
 using JoJot.Themes;
 
 namespace JoJot;
@@ -43,7 +44,24 @@ public partial class MainWindow
         // always sees IsOpen=false. Detect this by checking if it just closed.
         if ((DateTime.UtcNow - _hamburgerClosedAt).TotalMilliseconds < 300)
             return;
+        if (HamburgerMenu.Child is null)
+        {
+            var template = (DataTemplate)FindResource("HamburgerMenuTemplate");
+            HamburgerMenu.Child = (UIElement)template.LoadContent();
+            UpdateHamburgerRecoveryItem();
+        }
         HamburgerMenu.IsOpen = !HamburgerMenu.IsOpen;
+    }
+
+    private void UpdateHamburgerRecoveryItem()
+    {
+        if (HamburgerMenu.Child is not FrameworkElement content) return;
+        bool hasOrphans = VirtualDesktopService.OrphanedSessionGuids.Count > 0;
+        var recover = (Border)content.FindName("MenuRecover");
+        var text = (TextBlock)content.FindName("MenuRecoverText");
+        recover.Visibility = hasOrphans ? Visibility.Visible : Visibility.Collapsed;
+        text.SetResourceReference(TextBlock.ForegroundProperty,
+            hasOrphans ? ThemeKeys.Accent : ThemeKeys.TextPrimary);
     }
 
     /// <summary>

@@ -377,8 +377,6 @@ public partial class MainWindow
     {
         bool hasOrphans = VirtualDesktopService.OrphanedSessionGuids.Count > 0;
         OrphanBadge.Visibility = hasOrphans ? Visibility.Visible : Visibility.Collapsed;
-        MenuRecover.Visibility = hasOrphans ? Visibility.Visible : Visibility.Collapsed; // Hide entire menu item
-        MenuRecoverText.SetResourceReference(TextBlock.ForegroundProperty,
-            hasOrphans ? ThemeKeys.Accent : ThemeKeys.TextPrimary);
+        UpdateHamburgerRecoveryItem();
     }
 }
