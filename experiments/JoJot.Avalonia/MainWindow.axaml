@@ -1,0 +1,60 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:models="using:JoJot.Models"
+        x:Class="JoJot.AvaloniaExperiment.MainWindow"
+        x:CompileBindings="True"
+        Title="JoJot · Avalonia experiment"
+        MinWidth="510" MinHeight="360">
+  <Grid RowDefinitions="Auto,*,Auto">
+    <Border Padding="14,10" BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+            BorderThickness="0,0,0,1">
+      <Grid ColumnDefinitions="*,Auto">
+        <StackPanel Orientation="Horizontal" Spacing="8">
+          <Button x:Name="AddButton" Click="OnAdd" Classes="accent" IsEnabled="False">New note</Button>
+          <TextBox x:Name="SearchBox" Width="150" PlaceholderText="Search notes"
+                   AutomationProperties.Name="Search notes" TextChanged="OnSearchChanged" />
+        </StackPanel>
+        <ComboBox x:Name="ThemePicker" Grid.Column="1" Width="105"
+                  SelectedIndex="0" IsEnabled="False" SelectionChanged="OnThemeChanged"
+                  AutomationProperties.Name="Theme">
+          <ComboBoxItem>System</ComboBoxItem>
+          <ComboBoxItem>Light</ComboBoxItem>
+          <ComboBoxItem>Dark</ComboBoxItem>
+        </ComboBox>
+      </Grid>
+    </Border>
+    <Grid x:Name="WorkArea" Grid.Row="1" ColumnDefinitions="190,*" IsEnabled="False">
+      <Border Padding="6" BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+              BorderThickness="0,0,1,0">
+        <ListBox x:Name="NoteList" SelectionChanged="OnNoteSelected" AutomationProperties.Name="Notes">
+          <ListBox.ItemTemplate>
+            <DataTemplate x:DataType="models:NoteTab">
+              <Grid ColumnDefinitions="Auto,*" ColumnSpacing="7">
+                <TextBlock Text="●" IsVisible="{Binding Pinned}" VerticalAlignment="Center" FontSize="9"
+                           AutomationProperties.Name="Pinned" />
+                <TextBlock Grid.Column="1" Text="{Binding DisplayLabel}" TextTrimming="CharacterEllipsis" />
+              </Grid>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+      </Border>
+      <Grid Grid.Column="1" RowDefinitions="Auto,*" Margin="14,10,14,12" RowSpacing="8">
+        <Grid ColumnDefinitions="*,Auto">
+          <TextBlock x:Name="NoteTitle" FontSize="16" FontWeight="SemiBold"
+                     TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+          <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="5">
+            <Button x:Name="RenameButton" Click="OnRename">Rename</Button>
+            <Button x:Name="PinButton" Click="OnPin">Pin</Button>
+            <Button x:Name="DeleteButton" Click="OnDelete">Delete</Button>
+          </StackPanel>
+        </Grid>
+        <TextBox x:Name="Editor" Grid.Row="1" FontSize="14" AcceptsReturn="True" TextWrapping="Wrap"
+                 VerticalContentAlignment="Top" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                 ScrollViewer.VerticalScrollBarVisibility="Auto" TextChanged="OnEditorChanged"
+                 AutomationProperties.Name="Note editor" />
+      </Grid>
+    </Grid>
+    <TextBlock x:Name="Status" Grid.Row="2" Padding="14,5" Text="Opening notes…"
+               Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" TextWrapping="Wrap" />
+  </Grid>
+</Window>

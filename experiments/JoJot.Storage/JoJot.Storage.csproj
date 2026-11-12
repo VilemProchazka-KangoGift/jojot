@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net11.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable><IsAotCompatible>true</IsAotCompatible>
+    <RootNamespace>JoJot</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Data.Sqlite.Core" Version="11.0.0" />
+    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.5" />
+    <PackageReference Include="Serilog" Version="4.4.0" />
+    <Compile Include="../../JoJot/Services/DatabaseCore.cs;../../JoJot/Services/NoteStore.cs;../../JoJot/Services/SessionStore.cs;../../JoJot/Services/PreferenceStore.cs;../../JoJot/Services/PendingMoveStore.cs;../../JoJot/Services/IClock.cs;../../JoJot/Services/StartupSnapshot.cs" Link="Services/%(Filename)%(Extension)" />
+    <Compile Include="../../JoJot/Models/NoteTab.cs;../../JoJot/Models/PendingMove.cs;../../JoJot/Models/WindowGeometry.cs" Link="Models/%(Filename)%(Extension)" />
+    <Compile Include="../../JoJot/ViewModels/ObservableObject.cs" Link="ViewModels/ObservableObject.cs" />
+    <Compile Include="../../JoJot/Resources/Strings.Designer.cs" Link="Resources/Strings.Designer.cs" />
+    <EmbeddedResource Include="../../JoJot/Resources/Strings.resx" Link="Resources/Strings.resx" />
+    <EmbeddedResource Include="../../JoJot/Resources/Strings.cs.resx" Link="Resources/Strings.cs.resx" />
+  </ItemGroup>
+</Project>
