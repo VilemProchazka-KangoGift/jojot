@@ -1,7 +1,7 @@
 # JoJot — Documentation Overview
 
 **Version:** 1.0  
-**Stack:** WPF · .NET 10 · Native AOT · SQLite  
+**Stack:** WPF · .NET 11 · SQLite
 **Platform:** Windows 10/11
 
 ## What is JoJot?

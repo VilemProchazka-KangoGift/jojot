@@ -4,12 +4,12 @@
 
 ## Technology notes (AOT)
 
-Publishing with `PublishAot=true` in .NET 10 compiles to a self-contained native binary — no JIT warm-up, significantly faster cold starts.
+The current .NET 11 publish is self-contained with ReadyToRun. Native AOT remains a separate experiment; the release publish does not set `PublishAot=true`.
 
 **AOT trade-offs:**
 - No runtime reflection by default — avoid libraries that rely on it. Use `Microsoft.Data.Sqlite` with NativeAOT trimming annotations.
 - Binary size ~15–30 MB self-contained (acceptable for desktop).
-- WPF + AOT support matured in .NET 9/10 — test XAML-heavy paths early.
+- Verify WPF compatibility before considering an AOT release build.
 
 **Startup target: < 200 ms** to first interactive window.
 

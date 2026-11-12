@@ -20,11 +20,11 @@
 
 ## Download
 
-[Download the latest release](https://github.com/vproc/JoJot/releases) — Windows 10/11, no install required.
+[Download the latest release](https://github.com/VilemProchazka-KangoGift/jojot/releases) — Windows 10/11 installer.
 
 ## Build from Source
 
-Requires [.NET 10 SDK](https://dotnet.microsoft.com/download) and Windows 10/11.
+Requires [.NET 11 SDK](https://dotnet.microsoft.com/download) and Windows 10/11.
 
 ```bash
 dotnet build JoJot/JoJot.slnx        # Build
@@ -40,7 +40,7 @@ dotnet publish JoJot/JoJot.csproj -c Release -r win-x64 --self-contained
 
 ## Architecture
 
-JoJot is a WPF application (.NET 10) using hand-rolled MVVM, SQLite for local storage, and undocumented Windows COM APIs for virtual desktop integration. Each virtual desktop gets its own window instance with a separate note session. The app enforces single-instance via a global mutex and named-pipe IPC.
+JoJot is a WPF application (.NET 11) using hand-rolled MVVM, SQLite for local storage, and undocumented Windows COM APIs for virtual desktop integration. Each virtual desktop gets its own window instance with a separate note session. The app enforces single-instance via a global mutex and named-pipe IPC.
 
 See [`AGENTS.md`](AGENTS.md) for full architectural details, service descriptions, and coding conventions.
 
@@ -66,7 +66,7 @@ Contributions are welcome. Please open an issue first to discuss what you'd like
 
 ## Tech
 
-.NET 10 &middot; WPF &middot; SQLite &middot; Serilog &middot; CalVer
+.NET 11 &middot; WPF &middot; SQLite &middot; Serilog &middot; CalVer
 
 ---
 

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-JoJot is a WPF desktop notepad application targeting .NET 10 (net10.0-windows), written in C#. It provides per-virtual-desktop note sessions with tabbed editing, auto-save, undo/redo, theme switching, and single-instance enforcement.
+JoJot is a WPF desktop notepad application targeting .NET 11 (net11.0-windows), written in C#. It provides per-virtual-desktop note sessions with tabbed editing, auto-save, undo/redo, theme switching, and single-instance enforcement.
 
 ## Build & Run Commands
 
@@ -37,7 +37,7 @@ CalVer format: **`YYYY.M.Count`** (e.g. `2026.3.7`). Count increments per releas
 
 ## Architecture
 
-- **Framework**: WPF (.NET 10) only — WinForms is not referenced (`UseWindowsForms` is off). `SystemEvents` comes from `Microsoft.Win32.SystemEvents`, which ships with WPF; monitor work areas and double-click metrics are Win32 P/Invokes (`WindowPlacementHelper`, `MainWindow`). Don't reintroduce `System.Windows.Forms`/`System.Drawing`: it loads the WinForms assemblies at startup
+- **Framework**: WPF (.NET 11) only — WinForms is not referenced (`UseWindowsForms` is off). `SystemEvents` comes from `Microsoft.Win32.SystemEvents`, which ships with WPF; monitor work areas and double-click metrics are Win32 P/Invokes (`WindowPlacementHelper`, `MainWindow`). Don't reintroduce `System.Windows.Forms`/`System.Drawing`: it loads the WinForms assemblies at startup
 - **Lazy panels**: the seven hidden side panels/overlays (Find, Confirmation, Drag, Preferences, Help, Recovery, Cleanup) are created on first use (`MainWindow.LazyPanels.cs`) into Collapsed `Border` hosts in `MainWindow.xaml`. Use the `...Lazy` accessors to act on one and the null-aware helpers (`IsConfirmationOpen`, `IsRecordingHotkey`, `_x?.Hide()`) in guards/hide paths so a keystroke never builds a panel. Tab rename uses one shared on-demand `TextBox` (`MainWindow.Rename.cs`), not a per-item template element
 - **Single-project solution**: All source under `JoJot/`. The `.slnx` file is also inside `JoJot/` (not repo root)
 - **Nullable reference types**: Enabled

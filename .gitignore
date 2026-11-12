@@ -6,6 +6,7 @@
 # Build outputs
 bin/
 obj/
+.local/
 
 # Installer output
 installer/output/
