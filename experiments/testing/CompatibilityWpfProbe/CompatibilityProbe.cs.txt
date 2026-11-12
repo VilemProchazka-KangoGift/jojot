@@ -1,0 +1,53 @@
+using System.IO;
+using System.Text.Json;
+using System.Windows;
+using System.Windows.Controls;
+using JoJot.Models;
+using JoJot.Services;
+
+namespace JoJot;
+
+// Injected only into a disposable WPF source export by Verify-DatabaseCompatibility.ps1.
+internal static class CompatibilityProbe
+{
+    private static MainWindow? _window;
+    private static string? _guid;
+    private static long _id;
+
+    internal static void Observe(MainWindow window)
+    {
+        window.ShowActivated = false;
+        _window = window;
+    }
+
+    internal static void EditorReady(MainWindow window)
+    {
+        if (window.FindName("ContentEditor") is not TextBox { IsEnabled: true } editor ||
+            window.FindName("TabList") is not ListBox { SelectedItem: NoteTab note })
+            throw new InvalidOperationException("WPF did not load an active editor and note.");
+        var expected = Environment.GetEnvironmentVariable("JOJOT_COMPAT_EXPECTED");
+        if (expected is not null && editor.Text != expected)
+            throw new InvalidOperationException("WPF editor content differs from expected content.");
+        _guid = note.DesktopGuid;
+        _id = note.Id;
+        var replacement = Environment.GetEnvironmentVariable("JOJOT_COMPAT_REPLACEMENT");
+        if (replacement is not null) editor.Text = replacement;
+    }
+
+    internal static void Finish(Application app)
+    {
+        var window = _window ?? throw new InvalidOperationException("No WPF window observed.");
+        if (_guid is null) throw new InvalidOperationException("WPF editor never became ready.");
+        window.FlushContentForShutdown();
+        window.FlushAndClose();
+        File.WriteAllText(Path.Combine(AppEnvironment.AppDataDirectory, "compat-wpf-result.json"),
+            JsonSerializer.Serialize(new { DesktopGuid = _guid, Id = _id }));
+        app.Shutdown();
+    }
+
+    internal static void Fail(Application app, Exception ex)
+    {
+        File.WriteAllText(Path.Combine(AppEnvironment.AppDataDirectory, "compat-wpf-error.txt"), ex.ToString());
+        app.Shutdown(1);
+    }
+}

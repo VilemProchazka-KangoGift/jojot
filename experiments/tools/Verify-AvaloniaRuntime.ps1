@@ -4,6 +4,7 @@ param(
     [Parameter(Mandatory)] [string] $ManagedExe,
     [Parameter(Mandatory)] [string] $AotExe,
     [Parameter(Mandatory)] [string] $WpfRun,
+    [string] $FixtureDirectory,
     [Parameter(Mandatory)] [string] $OutputDirectory
 )
 $ErrorActionPreference = 'Stop'
@@ -11,7 +12,11 @@ if (Test-Path -LiteralPath $OutputDirectory) {
     throw 'Choose a new output directory.'
 }
 $root = (New-Item -ItemType Directory -Path $OutputDirectory).FullName
-$fixture = Join-Path (Resolve-Path -LiteralPath $WpfRun).Path 'fixture'
+$fixture = if ($FixtureDirectory) {
+    (Resolve-Path -LiteralPath $FixtureDirectory).Path
+} else {
+    Join-Path (Resolve-Path -LiteralPath $WpfRun).Path 'fixture'
+}
 $desktop = (Get-Content -LiteralPath (Join-Path $fixture 'desktop.txt') -Raw).Trim()
 $executables = [ordered]@{ Managed = $ManagedExe; NativeAOT = $AotExe }
 foreach ($variant in $executables.Keys) {

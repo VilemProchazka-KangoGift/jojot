@@ -3,11 +3,16 @@
 param(
     [Parameter(Mandatory)] [string] $Executable,
     [Parameter(Mandatory)] [string] $WpfRun,
+    [string] $FixtureDirectory,
     [string] $DataRoot = (Join-Path $PSScriptRoot '..' '..' '.local' 'avalonia-aot' 'try')
 )
 $ErrorActionPreference = 'Stop'
 $exe = (Resolve-Path -LiteralPath $Executable).Path
-$fixture = Join-Path (Resolve-Path -LiteralPath $WpfRun).Path 'fixture'
+$fixture = if ($FixtureDirectory) {
+    (Resolve-Path -LiteralPath $FixtureDirectory).Path
+} else {
+    Join-Path (Resolve-Path -LiteralPath $WpfRun).Path 'fixture'
+}
 $desktop = (Get-Content -LiteralPath (Join-Path $fixture 'desktop.txt') -Raw).Trim()
 $directory = (New-Item -ItemType Directory -Path (Join-Path $DataRoot ([Guid]::NewGuid().ToString('N')))).FullName
 foreach ($file in 'jojot.db', 'startup-cache.json', '.clean-shutdown') {

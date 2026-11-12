@@ -3,20 +3,29 @@ using System.Globalization;
 namespace JoJot.AvaloniaExperiment;
 
 internal sealed record ExperimentOptions(string DataDirectory, string DesktopGuid, string? BenchmarkOutput,
-    double Width, double Height, bool StayOpen)
+    double Width, double Height, bool StayOpen, string? CompatibilityExpected, string? CompatibilityReplacement,
+    string? VisualOutputDirectory = null)
 {
     private static readonly string[] StorageFiles =
-        ["jojot.db", "jojot.db-wal", "jojot.db-shm", ".clean-shutdown", ".experiment-lock", "startup-cache.json"];
+        ["jojot.db", "jojot.db-wal", "jojot.db-shm", ".clean-shutdown", ".experiment-lock", ".experiment-owner", ".experiment-owner.Dev", "startup-cache.json"];
 
     public static ExperimentOptions Parse(string[] args)
     {
         var localData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+#if DEBUG
+        var directory = Path.Combine(localData, "JoJot.AvaloniaExperiment.Dev");
+#else
         var directory = Path.Combine(localData, "JoJot.AvaloniaExperiment");
+#endif
         var desktop = "default";
         string? benchmark = null;
         var width = 850d;
         var height = 560d;
         var stayOpen = false;
+        var explicitDirectory = false;
+        string? compatibilityExpected = null;
+        string? compatibilityReplacement = null;
+        string? visualOutput = null;
         for (var index = 0; index < args.Length; index++)
         {
             var argument = args[index];
@@ -32,7 +41,10 @@ internal sealed record ExperimentOptions(string DataDirectory, string DesktopGui
 
             switch (argument)
             {
-                case "--data-dir": directory = value; break;
+                case "--data-dir": directory = value; explicitDirectory = true; break;
+                case "--compat-expected": compatibilityExpected = value; break;
+                case "--compat-replacement": compatibilityReplacement = value; break;
+                case "--visual-output": visualOutput = NormalizePath(value); break;
                 case "--desktop-guid": desktop = value; break;
                 case "--benchmark-output": benchmark = NormalizePath(value); break;
                 case "--benchmark-width": width = ParseDimension(value, 510); break;
@@ -58,7 +70,16 @@ internal sealed record ExperimentOptions(string DataDirectory, string DesktopGui
         if (string.IsNullOrWhiteSpace(desktop))
             throw new ArgumentException("Desktop identifier cannot be blank.");
 
-        return new ExperimentOptions(directory, desktop, benchmark, width, height, stayOpen);
+        if (compatibilityExpected is not null || compatibilityReplacement is not null)
+        {
+            if (compatibilityExpected is null || compatibilityReplacement is null || !explicitDirectory || benchmark is not null || stayOpen)
+                throw new ArgumentException("Compatibility editing requires both text values, an explicit disposable data directory and automatic shutdown.");
+        }
+        if (visualOutput is not null && (!explicitDirectory || benchmark is not null || stayOpen ||
+            compatibilityExpected is not null || !visualOutput.StartsWith(directory + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)))
+            throw new ArgumentException("Visual output requires a subdirectory of an explicit disposable data directory and automatic shutdown.");
+        return new ExperimentOptions(directory, desktop, benchmark, width, height, stayOpen,
+            compatibilityExpected, compatibilityReplacement, visualOutput);
     }
 
     public void ValidateDataPath()
@@ -69,6 +90,8 @@ internal sealed record ExperimentOptions(string DataDirectory, string DesktopGui
         foreach (var name in StorageFiles)
             ValidateNoReparsePoint(new FileInfo(Path.Combine(DataDirectory, name)));
         ValidateBenchmarkPath();
+        if (VisualOutputDirectory is not null)
+            ValidateAncestors(new DirectoryInfo(VisualOutputDirectory));
     }
 
     public void ValidateBenchmarkPath()

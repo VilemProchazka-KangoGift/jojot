@@ -1,5 +1,3 @@
-using Serilog;
-
 namespace JoJot.Services;
 
 // The host must select its own isolated directory before using the startup snapshot.
@@ -14,12 +12,4 @@ public static class AppEnvironment
         _appDataDirectory = Path.GetFullPath(path);
         Directory.CreateDirectory(_appDataDirectory);
     }
-}
-
-// Storage keeps the original structured logging calls; the host may configure Serilog.
-public static class LogService
-{
-    public static void Info(string message, params object?[] args) => Log.Information(message, args);
-    public static void Warn(string message, params object?[] args) => Log.Warning(message, args);
-    public static void Error(string message, params object?[] args) => Log.Error(message, args);
 }

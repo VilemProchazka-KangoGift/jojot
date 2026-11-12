@@ -1,38 +1,49 @@
+using System.IO;
 using JoJot.Services;
 
 namespace JoJot.Tests.Services;
 
 public class AppEnvironmentTests
 {
+#if DEBUG
+    private const string ExpectedFolder = "JoJot.Dev";
+    private const string ExpectedSuffix = ".Dev";
+    private const bool ExpectedDebug = true;
+#else
+    private const string ExpectedFolder = "JoJot";
+    private const string ExpectedSuffix = "";
+    private const bool ExpectedDebug = false;
+#endif
+
     [Fact]
     public void AppDataDirectory_EndsWithExpectedFolderName()
     {
-        // Tests run in Debug configuration, so folder should be JoJot.Dev
-        AppEnvironment.AppDataDirectory.Should().EndWith("JoJot.Dev");
+        AppEnvironment.AppDataDirectory.Should().Be(Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), ExpectedFolder));
     }
 
     [Fact]
     public void DatabasePath_IsInsideAppDataDirectory()
     {
-        AppEnvironment.DatabasePath.Should().StartWith(AppEnvironment.AppDataDirectory);
-        AppEnvironment.DatabasePath.Should().EndWith("jojot.db");
+        AppEnvironment.DatabasePath.Should().Be(Path.Combine(AppEnvironment.AppDataDirectory, "jojot.db"));
     }
 
     [Fact]
-    public void PipeName_ContainsDevSuffix_InDebug()
+    public void PipeName_IsSessionScopedWithExpectedSuffix()
     {
-        AppEnvironment.PipeName.Should().EndWith(".Dev");
+        using var process = System.Diagnostics.Process.GetCurrentProcess();
+        AppEnvironment.PipeName.Should().Be($"JoJot_IPC_S{process.SessionId}{ExpectedSuffix}");
     }
 
     [Fact]
-    public void MutexName_ContainsDevSuffix_InDebug()
+    public void MutexName_HasExpectedNamespaceAndSuffix()
     {
-        AppEnvironment.MutexName.Should().EndWith(".Dev");
+        AppEnvironment.MutexName.Should().Be($"Local\\JoJot_SingleInstance{ExpectedSuffix}");
     }
 
     [Fact]
-    public void IsDebug_True_InTestConfiguration()
+    public void IsDebug_MatchesBuildConfiguration()
     {
-        AppEnvironment.IsDebug.Should().BeTrue();
+        AppEnvironment.IsDebug.Should().Be(ExpectedDebug);
     }
 }

@@ -1,6 +1,9 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless;
+using Avalonia.Input;
+using Avalonia.Input.Platform;
+using Avalonia.VisualTree;
 using Avalonia.Headless.XUnit;
 using Avalonia.Interactivity;
 using Avalonia.Styling;
@@ -27,59 +30,64 @@ public sealed class MainWindowTests
     {
         await using var fixture = new WindowFixture();
         var window = fixture.Open();
+        await window.Ready;
         var editor = Find<TextBox>(window, "Editor");
         var list = Find<ListBox>(window, "NoteList");
         var add = Find<Button>(window, "AddButton");
-        await WaitForAsync(() => add.IsEnabled, "storage initialized");
-        Assert.False(editor.IsEnabled);
-
-        Click(add);
-        await WaitForAsync(() => list.ItemCount == 1 && editor.IsEnabled, "first note created");
         var first = Assert.IsType<NoteTab>(list.SelectedItem);
         Assert.Equal(JoJot.Resources.Strings.Date_NewNote, first.DisplayLabel);
         Assert.Equal(first.DisplayLabel, Find<TextBlock>(window, "NoteTitle").Text);
+        Click(add);
+        Assert.Single(list.Items);
+
         editor.Text = "Debounced <first> & note";
         await WaitForAsync(() => ReadContent(fixture.Directory, first.Id) == editor.Text, "debounced database write");
-
-        Click(add);
-        await WaitForAsync(() => list.ItemCount == 2 && editor.IsEnabled, "second note created");
+        editor.CaretIndex = 3;
+        Press(window, editor, Key.T, PhysicalKey.T, RawInputModifiers.Control);
+        await WaitForAsync(() => list.ItemCount == 2 && editor.IsEffectivelyEnabled, "second note created");
         var second = Assert.IsType<NoteTab>(list.SelectedItem);
         editor.Text = "Saved by switching tabs";
         list.SelectedItem = first;
         await WaitForAsync(() => editor.Text == "Debounced <first> & note" && add.IsEnabled, "first note selected");
         Assert.Equal("Saved by switching tabs", ReadContent(fixture.Directory, second.Id));
+        Assert.Equal(3, editor.CaretIndex);
 
-        Click(Find<Button>(window, "RenameButton"));
-        await WaitForAsync(() => window.OwnedWindows.Count == 1, "rename dialog");
-        var rename = Assert.Single(window.OwnedWindows);
-        var renamePanel = Assert.IsType<StackPanel>(rename.Content);
-        Assert.IsType<TextBox>(renamePanel.Children[0]).Text = "Renamed note";
-        Click(Assert.IsType<Button>(Assert.IsType<StackPanel>(renamePanel.Children[1]).Children[1]));
+        Press(window, editor, Key.F2, PhysicalKey.F2);
+        await WaitForAsync(() => window.GetVisualDescendants().OfType<TextBox>().Any(box => box.Name == "InlineRenameBox"),
+            "inline rename box");
+        var rename = Assert.Single(window.GetVisualDescendants().OfType<TextBox>(), box => box.Name == "InlineRenameBox");
+        rename.Text = "Renamed note";
+        Press(window, rename, Key.Enter, PhysicalKey.Enter);
         await WaitForAsync(() => first.Name == "Renamed note" && add.IsEnabled, "rename saved");
-
-        Click(Find<Button>(window, "PinButton"));
+        Press(window, editor, Key.P, PhysicalKey.P, RawInputModifiers.Control);
         await WaitForAsync(() => first.Pinned && add.IsEnabled, "pin saved");
-        Assert.Equal("Unpin", Find<Button>(window, "PinButton").Content);
 
         var search = Find<TextBox>(window, "SearchBox");
         search.Text = "switching";
-        await WaitForAsync(() => list.ItemCount == 1, "content filtered");
+        await WaitForAsync(() => list.ItemCount == 1 && add.IsEnabled, "content filtered");
         Assert.Same(second, Assert.Single(list.Items));
+        Assert.Null(list.SelectedItem);
+        Assert.Equal("Debounced <first> & note", editor.Text);
         search.Text = "";
         await WaitForAsync(() => list.ItemCount == 2, "filter cleared");
+        list.SelectedItem = first;
+        await WaitForAsync(() => editor.Text == "Debounced <first> & note" && add.IsEnabled, "pinned note reselected");
+        await PreferenceStore.SetPreferenceAsync("theme", "dark");
 
-        var theme = Find<ComboBox>(window, "ThemePicker");
-        theme.SelectedIndex = 2;
-        await WaitForAsync(() => window.RequestedThemeVariant == ThemeVariant.Dark && add.IsEnabled, "dark theme saved");
+        editor.Text = "Preserved during a deferred reload";
+        await window.ReloadNotesAsync();
+        Assert.Same(first, list.SelectedItem);
+        Assert.Equal("Preserved during a deferred reload", editor.Text);
+        Assert.Equal(editor.Text, ReadContent(fixture.Directory, first.Id));
         editor.Text = "Saved by immediate close";
         window.Close();
         await WaitForAsync(() => !window.IsVisible, "window closed");
         Assert.Equal("Saved by immediate close", ReadContent(fixture.Directory, first.Id));
 
         window = fixture.Open();
+        await window.Ready;
         editor = Find<TextBox>(window, "Editor");
         list = Find<ListBox>(window, "NoteList");
-        await WaitForAsync(() => editor.IsEffectivelyEnabled, "stored notes loaded");
         first = Assert.IsType<NoteTab>(list.SelectedItem);
         Assert.Equal("Renamed note", first.Name);
         Assert.True(first.Pinned);
@@ -87,18 +95,265 @@ public sealed class MainWindowTests
         Assert.Equal("Saved by immediate close", editor.Text);
 
         list.SelectedItem = Assert.Single(list.Items.OfType<NoteTab>(), note => note.Id == second.Id);
-        await WaitForAsync(() => editor.Text == "Saved by switching tabs", "second note selected after reopen");
-        Click(Find<Button>(window, "DeleteButton"));
-        await WaitForAsync(() => window.OwnedWindows.Count == 1, "delete dialog");
-        var delete = Assert.Single(window.OwnedWindows);
-        var deletePanel = Assert.IsType<StackPanel>(delete.Content);
-        Click(Assert.IsType<Button>(Assert.IsType<StackPanel>(deletePanel.Children[1]).Children[1]));
-        await WaitForAsync(() => list.ItemCount == 1, "note removed");
-        Assert.Null(ReadContent(fixture.Directory, second.Id));
+        await WaitForAsync(() => editor.Text == "Saved by switching tabs" && editor.IsEffectivelyEnabled, "second note selected after reopen");
+        Press(window, editor, Key.W, PhysicalKey.W, RawInputModifiers.Control);
+        await WaitForAsync(() => list.ItemCount == 1 && editor.IsEffectivelyEnabled, "note soft-deleted");
+        Assert.Equal("Saved by switching tabs", ReadContent(fixture.Directory, second.Id));
+        Click(Find<Button>(window, "UndoToastButton"));
+        Assert.Equal(2, list.ItemCount);
+        Assert.Equal(second.Id, Assert.IsType<NoteTab>(list.SelectedItem).Id);
+
+        Press(window, editor, Key.W, PhysicalKey.W, RawInputModifiers.Control);
+        await WaitForAsync(() => list.ItemCount == 1 && editor.IsEffectivelyEnabled, "note soft-deleted again");
         window.Close();
         await WaitForAsync(() => !window.IsVisible, "reopened window closed");
+        Assert.Null(ReadContent(fixture.Directory, second.Id));
     }
 
+    [AvaloniaFact]
+    public async Task FindReplaceClipboardAndPerNoteHistoryUseEditorShortcuts()
+    {
+        await using var fixture = new WindowFixture();
+        var window = fixture.Open();
+        await window.Ready;
+        var editor = Find<TextBox>(window, "Editor");
+        var list = Find<ListBox>(window, "NoteList");
+        var first = Assert.IsType<NoteTab>(list.SelectedItem);
+        editor.Focus();
+        window.KeyTextInput("alpha Alpha alphabet");
+        Assert.Equal("alpha Alpha alphabet", editor.Text);
+        Press(window, editor, Key.C, PhysicalKey.C, RawInputModifiers.Control);
+        string? copied = null;
+        if (window.Clipboard is { } clipboard)
+            copied = await clipboard.TryGetTextAsync();
+        Assert.Equal("alpha Alpha alphabet", copied);
+
+        Press(window, editor, Key.K, PhysicalKey.K, RawInputModifiers.Control);
+        await WaitForAsync(() => list.ItemCount == 2 && editor.IsEffectivelyEnabled, "clone selected");
+        Assert.Equal("alpha Alpha alphabet", editor.Text);
+        var clone = Assert.IsType<NoteTab>(list.SelectedItem);
+        Assert.NotEqual(first.Id, clone.Id);
+
+        Press(window, editor, Key.F, PhysicalKey.F, RawInputModifiers.Control);
+        var findHost = Find<Border>(window, "FindHost");
+        Assert.True(findHost.IsVisible);
+        var query = Assert.Single(findHost.GetVisualDescendants().OfType<TextBox>(), box => box.Name == "FindQuery");
+        var replacement = Assert.Single(findHost.GetVisualDescendants().OfType<TextBox>(), box => box.Name == "FindReplacement");
+        query.Text = "alpha";
+        replacement.Text = "beta";
+        foreach (var checkbox in findHost.GetVisualDescendants().OfType<CheckBox>())
+            checkbox.IsChecked = true;
+        await WaitForAsync(() => editor.SelectedText == "alpha", "case-sensitive whole-word match");
+        Click(Assert.Single(findHost.GetVisualDescendants().OfType<Button>(), button =>
+            Equals(button.Content, JoJot.Resources.Strings.Find_ReplaceAll)));
+        Assert.Equal("beta Alpha alphabet", editor.Text);
+        Press(window, query, Key.Escape, PhysicalKey.Escape);
+        Assert.False(findHost.IsVisible);
+
+        Press(window, editor, Key.Z, PhysicalKey.Z, RawInputModifiers.Control);
+        Assert.Equal("alpha Alpha alphabet", editor.Text);
+        Press(window, editor, Key.Y, PhysicalKey.Y, RawInputModifiers.Control);
+        Assert.Equal("beta Alpha alphabet", editor.Text);
+        list.SelectedItem = first;
+        await WaitForAsync(() => editor.Text == "alpha Alpha alphabet" && editor.IsEffectivelyEnabled, "original selected");
+        Press(window, editor, Key.Z, PhysicalKey.Z, RawInputModifiers.Control);
+        Assert.Equal("", editor.Text);
+        list.SelectedItem = clone;
+        await WaitForAsync(() => editor.Text == "beta Alpha alphabet" && editor.IsEffectivelyEnabled, "clone history isolated");
+    }
+
+    [AvaloniaFact]
+    public async Task FileImportSavesExplicitlyAndBulkDeleteSkipsPinnedNotes()
+    {
+        await using var fixture = new WindowFixture();
+        var window = fixture.Open();
+        await window.Ready;
+        var source = Path.Combine(fixture.Directory, "source.txt");
+        var target = Path.Combine(fixture.Directory, "saved.txt");
+        await File.WriteAllTextAsync(source, "source data");
+        await window.ImportPathsAsync([source]);
+        var list = Find<ListBox>(window, "NoteList");
+        var editor = Find<TextBox>(window, "Editor");
+        var imported = Assert.IsType<NoteTab>(list.SelectedItem);
+        Assert.Equal(source, imported.FilePath);
+        Assert.False(Find<Button>(window, "RenameButton").IsEnabled);
+        editor.Text = "explicitly saved";
+        await window.FlushWindowAsync();
+        Assert.Equal("source data", await File.ReadAllTextAsync(source));
+        Press(window, editor, Key.S, PhysicalKey.S, RawInputModifiers.Control);
+        await WaitForAsync(() => editor.IsEffectivelyEnabled && File.ReadAllText(source) == "explicitly saved", "file-backed save");
+        await window.SaveNoteToPathCoreAsync(imported, target);
+        Assert.Equal(new byte[] { 0xef, 0xbb, 0xbf }, (await File.ReadAllBytesAsync(target)).Take(3));
+        Assert.Equal(target, imported.FilePath);
+        Assert.Equal("saved.txt", imported.Name);
+
+        Press(window, editor, Key.P, PhysicalKey.P, RawInputModifiers.Control);
+        await WaitForAsync(() => imported.Pinned && editor.IsEffectivelyEnabled, "file-backed note pinned");
+        var unpinned = Assert.Single(list.Items.OfType<NoteTab>(), note => !note.Pinned);
+        await window.MoveTabAsync(imported, 2);
+        Assert.Same(imported, list.Items[0]);
+        await window.DeleteNotesWithUndoAsync([imported, unpinned]);
+        Assert.Same(imported, Assert.Single(list.Items));
+        Click(Find<Button>(window, "UndoToastButton"));
+        Assert.Contains(unpinned, list.Items);
+    }
+
+    [AvaloniaFact]
+    public async Task PointerDragReordersTabsInsideTheirZoneAndPersistsOrder()
+    {
+        await using var fixture = new WindowFixture();
+        var window = fixture.Open();
+        await window.Ready;
+        var list = Find<ListBox>(window, "NoteList");
+        var editor = Find<TextBox>(window, "Editor");
+        var first = Assert.IsType<NoteTab>(list.SelectedItem);
+        editor.Text = "First tab";
+        Press(window, editor, Key.T, PhysicalKey.T, RawInputModifiers.Control);
+        await WaitForAsync(() => list.ItemCount == 2 && editor.IsEffectivelyEnabled, "two tabs");
+        var second = Assert.IsType<NoteTab>(list.SelectedItem);
+        editor.Text = "Second tab";
+        await WaitForAsync(() => list.ContainerFromItem(first) is ListBoxItem { Bounds.Height: > 0 } &&
+            list.ContainerFromItem(second) is ListBoxItem { Bounds.Height: > 0 }, "two visible tab containers");
+        var from = Assert.IsType<ListBoxItem>(list.ContainerFromItem(second));
+        var to = Assert.IsType<ListBoxItem>(list.ContainerFromItem(first));
+        var start = from.TranslatePoint(new Point(12, from.Bounds.Height / 2), window)!.Value;
+        var end = to.TranslatePoint(new Point(12, to.Bounds.Height - 3), window)!.Value;
+        window.MouseDown(start, MouseButton.Left);
+        window.MouseMove(end, RawInputModifiers.LeftMouseButton);
+        window.MouseUp(end, MouseButton.Left);
+        await WaitForAsync(() => ReferenceEquals(list.Items[0], first) && editor.IsEffectivelyEnabled, "pointer reorder");
+        var persisted = await NoteStore.GetNotesForDesktopAsync(window.DesktopGuid);
+        Assert.Equal(new[] { first.Id, second.Id }, persisted.Select(note => note.Id));
+    }
+    [AvaloniaFact]
+    public async Task QueuedNewTabRetainsOptionalContentThroughStartup()
+    {
+        await using var fixture = new WindowFixture();
+        var window = fixture.Open();
+        window.RequestNewTab("Created by an early IPC request");
+        await window.Ready;
+        var editor = Find<TextBox>(window, "Editor");
+        var list = Find<ListBox>(window, "NoteList");
+        await WaitForAsync(() => editor.IsEffectivelyEnabled && editor.Text == "Created by an early IPC request",
+            "queued tab content");
+        var note = Assert.IsType<NoteTab>(list.SelectedItem);
+        Assert.Equal(editor.Text, ReadContent(fixture.Directory, note.Id));
+    }
+    [AvaloniaFact]
+    public async Task TabSwitchRestoresTheEditorsCaretAndVerticalScroll()
+    {
+        await using var fixture = new WindowFixture();
+        var window = fixture.Open();
+        await window.Ready;
+        var list = Find<ListBox>(window, "NoteList");
+        var editor = Find<TextBox>(window, "Editor");
+        var first = Assert.IsType<NoteTab>(list.SelectedItem);
+        editor.Text = string.Join("\n", Enumerable.Range(0, 100).Select(index => $"Line {index}"));
+        var caret = editor.Text.IndexOf("Line 25", StringComparison.Ordinal);
+        editor.CaretIndex = caret;
+        ScrollViewer? scroll = null;
+        await WaitForAsync(() => (scroll = editor.GetVisualDescendants().OfType<ScrollViewer>().FirstOrDefault()) is
+            { Extent.Height: > 1000 }, "scrollable editor layout");
+        Assert.True(editor.Focus());
+        scroll!.Offset = new Vector(0, 190);
+        Assert.Equal(190, scroll.Offset.Y);
+
+        window.KeyPress(Key.T, RawInputModifiers.Control, PhysicalKey.T, null);
+        window.KeyRelease(Key.T, RawInputModifiers.Control, PhysicalKey.T, null);
+        await WaitForAsync(() => list.ItemCount == 2 && editor.IsEffectivelyEnabled, "second tab created");
+        list.SelectedItem = first;
+        await WaitForAsync(() => editor.IsEffectivelyEnabled && ReferenceEquals(list.SelectedItem, first), "original tab reselected");
+        Assert.Equal(190, first.EditorScrollOffset);
+        Assert.Equal(caret, editor.CaretIndex);
+        await WaitForAsync(() => scroll.Offset.Y == 190, "restored vertical scroll");
+    }
+    [AvaloniaFact]
+    public async Task FailedReloadSurfacesTheStorageErrorAndRetainsTheCurrentEditor()
+    {
+        await using var fixture = new WindowFixture();
+        var window = fixture.Open();
+        await window.Ready;
+        var editor = Find<TextBox>(window, "Editor");
+        var list = Find<ListBox>(window, "NoteList");
+        var note = Assert.IsType<NoteTab>(list.SelectedItem);
+        editor.Text = "Keep this note when the desktop reload fails";
+        await window.FlushWindowAsync();
+
+        // Simulate a storage read failure using the real disposable SQLite fixture.
+        await DatabaseCore.ExecuteNonQueryAsync("ALTER TABLE notes RENAME TO notes_unavailable;");
+        try
+        {
+            var error = await Assert.ThrowsAsync<SqliteException>(window.ReloadNotesAsync);
+            Assert.Contains("no such table", error.Message, StringComparison.OrdinalIgnoreCase);
+            Assert.Same(note, list.SelectedItem);
+            Assert.Equal("Keep this note when the desktop reload fails", editor.Text);
+            Assert.True(editor.IsEffectivelyEnabled);
+        }
+        finally
+        {
+            await DatabaseCore.ExecuteNonQueryAsync("ALTER TABLE notes_unavailable RENAME TO notes;");
+        }
+
+        editor.Text = "Retry persisted this edit";
+        await window.ReloadNotesAsync();
+        Assert.Equal(editor.Text, ReadContent(fixture.Directory, note.Id));
+    }
+    [AvaloniaFact]
+    public async Task ShutdownFreezeRejectsLateTypingWhileAnotherWindowStillDrains()
+    {
+        await using var fixture = new WindowFixture();
+        var window = fixture.Open();
+        await window.Ready;
+        var editor = Find<TextBox>(window, "Editor");
+        var selected = Assert.IsType<NoteTab>(Find<ListBox>(window, "NoteList").SelectedItem);
+        Assert.True(editor.Focus());
+        window.KeyTextInput("Persisted before shutdown");
+        var otherWindowDrain = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        window.IsEnabled = false;
+        try
+        {
+            var shutdownDrain = DrainInOrderAsync();
+            await WaitForAsync(() => ReadContent(fixture.Directory, selected.Id) == "Persisted before shutdown",
+                "first window flushed while the second is pending");
+            Assert.False(shutdownDrain.IsCompleted);
+            Assert.False(editor.IsEffectivelyEnabled);
+            window.KeyTextInput("late keystrokes");
+            Assert.Equal("Persisted before shutdown", editor.Text);
+            otherWindowDrain.SetResult();
+            await shutdownDrain;
+        }
+        finally
+        {
+            otherWindowDrain.TrySetResult();
+            window.IsEnabled = true;
+        }
+
+        async Task DrainInOrderAsync()
+        {
+            await window.FlushWindowAsync();
+            await otherWindowDrain.Task;
+        }
+    }
+    [AvaloniaFact]
+    public async Task VisibleOwnedDialogBlocksShutdownUntilDismissed()
+    {
+        await using var fixture = new WindowFixture();
+        var window = fixture.Open();
+        await window.Ready;
+        Assert.False(window.HasShutdownBlockingInteraction);
+        var dialog = new Window { Content = new TextBlock { Text = "Confirm action" } };
+        var closing = dialog.ShowDialog(window);
+        Assert.True(window.HasShutdownBlockingInteraction);
+        dialog.Close();
+        await closing;
+        Assert.False(window.HasShutdownBlockingInteraction);
+    }
+    private static void Press(Window window, Control target, Key key, PhysicalKey physical, RawInputModifiers modifiers = RawInputModifiers.None)
+    {
+        Assert.True(target.Focus());
+        window.KeyPress(key, modifiers, physical, null);
+        window.KeyRelease(key, modifiers, physical, null);
+    }
     [AvaloniaFact]
     public async Task CloseRequestedDuringStartupIsReplayedAfterStorageInitializes()
     {
@@ -135,7 +390,7 @@ public sealed class MainWindowTests
         return command.ExecuteScalar() as string;
     }
 
-    private static async Task WaitForAsync(Func<bool> predicate, string description)
+    internal static async Task WaitForAsync(Func<bool> predicate, string description)
     {
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         while (!predicate())
@@ -145,9 +400,12 @@ public sealed class MainWindowTests
         }
     }
 
-    private sealed class WindowFixture : IAsyncDisposable
+    internal sealed class WindowFixture : IAsyncDisposable
     {
         private MainWindow? _window;
+
+        public WindowFixture() => UndoManager.SetInstance(new UndoManager(SystemClock.Instance));
+
         public string Directory { get; } = Path.Combine(Path.GetTempPath(), "jojot-avalonia-test-" + Guid.NewGuid().ToString("N"));
 
         public MainWindow Open()

@@ -17,4 +17,12 @@
     <InternalsVisibleTo Include="JoJot.Avalonia.Tests" />
     <ProjectReference Include="../JoJot.Storage/JoJot.Storage.csproj" />
   </ItemGroup>
+  <!-- .NET 11 does not classify project-reference satellites as resource assets for ILC. -->
+  <Target Name="IncludeJoJotStorageSatelliteForNativeAot"
+          AfterTargets="_ComputeIlcCompileInputs" Condition="'$(PublishAot)' == 'true'">
+    <ItemGroup>
+      <IlcSatelliteAssembly Include="@(ResolvedFileToPublish)"
+                            Condition="'%(ResolvedFileToPublish.Filename)' == 'JoJot.Storage.resources' and '%(ResolvedFileToPublish.AssetType)' != 'resources'" />
+    </ItemGroup>
+  </Target>
 </Project>

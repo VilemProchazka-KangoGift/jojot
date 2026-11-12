@@ -4,6 +4,8 @@ param(
     [Parameter(Mandatory)] [string] $WpfRun,
     [Parameter(Mandatory)] [string] $ManagedExe,
     [Parameter(Mandatory)] [string] $AotExe,
+    [string] $PrototypeAotExe,
+    [string] $FixtureDirectory,
     [Parameter(Mandatory)] [string] $OutputDirectory,
     [Parameter(Mandatory)] [double] $Width,
     [Parameter(Mandatory)] [double] $Height,
@@ -13,13 +15,26 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$fixture = Join-Path (Resolve-Path -LiteralPath $WpfRun).Path 'fixture'
+$fixture = if ($FixtureDirectory) {
+    (Resolve-Path -LiteralPath $FixtureDirectory).Path
+} else {
+    Join-Path (Resolve-Path -LiteralPath $WpfRun).Path 'fixture'
+}
 $desktop = (Get-Content -LiteralPath (Join-Path $fixture 'desktop.txt') -Raw).Trim()
+$fixtureDesktopId = [guid]::Empty
+if ($PrototypeAotExe -and
+    (-not [guid]::TryParse($desktop, [ref]$fixtureDesktopId) -or $fixtureDesktopId -eq [guid]::Empty)) {
+    throw 'The four-build comparison requires a fixture seeded on a detected Windows virtual desktop.'
+}
 $fixtureFiles = @('jojot.db', 'startup-cache.json', '.clean-shutdown')
-$executables = [ordered]@{
-    'WPF ReadyToRun' = (Resolve-Path -LiteralPath (Join-Path $WpfRun 'baseline/wpf/JoJot.exe')).Path
-    'Avalonia ReadyToRun' = (Resolve-Path -LiteralPath $ManagedExe).Path
-    'Avalonia NativeAOT' = (Resolve-Path -LiteralPath $AotExe).Path
+$executables = [ordered]@{ 'WPF ReadyToRun' = (Resolve-Path -LiteralPath (Join-Path $WpfRun 'baseline/wpf/JoJot.exe')).Path }
+if ($PrototypeAotExe) {
+    $executables['Prototype NativeAOT'] = (Resolve-Path -LiteralPath $PrototypeAotExe).Path
+    $executables['Full Avalonia ReadyToRun'] = (Resolve-Path -LiteralPath $ManagedExe).Path
+    $executables['Full Avalonia NativeAOT'] = (Resolve-Path -LiteralPath $AotExe).Path
+} else {
+    $executables['Avalonia ReadyToRun'] = (Resolve-Path -LiteralPath $ManagedExe).Path
+    $executables['Avalonia NativeAOT'] = (Resolve-Path -LiteralPath $AotExe).Path
 }
 if (Test-Path -LiteralPath $OutputDirectory) {
     throw 'Choose a new output directory to preserve earlier raw samples.'
@@ -66,18 +81,28 @@ function Invoke-Sample([string] $Variant, [string] $Directory) {
             -not (Test-Path -LiteralPath (Join-Path $Directory '.clean-shutdown'))) {
             throw "Startup failed (exit $($child.ExitCode)). Inspect $Directory. $($stderr.GetAwaiter().GetResult())"
         }
+        $isFullAvalonia = $Variant.StartsWith('Full Avalonia ', [StringComparison]::Ordinal)
+        if ($Variant -eq 'WPF ReadyToRun' -or $isFullAvalonia) {
+            $logs = Get-ChildItem -LiteralPath $Directory -Filter 'jojot*.log' -File
+            if ($logs | Select-String -Pattern '\[(ERROR|FATAL)\]' | Select-Object -First 1) {
+                throw "$Variant reported an application error. Inspect $Directory."
+            }
+        }
         if ($Variant -eq 'WPF ReadyToRun') {
             $desktopMessage = if ($desktop -eq 'default') {
                 'Virtual desktop: fallback mode (single-notepad)'
             } else {
                 "Virtual desktop: $desktop ("
             }
-            $logs = Get-ChildItem -LiteralPath $Directory -Filter 'jojot*.log' -File
             if (-not ($logs | Select-String -SimpleMatch $desktopMessage | Select-Object -First 1)) {
                 throw "WPF detected a different virtual desktop. Inspect $Directory."
             }
-            if ($logs | Select-String -Pattern '\[(ERROR|FATAL)\]' | Select-Object -First 1) {
-                throw "WPF reported an application error. Inspect $Directory."
+        }
+        $diagnostics = $stderr.GetAwaiter().GetResult()
+        if (-not [string]::IsNullOrWhiteSpace($diagnostics)) {
+            Set-Content -LiteralPath (Join-Path $Directory 'startup-stderr.txt') -Value $diagnostics
+            if ($isFullAvalonia) {
+                throw "$Variant reported a startup or shutdown error on stderr. Inspect $Directory."
             }
         }
         Get-Content -LiteralPath $resultPath -Raw | ConvertFrom-Json
@@ -99,8 +124,13 @@ $artifactInfo = foreach ($variant in $executables.Keys) {
 }
 $artifactInfo | Export-Csv -LiteralPath (Join-Path $runRoot 'payloads.csv') -NoTypeInformation
 
-# Each block uses all six permutations exactly once. Seeded shuffling distributes position effects.
-$permutations = @('012', '021', '102', '120', '201', '210')
+# Each four-build block balances launch slot and immediate predecessor. The
+# three-build comparison retains its original complete set of permutations.
+$permutations = if ($PrototypeAotExe) {
+    @('0132', '1203', '2310', '3021')
+} else {
+    @('012', '021', '102', '120', '201', '210')
+}
 $random = [Random]::new($OrderSeed)
 $variants = @($executables.Keys)
 foreach ($phase in 'warmup', 'measured') {
