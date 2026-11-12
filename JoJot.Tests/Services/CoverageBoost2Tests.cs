@@ -1,6 +1,5 @@
 using System.IO;
 using System.Text.Json;
-using Microsoft.EntityFrameworkCore;
 using JoJot.Models;
 using JoJot.Services;
 using JoJot.Tests.Helpers;
@@ -600,11 +599,13 @@ public class DatabaseCoreCoverageBoostTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task CreateTestContext_ReturnsFunctionalContext()
+    public async Task CreateCommand_RejectsAccessOutsideDatabaseWorker()
     {
-        await using var ctx = DatabaseCore.CreateTestContext();
-        var count = await ctx.Notes.CountAsync();
-        count.Should().BeGreaterThanOrEqualTo(0);
+        await Task.Run(() =>
+        {
+            var act = () => DatabaseCore.CreateCommand("SELECT 1");
+            act.Should().Throw<InvalidOperationException>().WithMessage("*DB worker*");
+        });
     }
 }
 

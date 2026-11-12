@@ -49,7 +49,6 @@ See [`AGENTS.md`](AGENTS.md) for full architectural details, service description
 ```
 JoJot/                  # WPF application
   Controls/             # Reusable UI controls (panels, overlays)
-  Data/                 # EF Core database context
   Interop/              # Windows COM interop for virtual desktops
   Models/               # Domain models (NoteTab, AppState, etc.)
   Services/             # Static services (database, IPC, theming, undo, etc.)

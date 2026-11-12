@@ -88,6 +88,14 @@ public class CleanShutdownMarkerTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task FileOpen_EnablesWalNormalSynchronousAndForeignKeys()
+    {
+        await DatabaseCore.OpenAsync(_dbPath);
+        (await DatabaseCore.ExecuteScalarAsync<string>("PRAGMA journal_mode;")).Should().Be("wal");
+        (await DatabaseCore.ExecuteScalarAsync<long>("PRAGMA synchronous;")).Should().Be(1);
+        (await DatabaseCore.ExecuteScalarAsync<long>("PRAGMA foreign_keys;")).Should().Be(1);
+    }
+    [Fact]
     public async Task FirstRun_NoMarker_RunsCheck_AndCloseWritesMarkerWithToday()
     {
         File.Exists(_markerPath).Should().BeFalse();

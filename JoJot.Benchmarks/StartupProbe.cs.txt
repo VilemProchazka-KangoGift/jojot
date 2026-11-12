@@ -1,0 +1,72 @@
+using System.Diagnostics;
+using System.IO;
+using System.Text.Json;
+using System.Windows;
+using System.Windows.Controls;
+using JoJot.Services;
+
+namespace JoJot;
+
+// Added to disposable application copies by Compare-Startup.ps1.
+internal static class StartupProbe
+{
+    private static readonly TaskCompletionSource<double> FirstRender = new();
+    private static long _start;
+    private static TimeSpan _timeBeforeMain;
+    private static double _editorReady;
+    private static int _loadedTabs;
+
+    internal static IpcService.SendResult RejectSecondInstance() =>
+        throw new InvalidOperationException("Startup probe mutex collision.");
+
+    internal static void MarkEntry()
+    {
+        using var process = Process.GetCurrentProcess();
+        _timeBeforeMain = DateTime.UtcNow - process.StartTime.ToUniversalTime();
+        _start = Stopwatch.GetTimestamp();
+    }
+
+    internal static void ObserveWindow(Window window)
+    {
+        window.ShowActivated = false;
+        window.ContentRendered += (_, _) => FirstRender.TrySetResult(ElapsedMs());
+    }
+
+    internal static void MarkEditorReady(Window window)
+    {
+        _editorReady = ElapsedMs();
+        if (window.FindName("ContentEditor") is not TextBox { IsEnabled: true } editor ||
+            editor.Text.Length != 1024 ||
+            window.FindName("TabList") is not ListBox { SelectedIndex: 0 } tabs ||
+            tabs.Items.Count != 100)
+        {
+            throw new InvalidOperationException("The editor did not load the 100-note startup fixture.");
+        }
+        _loadedTabs = tabs.Items.Count;
+    }
+
+    internal static async Task CompleteAsync(Application app)
+    {
+        var complete = ElapsedMs();
+        var render = await FirstRender.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        File.WriteAllText(ResultPath, JsonSerializer.Serialize(new
+        {
+            FirstRenderMs = render,
+            EditorReadyMs = _editorReady,
+            StartupCompleteMs = complete,
+            Notes = _loadedTabs
+        }));
+        await StartupSnapshot.FlushForTestsAsync();
+        app.Shutdown();
+    }
+
+    internal static void Fail(Application app, Exception exception)
+    {
+        File.WriteAllText(ResultPath, exception.ToString());
+        app.Shutdown(1);
+    }
+
+    private static string ResultPath => Path.Combine(AppEnvironment.AppDataDirectory, "startup-probe.json");
+
+    private static double ElapsedMs() => (_timeBeforeMain + Stopwatch.GetElapsedTime(_start)).TotalMilliseconds;
+}

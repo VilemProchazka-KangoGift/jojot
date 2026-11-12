@@ -48,8 +48,6 @@ public class CoverageBoostTests : IAsyncLifetime
 
         result.Should().BeFalse();
 
-        // Recreate the table for subsequent tests
-        await DatabaseCore.EnsureSchemaAsync();
     }
 
     [Fact]

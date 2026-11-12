@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+using System.Globalization;
 using JoJot.Models;
 
 namespace JoJot.Services;
@@ -18,12 +18,12 @@ public static class SessionStore
     {
         try
         {
-            await using var context = DatabaseCore.CreateContext();
-            return await context.AppStates
-                .Select(a => new { a.DesktopGuid, a.DesktopName, a.DesktopIndex })
-                .AsNoTracking()
-                .Select(a => ValueTuple.Create(a.DesktopGuid, a.DesktopName, a.DesktopIndex))
-                .ToListAsync(ct).ConfigureAwait(false);
+            await using var cmd = DatabaseCore.CreateCommand("SELECT desktop_guid, desktop_name, desktop_index FROM app_state;");
+            await using var reader = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+            var rows = new List<(string, string?, int?)>();
+            while (await reader.ReadAsync(ct).ConfigureAwait(false))
+                rows.Add((reader.GetString(0), reader.IsDBNull(1) ? null : reader.GetString(1), reader.IsDBNull(2) ? null : reader.GetInt32(2)));
+            return rows;
         }
         catch (Exception ex)
         {
@@ -44,21 +44,19 @@ public static class SessionStore
         await DatabaseCore.AcquireWriteLockAsync().ConfigureAwait(false);
         try
         {
-            await using var context = DatabaseCore.CreateContext();
-            await context.AppStates
-                .Where(a => a.DesktopGuid == oldGuid)
-                .ExecuteUpdateAsync(s => s
-                    .SetProperty(a => a.DesktopGuid, newGuid)
-                    .SetProperty(a => a.DesktopName, name)
-                    .SetProperty(a => a.DesktopIndex, index)).ConfigureAwait(false);
-
+            await using var cmd = DatabaseCore.CreateCommand(
+                "UPDATE app_state SET desktop_guid=@new, desktop_name=@name, desktop_index=@index WHERE desktop_guid=@old;",
+                ("@new", newGuid), ("@name", (object?)name ?? DBNull.Value), ("@index", (object?)index ?? DBNull.Value), ("@old", oldGuid));
+            using var transaction = cmd.Connection!.BeginTransaction();
+            cmd.Transaction = transaction;
+            await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
             if (oldGuid != newGuid)
             {
-                await context.Notes
-                    .Where(n => n.DesktopGuid == oldGuid)
-                    .ExecuteUpdateAsync(s => s
-                        .SetProperty(n => n.DesktopGuid, newGuid)).ConfigureAwait(false);
+                await using var notes = DatabaseCore.CreateCommand("UPDATE notes SET desktop_guid=@new WHERE desktop_guid=@old;", ("@new", newGuid), ("@old", oldGuid));
+                notes.Transaction = transaction;
+                await notes.ExecuteNonQueryAsync().ConfigureAwait(false);
             }
+            transaction.Commit();
         }
         catch (Exception ex)
         {
@@ -95,10 +93,8 @@ public static class SessionStore
         string lowered = desktopGuid.ToLowerInvariant();
         try
         {
-            await using var context = DatabaseCore.CreateContext();
-            return await context.AppStates
-                .AsNoTracking()
-                .AnyAsync(a => a.DesktopGuid.ToLower() == lowered).ConfigureAwait(false);
+            await using var cmd = DatabaseCore.CreateCommand("SELECT EXISTS(SELECT 1 FROM app_state WHERE lower(desktop_guid)=@guid);", ("@guid", lowered));
+            return Convert.ToInt64(await cmd.ExecuteScalarAsync().ConfigureAwait(false), CultureInfo.InvariantCulture) != 0;
         }
         catch (Exception ex)
         {
@@ -118,11 +114,8 @@ public static class SessionStore
         await DatabaseCore.AcquireWriteLockAsync().ConfigureAwait(false);
         try
         {
-            await using var context = DatabaseCore.CreateContext();
-            await context.AppStates
-                .Where(a => a.DesktopGuid == desktopGuid)
-                .ExecuteUpdateAsync(s => s
-                    .SetProperty(a => a.DesktopName, newName)).ConfigureAwait(false);
+            await using var cmd = DatabaseCore.CreateCommand("UPDATE app_state SET desktop_name=@name WHERE desktop_guid=@guid;", ("@name", newName), ("@guid", desktopGuid));
+            await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -145,12 +138,9 @@ public static class SessionStore
     {
         try
         {
-            await using var context = DatabaseCore.CreateContext();
-            return await context.AppStates
-                .AsNoTracking()
-                .Where(a => a.DesktopGuid == desktopGuid)
-                .Select(a => a.DesktopName)
-                .FirstOrDefaultAsync(ct).ConfigureAwait(false);
+            await using var cmd = DatabaseCore.CreateCommand("SELECT desktop_name FROM app_state WHERE desktop_guid=@guid LIMIT 1;", ("@guid", desktopGuid));
+            var value = await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false);
+            return value is null or DBNull ? null : Convert.ToString(value, CultureInfo.InvariantCulture);
         }
         catch (Exception ex)
         {
@@ -171,19 +161,16 @@ public static class SessionStore
         await DatabaseCore.AcquireWriteLockAsync().ConfigureAwait(false);
         try
         {
-            await using var context = DatabaseCore.CreateContext();
-
-            await context.AppStates
-                .Where(a => a.DesktopGuid == newGuid)
-                .ExecuteDeleteAsync().ConfigureAwait(false);
-
-            await context.AppStates
-                .Where(a => a.DesktopGuid == oldGuid)
-                .ExecuteUpdateAsync(s => s
-                    .SetProperty(a => a.DesktopGuid, newGuid)
-                    .SetProperty(a => a.DesktopName, name)
-                    .SetProperty(a => a.DesktopIndex, index)).ConfigureAwait(false);
-
+            await using var cmd = DatabaseCore.CreateCommand("DELETE FROM app_state WHERE desktop_guid=@new;");
+            using var transaction = cmd.Connection!.BeginTransaction();
+            cmd.Transaction = transaction;
+            cmd.Parameters.AddWithValue("@new", newGuid);
+            await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
+            await using var update = DatabaseCore.CreateCommand("UPDATE app_state SET desktop_guid=@new, desktop_name=@name, desktop_index=@index WHERE desktop_guid=@old;",
+                ("@new", newGuid), ("@name", (object?)name ?? DBNull.Value), ("@index", (object?)index ?? DBNull.Value), ("@old", oldGuid));
+            update.Transaction = transaction;
+            await update.ExecuteNonQueryAsync().ConfigureAwait(false);
+            transaction.Commit();
             LogService.Info("Updated session desktop: {OldGuid} -> {NewGuid} (name={Name}, index={Index})", oldGuid, newGuid, name, index);
         }
         catch (Exception ex)
@@ -210,21 +197,11 @@ public static class SessionStore
     {
         try
         {
-            await using var context = DatabaseCore.CreateContext();
-            var state = await context.AppStates
-                .AsNoTracking()
-                .Where(a => a.DesktopGuid == desktopGuid && a.WindowLeft != null)
-                .Select(a => new { a.WindowLeft, a.WindowTop, a.WindowWidth, a.WindowHeight, a.WindowState })
-                .FirstOrDefaultAsync(ct).ConfigureAwait(false);
-
-            if (state is null) return null;
-
-            return new WindowGeometry(
-                state.WindowLeft!.Value,
-                state.WindowTop!.Value,
-                state.WindowWidth!.Value,
-                state.WindowHeight!.Value,
-                state.WindowState == "Maximized");
+            await using var cmd = DatabaseCore.CreateCommand("SELECT window_left, window_top, window_width, window_height, window_state FROM app_state WHERE desktop_guid=@guid AND window_left IS NOT NULL LIMIT 1;", ("@guid", desktopGuid));
+            await using var reader = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+            if (!await reader.ReadAsync(ct).ConfigureAwait(false)) return null;
+            return new WindowGeometry(reader.GetDouble(0), reader.GetDouble(1), reader.GetDouble(2), reader.GetDouble(3),
+                !reader.IsDBNull(4) && reader.GetString(4) == "Maximized");
         }
         catch (Exception ex)
         {
@@ -244,15 +221,9 @@ public static class SessionStore
         await DatabaseCore.AcquireWriteLockAsync().ConfigureAwait(false);
         try
         {
-            await using var context = DatabaseCore.CreateContext();
-            await context.AppStates
-                .Where(a => a.DesktopGuid == desktopGuid)
-                .ExecuteUpdateAsync(s => s
-                    .SetProperty(a => a.WindowLeft, geo.Left)
-                    .SetProperty(a => a.WindowTop, geo.Top)
-                    .SetProperty(a => a.WindowWidth, geo.Width)
-                    .SetProperty(a => a.WindowHeight, geo.Height)
-                    .SetProperty(a => a.WindowState, geo.IsMaximized ? "Maximized" : "Normal")).ConfigureAwait(false);
+            await using var cmd = DatabaseCore.CreateCommand("UPDATE app_state SET window_left=@left, window_top=@top, window_width=@width, window_height=@height, window_state=@state WHERE desktop_guid=@guid;",
+                ("@left", geo.Left), ("@top", geo.Top), ("@width", geo.Width), ("@height", geo.Height), ("@state", geo.IsMaximized ? "Maximized" : "Normal"), ("@guid", desktopGuid));
+            await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -284,41 +255,32 @@ public static class SessionStore
         IReadOnlyList<string> orphanGuids, CancellationToken ct)
     {
         if (orphanGuids.Count == 0) return [];
-
         try
         {
-            await using var context = DatabaseCore.CreateContext();
-
-            // Batch query 1: all desktop names for orphan GUIDs (single round-trip)
-            var appStates = await context.AppStates
-                .AsNoTracking()
-                .Where(a => orphanGuids.Contains(a.DesktopGuid))
-                .Select(a => new { a.DesktopGuid, a.DesktopName })
-                .ToDictionaryAsync(a => a.DesktopGuid, a => a.DesktopName, ct).ConfigureAwait(false);
-
-            // Batch query 2: note stats grouped by desktop GUID (single round-trip)
-            var noteStats = await context.Notes
-                .AsNoTracking()
-                .Where(n => orphanGuids.Contains(n.DesktopGuid))
-                .GroupBy(n => n.DesktopGuid)
-                .Select(g => new { DesktopGuid = g.Key, Count = g.Count(), MaxUpdated = g.Max(n => n.UpdatedAt) })
-                .ToDictionaryAsync(g => g.DesktopGuid, ct).ConfigureAwait(false);
-
-            // Combine results
-            var results = new List<(string, string?, int, DateTime)>(orphanGuids.Count);
-            foreach (var guid in orphanGuids)
+            var names = new Dictionary<string, string?>();
+            var stats = new Dictionary<string, (int Count, DateTime MaxUpdated)>();
+            // Stay below SQLite's variable limit even on builds with the older 999 limit.
+            foreach (var chunk in orphanGuids.Distinct().Chunk(500))
             {
-                appStates.TryGetValue(guid, out var desktopName);
-                int tabCount = 0;
-                DateTime lastUpdated = OrphanFallbackDate;
-                if (noteStats.TryGetValue(guid, out var stats))
-                {
-                    tabCount = stats.Count;
-                    lastUpdated = stats.MaxUpdated;
-                }
-                results.Add((guid, desktopName, tabCount, lastUpdated));
+                string placeholders = string.Join(", ", Enumerable.Range(0, chunk.Length).Select(i => $"@g{i}"));
+                var parameters = chunk.Select((g, i) => ($"@g{i}", (object?)g)).ToArray();
+                await using (var cmd = DatabaseCore.CreateCommand($"SELECT desktop_guid, desktop_name FROM app_state WHERE desktop_guid IN ({placeholders});", parameters))
+                await using (var reader = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false))
+                    while (await reader.ReadAsync(ct).ConfigureAwait(false))
+                        names[reader.GetString(0)] = reader.IsDBNull(1) ? null : reader.GetString(1);
+                await using (var cmd = DatabaseCore.CreateCommand($"SELECT desktop_guid, COUNT(*), MAX(updated_at) FROM notes WHERE desktop_guid IN ({placeholders}) GROUP BY desktop_guid;", parameters))
+                await using (var reader = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false))
+                    while (await reader.ReadAsync(ct).ConfigureAwait(false))
+                        stats[reader.GetString(0)] = (reader.GetInt32(1), reader.GetDateTime(2));
             }
-            return results;
+            var result = new List<(string, string?, int, DateTime)>(orphanGuids.Count);
+            foreach (string guid in orphanGuids)
+            {
+                names.TryGetValue(guid, out string? name);
+                var stat = stats.TryGetValue(guid, out var found) ? found : (0, OrphanFallbackDate);
+                result.Add((guid, name, stat.Item1, stat.Item2));
+            }
+            return result;
         }
         catch (Exception ex)
         {
@@ -338,14 +300,15 @@ public static class SessionStore
         await DatabaseCore.AcquireWriteLockAsync().ConfigureAwait(false);
         try
         {
-            await using var context = DatabaseCore.CreateContext();
-            await context.Notes
-                .Where(n => n.DesktopGuid == desktopGuid)
-                .ExecuteDeleteAsync().ConfigureAwait(false);
-            await context.AppStates
-                .Where(a => a.DesktopGuid == desktopGuid)
-                .ExecuteDeleteAsync().ConfigureAwait(false);
-
+            await using var cmd = DatabaseCore.CreateCommand("DELETE FROM notes WHERE desktop_guid=@guid;");
+            using var transaction = cmd.Connection!.BeginTransaction();
+            cmd.Transaction = transaction;
+            cmd.Parameters.AddWithValue("@guid", desktopGuid);
+            await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
+            await using var state = DatabaseCore.CreateCommand("DELETE FROM app_state WHERE desktop_guid=@guid;", ("@guid", desktopGuid));
+            state.Transaction = transaction;
+            await state.ExecuteNonQueryAsync().ConfigureAwait(false);
+            transaction.Commit();
             LogService.Info("Deleted orphaned session and notes for {DesktopGuid}", desktopGuid);
         }
         catch (Exception ex)

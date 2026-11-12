@@ -1,4 +1,3 @@
-using Microsoft.EntityFrameworkCore;
 
 namespace JoJot.Services;
 
@@ -19,17 +18,16 @@ public static class PreferenceStore
 
     private static async Task<IReadOnlyDictionary<string, string>> InitializeCacheCoreAsync(CancellationToken ct = default)
     {
-        await using var context = DatabaseCore.CreateContext();
-        var all = await context.Preferences
-            .AsNoTracking()
-            .ToDictionaryAsync(p => p.Key, p => p.Value, ct).ConfigureAwait(false);
+        await using var cmd = DatabaseCore.CreateCommand("SELECT key, value FROM preferences;");
+        await using var reader = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        var all = new Dictionary<string, string>();
+        while (await reader.ReadAsync(ct).ConfigureAwait(false))
+            all.Add(reader.GetString(0), reader.GetString(1));
         lock (_cacheLock)
         {
-            // The cache gets its own copy: SetPreferenceAsync mutates it on the DB thread while the
-            // caller may still be enumerating the returned map on the UI thread.
             _cache = new Dictionary<string, string>(all);
         }
-        return all;
+        return (IReadOnlyDictionary<string, string>)all;
     }
 
     /// <summary>
@@ -72,12 +70,9 @@ public static class PreferenceStore
     {
         try
         {
-            await using var context = DatabaseCore.CreateContext();
-            return await context.Preferences
-                .AsNoTracking()
-                .Where(p => p.Key == key)
-                .Select(p => p.Value)
-                .FirstOrDefaultAsync(ct).ConfigureAwait(false);
+            await using var cmd = DatabaseCore.CreateCommand("SELECT value FROM preferences WHERE key=@key LIMIT 1;", ("@key", key));
+            var value = await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false);
+            return value is null or DBNull ? null : Convert.ToString(value, System.Globalization.CultureInfo.InvariantCulture);
         }
         catch (Exception ex)
         {
@@ -97,17 +92,15 @@ public static class PreferenceStore
         await DatabaseCore.AcquireWriteLockAsync().ConfigureAwait(false);
         try
         {
-            await using var context = DatabaseCore.CreateContext();
-            await context.Database.ExecuteSqlRawAsync(
-                "INSERT INTO preferences (key, value) VALUES ({0}, {1}) ON CONFLICT(key) DO UPDATE SET value = {1}",
-                key, value).ConfigureAwait(false);
-
+            await using var cmd = DatabaseCore.CreateCommand(
+                "INSERT INTO preferences (key, value) VALUES (@key, @value) ON CONFLICT(key) DO UPDATE SET value=@value;",
+                ("@key", key), ("@value", value));
+            await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
             lock (_cacheLock)
             {
                 if (_cache is not null)
                     _cache[key] = value;
             }
-
             StartupSnapshot.UpdatePreference(key, value);
         }
         catch (Exception ex)

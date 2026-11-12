@@ -131,17 +131,18 @@ public class DatabaseCoreTests : IAsyncLifetime
         DatabaseCore.ConnectionString.Should().NotBeNullOrWhiteSpace();
     }
 
-    // ─── CreateTestContext ────────────────────────────────────────────
+    // ─── Worker-owned commands ────────────────────────────────────────
 
     [Fact]
-    public async Task CreateTestContext_ReturnsWorkingContext()
+    public async Task CreateCommand_RunsOnWorkerAndReturnsDatabaseValue()
     {
-        await using var context = DatabaseCore.CreateTestContext();
-        context.Should().NotBeNull();
-
-        // Should be able to query without error
-        var count = await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions
-            .CountAsync(context.Notes);
-        count.Should().BeGreaterThanOrEqualTo(0);
+        await NoteStore.InsertNoteAsync("command-test", null, "body", false, 0);
+        var count = await DatabaseCore.RunOnDbThreadAsync(async () =>
+        {
+            using var command = DatabaseCore.CreateCommand(
+                "SELECT COUNT(*) FROM notes WHERE desktop_guid = @desktop", ("@desktop", "command-test"));
+            return Convert.ToInt64(await command.ExecuteScalarAsync());
+        });
+        count.Should().Be(1);
     }
 }

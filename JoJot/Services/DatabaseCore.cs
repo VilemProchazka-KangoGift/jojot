@@ -3,9 +3,6 @@ using System.IO;
 using System.Runtime.CompilerServices;
 using System.Threading.Channels;
 using Microsoft.Data.Sqlite;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Infrastructure;
-using JoJot.Data;
 
 namespace JoJot.Services;
 
@@ -28,7 +25,6 @@ public static class DatabaseCore
     private static string _dbPath = string.Empty;
     private static string _connectionString = string.Empty;
     private static IClock _clock = SystemClock.Instance;
-    private static PooledDbContextFactory<JoJotDbContext>? _contextFactory;
 
     // ─── Clean-shutdown marker (quick_check policy) ─────────────────────
 
@@ -280,17 +276,21 @@ public static class DatabaseCore
 
     internal static void ReleaseWriteLock() => _writeLock.Release();
 
-    internal static JoJotDbContext CreateContext([CallerMemberName] string caller = "")
+    /// <summary>Creates a parameterized command on the connection owned by the DB worker.</summary>
+    internal static SqliteCommand CreateCommand(string sql, params (string name, object? value)[] parameters)
     {
-        WarnIfUiThread(caller);
-        return _contextFactory?.CreateDbContext() ?? new JoJotDbContext(_connectionString);
+        if (!ShouldRunInline)
+            throw new InvalidOperationException("Database commands must run on the DB worker.");
+        var connection = _rawConnection ?? throw new InvalidOperationException("Database is not open.");
+        var command = connection.CreateCommand();
+        command.CommandText = sql;
+        foreach (var (name, value) in parameters)
+            command.Parameters.AddWithValue(name, value ?? DBNull.Value);
+        return command;
     }
 
     /// <summary>The current connection string. Exposed for test verification only.</summary>
     internal static string ConnectionString => _connectionString;
-
-    /// <summary>Creates a DbContext using the current connection string. For integration tests.</summary>
-    internal static JoJotDbContext CreateTestContext() => CreateContext();
 
     // ─── Open / close ───────────────────────────────────────────────────
 
@@ -332,8 +332,6 @@ public static class DatabaseCore
             "PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL; PRAGMA foreign_keys=ON;")
             .ConfigureAwait(false);
 
-        InitializeContextPool();
-
         LogService.Info("Database opened: {DbPath}", dbPath);
     }
 
@@ -361,7 +359,6 @@ public static class DatabaseCore
 
         await ExecuteRawPragmaAsync("PRAGMA foreign_keys=ON;").ConfigureAwait(false);
 
-        InitializeContextPool();
     }
 
     /// <summary>
@@ -382,12 +379,6 @@ public static class DatabaseCore
 
     private static async Task CloseCoreAsync()
     {
-        if (_contextFactory is not null)
-        {
-            // IDisposable not available on PooledDbContextFactory; null the reference
-            _contextFactory = null;
-        }
-
         if (_rawConnection is not null)
         {
             if (!_isInMemory)
@@ -488,13 +479,57 @@ public static class DatabaseCore
     // ─── Schema ─────────────────────────────────────────────────────────
 
     /// <summary>
-    /// Current schema version stamped into PRAGMA user_version after EnsureCreated + migrations.
+    /// Current schema version stamped into PRAGMA user_version after schema creation + migrations.
     /// v1 = base tables + window_state + file_path columns + idx_notes_desktop index.
     /// v2 = idx_notes_desktop recreated as (desktop_guid, pinned DESC, sort_order) to match the
     ///      tab-load ORDER BY pinned DESC, sort_order ASC (no temp b-tree sort).
     /// Increment when adding any schema change, and guard the new migration on the old version.
     /// </summary>
     internal const int CurrentSchemaVersion = 2;
+
+    // Preserve the original EF-created column types, defaults, keys, and index names. This is
+    // only used for empty databases; changing the storage implementation is not a schema upgrade.
+    private const string SchemaSql = """
+        CREATE TABLE "app_state" (
+            "id" INTEGER NOT NULL CONSTRAINT "PK_app_state" PRIMARY KEY AUTOINCREMENT,
+            "desktop_guid" TEXT NOT NULL,
+            "desktop_name" TEXT NULL,
+            "desktop_index" INTEGER NULL,
+            "window_left" REAL NULL,
+            "window_top" REAL NULL,
+            "window_width" REAL NULL,
+            "window_height" REAL NULL,
+            "active_tab_id" INTEGER NULL,
+            "scroll_offset" REAL NULL,
+            "window_state" TEXT NULL
+        );
+        CREATE TABLE "notes" (
+            "id" INTEGER NOT NULL CONSTRAINT "PK_notes" PRIMARY KEY AUTOINCREMENT,
+            "desktop_guid" TEXT NOT NULL,
+            "name" TEXT NULL,
+            "content" TEXT NOT NULL DEFAULT '',
+            "pinned" INTEGER NOT NULL DEFAULT 0,
+            "created_at" TEXT NOT NULL DEFAULT (datetime('now')),
+            "updated_at" TEXT NOT NULL DEFAULT (datetime('now')),
+            "sort_order" INTEGER NOT NULL DEFAULT 0,
+            "editor_scroll_offset" INTEGER NOT NULL DEFAULT 0,
+            "cursor_position" INTEGER NOT NULL DEFAULT 0,
+            "file_path" TEXT NULL
+        );
+        CREATE TABLE "pending_moves" (
+            "id" INTEGER NOT NULL CONSTRAINT "PK_pending_moves" PRIMARY KEY AUTOINCREMENT,
+            "window_id" TEXT NOT NULL,
+            "from_desktop" TEXT NOT NULL,
+            "to_desktop" TEXT NULL,
+            "detected_at" TEXT NOT NULL DEFAULT (datetime('now'))
+        );
+        CREATE TABLE "preferences" (
+            "key" TEXT NOT NULL CONSTRAINT "PK_preferences" PRIMARY KEY,
+            "value" TEXT NOT NULL
+        );
+        CREATE UNIQUE INDEX "IX_app_state_desktop_guid" ON "app_state" ("desktop_guid");
+        CREATE INDEX "idx_notes_desktop" ON "notes" ("desktop_guid", "pinned" DESC, "sort_order");
+        """;
 
     /// <summary>Reads PRAGMA user_version (0 on a freshly created database).</summary>
     internal static Task<int> GetUserVersionAsync() => RunOnDbThreadAsync(GetUserVersionCoreAsync);
@@ -514,8 +549,8 @@ public static class DatabaseCore
     }
 
     /// <summary>
-    /// Creates all schema tables if they do not already exist. Returns false without touching
-    /// EF when the schema stamp is current (the ~450ms EnsureCreated fast path).
+    /// Creates the schema in an empty database. Existing databases are left to migrations and
+    /// integrity checking: filling in missing tables would hide partial corruption.
     /// </summary>
     public static Task<bool> EnsureSchemaAsync() => RunOnDbThreadAsync(EnsureSchemaCoreAsync);
 
@@ -523,13 +558,21 @@ public static class DatabaseCore
     {
         if (await GetUserVersionCoreAsync().ConfigureAwait(false) == CurrentSchemaVersion)
         {
-            LogService.Info("Schema is current (v{Version}) — skipping EnsureCreated", CurrentSchemaVersion);
+            LogService.Info("Schema is current (v{Version}) — skipping schema creation", CurrentSchemaVersion);
             return false;
         }
 
-        await using var context = CreateContext();
-        await context.Database.EnsureCreatedAsync().ConfigureAwait(false);
-        LogService.Info("Schema ensured (all four tables).");
+        using var command = CreateCommand(
+            "SELECT EXISTS (SELECT 1 FROM sqlite_master WHERE type = 'table' AND rootpage IS NOT NULL AND substr(name, 1, 7) <> 'sqlite_');");
+        if (Convert.ToInt64(await command.ExecuteScalarAsync().ConfigureAwait(false), CultureInfo.InvariantCulture) == 0)
+        {
+            using var transaction = command.Connection!.BeginTransaction();
+            command.Transaction = transaction;
+            command.CommandText = SchemaSql;
+            await command.ExecuteNonQueryAsync().ConfigureAwait(false);
+            transaction.Commit();
+        }
+        LogService.Info("Schema creation checked for an unstamped database.");
         return true;
     }
 
@@ -628,11 +671,7 @@ public static class DatabaseCore
     {
         LogService.Error("Database corruption detected — backing up and recreating");
 
-        // Release ALL open handles to the file before moving it. The raw connection AND the pooled
-        // EF connections (opened by EnsureSchemaAsync before the integrity check) hold the file open.
-        // Microsoft.Data.Sqlite pools physical connections, so nulling the factory is not enough —
-        // the pool must be cleared, or File.Move throws a sharing violation and recovery silently fails.
-        _contextFactory = null;
+        // Release the connection and the driver's pooled physical handles before moving the file.
         if (_rawConnection is not null)
         {
             await _rawConnection.DisposeAsync().ConfigureAwait(false);
@@ -673,18 +712,15 @@ public static class DatabaseCore
     /// <summary>
     /// Executes a parameterized non-query SQL command. Serialized through the write lock.
     /// </summary>
-    public static Task ExecuteNonQueryAsync(string sql, params (string name, object value)[] parameters) =>
+    public static Task ExecuteNonQueryAsync(string sql, params (string name, object? value)[] parameters) =>
         RunOnDbThreadAsync(() => ExecuteNonQueryCoreAsync(sql, parameters));
 
-    private static async Task ExecuteNonQueryCoreAsync(string sql, (string name, object value)[] parameters)
+    private static async Task ExecuteNonQueryCoreAsync(string sql, (string name, object? value)[] parameters)
     {
         await AcquireWriteLockAsync().ConfigureAwait(false);
         try
         {
-            await using var cmd = _rawConnection!.CreateCommand();
-            cmd.CommandText = sql;
-            foreach (var (name, value) in parameters)
-                cmd.Parameters.AddWithValue(name, value);
+            await using var cmd = CreateCommand(sql, parameters);
             await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
         }
         catch (Exception ex)
@@ -755,9 +791,8 @@ public static class DatabaseCore
             LogService.Info("Migration: added file_path column to notes");
         }
 
-        // Index for the hot per-desktop note queries. EnsureCreated only adds indexes to a brand-new
-        // database, so existing installs need this explicit, idempotent creation. Name matches the
-        // model's HasDatabaseName so a fresh DB doesn't end up with two indexes on the same columns.
+        // Index for the hot per-desktop note queries. Existing installs need this explicit,
+        // idempotent creation using the same name as the original EF-created schema.
         // v1 → v2: v1 created it all-ascending; drop and recreate with pinned DESC so the load query's
         // ORDER BY pinned DESC, sort_order walks the index. Version 0 also rebuilds: it may be a
         // pre-stamp install carrying the ascending index (on a fresh DB the rebuild is trivially cheap).
@@ -778,29 +813,6 @@ public static class DatabaseCore
         await SetUserVersionCoreAsync(CurrentSchemaVersion).ConfigureAwait(false);
         LogService.Info("Schema stamped at v{Version}", CurrentSchemaVersion);
     }
-
-    /// <summary>
-    /// Creates the pooled context factory. Call after _connectionString is set.
-    /// </summary>
-    private static void InitializeContextPool()
-    {
-        var options = new DbContextOptionsBuilder<JoJotDbContext>()
-            .UseSqlite(_connectionString)
-            .UseModel(JoJot.Data.CompiledModels.JoJotDbContextModel.Instance)
-            .Options;
-        _contextFactory = new PooledDbContextFactory<JoJotDbContext>(options, poolSize: 4);
-    }
-
-    /// <summary>
-    /// Warms up the EF Core model on the DB worker thread so the first real query is fast.
-    /// Call from startup after <see cref="OpenAsync"/> but before the first query.
-    /// </summary>
-    public static Task WarmupModelAsync() => RunOnDbThreadAsync(() =>
-    {
-        // Creating and disposing a context triggers model compilation + caches it for the pool.
-        using var ctx = _contextFactory?.CreateDbContext();
-        return Task.CompletedTask;
-    });
 
     // ─── Private helpers ────────────────────────────────────────────────
 

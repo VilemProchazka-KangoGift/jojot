@@ -1,6 +1,13 @@
 using System.Diagnostics;
+using JoJot.Benchmarks;
 using JoJot.Services;
 using Microsoft.Data.Sqlite;
+
+if (args.Length > 0)
+{
+    await StartupDatabase.RunAsync(args);
+    return;
+}
 
 const string desktop = "benchmark-desktop";
 const int iterations = 500;

@@ -4,7 +4,7 @@ using JoJot.Tests.Helpers;
 namespace JoJot.Tests.Models;
 
 /// <summary>
-/// EF Core mapping tests — verifies entities round-trip correctly through the DbContext.
+/// Storage tests — verify models round-trip through the SQLite stores.
 /// </summary>
 [Collection("Database")]
 public class NoteTabModelTests : IAsyncLifetime
@@ -22,7 +22,7 @@ public class NoteTabModelTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task NoteTab_RoundTrips_ThroughDbContext()
+    public async Task NoteTab_RoundTrips_ThroughStore()
     {
         var id = await NoteStore.InsertNoteAsync("rt-desk", "Round Trip", "Hello", true, 5);
 
@@ -58,14 +58,13 @@ public class NoteTabModelTests : IAsyncLifetime
     [Fact]
     public async Task NoteTab_ComputedProperties_NotPersistedToDb()
     {
-        // Verify that computed properties (DisplayLabel, IsPlaceholder, etc.)
-        // don't interfere with EF Core mapping
+        // Computed properties remain available on a model loaded from storage.
         var id = await NoteStore.InsertNoteAsync("comp-desk", null, "", false, 0);
 
         var notes = await NoteStore.GetNotesForDesktopAsync("comp-desk");
         var note = notes.Should().ContainSingle().Subject;
 
-        // These should work without EF Core errors (they're ignored in OnModelCreating)
+        // Derived properties are computed after loading.
         note.DisplayLabel.Should().Be("New note");
         note.IsPlaceholder.Should().BeTrue();
     }

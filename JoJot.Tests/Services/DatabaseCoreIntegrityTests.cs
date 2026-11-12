@@ -87,7 +87,7 @@ public class DatabaseCoreIntegrityTests : IAsyncLifetime
     [Fact]
     public async Task Schema_HasSingleNotesDesktopIndex_AfterMigration()
     {
-        // The model (EnsureCreated) and RunPendingMigrations both target idx_notes_desktop by the
+        // Schema creation and RunPendingMigrations both target idx_notes_desktop by the
         // same name, so a fresh DB must end up with exactly one such index — not zero, not two.
         await DatabaseCore.RunPendingMigrationsAsync();
 

@@ -29,7 +29,7 @@ public class SchemaVersionTests : IAsyncLifetime
 
         bool didWork = await DatabaseCore.EnsureSchemaAsync();
 
-        didWork.Should().BeFalse("a stamped schema must skip EnsureCreated");
+        didWork.Should().BeFalse("a stamped schema must skip creation");
     }
 
     [Fact]

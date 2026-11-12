@@ -9,7 +9,7 @@
     <UseWPF>true</UseWPF>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <PublishReadyToRun>true</PublishReadyToRun>
-    <!-- Ship only the app's own UI languages: EF Core otherwise drops 13 satellite folders. -->
+    <!-- Ship only the app's own UI languages. -->
     <SatelliteResourceLanguages>en;cs</SatelliteResourceLanguages>
     <!-- Small heap: no background GC thread to spin up at startup. -->
     <ConcurrentGarbageCollection>false</ConcurrentGarbageCollection>
@@ -57,11 +57,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="11.0.0" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="11.0.0">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
+    <PackageReference Include="Microsoft.Data.Sqlite.Core" Version="11.0.0" />
     <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.5" />
     <PackageReference Include="Serilog" Version="4.4.0" />
     <PackageReference Include="Serilog.Enrichers.Process" Version="3.0.0" />

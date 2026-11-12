@@ -24,6 +24,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="Fixtures\ef-sqlite-v2.db" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\JoJot\JoJot.csproj" />
   </ItemGroup>
 

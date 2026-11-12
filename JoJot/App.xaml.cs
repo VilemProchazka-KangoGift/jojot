@@ -156,8 +156,7 @@ public partial class App : Application
             IpcService.StartServer(HandleIpcCommand, _appShutdownCts.Token);
             LogPhase("ipc-server");
 
-            // Kick off the entire DB pipeline immediately (including the preference-cache load and its
-            // first EF query compilation); it runs while the window appears.
+            // Kick off the database pipeline and preference-cache load while the window appears.
             var dbInitTask = InitializeDatabaseAsync();
 
             // Fast path: snapshot seeds the preference cache so language/theme resolve instantly.
@@ -440,7 +439,7 @@ public partial class App : Application
     }
 
     /// <summary>
-    /// Open → schema → integrity/corruption recovery → EF warmup → preference-cache load, as one
+    /// Open → schema → integrity/corruption recovery → preference-cache load, as one
     /// awaitable unit. Every step runs on the DB worker thread. ConfigureAwait(false) keeps the chain
     /// from bouncing through the dispatcher between steps (it touches no UI), so it progresses while
     /// the UI thread is busy building the window. Returns the preferences loaded from the database.
@@ -464,9 +463,7 @@ public partial class App : Application
             await DatabaseCore.HandleCorruptionAsync(dbPath).ConfigureAwait(false);
         }
 
-        await DatabaseCore.WarmupModelAsync().ConfigureAwait(false);
-
-        // First EF LINQ query of the process (query compilation) — off the UI critical path here.
+        // Load database preferences off the UI critical path.
         return await PreferenceStore.InitializeCacheAsync().ConfigureAwait(false);
     }
 
