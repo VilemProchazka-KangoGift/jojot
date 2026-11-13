@@ -18,6 +18,16 @@
     <AvaloniaResource Include="../../JoJot/Assets/jojot.ico" Link="Assets/jojot.ico" />
     <ProjectReference Include="../JoJot.Storage/JoJot.Storage.csproj" />
   </ItemGroup>
+  <!-- Use the release version maintained in the WPF project by the release workflow. -->
+  <Target Name="ReadJoJotReleaseVersion" BeforeTargets="GetAssemblyVersion">
+    <XmlPeek XmlInputPath="$(MSBuildThisFileDirectory)../../JoJot/JoJot.csproj" Query="/Project/PropertyGroup/Version/text()">
+      <Output TaskParameter="Result" PropertyName="JoJotReleaseVersion" />
+    </XmlPeek>
+    <Error Condition="'$(JoJotReleaseVersion)' == ''" Text="The JoJot release version is missing." />
+    <PropertyGroup>
+      <Version>$(JoJotReleaseVersion)</Version>
+    </PropertyGroup>
+  </Target>
   <!-- .NET 11 does not classify project-reference satellites as resource assets for ILC. -->
   <Target Name="IncludeJoJotStorageSatelliteForNativeAot"
           AfterTargets="_ComputeIlcCompileInputs" Condition="'$(PublishAot)' == 'true'">

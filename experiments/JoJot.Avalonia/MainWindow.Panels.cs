@@ -257,25 +257,6 @@ public sealed partial class MainWindow
         reset.Margin = new Thickness(0, 4, 0, 16);
         body.Children.Add(reset);
 
-        body.Children.Add(PanelSection(Strings.Pref_SectionShortcuts));
-        body.Children.Add(PreferenceLabel(Strings.Pref_GlobalHotkey));
-        _globalShortcutDisplay = PanelText(CurrentGlobalShortcut?.Invoke() ?? "Win+Shift+N");
-        _globalShortcutDisplay.VerticalAlignment = VerticalAlignment.Center;
-        _recordShortcutButton = PanelButton(Strings.Pref_HotkeyRecord, ToggleShortcutRecording);
-        _recordShortcutButton.Classes.Add("panelAccent");
-        _recordShortcutButton.IsEnabled = RecordGlobalShortcutAsync is not null;
-        var shortcut = new Border { Child = _globalShortcutDisplay, Classes = { "hotkeyBadge" } };
-        Grid.SetColumn(_recordShortcutButton, 1);
-        body.Children.Add(new Grid
-        {
-            ColumnDefinitions = new ColumnDefinitions("*,Auto"), ColumnSpacing = 8,
-            Children = { shortcut, _recordShortcutButton },
-        });
-        body.Children.Add(PreferenceHint(Strings.Pref_HotkeyHint));
-        var shortcuts = PanelButton(Strings.Help_Title, ShowHelp);
-        shortcuts.Margin = new Thickness(0, 0, 0, 16);
-        body.Children.Add(shortcuts);
-
         body.Children.Add(PanelSection(CoreLabel("STARTUP", "SPUŠTĚNÍ")));
         body.Children.Add(PreferenceLabel(CoreLabel("On startup", "Při spuštění")));
         Button lastNote = null!;
@@ -294,6 +275,25 @@ public sealed partial class MainWindow
         var startup = PreferenceSegments(lastNote, newNote);
         startup.Margin = new Thickness(0, 0, 0, 16);
         body.Children.Add(startup);
+
+        body.Children.Add(PanelSection(Strings.Pref_SectionShortcuts));
+        body.Children.Add(PreferenceLabel(Strings.Pref_GlobalHotkey));
+        _globalShortcutDisplay = PanelText(CurrentGlobalShortcut?.Invoke() ?? "Win+Shift+N");
+        _globalShortcutDisplay.VerticalAlignment = VerticalAlignment.Center;
+        _recordShortcutButton = PanelButton(Strings.Pref_HotkeyRecord, ToggleShortcutRecording);
+        _recordShortcutButton.Classes.Add("panelAccent");
+        _recordShortcutButton.IsEnabled = RecordGlobalShortcutAsync is not null;
+        var shortcut = new Border { Child = _globalShortcutDisplay, Classes = { "hotkeyBadge" } };
+        Grid.SetColumn(_recordShortcutButton, 1);
+        body.Children.Add(new Grid
+        {
+            ColumnDefinitions = new ColumnDefinitions("*,Auto"), ColumnSpacing = 8,
+            Children = { shortcut, _recordShortcutButton },
+        });
+        body.Children.Add(PreferenceHint(Strings.Pref_HotkeyHint));
+        var shortcuts = PanelButton(Strings.Help_Title, ShowHelp);
+        shortcuts.Margin = new Thickness(0, 0, 0, 16);
+        body.Children.Add(shortcuts);
 
         body.Children.Add(PanelSection(Strings.Pref_SectionAbout));
         body.Children.Add(PreferenceHint(string.Format(Strings.Pref_Version, typeof(MainWindow).Assembly.GetName().Version?.ToString(3))));
