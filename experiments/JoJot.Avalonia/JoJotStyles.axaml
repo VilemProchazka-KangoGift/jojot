@@ -1,4 +1,23 @@
 <Styles xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Style Selector="TextBox.inlineRename">
+    <Setter Property="Height" Value="22" />
+    <Setter Property="MinHeight" Value="0" />
+    <Setter Property="MinWidth" Value="0" />
+    <Setter Property="Padding" Value="4,0" />
+    <Setter Property="CornerRadius" Value="5" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="BorderBrush" Value="{DynamicResource c-accent}" />
+    <Setter Property="Background" Value="{DynamicResource c-editor-bg}" />
+    <Setter Property="Foreground" Value="{DynamicResource c-text-primary}" />
+    <Setter Property="PlaceholderForeground" Value="{DynamicResource c-text-muted}" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+  </Style>
+  <Style Selector="TextBox.inlineRename /template/ Border#PART_BorderElement,
+                   TextBox.inlineRename:focus /template/ Border#PART_BorderElement">
+    <Setter Property="Background" Value="{DynamicResource c-editor-bg}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource c-accent}" />
+    <Setter Property="BorderThickness" Value="1" />
+  </Style>
   <Style Selector="ListBoxItem:selected TextBlock.tabTitle">
     <Setter Property="FontWeight" Value="SemiBold" />
   </Style>

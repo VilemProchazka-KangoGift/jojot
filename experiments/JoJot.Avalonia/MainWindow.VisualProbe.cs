@@ -5,6 +5,7 @@ using Avalonia.Threading;
 using Avalonia.VisualTree;
 using JoJot.Resources;
 using JoJot.Services;
+using JoJot.AvaloniaExperiment.Platform;
 
 namespace JoJot.AvaloniaExperiment;
 
@@ -31,9 +32,21 @@ public sealed partial class MainWindow
             }
             ApplyTheme("light");
             await CaptureWindowAsync(directory, "main-light.png");
+            NativeFrameCapture.Save(this, Path.Combine(directory, "native-light.png"));
             ApplyTheme("dark");
             await CaptureWindowAsync(directory, "main-dark.png");
+            NativeFrameCapture.Save(this, Path.Combine(directory, "native-dark.png"));
+            BeginRename(_active!);
+            await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Background);
+            await CaptureWindowAsync(directory, "rename-dark.png");
+            FinishRename(save: false);
             ApplyTheme("light");
+            await CaptureWindowAsync(directory, "native-light-return-client.png");
+            NativeFrameCapture.Save(this, Path.Combine(directory, "native-light-return.png"));
+            BeginRename(_active!);
+            await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Background);
+            await CaptureWindowAsync(directory, "rename-light.png");
+            FinishRename(save: false);
 
             ShowFindPanel();
             if (_findQuery is { } query && Editor.Text is { Length: > 0 } editorText)
@@ -50,6 +63,15 @@ public sealed partial class MainWindow
                     throw new InvalidOperationException("The visual probe did not find its selected search term.");
             }
             await CaptureWindowAsync(directory, "find.png");
+            _findWhole!.IsChecked = true;
+            _findCase!.IsChecked = true;
+            _findTimer.Stop();
+            await RunFindAsync();
+            ApplyTheme("dark");
+            await CaptureWindowAsync(directory, "find-options-dark.png");
+            ApplyTheme("light");
+            _findWhole.IsChecked = false;
+            _findCase.IsChecked = false;
             HideFindPanel();
 
             await ShowPreferencesAsync();
@@ -83,6 +105,14 @@ public sealed partial class MainWindow
             {
                 Width = width;
                 await CaptureWindowAsync(directory, $"main-{width:0}.png");
+                if (width == 320)
+                {
+                    BeginRename(_active!);
+                    await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Background);
+                    if (_renameBox is { } rename) rename.Text = new string('W', 120);
+                    await CaptureWindowAsync(directory, "rename-320.png");
+                    FinishRename(save: false);
+                }
             }
             Width = previousWidth;
 

@@ -65,11 +65,12 @@ public sealed partial class MainWindow
         var replacement = new TextBox { Name = "FindReplacement", PlaceholderText = Strings.Find_ReplacePlaceholder };
         query.Classes.Add("panelInput");
         replacement.Classes.Add("panelInput");
-        var matchCase = new CheckBox { Content = "Aa", Classes = { "findOption" } };
-        var wholeWord = new CheckBox { Content = "W", Classes = { "findOption" } };
+        var matchCase = new CheckBox { Name = "FindMatchCase", Content = "Aa", Classes = { "findOption" }, Margin = default };
+        var wholeWord = new CheckBox { Name = "FindWholeWord", Classes = { "findOption" }, Margin = default,
+            Content = new TextBlock { Text = "ab", TextDecorations = TextDecorations.Underline } };
         LabelFindControl(matchCase, CoreLabel("Match case", "Rozlišovat velikost písmen"));
         LabelFindControl(wholeWord, CoreLabel("Whole word", "Celá slova"));
-        var count = new TextBlock { VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Right };
+        var count = new TextBlock { Name = "FindMatchCount", VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Right };
         count.Classes.Add("panelHint");
         _findQuery = query;
         _findReplace = replacement;
@@ -88,18 +89,17 @@ public sealed partial class MainWindow
             VerticalAlignment = VerticalAlignment.Center };
         header.Children.Add(title);
 
-        var options = new DockPanel();
-        DockPanel.SetDock(matchCase, Dock.Left);
-        DockPanel.SetDock(wholeWord, Dock.Left);
-        options.Children.Add(matchCase);
-        options.Children.Add(wholeWord);
-        options.Children.Add(count);
         var previous = FindActionButton("\uE70E", CoreLabel("Previous match", "Předchozí shoda"), () => NavigateFind(false));
         var next = FindActionButton("\uE70D", CoreLabel("Next match", "Další shoda"), () => NavigateFind(true));
+        previous.Name = "FindPrevious";
+        next.Name = "FindNext";
         previous.Classes.Add("panelGlyph");
         next.Classes.Add("panelGlyph");
         var navigation = PanelRow(previous, next);
-        navigation.Margin = new Thickness(0, 0, 0, 4);
+        var options = PanelRow(matchCase, wholeWord, count);
+        Grid.SetColumn(options, 2);
+        var findControls = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto"), ColumnSpacing = 8,
+            Children = { navigation, options } };
         var replace = FindActionButton(Strings.Find_Replace, Strings.Find_Replace, () => ReplaceFind(false));
         var replaceAll = FindActionButton(Strings.Find_ReplaceAll, Strings.Find_ReplaceAll, () => ReplaceFind(true));
         var queryField = CreateFindField(query, out var clearQuery);
@@ -130,7 +130,7 @@ public sealed partial class MainWindow
                 Spacing = 8, Margin = new Thickness(16),
                 Children =
                 {
-                    header, queryField, options, navigation, replacementField, PanelRow(replace, replaceAll),
+                    header, queryField, findControls, replacementField, PanelRow(replace, replaceAll),
                 },
             },
         };

@@ -274,7 +274,7 @@ public sealed partial class MainWindow
 
     private TextBox CreateRenameBox()
     {
-        var box = new TextBox { Name = "InlineRenameBox", Padding = new Thickness(3, 1), MaxLength = 120 };
+        var box = new TextBox { Name = "InlineRenameBox", Classes = { "inlineRename" }, MaxLength = 120 };
         box.KeyDown += (_, args) =>
         {
             if (args.Key is not (Key.Enter or Key.Escape))

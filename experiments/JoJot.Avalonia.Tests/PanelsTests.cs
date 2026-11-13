@@ -16,6 +16,41 @@ namespace JoJot.AvaloniaExperiment.Tests;
 public sealed class PanelsTests
 {
     [AvaloniaFact]
+    public async Task FindNavigationAndOptionsShareOneRowAndWholeWordStillFiltersMatches()
+    {
+        await using var fixture = new MainWindowTests.WindowFixture();
+        var window = fixture.Open();
+        await window.Ready;
+        var editor = Assert.IsType<TextBox>(window.FindControl<TextBox>("Editor"));
+        editor.Text = "note notebook NOTE";
+        editor.Focus();
+        window.KeyPress(Key.F, RawInputModifiers.Control, PhysicalKey.F, null);
+        window.KeyRelease(Key.F, RawInputModifiers.Control, PhysicalKey.F, null);
+        var find = Assert.IsType<Border>(window.FindControl<Border>("FindHost"));
+        T Named<T>(string name) where T : Control => find.GetVisualDescendants().OfType<T>().Single(control => control.Name == name);
+        var query = Named<TextBox>("FindQuery");
+        var count = Named<TextBlock>("FindMatchCount");
+        var whole = Named<CheckBox>("FindWholeWord");
+        var matchCase = Named<CheckBox>("FindMatchCase");
+        query.Text = "note";
+        await MainWindowTests.WaitForAsync(() => count.Text == "1/3", "three substring matches");
+        whole.IsChecked = true;
+        await MainWindowTests.WaitForAsync(() => count.Text == "1/2", "two whole-word matches");
+        matchCase.IsChecked = true;
+        await MainWindowTests.WaitForAsync(() => count.Text == "1/1", "one case-sensitive whole-word match");
+        Assert.Equal("Whole word", global::Avalonia.Automation.AutomationProperties.GetName(whole));
+        Assert.Equal("Whole word", ToolTip.GetTip(whole));
+        Assert.Equal("ab", Assert.IsType<TextBlock>(whole.Content).Text);
+        var controls = new Control[] { Named<Button>("FindPrevious"), Named<Button>("FindNext"), matchCase, whole, count };
+        var bounds = controls.Select(control => new Rect(control.TranslatePoint(default, find)!.Value, control.Bounds.Size)).ToArray();
+        for (var index = 1; index < bounds.Length; index++)
+        {
+            Assert.True(bounds[index - 1].Right <= bounds[index].Left);
+            Assert.InRange(Math.Abs(bounds[index - 1].Center.Y - bounds[index].Center.Y), 0, 1);
+        }
+    }
+
+    [AvaloniaFact]
     public async Task PreferencesAndHelpOpenFromMenuAndStoreThemeAndFont()
     {
         await using var fixture = new MainWindowTests.WindowFixture();
@@ -80,6 +115,9 @@ public sealed class PanelsTests
         Assert.Empty(window.OwnedWindows);
         Assert.Equal("cs", await PreferenceStore.GetPreferenceAsync("language"));
         Assert.NotEqual(originalPlaceholder, query.PlaceholderText);
+        var wholeWord = find.GetVisualDescendants().OfType<CheckBox>().Single(control => control.Name == "FindWholeWord");
+        Assert.Equal("Celá slova", global::Avalonia.Automation.AutomationProperties.GetName(wholeWord));
+        Assert.Equal("Celá slova", ToolTip.GetTip(wholeWord));
         Assert.Equal("note", query.Text);
         Assert.Same(active, list.SelectedItem);
         Assert.Equal("Uncommitted note", editor.Text);

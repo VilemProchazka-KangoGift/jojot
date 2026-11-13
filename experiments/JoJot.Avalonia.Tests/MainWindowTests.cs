@@ -28,6 +28,28 @@ public sealed class TestAppBuilder
 public sealed class MainWindowTests
 {
     [AvaloniaFact]
+    public async Task InlineRenameFitsTheTitleRowWithLongTextAndNarrowSidebar()
+    {
+        await using var fixture = new WindowFixture();
+        var window = fixture.Open();
+        await window.Ready;
+        var editor = Find<TextBox>(window, "Editor");
+        Press(window, editor, Key.F2, PhysicalKey.F2);
+        await WaitForAsync(() => window.GetVisualDescendants().OfType<TextBox>().Any(box => box.Name == "InlineRenameBox"), "rename field");
+        var rename = window.GetVisualDescendants().OfType<TextBox>().Single(box => box.Name == "InlineRenameBox");
+        rename.Text = new string('W', 120);
+        window.Width = 320;
+        await Task.Delay(30);
+        var row = rename.GetVisualAncestors().OfType<Border>().First(border => border.Classes.Contains("noteRow"));
+        var origin = rename.TranslatePoint(default, row)!.Value;
+        Assert.InRange(rename.Bounds.Height, 18, 22);
+        Assert.True(origin.X >= 0 && origin.X + rename.Bounds.Width <= row.Bounds.Width);
+        Assert.True(origin.Y >= 0 && origin.Y + rename.Bounds.Height <= row.Bounds.Height);
+        Press(window, rename, Key.Escape, PhysicalKey.Escape);
+        Assert.DoesNotContain(window.GetVisualDescendants().OfType<TextBox>(), box => box.Name == "InlineRenameBox");
+    }
+
+    [AvaloniaFact]
     public async Task EditSwitchCloseAndReopenPersistTheSelectedNotes()
     {
         await using var fixture = new WindowFixture();

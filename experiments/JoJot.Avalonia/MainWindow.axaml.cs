@@ -49,6 +49,7 @@ public sealed partial class MainWindow : Window
         InitializeComponent();
         StartupTrace.Mark("xaml-ready");
         WindowResizeHitTest.Attach(this);
+        WindowChromeTheme.Attach(this);
         Width = _options.Width;
         Height = _options.Height;
         SizeChanged += (_, _) => WorkArea.ColumnDefinitions[0].MaxWidth = Math.Clamp(Bounds.Width - 200, 120, 400);
