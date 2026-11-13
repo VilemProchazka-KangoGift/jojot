@@ -207,6 +207,8 @@ internal sealed class ExperimentApp : Application
         return window;
     }
 
+    internal static long? StartupWelcomeNoteId { get; private set; }
+
     internal static Task EnsureStorageAsync()
     {
         lock (StorageLock)
@@ -240,14 +242,8 @@ internal sealed class ExperimentApp : Application
                     _matchedEarly = await host.TryMatchDesktopsAsync(_liveDesktops);
             }
             await MainWindow.RunStartupAutoDeleteAsync();
-            if (Options.CompatibilityExpected is null && Options.VisualOutputDirectory is null &&
-                await DatabaseCore.ExecuteScalarAsync<long>("SELECT EXISTS(SELECT 1 FROM notes);") == 0)
-            {
-                await DatabaseCore.ExecuteNonQueryAsync(
-                    "INSERT INTO notes (desktop_guid, name, content, pinned, sort_order) VALUES (@guid, @name, @content, 0, 0);",
-                    ("@guid", _initialDesktop), ("@name", JoJot.Resources.Strings.Welcome_Title),
-                    ("@content", JoJot.Resources.Strings.Welcome_Content));
-            }
+            if (Options.CompatibilityExpected is null && Options.VisualOutputDirectory is null)
+                StartupWelcomeNoteId = await InsertWelcomeNoteIfEmptyAsync(_initialDesktop);
         }
         catch
         {
@@ -256,6 +252,23 @@ internal sealed class ExperimentApp : Application
             _dataLock = null;
             throw;
         }
+    }
+
+    internal static async Task<long?> InsertWelcomeNoteIfEmptyAsync(string desktop)
+    {
+        const string welcomeInitialized = "avalonia_welcome_initialized";
+        if (await PreferenceStore.GetPreferenceAsync(welcomeInitialized) is not null)
+            return null;
+
+        // Existing sessions also identify older databases whose notes were all deleted.
+        var existing = await DatabaseCore.ExecuteScalarAsync<long>(
+            "SELECT EXISTS(SELECT 1 FROM notes) OR EXISTS(SELECT 1 FROM app_state);");
+        long? welcome = existing == 0
+            ? await NoteStore.InsertNoteAsync(desktop,
+                JoJot.Resources.Strings.Welcome_Title, JoJot.Resources.Strings.Welcome_Content, false, 0)
+            : null;
+        await PreferenceStore.SetPreferenceAsync(welcomeInitialized, "true");
+        return welcome;
     }
 
     public override void Initialize() => Styles.Add(new FluentTheme());
@@ -290,7 +303,7 @@ internal sealed class ExperimentApp : Application
             var initialDesktop = Options.CompatibilityExpected is not null || Options.VisualOutputDirectory is not null ? Options.DesktopGuid :
                 Options.BenchmarkOutput is not null && Options.DesktopGuid != "default" ? Options.DesktopGuid : detectedDesktop;
             _initialDesktop = initialDesktop;
-            var window = new MainWindow(initialDesktop);
+            var window = new MainWindow(initialDesktop, applyStartupPreference: true);
             var info = _liveDesktops.FirstOrDefault(item => item.Id.Equals(initialDesktop, StringComparison.OrdinalIgnoreCase));
             if (info is not null) window.UpdateDesktopTitle(info.Name, info.Index);
             _windows.Add(initialDesktop, window);

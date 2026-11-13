@@ -192,6 +192,7 @@ public sealed partial class MainWindow
             return;
 
         var themePreference = await PreferenceStore.GetPreferenceAsync("theme");
+        var startupPreference = await PreferenceStore.GetPreferenceAsync(StartupNotePreference);
         if (!ReferenceEquals(body, _panelBody))
             return;
 
@@ -274,6 +275,25 @@ public sealed partial class MainWindow
         var shortcuts = PanelButton(Strings.Help_Title, ShowHelp);
         shortcuts.Margin = new Thickness(0, 0, 0, 16);
         body.Children.Add(shortcuts);
+
+        body.Children.Add(PanelSection(CoreLabel("STARTUP", "SPUŠTĚNÍ")));
+        body.Children.Add(PreferenceLabel(CoreLabel("On startup", "Při spuštění")));
+        Button lastNote = null!;
+        Button newNote = null!;
+        async Task SetStartupNoteAsync(string value)
+        {
+            await PreferenceStore.SetPreferenceAsync(StartupNotePreference, value);
+            lastNote.Classes.Set("active", value == "last");
+            newNote.Classes.Set("active", value == "new");
+        }
+
+        lastNote = PanelAsyncButton(CoreLabel("Last note", "Poslední poznámka"), () => SetStartupNoteAsync("last"));
+        newNote = PanelAsyncButton(CoreLabel("New note", "Nová poznámka"), () => SetStartupNoteAsync("new"));
+        lastNote.Classes.Set("active", startupPreference != "new");
+        newNote.Classes.Set("active", startupPreference == "new");
+        var startup = PreferenceSegments(lastNote, newNote);
+        startup.Margin = new Thickness(0, 0, 0, 16);
+        body.Children.Add(startup);
 
         body.Children.Add(PanelSection(Strings.Pref_SectionAbout));
         body.Children.Add(PreferenceHint(string.Format(Strings.Pref_Version, typeof(MainWindow).Assembly.GetName().Version?.ToString(3))));

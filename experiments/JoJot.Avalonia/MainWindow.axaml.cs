@@ -17,6 +17,9 @@ namespace JoJot.AvaloniaExperiment;
 public sealed partial class MainWindow : Window
 {
     private readonly ExperimentOptions _options;
+    private readonly bool _applyStartupPreference;
+    private long? _startupWelcomeNoteId;
+    private const string StartupNotePreference = "startup_note";
     private readonly BenchmarkProbe? _benchmark;
     private readonly MainWindowViewModel _viewModel;
     private ObservableCollection<NoteTab> _notes => _viewModel.Tabs;
@@ -35,8 +38,11 @@ public sealed partial class MainWindow : Window
 
     public MainWindow() : this(ExperimentApp.Options.DesktopGuid) { }
 
-    public MainWindow(string desktopGuid)
+    public MainWindow(string desktopGuid) : this(desktopGuid, applyStartupPreference: false) { }
+
+    internal MainWindow(string desktopGuid, bool applyStartupPreference)
     {
+        _applyStartupPreference = applyStartupPreference;
         _options = ExperimentApp.Options;
         _benchmark = ExperimentApp.Benchmark;
         _viewModel = new MainWindowViewModel(desktopGuid);
@@ -79,7 +85,10 @@ public sealed partial class MainWindow : Window
         try
         {
             if (ExperimentApp.ManagesStorageLifetime)
+            {
                 await ExperimentApp.EnsureStorageAsync();
+                _startupWelcomeNoteId = ExperimentApp.StartupWelcomeNoteId;
+            }
             else
                 await Task.Run(OpenStandaloneStorageAsync);
             if (!await SessionStore.SessionExistsAsync(DesktopGuid))
@@ -147,6 +156,8 @@ public sealed partial class MainWindow : Window
         if (!await DatabaseCore.VerifyIntegrityAsync())
             throw new IOException("The experiment database failed its integrity check.");
         await DatabaseCore.RunPendingMigrationsAsync();
+        if (_applyStartupPreference && _options.CompatibilityExpected is null && _options.VisualOutputDirectory is null)
+            _startupWelcomeNoteId = await ExperimentApp.InsertWelcomeNoteIfEmptyAsync(DesktopGuid);
     }
 
     private async Task LoadInitialNotesAsync()
@@ -155,10 +166,20 @@ public sealed partial class MainWindow : Window
         var (keep, empty) = MainWindowViewModel.SplitEmptyStartupNotes(loaded);
         _ = LoadFileBaselinesAsync(keep);
         ReplaceNoteList(keep);
-        if (_notes.Count == 0 && _benchmark is null && _options.CompatibilityExpected is null)
+        var welcome = _applyStartupPreference && _startupWelcomeNoteId is { } welcomeId
+            ? _notes.FirstOrDefault(note => note.Id == welcomeId) : null;
+        var normalStartup = _benchmark is null && _options.CompatibilityExpected is null && _options.VisualOutputDirectory is null;
+        if (welcome is not null)
+            ShowNote(welcome);
+        else if (normalStartup && (_notes.Count == 0 ||
+                 (_applyStartupPreference && await PreferenceStore.GetPreferenceAsync(StartupNotePreference) == "new")))
             await CreateNoteCoreAsync();
         else
-            ShowNote(_notes.FirstOrDefault());
+        {
+            var selectedId = normalStartup && _applyStartupPreference
+                ? await LoadActiveTabIdAsync() : null;
+            ShowNote(_notes.FirstOrDefault(note => note.Id == selectedId) ?? _notes.FirstOrDefault());
+        }
 
         RefreshNoteList();
         if (empty.Count > 0)
@@ -296,9 +317,21 @@ public sealed partial class MainWindow : Window
         await FlushEditsAsync();
         await CommitPendingDeletionAsync();
         await SaveTabWidthAsync();
+        await SaveActiveTabAsync();
         if (SaveWindowGeometryAsync is { } save)
             await save(this);
     }
+
+    private Task<long?> LoadActiveTabIdAsync() => DatabaseCore.RunOnDbThreadAsync(async () =>
+    {
+        await using var command = DatabaseCore.CreateCommand(
+            "SELECT active_tab_id FROM app_state WHERE desktop_guid = @guid;", ("@guid", DesktopGuid));
+        return await command.ExecuteScalarAsync().ConfigureAwait(false) is long id ? id : (long?)null;
+    });
+
+    private Task SaveActiveTabAsync() => DatabaseCore.ExecuteNonQueryAsync(
+        "UPDATE app_state SET active_tab_id = @id WHERE desktop_guid = @guid;",
+        ("@id", (object?)_active?.Id ?? DBNull.Value), ("@guid", DesktopGuid));
 
     internal void FlushForOsShutdown()
     {
@@ -313,6 +346,7 @@ public sealed partial class MainWindow : Window
             NoteStore.UpdateNoteContentAsync(note.Id, content).GetAwaiter().GetResult();
         if (_pendingDeletion is { } pending)
             NoteStore.DeleteNotesAsync(pending.Tabs.Select(note => note.Id).ToList()).GetAwaiter().GetResult();
+        SaveActiveTabAsync().GetAwaiter().GetResult();
     }
 
     private async void OnClosing(object? sender, WindowClosingEventArgs e)

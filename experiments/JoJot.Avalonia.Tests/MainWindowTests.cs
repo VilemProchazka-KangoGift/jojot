@@ -185,6 +185,8 @@ public sealed class MainWindowTests
         Assert.Equal(source, imported.FilePath);
         Press(window, editor, Key.F2, PhysicalKey.F2, RawInputModifiers.None);
         Assert.DoesNotContain(window.GetVisualDescendants().OfType<TextBox>(), box => box.Name == "InlineRenameBox");
+        Assert.Equal("Cannot rename opened files.", Find<TextBlock>(window, "ToastText").Text);
+        Assert.Equal("source.txt", imported.Name);
         Assert.False(imported.HasUnsavedFileChanges);
         editor.Text = "explicitly saved";
         await WaitForAsync(() => imported.HasUnsavedFileChanges, "unsaved external file");
@@ -236,6 +238,78 @@ public sealed class MainWindowTests
         Assert.Equal(saved, await File.ReadAllTextAsync(path));
         editor.Text = saved;
         await WaitForAsync(() => !imported.HasUnsavedFileChanges, "restoring original text clears the file marker");
+    }
+
+    [AvaloniaFact]
+    public async Task StartupPreferenceSelectsWelcomeThenBlankOnlyForPrimaryStartup()
+    {
+        await using var fixture = new WindowFixture();
+        var setup = fixture.Open();
+        await setup.Ready;
+        await PreferenceStore.SetPreferenceAsync("startup_note", "new");
+        await NoteStore.DeleteNotesAsync(Find<ListBox>(setup, "NoteList").Items.OfType<NoteTab>().Select(note => note.Id).ToArray());
+        setup.Close();
+        await WaitForAsync(() => !setup.IsVisible, "empty fixture closed");
+        await DatabaseCore.OpenAsync(Path.Combine(fixture.Directory, "jojot.db"));
+        await DatabaseCore.ExecuteNonQueryAsync("DELETE FROM app_state;");
+        await DatabaseCore.CloseAsync();
+
+        var first = fixture.Open(applyStartupPreference: true);
+        await first.Ready;
+        var welcome = Assert.IsType<NoteTab>(Find<ListBox>(first, "NoteList").SelectedItem);
+        Assert.Equal(JoJot.Resources.Strings.Welcome_Title, welcome.Name);
+        Assert.Equal(JoJot.Resources.Strings.Welcome_Content, Find<TextBox>(first, "Editor").Text);
+        first.Close();
+        await WaitForAsync(() => !first.IsVisible, "first primary closed");
+
+        var second = fixture.Open(applyStartupPreference: true);
+        await second.Ready;
+        var editor = Find<TextBox>(second, "Editor");
+        var list = Find<ListBox>(second, "NoteList");
+        var newNote = Assert.IsType<NoteTab>(list.SelectedItem);
+        Assert.NotEqual(welcome.Id, newNote.Id);
+        Assert.Equal("", editor.Text);
+        Assert.True(editor.IsFocused);
+        editor.Text = "Blank note edited";
+        await second.FlushWindowAsync();
+        Assert.Equal(2, list.ItemCount);
+        second.Close();
+        await WaitForAsync(() => !second.IsVisible, "second primary closed");
+
+        var resident = fixture.Open();
+        await resident.Ready;
+        var residentNotes = Find<ListBox>(resident, "NoteList");
+        Assert.Equal(2, residentNotes.ItemCount);
+        await NoteStore.DeleteNotesAsync(residentNotes.Items.OfType<NoteTab>().Select(note => note.Id).ToArray());
+        resident.Close();
+        await WaitForAsync(() => !resident.IsVisible, "resident reopened window closed");
+
+        var emptied = fixture.Open(applyStartupPreference: true);
+        await emptied.Ready;
+        Assert.True(Assert.IsType<NoteTab>(Find<ListBox>(emptied, "NoteList").SelectedItem).IsPlaceholder);
+    }
+
+    [AvaloniaFact]
+    public async Task LastNoteRestoresSelectedTabFromPreviousWindow()
+    {
+        await using var fixture = new WindowFixture();
+        var window = fixture.Open(applyStartupPreference: true);
+        await window.Ready;
+        var list = Find<ListBox>(window, "NoteList");
+        var editor = Find<TextBox>(window, "Editor");
+        var welcome = Assert.IsType<NoteTab>(list.SelectedItem);
+        window.RequestNewTab("Other note");
+        await WaitForAsync(() => editor.Text == "Other note" && editor.IsEffectivelyEnabled, "other note created");
+        list.SelectedItem = welcome;
+        await WaitForAsync(() => editor.Text == welcome.Content && editor.IsEffectivelyEnabled, "older note selected");
+        window.Close();
+        await WaitForAsync(() => !window.IsVisible, "primary window closed");
+
+        window = fixture.Open(applyStartupPreference: true);
+        await window.Ready;
+        list = Find<ListBox>(window, "NoteList");
+        Assert.Equal(2, list.ItemCount);
+        Assert.Equal(welcome.Id, Assert.IsType<NoteTab>(list.SelectedItem).Id);
     }
 
     [AvaloniaFact]
@@ -520,11 +594,11 @@ public sealed class MainWindowTests
 
         public string Directory { get; } = Path.Combine(Path.GetTempPath(), "jojot-avalonia-test-" + Guid.NewGuid().ToString("N"));
 
-        public MainWindow Open()
+        public MainWindow Open(bool applyStartupPreference = false)
         {
             ExperimentApp.Options = ExperimentOptions.Parse(["--data-dir", Directory]);
             ExperimentApp.Benchmark = null;
-            _window = new MainWindow();
+            _window = new MainWindow(ExperimentApp.Options.DesktopGuid, applyStartupPreference);
             _window.Show();
             return _window;
         }

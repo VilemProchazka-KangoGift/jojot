@@ -36,6 +36,10 @@ public sealed class PanelsTests
         Assert.Equal("dark", await PreferenceStore.GetPreferenceAsync("theme"));
         Assert.Equal("14", await PreferenceStore.GetPreferenceAsync("font_size"));
 
+        Click(FindButton(panel, "New note"));
+        await MainWindowTests.WaitForAsync(() => FindButton(panel, "New note").Classes.Contains("active"), "startup choice selected");
+        Assert.Equal("new", await PreferenceStore.GetPreferenceAsync("startup_note"));
+
         Click(FindButton(panel, Strings.Help_Title));
         await MainWindowTests.WaitForAsync(() => panel.GetVisualDescendants().OfType<TextBlock>()
             .Any(text => text.Text == Strings.Help_Find), "shortcut reference");

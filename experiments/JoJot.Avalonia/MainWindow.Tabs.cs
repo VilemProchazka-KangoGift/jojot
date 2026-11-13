@@ -242,8 +242,13 @@ public sealed partial class MainWindow
 
     private void BeginRename(NoteTab note)
     {
-        if (!_ready || _busy || note.IsFileBacked)
+        if (!_ready || _busy)
             return;
+        if (note.IsFileBacked)
+        {
+            ShowInfoToast(CoreLabel("Cannot rename opened files.", "Otevřené soubory nelze přejmenovat."));
+            return;
+        }
         FinishRename(save: false);
         NoteList.ScrollIntoView(note);
         Dispatcher.UIThread.Post(() => ShowRenameBox(note), DispatcherPriority.Loaded);
@@ -438,7 +443,7 @@ public sealed partial class MainWindow
         {
             BeginRename(note);
             return Task.CompletedTask;
-        }, !note.IsFileBacked));
+        }));
         menu.Items.Add(TabMenuItem(note.Pinned ? Strings.Ctx_Unpin : Strings.Ctx_Pin, "Ctrl+P", () => TogglePinAsync(note)));
         menu.Items.Add(TabMenuItem(Strings.Ctx_Clone, "Ctrl+K", () => CloneNoteAsync(note)));
         menu.Items.Add(TabMenuItem(Strings.Ctx_Save, "Ctrl+S", () => SaveNoteAsync(note, false)));
