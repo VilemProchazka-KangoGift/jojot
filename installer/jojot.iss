@@ -11,7 +11,7 @@
 ;      (or use the full path to ISCC.exe from your Inno Setup installation)
 ;
 ; Output:
-;   installer/output/JoJot-2026.11.4-Setup.exe
+;   installer/output/JoJot-2026.11.5-Setup.exe
 ;
 ; ==========================================================================
 
@@ -22,8 +22,8 @@
 [Setup]
 AppId={{B7E45A2C-8D31-4F6A-9E52-1C3D7A8B9F04}
 AppName=JoJot
-AppVersion=2026.11.4
-AppVerName=JoJot 2026.11.4
+AppVersion=2026.11.5
+AppVerName=JoJot 2026.11.5
 AppPublisher=Vilem Prochazka
 DefaultDirName={autopf}\JoJot
 DefaultGroupName=JoJot
@@ -31,8 +31,8 @@ DisableProgramGroupPage=yes
 DisableDirPage=yes
 DisableReadyPage=yes
 OutputDir=..\installer\output
-OutputBaseFilename=JoJot-2026.11.4-Setup
-SetupIconFile=..\JoJot\Assets\jojot.ico
+OutputBaseFilename=JoJot-2026.11.5-Setup
+SetupIconFile=..\experiments\JoJot.Avalonia\Assets\jojot.ico
 UninstallDisplayIcon={app}\JoJot.exe
 Compression=lzma2
 SolidCompression=yes
