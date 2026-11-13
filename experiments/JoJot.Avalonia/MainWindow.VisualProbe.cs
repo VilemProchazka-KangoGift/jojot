@@ -92,6 +92,9 @@ public sealed partial class MainWindow
 
             await ShowCleanupAsync();
             await CaptureWindowAsync(directory, "cleanup.png");
+            ApplyTheme("dark");
+            await CaptureWindowAsync(directory, "cleanup-dark.png");
+            ApplyTheme("light");
             DismissSidePanel();
 
             // Supply one disposable orphan so this captures the real recovery rows

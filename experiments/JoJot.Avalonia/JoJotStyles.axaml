@@ -313,7 +313,7 @@
     <Setter Property="Foreground" Value="{DynamicResource c-on-accent}" />
     <Setter Property="Padding" Value="12,4" />
   </Style>
-  <Style Selector="Button.panelDanger, Button.panelDanger:disabled">
+  <Style Selector="Button.panelDanger">
     <Setter Property="Background" Value="{DynamicResource c-danger}" />
     <Setter Property="Foreground" Value="{DynamicResource c-on-accent}" />
   </Style>
@@ -380,8 +380,16 @@
     <Setter Property="Foreground" Value="{DynamicResource c-on-accent}" />
   </Style>
   <Style Selector="Button.panelDanger:disabled /template/ ContentPresenter#PART_ContentPresenter">
-    <Setter Property="Background" Value="{DynamicResource c-danger}" />
-    <Setter Property="Foreground" Value="{DynamicResource c-on-accent}" />
+    <Setter Property="Background" Value="{DynamicResource c-win-bg}" />
+    <Setter Property="Foreground" Value="{DynamicResource c-text-muted}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource c-border}" />
+    <Setter Property="BorderThickness" Value="1" />
+  </Style>
+  <Style Selector="Button.panelDanger:disabled">
+    <Setter Property="Opacity" Value="1" />
+    <Setter Property="Cursor" Value="Arrow" />
+    <Setter Property="Background" Value="{DynamicResource c-win-bg}" />
+    <Setter Property="Foreground" Value="{DynamicResource c-text-muted}" />
   </Style>
   <Style Selector="Button.fontAdjust">
     <Setter Property="BorderBrush" Value="{DynamicResource c-text-muted}" />

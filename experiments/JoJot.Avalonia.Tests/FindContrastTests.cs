@@ -15,6 +15,35 @@ namespace JoJot.AvaloniaExperiment.Tests;
 public sealed class FindContrastTests
 {
     [AvaloniaFact]
+    public async Task DisabledCleanupActionStaysReadableAndIgnoresPointerInput()
+    {
+        await using var fixture = new MainWindowTests.WindowFixture();
+        var window = fixture.Open();
+        await window.Ready;
+        window.FindControl<MenuItem>("CleanupMenuItem")!.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        var host = window.FindControl<Border>("PanelHost")!;
+        await MainWindowTests.WaitForAsync(() => host.GetVisualDescendants().OfType<Button>().Any(button => button.Classes.Contains("panelDanger")), "cleanup action");
+        var button = host.GetVisualDescendants().OfType<Button>().Single(button => button.Classes.Contains("panelDanger"));
+        var clicks = 0;
+        button.Click += (_, _) => clicks++;
+        foreach (var theme in new[] { ThemeVariant.Light, ThemeVariant.Dark })
+        {
+            window.RequestedThemeVariant = theme;
+            Assert.False(button.IsEffectivelyEnabled);
+            Assert.Equal(1, button.Opacity);
+            var presenter = button.GetVisualDescendants().OfType<ContentPresenter>().Single();
+            Assert.True(Contrast(Brush(presenter.Background), Brush(presenter.Foreground)) >= 4.5);
+            var point = button.TranslatePoint(new Point(button.Bounds.Width / 2, button.Bounds.Height / 2), window)!.Value;
+            window.MouseMove(point);
+            window.MouseDown(point, MouseButton.Left);
+            window.MouseUp(point, MouseButton.Left);
+            Assert.False(button.IsPressed);
+            Assert.Equal(0, clicks);
+            Assert.Empty(window.OwnedWindows);
+        }
+    }
+
+    [AvaloniaFact]
     public async Task FindAndToolbarStatesKeepReadableThemeContrast()
     {
         await using var fixture = new MainWindowTests.WindowFixture();
