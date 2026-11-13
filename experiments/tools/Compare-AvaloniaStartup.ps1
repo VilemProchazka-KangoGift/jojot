@@ -65,6 +65,7 @@ function Invoke-Sample([string] $Variant, [string] $Directory) {
         $info.Environment['JOJOT_STARTUP_PROBE_DATA'] = $Directory
         $info.Environment['JOJOT_STARTUP_PROBE_FIXED_GEOMETRY'] = '1'
     } else {
+        $info.Environment['JOJOT_RENDER_MODE'] = 'gpu'
         $arguments = @('--data-dir', $Directory, '--desktop-guid', $desktop, '--benchmark-output', $resultPath,
             '--benchmark-width', $Width.ToString($invariant), '--benchmark-height', $Height.ToString($invariant))
         foreach ($argument in $arguments) {

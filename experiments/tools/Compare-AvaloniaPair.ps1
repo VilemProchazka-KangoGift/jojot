@@ -8,8 +8,8 @@ param(
     [ValidateRange(1, 200)] [int] $Samples = 20,
     [ValidateRange(0, 20)] [int] $Warmups = 3,
     [switch] $Trace,
-    [ValidateSet('default', 'software')] [string] $BaselineRenderMode = 'default',
-    [ValidateSet('default', 'software')] [string] $CandidateRenderMode = 'default',
+    [ValidateSet('default', 'gpu', 'software')] [string] $BaselineRenderMode = 'gpu',
+    [ValidateSet('default', 'gpu', 'software')] [string] $CandidateRenderMode = 'gpu',
     [switch] $RenderWorkload,
     [switch] $ContinuousScroll
 )

@@ -59,6 +59,8 @@ The direct xUnit runner avoids the VSTest host connection timeout observed on th
 
 ## Measure
 
+The Avalonia app defaults to software rendering. Set `JOJOT_RENDER_MODE=gpu` before launch to request Avalonia's hardware-first backend with software fallback. `JOJOT_RENDER_MODE=software` explicitly selects software. The startup comparison scripts request GPU by default to keep comparisons with earlier hardware-first runs consistent. The pair comparison also accepts explicit software and app-default modes.
+
 The current run compares WPF `v2026.11.2` ReadyToRun with both deployment modes of the Avalonia UX update. The two Avalonia builds share application source. The earlier four-build run also includes the original NativeAOT prototype from `2f2f70a`, which has a shorter startup path. [Earlier four-build results](results/parity/README.md) · [Original prototype results](results/README.md)
 
 Prepare the WPF probe from the release tag. The WPF probe starts with isolated IPC names, suppresses foreground activation and the global hotkey, and exits automatically. Both full Avalonia builds detect the actual Windows desktop and use isolated fixture copies. The WPF build is a loose self-contained publish from the release source.

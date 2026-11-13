@@ -92,7 +92,8 @@ internal static class Program
                 ExperimentApp.Benchmark = options.BenchmarkOutput is null ? null : new BenchmarkProbe(entry, options);
                 StartupTrace.Mark("platform-start");
                 var builder = AppBuilder.Configure<ExperimentApp>().UsePlatformDetect();
-                if (Environment.GetEnvironmentVariable("JOJOT_RENDER_MODE") == "software")
+                if (!string.Equals(Environment.GetEnvironmentVariable("JOJOT_RENDER_MODE"), "gpu",
+                    StringComparison.OrdinalIgnoreCase))
                     builder.With(new Win32PlatformOptions { RenderingMode = [Win32RenderingMode.Software] });
                 result = StartupTrace.TraceSubsystems(builder)
                     .StartWithClassicDesktopLifetime([]);
