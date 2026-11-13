@@ -34,6 +34,35 @@ public sealed partial class MainWindow
         LabelToolbarButton(RedoButton, Strings.Help_Redo, Strings.Tooltip_Redo);
     }
 
+    private async Task RefreshLanguageAsync()
+    {
+        LocalizeCoreControls();
+        PreferencesMenuItem.Header = Strings.Menu_Preferences;
+        CleanupMenuItem.Header = Strings.Menu_Cleanup;
+        RecoveryMenuItem.Header = Strings.Menu_Recover;
+        ExitMenuItem.Header = Strings.Menu_Exit;
+        UpdateOrphanBadge();
+        foreach (var note in _notes)
+            note.RefreshLocalizedLabels();
+        UpdateEditorTitle();
+        UpdateToolbarState();
+        RefreshNoteList();
+
+        RefreshFindLanguage();
+        var panel = _currentPanel;
+        if (panel is null || !_ready || _busy || _closing || _recordingGlobalShortcut)
+            return;
+
+        DismissSidePanel();
+        switch (panel)
+        {
+            case "preferences": await ShowPreferencesAsync(); break;
+            case "cleanup": await ShowCleanupAsync(); break;
+            case "recovery": ShowRecovery(); break;
+            case "help": ShowHelp(); break;
+        }
+    }
+
     private static void LabelToolbarButton(Button button, string label, string tooltip)
     {
         AutomationProperties.SetName(button, label);

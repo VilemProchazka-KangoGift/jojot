@@ -1,7 +1,7 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:models="using:JoJot.Models"
-        xmlns:res="using:JoJot.Resources"
+
         x:Class="JoJot.AvaloniaExperiment.MainWindow"
         x:CompileBindings="True"
         Title="JoJot" MinWidth="320" MinHeight="420" Icon="/Assets/jojot.ico"
@@ -67,17 +67,17 @@
                     <DockPanel LastChildFill="True">
                       <Button DockPanel.Dock="Left" Classes="iconButton rowAction pinnedAction"
                               IsVisible="{Binding Pinned}" Content="&#xE718;"
-                              ToolTip.Tip="{x:Static res:Strings.Tooltip_UnpinShort}" Click="OnRowPin" />
+                              ToolTip.Tip="{Binding UnpinTooltip}" Click="OnRowPin" />
                       <Button DockPanel.Dock="Right" Classes="iconButton rowAction closeAction" Content="&#xE711;"
-                              ToolTip.Tip="{x:Static res:Strings.Tooltip_Delete}" Click="OnRowClose" />
+                              ToolTip.Tip="{Binding DeleteTooltip}" Click="OnRowClose" />
                       <Button DockPanel.Dock="Right" Classes="iconButton rowAction hiddenAction"
                               Classes.unpinnedAction="{Binding !Pinned}" Content="&#xE718;"
-                              ToolTip.Tip="{x:Static res:Strings.Tooltip_PinShort}" Click="OnRowPin" />
+                              ToolTip.Tip="{Binding PinTooltip}" Click="OnRowPin" />
                       <DockPanel ToolTip.Tip="{Binding FilePath}">
                         <Ellipse DockPanel.Dock="Left" Width="6" Height="6" Margin="0,0,4,0" VerticalAlignment="Center"
                                  IsVisible="{Binding HasUnsavedFileChanges}" Fill="{DynamicResource c-accent}"
-                                 AutomationProperties.Name="{x:Static res:Strings.Tooltip_Save}"
-                                 ToolTip.Tip="{x:Static res:Strings.Tooltip_Save}" />
+                                 AutomationProperties.Name="{Binding SaveTooltip}"
+                                 ToolTip.Tip="{Binding SaveTooltip}" />
                         <TextBlock DockPanel.Dock="Left" Text="&#xE8A5;" IsVisible="{Binding IsFileBacked}"
                                    FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="11" Margin="0,0,4,0"
                                    Foreground="{DynamicResource c-text-muted}" VerticalAlignment="Center"

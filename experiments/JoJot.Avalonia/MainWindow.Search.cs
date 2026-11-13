@@ -50,6 +50,15 @@ public sealed partial class MainWindow
             query.SelectAll();
     }
 
+    private Action? _refreshFindLabels;
+
+    private void RefreshFindLanguage()
+    {
+        _refreshFindLabels?.Invoke();
+        if (_findCount is not null)
+            _findCount.Text = MainWindowViewModel.FormatFindCountText(_findIndex, _findMatches.Count);
+    }
+
     private void CreateFindPanel()
     {
         var query = new TextBox { Name = "FindQuery", PlaceholderText = Strings.Find_Placeholder };
@@ -75,8 +84,9 @@ public sealed partial class MainWindow
         var header = new DockPanel();
         DockPanel.SetDock(close, Dock.Right);
         header.Children.Add(close);
-        header.Children.Add(new TextBlock { Text = Strings.Find_Header, FontSize = 18, FontWeight = FontWeight.SemiBold,
-            VerticalAlignment = VerticalAlignment.Center });
+        var title = new TextBlock { FontSize = 18, FontWeight = FontWeight.SemiBold,
+            VerticalAlignment = VerticalAlignment.Center };
+        header.Children.Add(title);
 
         var options = new DockPanel();
         DockPanel.SetDock(matchCase, Dock.Left);
@@ -90,6 +100,28 @@ public sealed partial class MainWindow
         next.Classes.Add("panelGlyph");
         var navigation = PanelRow(previous, next);
         navigation.Margin = new Thickness(0, 0, 0, 4);
+        var replace = FindActionButton(Strings.Find_Replace, Strings.Find_Replace, () => ReplaceFind(false));
+        var replaceAll = FindActionButton(Strings.Find_ReplaceAll, Strings.Find_ReplaceAll, () => ReplaceFind(true));
+        var queryField = CreateFindField(query, out var clearQuery);
+        var replacementField = CreateFindField(replacement, out var clearReplacement);
+        _refreshFindLabels = () =>
+        {
+            title.Text = Strings.Find_Header;
+            query.PlaceholderText = Strings.Find_Placeholder;
+            replacement.PlaceholderText = Strings.Find_ReplacePlaceholder;
+            LabelFindControl(matchCase, CoreLabel("Match case", "Rozlišovat velikost písmen"));
+            LabelFindControl(wholeWord, CoreLabel("Whole word", "Celá slova"));
+            LabelFindControl(close, CoreLabel("Close find", "Zavřít hledání"));
+            LabelFindControl(previous, CoreLabel("Previous match", "Předchozí shoda"));
+            LabelFindControl(next, CoreLabel("Next match", "Další shoda"));
+            LabelFindControl(clearQuery, CoreLabel("Clear text", "Vymazat text"));
+            LabelFindControl(clearReplacement, CoreLabel("Clear text", "Vymazat text"));
+            LabelFindControl(replace, Strings.Find_Replace);
+            LabelFindControl(replaceAll, Strings.Find_ReplaceAll);
+            replace.Content = Strings.Find_Replace;
+            replaceAll.Content = Strings.Find_ReplaceAll;
+        };
+        _refreshFindLabels();
         FindHost.Child = new ScrollViewer
         {
             HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
@@ -98,9 +130,7 @@ public sealed partial class MainWindow
                 Spacing = 8, Margin = new Thickness(16),
                 Children =
                 {
-                    header, CreateFindField(query), options, navigation, CreateFindField(replacement),
-                    PanelRow(FindActionButton(Strings.Find_Replace, Strings.Find_Replace, () => ReplaceFind(false)),
-                        FindActionButton(Strings.Find_ReplaceAll, Strings.Find_ReplaceAll, () => ReplaceFind(true))),
+                    header, queryField, options, navigation, replacementField, PanelRow(replace, replaceAll),
                 },
             },
         };
@@ -123,7 +153,7 @@ public sealed partial class MainWindow
         Editor.AddHandler(ScrollViewer.ScrollChangedEvent, (_, _) => _findHighlights?.InvalidateVisual());
     }
 
-    private static Control CreateFindField(TextBox input)
+    private static Control CreateFindField(TextBox input, out Button clearButton)
     {
         var clear = FindActionButton("\uE711", CoreLabel("Clear text", "Vymazat text"), () => input.Clear());
         clear.Classes.Remove("panelButton");
@@ -132,6 +162,7 @@ public sealed partial class MainWindow
         clear.IsVisible = false;
         input.Classes.Add("findField");
         input.TextChanged += (_, _) => clear.IsVisible = !string.IsNullOrEmpty(input.Text);
+        clearButton = clear;
         return new Grid { Children = { input, clear } };
     }
 

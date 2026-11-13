@@ -90,14 +90,6 @@ internal static class Program
                 ExperimentApp.Benchmark = options.BenchmarkOutput is null ? null : new BenchmarkProbe(entry, options);
                 result = AppBuilder.Configure<ExperimentApp>().UsePlatformDetect().StartWithClassicDesktopLifetime([]);
             }
-            if (ExperimentApp.RestartRequested)
-            {
-                var start = new System.Diagnostics.ProcessStartInfo(Environment.ProcessPath!) { UseShellExecute = false };
-                if (string.Equals(Path.GetFileNameWithoutExtension(Environment.ProcessPath), "dotnet", StringComparison.OrdinalIgnoreCase))
-                    start.ArgumentList.Add(Environment.GetCommandLineArgs()[0]);
-                foreach (var arg in args) start.ArgumentList.Add(arg);
-                System.Diagnostics.Process.Start(start);
-            }
             return result != 0 ? result : ExperimentApp.FailExitCode;
         }
         catch (Exception ex)
@@ -119,7 +111,6 @@ internal sealed class ExperimentApp : Application
     internal static bool DesktopMoveProbeMerge { get; set; }
     internal static ExperimentOptions Options { get; set; } = null!;
     internal static BenchmarkProbe? Benchmark { get; set; }
-    internal static bool RestartRequested { get; private set; }
     internal static int FailExitCode { get; set; }
     internal static Task StartupRecovery { get; private set; } = Task.CompletedTask;
     private static readonly Lock StorageLock = new();
@@ -398,7 +389,6 @@ internal sealed class ExperimentApp : Application
                 }
                 return Task.CompletedTask;
             };
-            MainWindow.RestartForLanguageAsync = RestartForLanguageAsync;
             MainWindow.SaveWindowGeometryAsync = SaveWindowGeometryAsync;
             MainWindow.CurrentGlobalShortcut = () => $"{(_hotkeyModifiers & 8) switch { 0 => "", _ => "Win + " }}{(_hotkeyModifiers & 2) switch { 0 => "", _ => "Ctrl + " }}{(_hotkeyModifiers & 1) switch { 0 => "", _ => "Alt + " }}{(_hotkeyModifiers & 4) switch { 0 => "", _ => "Shift + " }}{GlobalHotkey.KeyName(_hotkeyKey)}";
             MainWindow.PauseGlobalShortcut = paused => _hotkey?.PauseForRecording(paused);
@@ -633,15 +623,11 @@ internal sealed class ExperimentApp : Application
         return true;
     }
 
-    private Task ExitAsync() => FlushAndShutdownAsync(false);
-
-    private Task RestartForLanguageAsync() => FlushAndShutdownAsync(true);
-
-    private async Task FlushAndShutdownAsync(bool restart)
+    private async Task ExitAsync()
     {
         if (_shuttingDown) return;
         if (_windows.Values.Any(window => window.HasShutdownBlockingInteraction))
-            throw new InvalidOperationException("Close the open dialog before exiting or restarting JoJot.");
+            throw new InvalidOperationException("Close the open dialog before exiting JoJot.");
         _shuttingDown = true;
         var windows = _windows.Values.ToArray();
         var visibleWindows = (ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.Windows
@@ -652,7 +638,6 @@ internal sealed class ExperimentApp : Application
             if (_reservationsDrained is { } pendingMoves) await pendingMoves.Task;
             foreach (var window in windows)
                 if (_windows.ContainsValue(window)) await window.FlushWindowAsync();
-            RestartRequested = restart;
             (ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.Shutdown();
         }
         catch

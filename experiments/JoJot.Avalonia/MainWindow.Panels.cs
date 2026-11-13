@@ -21,7 +21,6 @@ public sealed partial class MainWindow
 
     internal static Func<IReadOnlyCollection<string>>? OrphanSessionGuids { get; set; }
     internal static Action<string>? OrphanSessionResolved { get; set; }
-    internal static Func<Task>? RestartForLanguageAsync { get; set; }
     internal static Func<Task>? ExitFromMenuAsync { get; set; }
     internal static Func<string>? CurrentGlobalShortcut { get; set; }
     internal static Action<bool>? PauseGlobalShortcut { get; set; }
@@ -202,10 +201,11 @@ public sealed partial class MainWindow
         var czech = PanelAsyncButton("Česky", () => ChangePanelLanguageAsync("cs"));
         english.Classes.Set("active", PanelLanguage.Current == "en");
         czech.Classes.Set("active", PanelLanguage.Current == "cs");
-        english.IsEnabled = PanelLanguage.Current != "en" && RestartForLanguageAsync is not null;
-        czech.IsEnabled = PanelLanguage.Current != "cs" && RestartForLanguageAsync is not null;
-        body.Children.Add(PreferenceSegments(english, czech));
-        body.Children.Add(PreferenceHint(Strings.Pref_LanguageHint));
+        english.IsEnabled = PanelLanguage.Current != "en";
+        czech.IsEnabled = PanelLanguage.Current != "cs";
+        var languages = PreferenceSegments(english, czech);
+        languages.Margin = new Thickness(0, 0, 0, 16);
+        body.Children.Add(languages);
 
         body.Children.Add(PanelSection(Strings.Pref_SectionAppearance));
         body.Children.Add(PreferenceLabel(Strings.Pref_Theme));
@@ -324,14 +324,18 @@ public sealed partial class MainWindow
 
     private async Task ChangePanelLanguageAsync(string preference)
     {
-        if (RestartForLanguageAsync is not { } restart || PanelLanguage.Current == preference)
-            return;
-        if (!await ConfirmAsync(Strings.Language_RestartTitle, PanelText(Strings.Language_RestartMessage),
-                Strings.Language_RestartButton))
+        if (PanelLanguage.Current == preference)
             return;
 
         await PreferenceStore.SetPreferenceAsync("language", preference);
-        await restart();
+        await ApplyPanelLanguageAsync(preference);
+    }
+
+    private async Task ApplyPanelLanguageAsync(string preference)
+    {
+        PanelLanguage.Apply(preference);
+        foreach (var window in PanelWindows().ToArray())
+            await window.RefreshLanguageAsync();
     }
 
     private void ToggleShortcutRecording()

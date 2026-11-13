@@ -73,10 +73,12 @@ public sealed partial class MainWindow
             await CaptureWindowAsync(directory, "recovery.png");
             DismissSidePanel();
 
-            SetVisualLanguage("cs");
+            await ShowPreferencesAsync();
+            await ApplyPanelLanguageAsync("cs");
             if (Strings.Pref_Theme != "Motiv" || Strings.Menu_Preferences != "Nastavení" ||
                 global::Avalonia.Automation.AutomationProperties.GetName(AddButton) != "Nová poznámka")
                 throw new InvalidOperationException("The Czech JoJot resources did not resolve in this build.");
+            DismissSidePanel();
             await CaptureWindowAsync(directory, "main-cs.png");
             await ShowPreferencesAsync();
             await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Background);

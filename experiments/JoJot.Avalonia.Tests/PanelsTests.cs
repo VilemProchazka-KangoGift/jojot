@@ -54,41 +54,42 @@ public sealed class PanelsTests
     }
 
     [AvaloniaFact]
-    public async Task LanguageSelectionPersistsOnlyAfterRestartConfirmation()
+    public async Task LanguageSelectionRelocalizesOpenPreferencesAndPreservesTheNote()
     {
-        var previousRestart = MainWindow.RestartForLanguageAsync;
-        var restartRequested = false;
-        MainWindow.RestartForLanguageAsync = () =>
-        {
-            restartRequested = true;
-            return Task.CompletedTask;
-        };
-        try
-        {
-            await using var fixture = new MainWindowTests.WindowFixture();
-            var window = fixture.Open();
-            await window.Ready;
-            var panel = Assert.IsType<Border>(window.FindControl<Border>("PanelHost"));
-            ClickMenu(window, "PreferencesMenuItem");
-            const string czechLabel = "Česky";
-            await MainWindowTests.WaitForAsync(() => panel.GetVisualDescendants().OfType<Button>()
-                .Any(button => Equals(button.Content, czechLabel)), "Czech language option");
-            var languageButton = FindButton(panel, czechLabel);
+        await using var fixture = new MainWindowTests.WindowFixture();
+        var window = fixture.Open();
+        await window.Ready;
+        var panel = Assert.IsType<Border>(window.FindControl<Border>("PanelHost"));
+        var editor = Assert.IsType<TextBox>(window.FindControl<TextBox>("Editor"));
+        var list = Assert.IsType<ListBox>(window.FindControl<ListBox>("NoteList"));
+        var active = Assert.IsType<NoteTab>(list.SelectedItem);
+        editor.Text = "Uncommitted note";
+        editor.Focus();
+        window.KeyPress(Key.F, RawInputModifiers.Control, PhysicalKey.F, null);
+        window.KeyRelease(Key.F, RawInputModifiers.Control, PhysicalKey.F, null);
+        var find = Assert.IsType<Border>(window.FindControl<Border>("FindHost"));
+        var query = find.GetVisualDescendants().OfType<TextBox>().Single(box => box.Name == "FindQuery");
+        var originalPlaceholder = query.PlaceholderText;
+        query.Text = "note";
+        ClickMenu(window, "PreferencesMenuItem");
+        await MainWindowTests.WaitForAsync(() => panel.GetVisualDescendants().OfType<Button>()
+            .Any(button => Equals(button.Content, "Česky")), "language controls");
+        Click(FindButton(panel, "Česky"));
+        await MainWindowTests.WaitForAsync(() => panel.GetVisualDescendants().OfType<TextBlock>()
+            .Any(text => text.Text == "Motiv"), "Czech preferences live");
+        Assert.Empty(window.OwnedWindows);
+        Assert.Equal("cs", await PreferenceStore.GetPreferenceAsync("language"));
+        Assert.NotEqual(originalPlaceholder, query.PlaceholderText);
+        Assert.Equal("note", query.Text);
+        Assert.Same(active, list.SelectedItem);
+        Assert.Equal("Uncommitted note", editor.Text);
 
-            Click(languageButton);
-            await MainWindowTests.WaitForAsync(() => window.OwnedWindows.Count == 1, "restart confirmation");
-            Click(FindButton(Assert.Single(window.OwnedWindows), Strings.Common_Cancel));
-            await MainWindowTests.WaitForAsync(() => window.OwnedWindows.Count == 0, "cancelled restart");
-            Assert.False(restartRequested);
-            Assert.Null(await PreferenceStore.GetPreferenceAsync("language"));
-
-            Click(languageButton);
-            await MainWindowTests.WaitForAsync(() => window.OwnedWindows.Count == 1, "restart confirmation again");
-            Click(FindButton(Assert.Single(window.OwnedWindows), Strings.Language_RestartButton));
-            await MainWindowTests.WaitForAsync(() => restartRequested, "language restart requested");
-            Assert.Equal("cs", await PreferenceStore.GetPreferenceAsync("language"));
-        }
-        finally { MainWindow.RestartForLanguageAsync = previousRestart; }
+        Click(FindButton(panel, "English"));
+        await MainWindowTests.WaitForAsync(() => panel.GetVisualDescendants().OfType<TextBlock>()
+            .Any(text => text.Text == "Theme"), "English preferences live");
+        Assert.Equal("en", await PreferenceStore.GetPreferenceAsync("language"));
+        Assert.Same(active, list.SelectedItem);
+        Assert.Equal("Uncommitted note", editor.Text);
     }
 
     [AvaloniaFact]

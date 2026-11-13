@@ -275,7 +275,7 @@ public sealed class NoteTab : ObservableObject
 
         if (dt.Date == now.Date)
         {
-            return dt.ToString("h:mm tt");
+            return dt.ToString("h:mm tt", Strings.Culture);
         }
 
         if (dt.Date == now.Date.AddDays(-1))
@@ -285,10 +285,10 @@ public sealed class NoteTab : ObservableObject
 
         if (dt.Year == now.Year)
         {
-            return dt.ToString("MMM d");
+            return dt.ToString("MMM d", Strings.Culture);
         }
 
-        return dt.ToString("MMM d, yyyy");
+        return dt.ToString("MMM d, yyyy", Strings.Culture);
     }
 
     /// <summary>
@@ -306,20 +306,20 @@ public sealed class NoteTab : ObservableObject
 
         if (dt.Date == now.Date)
         {
-            return string.Format(Strings.Date_Today, dt.ToString("h:mm tt"));
+            return string.Format(Strings.Date_Today, dt.ToString("h:mm tt", Strings.Culture));
         }
 
         if (dt.Date == now.Date.AddDays(-1))
         {
-            return string.Format(Strings.Date_YesterdayTime, dt.ToString("h:mm tt"));
+            return string.Format(Strings.Date_YesterdayTime, dt.ToString("h:mm tt", Strings.Culture));
         }
 
         if (dt.Year == now.Year)
         {
-            return dt.ToString("MMM d, h:mm tt");
+            return dt.ToString("MMM d, h:mm tt", Strings.Culture);
         }
 
-        return dt.ToString("MMM d, yyyy h:mm tt");
+        return dt.ToString("MMM d, yyyy h:mm tt", Strings.Culture);
     }
 
     private double _lastStalenessOpacity = double.NaN;
@@ -362,6 +362,25 @@ public sealed class NoteTab : ObservableObject
     /// <summary>
     /// Tooltip text for the created-at date, bound in the tab DataTemplate.
     /// </summary>
+    public string PinTooltip => Strings.Tooltip_PinShort;
+    public string UnpinTooltip => Strings.Tooltip_UnpinShort;
+    public string DeleteTooltip => Strings.Tooltip_Delete;
+    public string SaveTooltip => Strings.Tooltip_Save;
+
+    internal void RefreshLocalizedLabels()
+    {
+        _cachedDisplayLabel = null;
+        OnPropertyChanged(nameof(DisplayLabel));
+        OnPropertyChanged(nameof(CreatedDisplay));
+        OnPropertyChanged(nameof(CreatedTooltipText));
+        OnPropertyChanged(nameof(UpdatedDisplay));
+        OnPropertyChanged(nameof(UpdatedTooltipText));
+        OnPropertyChanged(nameof(PinTooltip));
+        OnPropertyChanged(nameof(UnpinTooltip));
+        OnPropertyChanged(nameof(DeleteTooltip));
+        OnPropertyChanged(nameof(SaveTooltip));
+    }
+
     public string CreatedTooltipText => CreatedTooltip(CreatedAt);
 
     /// <summary>
@@ -374,13 +393,13 @@ public sealed class NoteTab : ObservableObject
     /// Tooltip string showing the exact created-at date and time.
     /// </summary>
     public static string CreatedTooltip(DateTime dt) =>
-        string.Format(Strings.Date_CreatedPrefix, dt.ToString("MMM d, yyyy h:mm tt"));
+        string.Format(Strings.Date_CreatedPrefix, dt.ToString("MMM d, yyyy h:mm tt", Strings.Culture));
 
     /// <summary>
     /// Tooltip string showing the exact updated-at date and time.
     /// </summary>
     public static string UpdatedTooltip(DateTime dt) =>
-        string.Format(Strings.Date_UpdatedPrefix, dt.ToString("MMM d, yyyy h:mm tt"));
+        string.Format(Strings.Date_UpdatedPrefix, dt.ToString("MMM d, yyyy h:mm tt", Strings.Culture));
 
     /// <summary>
     /// Returns the display label for debugging convenience.
