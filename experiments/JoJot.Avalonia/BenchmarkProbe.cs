@@ -37,6 +37,8 @@ internal sealed partial class BenchmarkProbe(long entryTimestamp, ExperimentOpti
         var editorReady = Elapsed();
         await WaitForRenderedBatchAsync(window);
         var editorRendered = Elapsed();
+        StartupTrace.Mark("editor-rendered");
+        StartupTrace.Flush();
         var first = await firstRender;
         var data = new BenchmarkResult(first.Elapsed, editorReady, editorRendered, count,
             first.Left, first.Top, first.Width, first.Height, first.Bounds.Left, first.Bounds.Top,

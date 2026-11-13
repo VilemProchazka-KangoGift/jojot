@@ -1,0 +1,4 @@
+Release serial Rebuild: passed, 0 warnings, 0 errors
+xUnit: 87 total, 87 passed, 0 failed, 0 errors, 0 skipped
+Runner: JoJot.Avalonia.Tests.exe -xml .local/avalonia-startup-profile/tests-unrestricted.xml
+Execution: unrestricted local process, Avalonia headless

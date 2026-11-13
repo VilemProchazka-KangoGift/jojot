@@ -16,6 +16,7 @@ internal static class Program
     private static int Main(string[] args)
     {
         var entry = System.Diagnostics.Stopwatch.GetTimestamp();
+        StartupTrace.Begin(entry);
         var loggingInitialized = false;
         try
         {
@@ -74,6 +75,7 @@ internal static class Program
             AppEnvironment.SetAppDataDirectory(options.DataDirectory);
             LogService.Initialize(options.DataDirectory);
             loggingInitialized = true;
+            StartupTrace.Mark("logging-ready");
             int result;
             using (var instance = new InstanceChannel(options.DataDirectory))
             {
@@ -88,6 +90,7 @@ internal static class Program
                 instance.Start(ExperimentApp.QueueCommand);
                 ExperimentApp.Options = options;
                 ExperimentApp.Benchmark = options.BenchmarkOutput is null ? null : new BenchmarkProbe(entry, options);
+                StartupTrace.Mark("platform-start");
                 result = AppBuilder.Configure<ExperimentApp>().UsePlatformDetect().StartWithClassicDesktopLifetime([]);
             }
             return result != 0 ? result : ExperimentApp.FailExitCode;
@@ -100,7 +103,7 @@ internal static class Program
         }
         finally
         {
-            if (loggingInitialized) LogService.Shutdown();
+            if (loggingInitialized) { StartupTrace.Flush(); LogService.Shutdown(); }
         }
     }
 }
@@ -216,11 +219,15 @@ internal sealed class ExperimentApp : Application
         try
         {
             await DatabaseCore.OpenAsync(Path.Combine(Options.DataDirectory, "jojot.db"));
+            StartupTrace.Mark("database-open");
             await DatabaseCore.EnsureSchemaAsync();
+            StartupTrace.Mark("schema-ready");
             if (!await DatabaseCore.VerifyIntegrityAsync())
                 throw new IOException("The experiment database failed its integrity check.");
             await DatabaseCore.RunPendingMigrationsAsync();
+            StartupTrace.Mark("migrations-ready");
             var preferences = await PreferenceStore.InitializeCacheAsync();
+            StartupTrace.Mark("preferences-ready");
             if (preferences.TryGetValue("log_level", out var level) &&
                 Enum.TryParse<Serilog.Events.LogEventLevel>(level, true, out var parsedLevel))
                 LogService.SetMinimumLevel(parsedLevel);
@@ -238,6 +245,7 @@ internal sealed class ExperimentApp : Application
             await MainWindow.RunStartupAutoDeleteAsync();
             if (Options.CompatibilityExpected is null && Options.VisualOutputDirectory is null)
                 StartupWelcomeNoteId = await InsertWelcomeNoteIfEmptyAsync(_initialDesktop, needsWelcome);
+            StartupTrace.Mark("storage-ready");
         }
         catch
         {
@@ -268,12 +276,18 @@ internal sealed class ExperimentApp : Application
         return welcome;
     }
 
-    public override void Initialize() => Styles.Add(new FluentTheme());
+    public override void Initialize()
+    {
+        StartupTrace.Mark("styles-start");
+        Styles.Add(new FluentTheme());
+        StartupTrace.Mark("styles-ready");
+    }
 
     public override void OnFrameworkInitializationCompleted()
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
+            StartupTrace.Mark("framework-ready");
             ManagesStorageLifetime = true;
             Options.ValidateDataPath();
             AppEnvironment.SetAppDataDirectory(Options.DataDirectory);
@@ -284,8 +298,10 @@ internal sealed class ExperimentApp : Application
             _current = this;
             if (Options.BenchmarkOutput is null && Options.CompatibilityExpected is null && Options.VisualOutputDirectory is null)
                 desktop.ShutdownMode = ShutdownMode.OnExplicitShutdown;
+            StartupTrace.Mark("snapshot-ready");
             var detectedDesktop = VirtualDesktop.GetCurrentDesktopOrDefault();
             _liveDesktops = VirtualDesktop.GetDesktops();
+            StartupTrace.Mark("desktops-ready");
             if (DesktopMoveProbe is { } requested &&
                 (detectedDesktop == "default" || requested.Equals(detectedDesktop, StringComparison.OrdinalIgnoreCase) ||
                  !_liveDesktops.Any(item => item.Id.Equals(requested, StringComparison.OrdinalIgnoreCase))))
@@ -301,7 +317,9 @@ internal sealed class ExperimentApp : Application
             var initialDesktop = Options.CompatibilityExpected is not null || Options.VisualOutputDirectory is not null ? Options.DesktopGuid :
                 Options.BenchmarkOutput is not null && Options.DesktopGuid != "default" ? Options.DesktopGuid : detectedDesktop;
             _initialDesktop = initialDesktop;
+            StartupTrace.Mark("window-start");
             var window = new MainWindow(initialDesktop, applyStartupPreference: true);
+            StartupTrace.Mark("window-created");
             var info = _liveDesktops.FirstOrDefault(item => item.Id.Equals(initialDesktop, StringComparison.OrdinalIgnoreCase));
             if (info is not null) window.UpdateDesktopTitle(info.Name, info.Index);
             _windows.Add(initialDesktop, window);

@@ -47,6 +47,7 @@ public sealed partial class MainWindow : Window
         _benchmark = ExperimentApp.Benchmark;
         _viewModel = new MainWindowViewModel(desktopGuid);
         InitializeComponent();
+        StartupTrace.Mark("xaml-ready");
         WindowResizeHitTest.Attach(this);
         Width = _options.Width;
         Height = _options.Height;
@@ -82,6 +83,7 @@ public sealed partial class MainWindow : Window
     private async void OnOpened(object? sender, EventArgs e)
     {
         var firstRender = _benchmark?.RecordFirstRenderAsync(this);
+        StartupTrace.Mark("window-opened");
         try
         {
             if (ExperimentApp.ManagesStorageLifetime)
@@ -95,14 +97,17 @@ public sealed partial class MainWindow : Window
                 await SessionStore.CreateSessionAsync(DesktopGuid, null, null);
 
             await InitializePanelsAsync();
+            StartupTrace.Mark("panels-ready");
             await RestoreTabWidthAsync();
             LocalizeCoreControls();
             await LoadInitialNotesAsync();
+            StartupTrace.Mark("notes-ready");
             _ready = true;
             Status.IsVisible = false;
             _busy = false;
             UpdateControls();
             _readySource.TrySetResult();
+            StartupTrace.Mark("editor-ready");
             if (_options.CompatibilityExpected is { } expected)
             {
                 await ApplyCompatibilityEditAsync(expected, _options.CompatibilityReplacement!);
