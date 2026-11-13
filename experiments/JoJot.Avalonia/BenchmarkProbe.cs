@@ -57,6 +57,8 @@ internal sealed partial class BenchmarkProbe(long entryTimestamp, ExperimentOpti
         finally { File.Delete(temporary); }
         if (Environment.GetEnvironmentVariable("JOJOT_RENDER_WORKLOAD") == "1")
             await RecordRenderWorkloadAsync(window, output);
+        if (Environment.GetEnvironmentVariable("JOJOT_CONTINUOUS_SCROLL") == "1")
+            await ((MainWindow)window).RecordContinuousScrollAsync(output, WaitForRenderedBatchAsync);
     }
 
     private static async Task RecordRenderWorkloadAsync(Window window, string output)

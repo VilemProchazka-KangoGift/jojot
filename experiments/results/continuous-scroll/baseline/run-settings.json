@@ -1,0 +1,9 @@
+{
+  "Samples": 3,
+  "Warmups": 1,
+  "Trace": false,
+  "RenderWorkload": false,
+  "ContinuousScroll": true,
+  "BaselineRenderMode": "default",
+  "CandidateRenderMode": "software"
+}

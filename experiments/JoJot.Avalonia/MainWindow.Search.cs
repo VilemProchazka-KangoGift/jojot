@@ -296,19 +296,42 @@ public sealed partial class MainWindow
 
     private sealed class FindHighlights(TextBox editor) : Control
     {
+        private readonly FindHighlightGeometry _geometry = new();
         private List<int> _matches = [];
         private int _selected;
         private int _length;
+        internal bool ProfileRendering;
+        internal long RenderTicks;
+        internal long RenderAllocatedBytes;
+        internal int RenderCount;
+        internal int DrawnRectangles;
 
         public void Update(List<int> matches, int selected, int length)
         {
             _matches = matches;
             _selected = selected;
             _length = length;
+            if (matches.Count == 0) _geometry.Clear();
             InvalidateVisual();
         }
 
         public override void Render(DrawingContext context)
+        {
+            var started = ProfileRendering ? System.Diagnostics.Stopwatch.GetTimestamp() : 0;
+            var allocated = ProfileRendering ? GC.GetAllocatedBytesForCurrentThread() : 0;
+            try { RenderHighlights(context); }
+            finally
+            {
+                if (ProfileRendering)
+                {
+                    RenderTicks += System.Diagnostics.Stopwatch.GetTimestamp() - started;
+                    RenderAllocatedBytes += GC.GetAllocatedBytesForCurrentThread() - allocated;
+                    RenderCount++;
+                }
+            }
+        }
+
+        private void RenderHighlights(DrawingContext context)
         {
             base.Render(context);
             if (_matches.Count == 0 || _length == 0 ||
@@ -316,19 +339,13 @@ public sealed partial class MainWindow
                 presenter.TranslatePoint(default, this) is not { } offset)
                 return;
             var layout = presenter.TextLayout;
-            var firstVisible = layout.HitTestPoint(new Point(0, -offset.Y)).TextPosition;
-            var lastVisible = layout.HitTestPoint(new Point(layout.Width, Bounds.Height - offset.Y)).TextPosition;
-            var index = _matches.BinarySearch(Math.Max(0, firstVisible - _length));
-            if (index < 0)
-                index = ~index;
             var color = editor.SelectionBrush is ISolidColorBrush selection ? selection.Color : Colors.Gold;
             var highlight = new SolidColorBrush(color, 0.28);
-            for (; index < _matches.Count && _matches[index] <= lastVisible; index++)
+            var viewport = new Rect(-offset.X, -offset.Y, Bounds.Width, Bounds.Height);
+            foreach (var rect in _geometry.GetVisibleRectangles(layout, _matches, _length, _selected, viewport))
             {
-                if (index == _selected)
-                    continue;
-                foreach (var rect in layout.HitTestTextRange(_matches[index], _length))
-                    context.DrawRectangle(highlight, null, rect.Translate(new Vector(offset.X, offset.Y)));
+                context.DrawRectangle(highlight, null, rect.Translate(new Vector(offset.X, offset.Y)));
+                if (ProfileRendering) DrawnRectangles++;
             }
         }
     }

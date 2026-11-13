@@ -1,0 +1,7 @@
+"Variant","Metric","Samples","MedianMs","P95Ms"
+"baseline","FirstRenderMs","3","467.25","578.09"
+"baseline","EditorReadyMs","3","410.58","498.36"
+"baseline","EditorRenderingMs","3","479.59","602.23"
+"candidate","FirstRenderMs","3","521.84","662.4"
+"candidate","EditorReadyMs","3","477.82","593.63"
+"candidate","EditorRenderingMs","3","567.1","687.35"

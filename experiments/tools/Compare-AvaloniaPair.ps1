@@ -10,16 +10,18 @@ param(
     [switch] $Trace,
     [ValidateSet('default', 'software')] [string] $BaselineRenderMode = 'default',
     [ValidateSet('default', 'software')] [string] $CandidateRenderMode = 'default',
-    [switch] $RenderWorkload
+    [switch] $RenderWorkload,
+    [switch] $ContinuousScroll
 )
 $ErrorActionPreference = 'Stop'
+if ($RenderWorkload -and $ContinuousScroll) { throw 'Choose one workload per launch.' }
 $executables = @((Resolve-Path -LiteralPath $BaselineExe).Path, (Resolve-Path -LiteralPath $CandidateExe).Path)
 $fixture = (Resolve-Path -LiteralPath $FixtureDirectory).Path
 $desktop = (Get-Content -LiteralPath (Join-Path $fixture 'desktop.txt') -Raw).Trim()
 if (Test-Path -LiteralPath $OutputDirectory) { throw 'Choose a new output directory.' }
 $root = (New-Item -ItemType Directory -Path $OutputDirectory).FullName
 [pscustomobject]@{ Samples=$Samples; Warmups=$Warmups; Trace=[bool]$Trace;
-    RenderWorkload=[bool]$RenderWorkload; BaselineRenderMode=$BaselineRenderMode;
+    RenderWorkload=[bool]$RenderWorkload; ContinuousScroll=[bool]$ContinuousScroll; BaselineRenderMode=$BaselineRenderMode;
     CandidateRenderMode=$CandidateRenderMode } | ConvertTo-Json |
     Set-Content -LiteralPath (Join-Path $root 'run-settings.json')
 $files = @('jojot.db', 'startup-cache.json', '.clean-shutdown')
@@ -47,6 +49,8 @@ foreach ($phase in 'warmup', 'measured') {
             $info.Environment['JOJOT_RENDER_MODE'] = @($BaselineRenderMode, $CandidateRenderMode)[$index]
             if ($RenderWorkload) { $info.Environment['JOJOT_RENDER_WORKLOAD'] = '1' }
             else { $info.Environment.Remove('JOJOT_RENDER_WORKLOAD') | Out-Null }
+            if ($ContinuousScroll) { $info.Environment['JOJOT_CONTINUOUS_SCROLL'] = '1' }
+            else { $info.Environment.Remove('JOJOT_CONTINUOUS_SCROLL') | Out-Null }
             foreach ($argument in @('--data-dir', $directory, '--desktop-guid', $desktop,
                     '--benchmark-output', $result, '--benchmark-width', '552', '--benchmark-height', '420')) {
                 $info.ArgumentList.Add($argument)
@@ -54,7 +58,7 @@ foreach ($phase in 'warmup', 'measured') {
             $process = [Diagnostics.Process]::Start($info)
             try {
                 $errors = $process.StandardError.ReadToEndAsync()
-                if (-not $process.WaitForExit($(if ($RenderWorkload) { 180000 } else { 30000 }))) {
+                if (-not $process.WaitForExit($(if ($RenderWorkload -or $ContinuousScroll) { 180000 } else { 30000 }))) {
                     $process.Kill(); $process.WaitForExit()
                     throw "Timed out: $directory"
                 }
@@ -68,6 +72,9 @@ foreach ($phase in 'warmup', 'measured') {
                 $data = Get-Content -LiteralPath $result -Raw | ConvertFrom-Json
                 if ($RenderWorkload -and -not (Test-Path -LiteralPath ($result + '.render.json'))) {
                     throw "Missing render workload: $directory"
+                }
+                if ($ContinuousScroll -and -not (Test-Path -LiteralPath ($result + '.scroll.json'))) {
+                    throw "Missing continuous-scroll workload: $directory"
                 }
                 if ($data.Notes -ne 100 -or $data.SelectedNoteName -ne 'Note 0' -or $data.EditorTextLength -ne 1024) {
                     throw "Unexpected fixture selection: $directory"
