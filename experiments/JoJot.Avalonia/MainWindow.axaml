@@ -49,8 +49,10 @@
             </Grid>
             <TextBox x:Name="SearchBox" Grid.Column="1" Classes="noteSearch" Height="32"
                      PlaceholderText="Search notes" AutomationProperties.Name="Search notes" TextChanged="OnSearchChanged" />
-            <Button x:Name="AddButton" Grid.Column="2" Classes="iconButton addNote" Content="+"
-                    Click="OnAdd" IsEnabled="False" />
+            <Button x:Name="AddButton" Grid.Column="2" Classes="iconButton addNote"
+                    Click="OnAdd" IsEnabled="False">
+              <PathIcon Width="12" Height="12" Data="M5,0 H7 V5 H12 V7 H7 V12 H5 V7 H0 V5 H5 Z" />
+            </Button>
           </Grid>
         </Border>
         <ListBox x:Name="NoteList" Grid.Row="1" Classes="noteList"

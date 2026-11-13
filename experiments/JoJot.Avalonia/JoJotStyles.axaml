@@ -52,6 +52,19 @@
     <Setter Property="Background" Value="{DynamicResource c-hover-bg}" />
     <Setter Property="Foreground" Value="{DynamicResource c-toolbar-icon-hover}" />
   </Style>
+  <Style Selector="Button.iconButton:pressed, Button.iconButton.active">
+    <Setter Property="Background" Value="{DynamicResource c-selected-bg}" />
+    <Setter Property="Foreground" Value="{DynamicResource c-text-primary}" />
+  </Style>
+  <Style Selector="Button.iconButton:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource c-hover-bg}" />
+    <Setter Property="Foreground" Value="{DynamicResource c-toolbar-icon-hover}" />
+  </Style>
+  <Style Selector="Button.iconButton:pressed /template/ ContentPresenter#PART_ContentPresenter,
+                   Button.iconButton.active /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource c-selected-bg}" />
+    <Setter Property="Foreground" Value="{DynamicResource c-text-primary}" />
+  </Style>
   <Style Selector="Button.iconButton:disabled">
     <Setter Property="Opacity" Value="0.35" />
     <Setter Property="Background" Value="Transparent" />
@@ -63,6 +76,22 @@
     <Setter Property="FontFamily" Value="Segoe UI" />
     <Setter Property="FontSize" Value="20" />
     <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+  <Style Selector="Button.addNote:pointerover">
+    <Setter Property="Background" Value="{DynamicResource c-accent-hover}" />
+    <Setter Property="Foreground" Value="{DynamicResource c-on-accent}" />
+  </Style>
+  <Style Selector="Button.addNote:pressed">
+    <Setter Property="Background" Value="{DynamicResource c-accent-pressed}" />
+    <Setter Property="Foreground" Value="{DynamicResource c-on-accent}" />
+  </Style>
+  <Style Selector="Button.addNote:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource c-accent-hover}" />
+    <Setter Property="Foreground" Value="{DynamicResource c-on-accent}" />
+  </Style>
+  <Style Selector="Button.addNote:pressed /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource c-accent-pressed}" />
+    <Setter Property="Foreground" Value="{DynamicResource c-on-accent}" />
   </Style>
   <Style Selector="Button.toolbarDelete">
     <Setter Property="Opacity" Value="0.7" />
@@ -100,6 +129,8 @@
     <Setter Property="FontSize" Value="13" />
   </Style>
   <Style Selector="TextBox.noteEditor">
+    <Setter Property="SelectionBrush" Value="{DynamicResource c-accent}" />
+    <Setter Property="SelectionForegroundBrush" Value="{DynamicResource c-on-accent}" />
     <Setter Property="Foreground" Value="{DynamicResource c-text-primary}" />
     <Setter Property="Padding" Value="24,20" />
     <Setter Property="BorderThickness" Value="0" />
@@ -110,6 +141,10 @@
   <Style Selector="TextBox.noteSearch">
     <Setter Property="Background" Value="{DynamicResource c-editor-bg}" />
     <Setter Property="CornerRadius" Value="7" />
+  </Style>
+  <Style Selector="TextBox.noteEditor.findActive">
+    <Setter Property="SelectionBrush" Value="{DynamicResource c-find-match-active-bg}" />
+    <Setter Property="SelectionForegroundBrush" Value="{DynamicResource c-find-match-active-fg}" />
   </Style>
   <Style Selector="TextBox.noteEditor /template/ Border#PART_BorderElement,
                    TextBox.noteEditor:pointerover /template/ Border#PART_BorderElement,

@@ -10,6 +10,8 @@
     <SolidColorBrush x:Key="c-text-primary" Color="#22313B"/>
     <SolidColorBrush x:Key="c-text-muted" Color="#627480"/>
     <SolidColorBrush x:Key="c-accent" Color="#087F78"/>
+    <SolidColorBrush x:Key="c-accent-hover" Color="#076F69"/>
+    <SolidColorBrush x:Key="c-accent-pressed" Color="#065D59"/>
     <SolidColorBrush x:Key="c-hover-bg" Color="#E2E9EC"/>
     <SolidColorBrush x:Key="c-selected-bg" Color="#D6EBE7"/>
     <SolidColorBrush x:Key="c-toolbar-icon" Color="#526873"/>
@@ -20,8 +22,10 @@
     <SolidColorBrush x:Key="c-overlay-bg" Color="#80000000"/>
     <SolidColorBrush x:Key="c-tooltip-bg" Color="#CC333333"/>
     <SolidColorBrush x:Key="c-danger" Color="#C8484B"/>
-    <SolidColorBrush x:Key="c-find-match-bg" Color="#50FFDD00"/>
-    <SolidColorBrush x:Key="c-find-match-active-bg" Color="#70FF8C00"/>
+    <SolidColorBrush x:Key="c-find-match-bg" Color="#33F2BE4B"/>
+    <SolidColorBrush x:Key="c-find-match-border" Color="#9B6500"/>
+    <SolidColorBrush x:Key="c-find-match-active-bg" Color="#F2BE4B"/>
+    <SolidColorBrush x:Key="c-find-match-active-fg" Color="#22313B"/>
     </ResourceDictionary>
     <ResourceDictionary x:Key="Dark">
     <SolidColorBrush x:Key="c-on-accent" Color="#142028" />
@@ -32,6 +36,8 @@
     <SolidColorBrush x:Key="c-text-primary" Color="#E4EBED"/>
     <SolidColorBrush x:Key="c-text-muted" Color="#A2B3BC"/>
     <SolidColorBrush x:Key="c-accent" Color="#65C8BA"/>
+    <SolidColorBrush x:Key="c-accent-hover" Color="#7BD5C8"/>
+    <SolidColorBrush x:Key="c-accent-pressed" Color="#52B6AA"/>
     <SolidColorBrush x:Key="c-hover-bg" Color="#263943"/>
     <SolidColorBrush x:Key="c-selected-bg" Color="#214842"/>
     <SolidColorBrush x:Key="c-toolbar-icon" Color="#AEC0C9"/>
@@ -42,8 +48,10 @@
     <SolidColorBrush x:Key="c-overlay-bg" Color="#80000000"/>
     <SolidColorBrush x:Key="c-tooltip-bg" Color="#CC333333"/>
     <SolidColorBrush x:Key="c-danger" Color="#E58C8C"/>
-    <SolidColorBrush x:Key="c-find-match-bg" Color="#50CCCC00"/>
-    <SolidColorBrush x:Key="c-find-match-active-bg" Color="#70FF9632"/>
+    <SolidColorBrush x:Key="c-find-match-bg" Color="#2EF2BE4B"/>
+    <SolidColorBrush x:Key="c-find-match-border" Color="#E4BE60"/>
+    <SolidColorBrush x:Key="c-find-match-active-bg" Color="#F2BE4B"/>
+    <SolidColorBrush x:Key="c-find-match-active-fg" Color="#22313B"/>
     </ResourceDictionary>
   </ResourceDictionary.ThemeDictionaries>
 </ResourceDictionary>

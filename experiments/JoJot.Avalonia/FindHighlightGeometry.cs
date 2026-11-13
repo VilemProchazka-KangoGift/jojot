@@ -16,7 +16,8 @@ internal sealed class FindHighlightGeometry
         _lineTops = [];
     }
 
-    internal IEnumerable<Rect> GetVisibleRectangles(TextLayout layout, List<int> matches, int length, int selected, Rect viewport)
+    internal IEnumerable<Rect> GetVisibleRectangles(TextLayout layout, List<int> matches, int length, int selected, Rect viewport,
+        int selectionStart = 0, int selectionLength = 0)
     {
         if (matches.Count == 0 || length <= 0 || viewport.Height <= 0) yield break;
         var lines = layout.TextLines;
@@ -40,6 +41,8 @@ internal sealed class FindHighlightGeometry
             for (; matchIndex < matches.Count && matches[matchIndex] < lineEnd; matchIndex++)
             {
                 if (matchIndex == selected) continue;
+                if (selectionLength > 0 && matches[matchIndex] < selectionStart + selectionLength &&
+                    matches[matchIndex] + length > selectionStart) continue;
                 var start = Math.Max(lineStart, matches[matchIndex]);
                 var count = Math.Min(lineEnd, matches[matchIndex] + length) - start;
                 if (count <= 0) continue;

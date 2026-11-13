@@ -1,8 +1,8 @@
 # Visual refresh experiment
 
-Branch: `features/avalonia-visual-refresh`, based on stable main `c5d7f77051ff1ff7b6a1aa85fbd0e44422b149c1`. The native-caption, rename and Find refinements are uncommitted.
+Branch: `features/avalonia-visual-refresh`, based on stable main `c5d7f77051ff1ff7b6a1aa85fbd0e44422b149c1`. The Find contrast, button-state and icon refinements are uncommitted.
 
-Open [the side-by-side gallery](index.html). Run the isolated NativeAOT preview with `P:\projects\JoJot\.local\avalonia-visual-refresh\chrome-preview\Try-Visual-Refresh.cmd`.
+Open [the side-by-side gallery](index.html). Run the isolated NativeAOT preview with `P:\projects\JoJot\.local\avalonia-visual-refresh\polish-preview\Try-Visual-Refresh.cmd`.
 
 ## Design
 
@@ -32,13 +32,23 @@ Rename overflow reproduced red: the default TextBox was 32 DIP tall inside a 22-
 
 Find now places previous/next arrows left and Aa, underlined **ab** whole-word control, and match count right on one row directly beneath the query. Localized tooltip/accessibility names and checkbox semantics remain. The integration test checks geometric ordering, whole-word/case filtering, and English labels; language-switch coverage checks the Czech whole-word label. The gallery includes the normal light Find panel and dark checked options.
 
-The final probe produces 21 images, including native frames, inline rename and checked Find options in addition to the original layout/panel matrix. This extends the original client-only evidence described above.
+The previous caption/rename probe produced 21 images, including native frames, inline rename and checked Find options in addition to the original layout/panel matrix. This extends the original client-only evidence described above.
 
 - Release build: zero warnings/errors (`final-build.log`).
-- Full integration suite: **93 passed, zero failures/errors/skips** (`final-tests.xml`). The layout contract includes the restored inline sidebar controls.
+- Full integration suite: **95 passed, zero failures/errors/skips** (`final-tests.xml`). The layout contract includes the restored inline sidebar controls.
 - NativeAOT publish succeeded; dependency audit reported no vulnerable packages (`dependency-audit.json`). The first sandbox restore could not reach NuGet metadata; final unrestricted publish/audit completed. The two existing Avalonia MicroCom Boolean interop diagnostics remain unchanged.
 - Final native capture exited 0 and preserves every original note ID/content; the temporary recovery note is removed.
-- All **65** publish source inputs match the current runtime tree (`source.sha256`). Executable SHA-256: `2f056f1ea3827f94f636e744351facbbbde9270221e6b517228d65a73d75aeb7`.
+- All **66** publish source inputs match the current runtime tree (`source.sha256`). Executable SHA-256: `6c39103dbb0a9840cad8426f1cffec981fe86fcfe97276387cae577c028ef0d0`.
 - `git diff --check` passed. Preexisting `experiments/README.md`, `.serena/project.yml`, and `.claude/worktrees/` changes were preserved.
 
-The launcher creates a fresh `chrome-preview/sessions/<guid>` copy of the synthetic fixture each time. It does not open the installed application's database. The preview is an experiment for review, not an installed release. No startup or scrolling speed claim is made for this visual change.
+The launcher creates a fresh `polish-preview/sessions/<guid>` copy of the synthetic fixture each time. It does not open the installed application's database. The preview is an experiment for review, not an installed release. No startup or scrolling speed claim is made for this visual change.
+
+### Find contrast, button states and icon follow-up
+
+Active Find matches now use TextBox selection drawn behind glyphs, with amber background and dark text. Inactive matches retain the cached visible-line geometry and use a 20% (light) / 18% (dark) amber overlay with a theme-specific outline. Calculated solid-text contrast after compositing is 7.68:1 light and 8.17:1 dark; tests require >=7:1. Any match overlapping the editor selection is excluded from the overlay so selection remains readable. Theme changes invalidate the overlay. Existing visible-line parity and bounded-allocation tests pass; no new scrolling speed claim is made.
+
+The New plus uses a symmetric 12-DIP vector. Exact foreground pixels in normal/hover/pressed native captures are centered within 0.5 physical pixel in light and exactly centered in dark at 150% scaling (`plus-pixels.csv`). Hover/pressed backgrounds remain in the teal family. Toolbar hover/pressed and pinned active states use explicit readable foreground/background pairs. A headless test sends actual pointer moves/down/up and checks the rendered ContentPresenter colors in both themes (>=4.5:1); it also checks Find and ordinary editor selection contrast. Gallery hover/pressed screenshots use diagnostic pseudoclass injection, because native SendMessage did not establish hover on the offscreen HWND. No physical cursor movement or foreground activation was used.
+
+The Avalonia-specific SVG preserves the original stacked-note/JJ geometry and changes its palette to teal/slate. Its ICO contains 16, 24, 32, 48, 64, 128 and 256 pixel representations, wired to both executable and window icon. The actual native caption and extracted executable icon were inspected. WPF icon assets remain unchanged. Rebuild the ICO with ImageMagick: `magick -background none experiments/JoJot.Avalonia/Assets/jojot.svg -define icon:auto-resize=256,128,64,48,32,24,16 experiments/JoJot.Avalonia/Assets/jojot.ico`.
+
+Final NativeAOT probe produced 30 app images, adding dark Find and eight button-state renders. Every persisted fixture note ID/content remains unchanged. All 66 source hashes match the runtime tree. The two additional regression tests cover contrast under real headless input and partially selected matches. Final build has zero warnings/errors; all 95 tests pass. Native publish and dependency audit pass with the two preexisting Avalonia MicroCom diagnostics. Older preview launchers forward to the new isolated polish preview.

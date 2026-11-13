@@ -32,9 +32,11 @@ public sealed partial class MainWindow
             }
             ApplyTheme("light");
             await CaptureWindowAsync(directory, "main-light.png");
+            await CaptureButtonStatesAsync(directory, "light");
             NativeFrameCapture.Save(this, Path.Combine(directory, "native-light.png"));
             ApplyTheme("dark");
             await CaptureWindowAsync(directory, "main-dark.png");
+            await CaptureButtonStatesAsync(directory, "dark");
             NativeFrameCapture.Save(this, Path.Combine(directory, "native-dark.png"));
             BeginRename(_active!);
             await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Background);
@@ -63,6 +65,9 @@ public sealed partial class MainWindow
                     throw new InvalidOperationException("The visual probe did not find its selected search term.");
             }
             await CaptureWindowAsync(directory, "find.png");
+            ApplyTheme("dark");
+            await CaptureWindowAsync(directory, "find-dark.png");
+            ApplyTheme("light");
             _findWhole!.IsChecked = true;
             _findCase!.IsChecked = true;
             _findTimer.Stop();
@@ -153,6 +158,23 @@ public sealed partial class MainWindow
         UpdateStatus();
     }
 
+    private async Task CaptureButtonStatesAsync(string directory, string theme)
+    {
+        foreach (var (button, name) in new[] { (AddButton, "new"), (CopyButton, "toolbar") })
+        {
+            try
+            {
+                ((Avalonia.Controls.IPseudoClasses)button.Classes).Set(":pointerover", true);
+                await CaptureWindowAsync(directory, $"{name}-hover-{theme}.png");
+                // Diagnostic state injection avoids moving the physical cursor to an offscreen window.
+                ((Avalonia.Controls.IPseudoClasses)button.Classes).Set(":pressed", true);
+                await CaptureWindowAsync(directory, $"{name}-pressed-{theme}.png");
+
+            }
+            finally { ((Avalonia.Controls.IPseudoClasses)button.Classes).Set(":pressed", false); ((Avalonia.Controls.IPseudoClasses)button.Classes).Set(":pointerover", false); }
+        }
+    }
+
     private async Task CaptureWindowAsync(string directory, string filename)
     {
         await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Background);
@@ -184,6 +206,8 @@ public sealed partial class MainWindow
         }
         _options.ValidateDataPath();
         var scale = RenderScaling;
+        var addBounds = new Rect(AddButton.TranslatePoint(default, this)!.Value, AddButton.Bounds.Size);
+        File.WriteAllText(Path.Combine(directory, filename + ".button.txt"), FormattableString.Invariant($"X={addBounds.X * scale};Y={addBounds.Y * scale};Width={addBounds.Width * scale};Height={addBounds.Height * scale}"));
         var pixels = new PixelSize((int)Math.Ceiling(Bounds.Width * scale), (int)Math.Ceiling(Bounds.Height * scale));
         using var bitmap = new RenderTargetBitmap(pixels, new Vector(96 * scale, 96 * scale));
         bitmap.Render(this);

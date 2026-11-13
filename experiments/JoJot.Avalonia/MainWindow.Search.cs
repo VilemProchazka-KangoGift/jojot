@@ -37,6 +37,7 @@ public sealed partial class MainWindow
         if (_findQuery is null)
             CreateFindPanel();
         FindHost.IsVisible = true;
+        Editor.Classes.Add("findActive");
         if (Editor.SelectedText is { Length: > 0 } selection && !selection.Contains('\n') && !selection.Contains('\r'))
             _findQuery!.Text = selection;
         FocusFindQuery();
@@ -145,12 +146,18 @@ public sealed partial class MainWindow
         };
 
         _findHighlights = new FindHighlights(Editor) { IsHitTestVisible = false, ClipToBounds = true };
+        _findHighlights.ActualThemeVariantChanged += (_, _) => _findHighlights.InvalidateVisual();
         if (Editor.Parent is Grid grid)
         {
             Grid.SetRow(_findHighlights, Grid.GetRow(Editor));
             grid.Children.Add(_findHighlights);
         }
         Editor.AddHandler(ScrollViewer.ScrollChangedEvent, (_, _) => _findHighlights?.InvalidateVisual());
+        Editor.PropertyChanged += (_, args) =>
+        {
+            if (args.Property == TextBox.SelectionStartProperty || args.Property == TextBox.SelectionEndProperty)
+                _findHighlights?.InvalidateVisual();
+        };
     }
 
     private static Control CreateFindField(TextBox input, out Button clearButton)
@@ -184,6 +191,7 @@ public sealed partial class MainWindow
     private void HideFindPanel()
     {
         FindHost.IsVisible = false;
+        Editor.Classes.Remove("findActive");
         _findTimer.Stop();
         _findGeneration++;
         _findMatches = [];
@@ -339,12 +347,15 @@ public sealed partial class MainWindow
                 presenter.TranslatePoint(default, this) is not { } offset)
                 return;
             var layout = presenter.TextLayout;
-            var color = editor.SelectionBrush is ISolidColorBrush selection ? selection.Color : Colors.Gold;
-            var highlight = new SolidColorBrush(color, 0.28);
+            if (!editor.TryFindResource("c-find-match-bg", editor.ActualThemeVariant, out var fill) || fill is not IBrush highlight ||
+                !editor.TryFindResource("c-find-match-border", editor.ActualThemeVariant, out var stroke) || stroke is not IBrush border)
+                return;
+            var pen = new Pen(border, 1);
             var viewport = new Rect(-offset.X, -offset.Y, Bounds.Width, Bounds.Height);
-            foreach (var rect in _geometry.GetVisibleRectangles(layout, _matches, _length, _selected, viewport))
+            foreach (var rect in _geometry.GetVisibleRectangles(layout, _matches, _length, _selected, viewport,
+                Math.Min(editor.SelectionStart, editor.SelectionEnd), Math.Abs(editor.SelectionEnd - editor.SelectionStart)))
             {
-                context.DrawRectangle(highlight, null, rect.Translate(new Vector(offset.X, offset.Y)));
+                context.DrawRectangle(highlight, pen, rect.Translate(new Vector(offset.X, offset.Y)));
                 if (ProfileRendering) DrawnRectangles++;
             }
         }

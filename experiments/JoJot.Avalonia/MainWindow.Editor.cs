@@ -248,6 +248,7 @@ public sealed partial class MainWindow
         PinButton.IsEnabled = note is not null;
         var pinned = note?.Pinned == true;
         PinButton.Content = pinned ? "\uE77A" : "\uE718";
+        PinButton.Classes.Set("active", pinned);
         ToolTip.SetTip(PinButton, pinned ? Strings.Tooltip_Unpin : Strings.Tooltip_Pin);
         AutomationProperties.SetName(PinButton, pinned ? Strings.Ctx_Unpin : Strings.Ctx_Pin);
         CloneButton.IsEnabled = note is not null;

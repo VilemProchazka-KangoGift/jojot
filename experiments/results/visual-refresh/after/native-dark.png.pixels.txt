@@ -1,1 +1,1 @@
-Caption height=45; matching background pixels=65132; matching text pixels=53
+Caption height=45; matching background pixels=65143; matching text pixels=53

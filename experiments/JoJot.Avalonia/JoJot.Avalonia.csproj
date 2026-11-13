@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
+    <ApplicationIcon>Assets/jojot.ico</ApplicationIcon>
     <TargetFramework>net11.0</TargetFramework>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <Nullable>enable</Nullable>
@@ -16,7 +17,7 @@
     <PackageReference Include="Avalonia.Desktop" Version="12.1.6" />
     <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.6" />
     <InternalsVisibleTo Include="JoJot.Avalonia.Tests" />
-    <AvaloniaResource Include="../../JoJot/Assets/jojot.ico" Link="Assets/jojot.ico" />
+    <AvaloniaResource Include="Assets/jojot.ico" />
     <ProjectReference Include="../JoJot.Storage/JoJot.Storage.csproj" />
   </ItemGroup>
   <!-- Use the release version maintained in the WPF project by the release workflow. -->

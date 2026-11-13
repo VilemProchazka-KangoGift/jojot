@@ -10,6 +10,14 @@ namespace JoJot.AvaloniaExperiment.Tests;
 public sealed class FindHighlightGeometryTests
 {
     [AvaloniaFact]
+    public void OverlayDoesNotPaintOverAnyPartOfSelectedText()
+    {
+        using var layout = new TextLayout("note note note", new Typeface("Arial"), 13, maxWidth: 500);
+        var geometry = new FindHighlightGeometry();
+        var rectangles = geometry.GetVisibleRectangles(layout, [0, 5, 10], 4, -1, new Rect(0, 0, 500, 100), 2, 5).ToArray();
+        Assert.Equal(layout.HitTestTextRange(10, 4).ToArray(), rectangles);
+    }
+    [AvaloniaFact]
     public void Visible_rectangles_match_framework_ranges_after_wrap_resize_and_query_changes()
     {
         var geometry = new FindHighlightGeometry();
