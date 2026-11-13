@@ -79,3 +79,5 @@ Each build gets three warmups and 20 measured fresh processes. All launches star
 The runtime verifier inspects modules after editor rendering in a separate run. ReadyToRun loads `coreclr.dll`. NativeAOT runs with the native SQLite provider and without the separate CoreCLR module. Payload totals count uncompressed publish-directory bytes, excluding PDB, XML, and DBG files.
 
 [UX update results and raw data](results/ux/README.md)
+
+[Reviewed build results for ordinary and file-backed notes](results/reviewed/README.md)
