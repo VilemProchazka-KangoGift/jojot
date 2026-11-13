@@ -93,21 +93,21 @@ public class UndoStackCoverageTests
     // ─── EvictOldestTier2 — evict all entries ───────────────────────
 
     [Fact]
-    public void EvictOldestTier2_EvictsAll_SetsIndexToNegativeOne()
+    public void EvictOldestTier2_PreservesCurrentEntry()
     {
         var stack = CreateStack();
         stack.PushCheckpoint("cp1");
         stack.PushCheckpoint("cp2");
+        stack.CollapseTier1IntoTier2();
 
-        // Evict more than available — should evict all
+        // Evict more than available — the current entry must survive.
         stack.EvictOldestTier2(100);
 
-        // Stack is now empty
         stack.CanUndo.Should().BeFalse();
         stack.CanRedo.Should().BeFalse();
         stack.Undo().Should().BeNull();
         stack.Redo().Should().BeNull();
-        stack.EstimatedBytes.Should().Be(0);
+        stack.EstimatedBytes.Should().Be("cp2".Length * 2);
     }
 
     [Fact]

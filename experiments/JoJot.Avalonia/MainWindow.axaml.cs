@@ -164,7 +164,6 @@ public sealed partial class MainWindow : Window
     {
         var loaded = await NoteStore.GetNotesForDesktopAsync(DesktopGuid);
         var (keep, empty) = MainWindowViewModel.SplitEmptyStartupNotes(loaded);
-        _ = LoadFileBaselinesAsync(keep);
         ReplaceNoteList(keep);
         var welcome = _applyStartupPreference && _startupWelcomeNoteId is { } welcomeId
             ? _notes.FirstOrDefault(note => note.Id == welcomeId) : null;
@@ -182,6 +181,7 @@ public sealed partial class MainWindow : Window
         }
 
         RefreshNoteList();
+        _ = LoadBackgroundFileBaselinesAsync();
         if (empty.Count > 0)
             _ = DeleteEmptyNotesAsync(empty);
     }
@@ -209,13 +209,13 @@ public sealed partial class MainWindow : Window
         var rows = await NoteStore.GetNotesForDesktopAsync(DesktopGuid);
         var excluded = _pendingDeletion?.Tabs.Select(note => note.Id).ToHashSet() ?? [];
         var merged = MainWindowViewModel.MergeReloadedTabs(_notes, rows, excluded);
-        _ = LoadFileBaselinesAsync(merged);
         ReplaceNoteList(merged);
         if (_notes.Count == 0)
             await CreateNoteCoreAsync();
         else
             ShowNote(_notes.FirstOrDefault(note => note.Id == keepId) ?? _notes[0]);
         RefreshNoteList();
+        _ = LoadBackgroundFileBaselinesAsync();
     }
 
     private void ReplaceNoteList(IEnumerable<NoteTab> notes)
@@ -314,6 +314,8 @@ public sealed partial class MainWindow : Window
         await WaitForWindowIdleAsync();
         if (!_ready)
             return;
+        CaptureEditorText();
+        FlushUndoSnapshot();
         await FlushEditsAsync();
         await CommitPendingDeletionAsync();
         await SaveTabWidthAsync();

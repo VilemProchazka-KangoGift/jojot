@@ -257,6 +257,7 @@ public class UndoStackTests
         stack.PushCheckpoint("cp1");
         stack.PushCheckpoint("cp2");
         stack.PushCheckpoint("cp3");
+        stack.CollapseTier1IntoTier2();
 
         var bytesBefore = stack.EstimatedBytes;
         stack.EvictOldestTier2(2);

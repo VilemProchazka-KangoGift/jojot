@@ -31,21 +31,73 @@ public sealed partial class MainWindow
             string.Equals(path, baseline.Path, StringComparison.Ordinal) && note.Content != baseline.Content;
     }
 
-    private Task LoadFileBaselinesAsync(IEnumerable<NoteTab> notes) =>
-        Task.WhenAll(notes.Where(note => note.IsFileBacked).Select(LoadFileBaselineAsync));
+    private readonly HashSet<NoteTab> _baselineReads = [];
+    private bool _activeBaselineWorker;
+    private bool _backgroundBaselineWorker;
+    private bool _backgroundBaselineRefresh;
+
+    private async Task LoadActiveFileBaselineAsync()
+    {
+        if (_activeBaselineWorker)
+            return;
+        _activeBaselineWorker = true;
+        try
+        {
+            while (!_closing && !_closed && _active is { } note && NeedsFileBaseline(note))
+                await LoadFileBaselineAsync(note);
+        }
+        finally { _activeBaselineWorker = false; }
+    }
+
+    private async Task LoadBackgroundFileBaselinesAsync()
+    {
+        _backgroundBaselineRefresh = true;
+        if (_backgroundBaselineWorker)
+            return;
+        _backgroundBaselineWorker = true;
+        try
+        {
+            while (_backgroundBaselineRefresh && !_closing && !_closed)
+            {
+                _backgroundBaselineRefresh = false;
+                var pending = _notes.Where(NeedsFileBaseline).ToArray();
+                foreach (var note in pending)
+                {
+                    if (_backgroundBaselineRefresh || _closing || _closed)
+                        break;
+                    if (!ReferenceEquals(note, _active) && NeedsFileBaseline(note))
+                        await LoadFileBaselineAsync(note);
+                }
+            }
+        }
+        finally { _backgroundBaselineWorker = false; }
+    }
+
+    private bool NeedsFileBaseline(NoteTab note) => note.FilePath is { } path &&
+        !_baselineReads.Contains(note) &&
+        (!_fileBaselines.TryGetValue(note, out var baseline) || baseline.Path != path);
 
     private async Task LoadFileBaselineAsync(NoteTab note)
     {
-        if (note.FilePath is not { } path ||
-            (_fileBaselines.TryGetValue(note, out var baseline) && baseline.Path == path))
-            return;
-
+        var path = note.FilePath!;
         var contentLength = note.Content.Length;
-        var preferred = await ReadPreferredEncodingAsync(path);
-        var saved = await Task.Run(() => ReadFileBaselineAsync(path, contentLength, preferred));
-        if (note.FilePath == path &&
-            (!_fileBaselines.TryGetValue(note, out var current) || current.Path != path))
-            SetFileBaseline(note, path, saved?.Content, saved?.Encoding);
+        _baselineReads.Add(note);
+        try
+        {
+            var preferred = await ReadPreferredEncodingAsync(path);
+            var saved = await Task.Run(() => ReadFileBaselineAsync(path, contentLength, preferred));
+            if (!_closing && !_closed && note.FilePath == path &&
+                (!_fileBaselines.TryGetValue(note, out var current) || current.Path != path))
+                SetFileBaseline(note, path, saved?.Content, saved?.Encoding);
+        }
+        catch (Exception ex)
+        {
+            LogService.Warn("Could not load the external file baseline for note {NoteId}", note.Id, ex);
+            if (!_closing && !_closed && note.FilePath == path &&
+                (!_fileBaselines.TryGetValue(note, out var current) || current.Path != path))
+                SetFileBaseline(note, path, null, null);
+        }
+        finally { _baselineReads.Remove(note); }
     }
 
     private static int FileInspectionLimit(int contentLength) =>
@@ -227,6 +279,38 @@ public sealed partial class MainWindow
         try { return await picker(); }
         finally { _filePickerOpen = false; }
     }
+
+    internal Task ReopenWithLegacyEncodingAsync(NoteTab note, int codePage) => RunActionAsync(async () =>
+    {
+        if (note.FilePath is not { } path || TextNoteFiles.GetLegacyEncoding(codePage) is not { } encoding)
+            return;
+
+        await SelectForActionAsync(note);
+        CaptureEditorText();
+        var original = note.Content;
+        var limit = FileInspectionLimit(original.Length);
+        var preferred = await ReadPreferredEncodingAsync(path);
+        var (current, corrected) = await Task.Run(() => TextNoteFiles.ReadLegacyCorrectionAsync(path, limit, preferred, encoding));
+        if (corrected is null)
+        {
+            ShowInfoToast(CoreLabel("This file uses Unicode.", "Tento soubor používá Unicode."));
+            return;
+        }
+        CaptureEditorText();
+        if (note.Content != original || original != current.Content || note.FilePath != path)
+        {
+            ShowInfoToast(CoreLabel("Save or revert unsaved edits before changing encoding.",
+                "Před změnou kódování uložte nebo vraťte neuložené úpravy."));
+            return;
+        }
+
+        await RememberEncodingAsync(path, encoding);
+        FlushUndoSnapshot();
+        Editor.Text = corrected.Content;
+        CaptureEditorText();
+        SetFileBaseline(note, path, corrected.Content, encoding);
+        await FlushEditsAsync();
+    });
 
     private static string EncodingKey(string path) =>
         "file_encoding_" + Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(Path.GetFullPath(path).ToUpperInvariant())));

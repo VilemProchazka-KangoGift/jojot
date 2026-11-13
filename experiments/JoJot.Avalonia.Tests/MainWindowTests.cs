@@ -154,19 +154,58 @@ public sealed class MainWindowTests
         Click(Assert.Single(findHost.GetVisualDescendants().OfType<Button>(), button =>
             Equals(button.Content, JoJot.Resources.Strings.Find_ReplaceAll)));
         Assert.Equal("beta Alpha alphabet", editor.Text);
+        Press(window, query, Key.Z, PhysicalKey.Z, RawInputModifiers.Control);
+        Assert.Equal("beta Alpha alphabet", editor.Text);
+        Press(window, replacement, Key.Y, PhysicalKey.Y, RawInputModifiers.Control);
+        Assert.Equal("beta Alpha alphabet", editor.Text);
         Press(window, query, Key.Escape, PhysicalKey.Escape);
         Assert.False(findHost.IsVisible);
 
-        Press(window, editor, Key.Z, PhysicalKey.Z, RawInputModifiers.Control);
+        Click(Find<Button>(window, "UndoToastButton"));
         Assert.Equal("alpha Alpha alphabet", editor.Text);
         Press(window, editor, Key.Y, PhysicalKey.Y, RawInputModifiers.Control);
         Assert.Equal("beta Alpha alphabet", editor.Text);
+
+        Press(window, editor, Key.F, PhysicalKey.F, RawInputModifiers.Control);
+        query.Text = "beta";
+        replacement.Text = "gamma";
+        Click(Assert.Single(findHost.GetVisualDescendants().OfType<Button>(), button =>
+            Equals(button.Content, JoJot.Resources.Strings.Find_ReplaceAll)));
+        Assert.Equal("gamma Alpha alphabet", editor.Text);
         list.SelectedItem = first;
         await WaitForAsync(() => editor.Text == "alpha Alpha alphabet" && editor.IsEffectivelyEnabled, "original selected");
+        Click(Find<Button>(window, "UndoToastButton"));
+        Assert.Equal("alpha Alpha alphabet", editor.Text);
+        Press(window, editor, Key.Escape, PhysicalKey.Escape);
         Press(window, editor, Key.Z, PhysicalKey.Z, RawInputModifiers.Control);
         Assert.Equal("", editor.Text);
         list.SelectedItem = clone;
-        await WaitForAsync(() => editor.Text == "beta Alpha alphabet" && editor.IsEffectivelyEnabled, "clone history isolated");
+        await WaitForAsync(() => editor.Text == "gamma Alpha alphabet" && editor.IsEffectivelyEnabled, "clone history isolated");
+    }
+
+    [AvaloniaFact]
+    public async Task ReopeningWindowPreservesUndoForAnEditImmediatelyBeforeClose()
+    {
+        await using var fixture = new WindowFixture();
+        var window = fixture.Open();
+        await window.Ready;
+        var editor = Find<TextBox>(window, "Editor");
+        editor.Text = "B";
+        var undo = Find<Button>(window, "UndoButton");
+        await WaitForAsync(() => undo.IsEnabled, "edit B captured");
+        await window.FlushWindowAsync();
+        editor.Text = "C";
+        window.Close();
+        await WaitForAsync(() => !window.IsVisible, "window closed immediately after C");
+
+        window = fixture.Open();
+        await window.Ready;
+        editor = Find<TextBox>(window, "Editor");
+        Assert.Equal("C", editor.Text);
+        Press(window, editor, Key.Z, PhysicalKey.Z, RawInputModifiers.Control);
+        Assert.Equal("B", editor.Text);
+        Press(window, editor, Key.Y, PhysicalKey.Y, RawInputModifiers.Control);
+        Assert.Equal("C", editor.Text);
     }
 
     [AvaloniaFact]
@@ -283,6 +322,41 @@ public sealed class MainWindowTests
         note.Content = "😀";
         await Assert.ThrowsAsync<System.Text.EncoderFallbackException>(() => window.SaveNoteToPathCoreAsync(note, western));
         Assert.Equal(new byte[] { 0x9c }, await File.ReadAllBytesAsync(western));
+    }
+
+    [AvaloniaFact]
+    public async Task CorrectLegacyEncodingPreservesDraftAndNeverWritesSourceFile()
+    {
+        await using var fixture = new WindowFixture();
+        var window = fixture.Open();
+        await window.Ready;
+        var path = Path.Combine(fixture.Directory, "legacy");
+        byte[] bytes = [0x6e, 0x61, 0xef, 0x76, 0x65];
+        await File.WriteAllBytesAsync(path, bytes, TestContext.Current.CancellationToken);
+        await window.ImportPathsAsync([path]);
+        var note = Assert.IsType<NoteTab>(Find<ListBox>(window, "NoteList").SelectedItem);
+        var editor = Find<TextBox>(window, "Editor");
+        var misread = editor.Text;
+        Assert.NotEqual("naïve", misread);
+        editor.Text = "unsaved draft";
+        await window.ReopenWithLegacyEncodingAsync(note, 1252);
+        Assert.Equal("unsaved draft", editor.Text);
+        Assert.Equal(bytes, await File.ReadAllBytesAsync(path, TestContext.Current.CancellationToken));
+
+        editor.Text = misread;
+        await window.ReopenWithLegacyEncodingAsync(note, 1252);
+        Assert.Equal("naïve", editor.Text);
+        Assert.False(note.HasUnsavedFileChanges);
+        Assert.Equal(bytes, await File.ReadAllBytesAsync(path, TestContext.Current.CancellationToken));
+        window.Close();
+        await WaitForAsync(() => !window.IsVisible, "corrected file-backed window closed");
+
+        window = fixture.Open();
+        await window.Ready;
+        note = Assert.IsType<NoteTab>(Find<ListBox>(window, "NoteList").SelectedItem);
+        Assert.Equal("naïve", note.Content);
+        await window.ReopenWithLegacyEncodingAsync(note, 1250);
+        Assert.Equal(misread, note.Content);
     }
 
     [AvaloniaFact]

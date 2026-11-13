@@ -257,7 +257,7 @@ public sealed partial class MainWindow
 
     private void ReplaceFind(bool all)
     {
-        if (_active is null || _findQuery?.Text is not { Length: > 0 } query)
+        if (_active is not { } note || _findQuery?.Text is not { Length: > 0 } query)
             return;
         var before = Editor.Text ?? "";
         var replacement = _findReplace?.Text ?? "";
@@ -271,12 +271,19 @@ public sealed partial class MainWindow
         if (all)
         {
             var (after, count) = MainWindowViewModel.ReplaceAll(before, query, replacement, matchCase, wholeWord);
+            if (after == before)
+                return;
             Editor.Text = after;
             CaptureEditorText();
             FlushUndoSnapshot();
+            var revision = note.UpdatedAt;
             if (_pendingDeletion is null)
                 ShowToast(string.Format(PanelLanguage.Plural(Strings.Toast_Replacements_One,
-                    Strings.Toast_Replacements_Few, Strings.Toast_Replacements, count), count), () => MoveHistory(false));
+                    Strings.Toast_Replacements_Few, Strings.Toast_Replacements, count), count), () =>
+                {
+                    if (ReferenceEquals(_active, note) && note.UpdatedAt == revision && Editor.Text == after)
+                        MoveHistory(false);
+                });
         }
         else
         {

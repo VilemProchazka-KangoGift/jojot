@@ -28,7 +28,7 @@ internal static class DesktopSessionMatcher
         {
             if (string.IsNullOrEmpty(session.DesktopName)) continue;
             var matches = remaining.Where(d => d.Name == session.DesktopName).ToArray();
-            if (matches.Length != 1) continue;
+            if (matches.Length != 1 || unmatched.Count(s => s.DesktopName == session.DesktopName) != 1) continue;
             await SessionStore.UpdateSessionAsync(session.DesktopGuid, matches[0].Id, matches[0].Name, matches[0].Index).ConfigureAwait(false);
             unmatched.Remove(session);
             remaining.Remove(matches[0]);

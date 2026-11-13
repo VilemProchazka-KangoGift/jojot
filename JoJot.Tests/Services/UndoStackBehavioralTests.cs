@@ -14,6 +14,72 @@ public class UndoStackBehavioralTests
 
     private UndoStack CreateStack(long tabId = 1) => new(tabId, _clock);
 
+    [Fact]
+    public void CheckpointPreservesChronologyAndBranching()
+    {
+        var stack = CreateStack();
+        stack.PushInitialContent("A");
+        stack.PushSnapshot("B");
+        stack.PushSnapshot("C");
+        stack.PushCheckpoint("C");
+        stack.CanRedo.Should().BeFalse();
+        stack.Undo()!.Value.Content.Should().Be("B");
+        stack.Redo()!.Value.Content.Should().Be("C");
+        stack.Undo()!.Value.Content.Should().Be("B");
+        stack.PushCheckpoint("B");
+        stack.Redo()!.Value.Content.Should().Be("C");
+        stack.Undo()!.Value.Content.Should().Be("B");
+        stack.PushSnapshot("D");
+        stack.CanRedo.Should().BeFalse();
+        stack.Undo()!.Value.Content.Should().Be("B");
+        stack.Undo()!.Value.Content.Should().Be("A");
+        stack.Redo()!.Value.Content.Should().Be("B");
+        stack.Redo()!.Value.Content.Should().Be("D");
+    }
+
+    [Fact]
+    public void CheckpointSurvivesPromotionWithoutReordering()
+    {
+        var stack = CreateStack();
+        stack.PushInitialContent("0");
+        for (var i = 1; i <= UndoStack.MaxTier1; i++)
+        {
+            stack.PushSnapshot(i.ToString());
+            if (i == 13) stack.PushCheckpoint("13");
+        }
+        var history = new List<int> { UndoStack.MaxTier1 };
+        while (stack.CanUndo) history.Add(int.Parse(stack.Undo()!.Value.Content));
+        history.Should().Contain(13);
+        history.Should().BeInDescendingOrder();
+    }
+
+    [Fact]
+    public void CollapsePreservesCurrentPositionAndRedoFrontier()
+    {
+        var stack = CreateStack();
+        stack.PushInitialContent("S0");
+        for (var i = 1; i <= 21; i++) stack.PushSnapshot($"S{i}");
+        stack.Undo()!.Value.Content.Should().Be("S20");
+        stack.Undo()!.Value.Content.Should().Be("S19");
+        stack.CollapseTier1IntoTier2();
+        stack.Redo()!.Value.Content.Should().Be("S20");
+        stack.Redo()!.Value.Content.Should().Be("S21");
+        stack.CanRedo.Should().BeFalse();
+    }
+
+    [Fact]
+    public void EvictionPreservesUndoneCurrentEntryBeforeBranching()
+    {
+        var stack = CreateStack();
+        stack.PushInitialContent("S0");
+        for (var i = 1; i <= 21; i++) stack.PushSnapshot($"S{i}");
+        while (stack.CanUndo) stack.Undo();
+        stack.CollapseTier1IntoTier2();
+        stack.EvictOldestTier2(5);
+        stack.PushSnapshot("new");
+        stack.Undo()!.Value.Content.Should().Be("S0");
+    }
+
     // ─── TabId edge case ─────────────────────────────────────────
 
     [Fact]
@@ -365,10 +431,10 @@ public class UndoStackBehavioralTests
         stack.EstimatedBytes.Should().BeGreaterThan(0);
     }
 
-    // ─── CollapseTier1IntoTier2 resets currentIndex ──────────────
+    // ─── CollapseTier1IntoTier2 preserves currentIndex ───────────
 
     [Fact]
-    public void CollapseTier1IntoTier2_ResetsCurrentIndexToEnd()
+    public void CollapseTier1IntoTier2_PreservesCurrentAndRedo()
     {
         var stack = CreateStack();
         stack.PushInitialContent("s0");
@@ -382,13 +448,11 @@ public class UndoStackBehavioralTests
         stack.Undo(); // s8
         stack.Undo(); // s7
 
-        // Collapse — currentIndex should reset to end of tier-2
         stack.CollapseTier1IntoTier2();
-
-        // After collapse, should be able to undo (index at end, can go back)
         stack.CanUndo.Should().BeTrue();
-        // But redo should be false (index is at TotalCount-1)
-        stack.CanRedo.Should().BeFalse();
+        stack.CanRedo.Should().BeTrue();
+        stack.Redo()!.Value.Content.Should().Be("s10");
+        stack.Undo()!.Value.Content.Should().Be("s7");
     }
 
     // ─── PromoteOldestTier1Entries ───────────────────────────────

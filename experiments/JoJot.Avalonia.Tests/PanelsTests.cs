@@ -171,6 +171,48 @@ public sealed class PanelsTests
         Assert.Contains(recent, remaining);
     }
 
+    [AvaloniaTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task CleanupRechecksCandidateEligibilityBeforeAndAfterConfirmation(bool afterConfirmation)
+    {
+        await using var fixture = new MainWindowTests.WindowFixture();
+        var window = fixture.Open();
+        await window.Ready;
+        var old = await NoteStore.InsertNoteAsync(window.DesktopGuid, "old", "old content", false, 0);
+        await DatabaseCore.ExecuteNonQueryAsync("UPDATE notes SET updated_at = @old WHERE id = @id",
+            ("@old", DateTime.Now.AddDays(-30)), ("@id", old));
+        await window.ReloadNotesAsync();
+        var list = Assert.IsType<ListBox>(window.FindControl<ListBox>("NoteList"));
+        var candidate = list.Items.OfType<NoteTab>().Single(note => note.Id == old);
+        list.SelectedItem = candidate;
+        var editor = Assert.IsType<TextBox>(window.FindControl<TextBox>("Editor"));
+        await MainWindowTests.WaitForAsync(() => editor.Text == "old content" && editor.IsEffectivelyEnabled, "old note selected");
+        var panel = Assert.IsType<Border>(window.FindControl<Border>("PanelHost"));
+        ClickMenu(window, "CleanupMenuItem");
+        var one = string.Format(Strings.Cleanup_DeleteN_One, 1);
+        await MainWindowTests.WaitForAsync(() => panel.GetVisualDescendants().OfType<Button>().Any(button => Equals(button.Content, one)),
+            "candidate previewed");
+
+        if (afterConfirmation)
+        {
+            Click(FindButton(panel, one));
+            await MainWindowTests.WaitForAsync(() => window.OwnedWindows.Count == 1, "cleanup confirmation");
+            candidate.Pinned = true;
+            Click(FindButton(Assert.Single(window.OwnedWindows), Strings.Common_Delete));
+        }
+        else
+        {
+            editor.Text = "recently edited";
+            Click(FindButton(panel, one));
+        }
+
+        await MainWindowTests.WaitForAsync(() => window.OwnedWindows.Count == 0 &&
+            panel.GetVisualDescendants().OfType<Button>().Any(button => Equals(button.Content, Strings.Cleanup_Delete0)),
+            "cleanup candidate no longer eligible");
+        Assert.Contains(await NoteStore.GetNotesForDesktopAsync(window.DesktopGuid), note => note.Id == old);
+    }
+
     [AvaloniaFact]
     public async Task RecoveryAdoptsOrphanNotesAndUpdatesBadge()
     {

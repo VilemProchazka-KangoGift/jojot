@@ -131,6 +131,7 @@ public sealed partial class MainWindow
         finally { _refreshing = false; }
         UpdateControls();
         ScheduleFindRefresh();
+        _ = LoadActiveFileBaselineAsync();
     }
 
     private void SaveEditorPosition()

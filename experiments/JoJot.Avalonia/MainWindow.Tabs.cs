@@ -448,6 +448,14 @@ public sealed partial class MainWindow
         menu.Items.Add(TabMenuItem(Strings.Ctx_Clone, "Ctrl+K", () => CloneNoteAsync(note)));
         menu.Items.Add(TabMenuItem(Strings.Ctx_Save, "Ctrl+S", () => SaveNoteAsync(note, false)));
         menu.Items.Add(TabMenuItem(Strings.Ctx_SaveAs, "Ctrl+Shift+S", () => SaveNoteAsync(note, true)));
+        if (note.IsFileBacked && _fileBaselines.TryGetValue(note, out var baseline) &&
+            baseline.Encoding is { CodePage: 1250 or 1252 })
+        {
+            var reopen = new MenuItem { Header = CoreLabel("Reopen with encoding", "Znovu otevřít s kódováním") };
+            reopen.Items.Add(TabMenuItem("Windows-1250", null, () => ReopenWithLegacyEncodingAsync(note, 1250)));
+            reopen.Items.Add(TabMenuItem("Windows-1252", null, () => ReopenWithLegacyEncodingAsync(note, 1252)));
+            menu.Items.Add(reopen);
+        }
         menu.Items.Add(new Separator());
         menu.Items.Add(TabMenuItem(Strings.Ctx_Delete, "Ctrl+W", () => DeleteNoteWithUndoAsync(note)));
         menu.Items.Add(TabMenuItem(Strings.Ctx_DeleteAllBelow, null,

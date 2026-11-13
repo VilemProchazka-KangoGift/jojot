@@ -92,7 +92,11 @@ public sealed partial class MainWindow
             HorizontalAlignment = HorizontalAlignment.Left, Padding = new Thickness(8, 6) };
         delete.Click += async (_, _) => await RunPanelActionAsync(async () =>
         {
-            await DeleteCleanupCandidatesAsync(candidates);
+            var shown = candidates;
+            var cutoff = GetTabCleanupCutoff(age.Text, units.SelectedIndex, DateTime.Now);
+            var keepPinned = includePinned.IsChecked != true;
+            RefreshPreview();
+            await DeleteCleanupCandidatesAsync(shown, cutoff, keepPinned);
             RefreshPreview();
         });
 
@@ -108,11 +112,15 @@ public sealed partial class MainWindow
             previews.Children.Clear();
             if (count == 0)
                 previews.Children.Add(new TextBlock { Text = Strings.Cleanup_NoMatch, Classes = { "emptyPreview" } });
-            foreach (var note in candidates)
+            const int previewLimit = 100;
+            foreach (var note in candidates.Take(previewLimit))
             {
                 var title = note.Pinned ? $"\u25CF {note.DisplayLabel}" : note.DisplayLabel;
                 previews.Children.Add(NotePreview(title, note.Name is null ? "" : Excerpt(note.Content), note.CreatedAt, note.UpdatedAt));
             }
+            if (count > previewLimit)
+                previews.Children.Add(PreferenceHint(CoreLabel($"Showing {previewLimit} of {count} matching tabs.",
+                    $"Zobrazeno {previewLimit} z {count} odpovídajících karet.")));
         }
 
         age.TextChanged += (_, _) => RefreshPreview();
@@ -134,8 +142,12 @@ public sealed partial class MainWindow
         RefreshPreview();
     }
 
-    private async Task DeleteCleanupCandidatesAsync(NoteTab[] candidates)
+    private async Task DeleteCleanupCandidatesAsync(NoteTab[] shown, DateTime? cutoff, bool keepPinned)
     {
+        CaptureEditorText();
+        var shownNotes = shown.ToHashSet();
+        NoteTab[] Eligible() => GetTabCleanupCandidates(_notes.Where(shownNotes.Contains), cutoff, !keepPinned);
+        var candidates = Eligible();
         var count = candidates.Length;
         if (count == 0)
             return;
@@ -151,6 +163,9 @@ public sealed partial class MainWindow
         {
             await FlushEditsAsync();
             await CommitPendingDeletionAsync();
+            candidates = Eligible();
+            if (candidates.Length == 0)
+                return;
             var selectedIndex = _active is not null && candidates.Contains(_active) ? _notes.IndexOf(_active) : -1;
             deleted = await NoteStore.DeleteNotesAsync(candidates.Select(note => note.Id).ToArray());
             foreach (var note in candidates)

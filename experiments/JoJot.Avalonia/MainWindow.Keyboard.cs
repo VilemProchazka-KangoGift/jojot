@@ -71,6 +71,9 @@ public sealed partial class MainWindow
         if (!ctrl && !ctrlShift)
             return;
 
+        var editorHistory = Editor.IsKeyboardFocusWithin ||
+            (!SearchBox.IsKeyboardFocusWithin && _findQuery?.IsKeyboardFocusWithin != true &&
+             _findReplace?.IsKeyboardFocusWithin != true);
         e.Handled = true;
         switch (e.Key)
         {
@@ -80,9 +83,9 @@ public sealed partial class MainWindow
             case Key.K when ctrl && note is not null: await CloneNoteAsync(note); break;
             case Key.S when note is not null: await SaveNoteAsync(note, ctrlShift); break;
             case Key.O when ctrl: await OpenFilesAsync(); break;
-            case Key.Z when ctrl && !SearchBox.IsKeyboardFocusWithin: MoveHistory(false); break;
-            case Key.Y when ctrl && !SearchBox.IsKeyboardFocusWithin:
-            case Key.Z when ctrlShift && !SearchBox.IsKeyboardFocusWithin: MoveHistory(true); break;
+            case Key.Z when ctrl && editorHistory: MoveHistory(false); break;
+            case Key.Y when ctrl && editorHistory:
+            case Key.Z when ctrlShift && editorHistory: MoveHistory(true); break;
             case Key.C when ctrl && Editor.IsKeyboardFocusWithin && string.IsNullOrEmpty(Editor.SelectedText):
                 await CopyNoteAsync();
                 break;

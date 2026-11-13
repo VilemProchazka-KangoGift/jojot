@@ -131,6 +131,7 @@ internal sealed class ExperimentApp : Application
     private GlobalHotkey? _hotkey;
     private DesktopNotifications? _desktopNotifications;
     private DispatcherTimer? _desktopPoll;
+    private readonly DesktopPolling _desktopPolling = new();
     private bool _desktopRefreshRunning;
     private bool _desktopMatching;
     private bool _matchPending;
@@ -226,6 +227,8 @@ internal sealed class ExperimentApp : Application
             preferences.TryGetValue("language", out var language);
             PanelLanguage.Apply(language);
             StartupSnapshot.ReplacePreferences(preferences);
+            var needsWelcome = Options.CompatibilityExpected is null && Options.VisualOutputDirectory is null &&
+                await IsNewDatabaseForWelcomeAsync();
             if (Options.CompatibilityExpected is null && Options.VisualOutputDirectory is null && CanMatchDesktops() &&
                 !await SessionStore.SessionExistsAsync(_initialDesktop) && (await PendingMoveStore.GetPendingMovesAsync()).Count == 0)
             {
@@ -234,7 +237,7 @@ internal sealed class ExperimentApp : Application
             }
             await MainWindow.RunStartupAutoDeleteAsync();
             if (Options.CompatibilityExpected is null && Options.VisualOutputDirectory is null)
-                StartupWelcomeNoteId = await InsertWelcomeNoteIfEmptyAsync(_initialDesktop);
+                StartupWelcomeNoteId = await InsertWelcomeNoteIfEmptyAsync(_initialDesktop, needsWelcome);
         }
         catch
         {
@@ -245,16 +248,19 @@ internal sealed class ExperimentApp : Application
         }
     }
 
-    internal static async Task<long?> InsertWelcomeNoteIfEmptyAsync(string desktop)
+    internal static async Task<bool> IsNewDatabaseForWelcomeAsync() =>
+        await PreferenceStore.GetPreferenceAsync("avalonia_welcome_initialized") is null &&
+        await DatabaseCore.ExecuteScalarAsync<long>("SELECT EXISTS(SELECT 1 FROM notes) OR EXISTS(SELECT 1 FROM app_state);") == 0;
+
+    internal static async Task<long?> InsertWelcomeNoteIfEmptyAsync(string desktop, bool? initiallyEmpty = null)
     {
         const string welcomeInitialized = "avalonia_welcome_initialized";
         if (await PreferenceStore.GetPreferenceAsync(welcomeInitialized) is not null)
             return null;
 
         // Existing sessions also identify older databases whose notes were all deleted.
-        var existing = await DatabaseCore.ExecuteScalarAsync<long>(
-            "SELECT EXISTS(SELECT 1 FROM notes) OR EXISTS(SELECT 1 FROM app_state);");
-        long? welcome = existing == 0
+        var shouldInsert = initiallyEmpty ?? await IsNewDatabaseForWelcomeAsync();
+        long? welcome = shouldInsert
             ? await NoteStore.InsertNoteAsync(desktop,
                 JoJot.Resources.Strings.Welcome_Title, JoJot.Resources.Strings.Welcome_Content, false, 0)
             : null;
@@ -285,8 +291,9 @@ internal sealed class ExperimentApp : Application
                  !_liveDesktops.Any(item => item.Id.Equals(requested, StringComparison.OrdinalIgnoreCase))))
                 throw new InvalidOperationException("The desktop move probe requires a different, existing desktop.");
             _desktopNotifications = DesktopNotifications.TryRegister(() => Dispatcher.UIThread.Post(RefreshDesktops));
+            _desktopPolling.Start(System.Diagnostics.Stopwatch.GetElapsedTime(0), DesktopPolling.GetShellProcess());
             _desktopPoll = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
-            _desktopPoll.Tick += (_, _) => RefreshDesktops();
+            _desktopPoll.Tick += (_, _) => PollDesktops();
             _desktopPoll.Start();
             if (Options.BenchmarkOutput is not null && Options.DesktopGuid != "default" &&
                 !string.Equals(Options.DesktopGuid, detectedDesktop, StringComparison.OrdinalIgnoreCase))
@@ -369,7 +376,7 @@ internal sealed class ExperimentApp : Application
                     _reservationsDrained = null;
                 }
                 DrainCommands();
-                if (!_shuttingDown && _pendingActivations.Remove(guid)) GetOrCreateWindow(guid).Activate();
+                if (!_shuttingDown && _pendingActivations.Remove(guid)) WindowActivation.Activate(GetOrCreateWindow(guid));
             };
             MainWindow.OrphanSessionGuids = () => _orphans.ToArray();
             MainWindow.OrphanSessionResolved = guid => _orphans.Remove(guid);
@@ -385,7 +392,7 @@ internal sealed class ExperimentApp : Application
                 {
                     var target = GetOrCreateWindow(guid);
                     if (guid != "default") VirtualDesktop.TrySwitchToDesktop(guid);
-                    target.Activate();
+                    WindowActivation.Activate(target);
                 }
                 return Task.CompletedTask;
             };
@@ -443,6 +450,25 @@ internal sealed class ExperimentApp : Application
         var sourceCount = (await NoteStore.GetNotesForDesktopAsync(source)).Count;
         var targetCount = (await NoteStore.GetNotesForDesktopAsync(target)).Count;
         Console.WriteLine($"Desktop move probe {phase}: source={source} target={target} sourceNotes={sourceCount} targetNotes={targetCount}");
+    }
+
+    private void PollDesktops()
+    {
+        var now = System.Diagnostics.Stopwatch.GetElapsedTime(0);
+        if (_desktopPolling.ShouldEnumerate(now, DesktopPolling.GetShellProcess(), _desktopNotifications is not null,
+                out var shellChanged))
+        {
+            if (shellChanged)
+            {
+                _desktopNotifications?.Dispose();
+                _desktopNotifications = DesktopNotifications.TryRegister(() => Dispatcher.UIThread.Post(RefreshDesktops));
+            }
+            RefreshDesktops();
+        }
+        else
+        {
+            foreach (var window in _windows.Values.ToArray()) window.CheckForDesktopMovement();
+        }
     }
 
     private async void RefreshDesktops()
@@ -523,13 +549,17 @@ internal sealed class ExperimentApp : Application
     {
         window.Opened += async (_, _) =>
         {
-            var geometry = StartupSnapshot.GetGeometry(window.DesktopGuid);
-            if (geometry is null)
+            try
             {
-                await EnsureStorageAsync();
-                geometry = await SessionStore.GetWindowGeometryAsync(window.DesktopGuid);
+                var geometry = StartupSnapshot.GetGeometry(window.DesktopGuid);
+                if (geometry is null)
+                {
+                    await EnsureStorageAsync();
+                    geometry = await SessionStore.GetWindowGeometryAsync(window.DesktopGuid);
+                }
+                if (window.IsVisible) WindowPlacement.Restore(window, geometry);
             }
-            WindowPlacement.Restore(window, geometry);
+            catch (Exception ex) { LogService.Error("Failed to restore window placement", ex); }
         };
     }
 
@@ -567,7 +597,7 @@ internal sealed class ExperimentApp : Application
                 if (_shuttingDown) return;
                 if (_reservedDesktops.Contains(guid)) { _pendingActivations.Add(guid); return; }
                 var target = GetOrCreateWindow(guid);
-                target.Activate();
+                WindowActivation.Activate(target);
             }));
     }
 
@@ -647,7 +677,7 @@ internal sealed class ExperimentApp : Application
             DrainCommands();
             foreach (var guid in _pendingActivations.ToArray())
                 if (!_reservedDesktops.Contains(guid) && _pendingActivations.Remove(guid))
-                    GetOrCreateWindow(guid).Activate();
+                    WindowActivation.Activate(GetOrCreateWindow(guid));
             throw;
         }
     }

@@ -33,6 +33,7 @@ public sealed class UndoStack(long tabId, IClock? clock = null)
     private readonly IClock _clock = clock ?? SystemClock.Instance;
     private readonly List<UndoEntry> _tier1 = []; // Fine-grained snapshots
     private readonly List<UndoEntry> _tier2 = []; // Coarse checkpoints
+    private readonly HashSet<int> _tier1Checkpoints = []; // Positions retained during promotion
     private int _currentIndex = -1;            // Pointer into the combined logical sequence
     private DateTime _lastCheckpointTime = DateTime.MinValue;
     private long _estimatedBytes;              // Cached — updated incrementally on add/remove
@@ -79,6 +80,7 @@ public sealed class UndoStack(long tabId, IClock? clock = null)
     {
         _tier1.Clear();
         _tier2.Clear();
+        _tier1Checkpoints.Clear();
         _estimatedBytes = 0;
         var entry = new UndoEntry(content, cursorPosition);
         _tier1.Add(entry);
@@ -132,31 +134,18 @@ public sealed class UndoStack(long tabId, IClock? clock = null)
     }
 
     /// <summary>
-    /// Adds a coarse checkpoint to tier-2 if content differs from the last checkpoint.
+    /// Marks the current snapshot for preservation when older snapshots are promoted.
     /// Called by the 5-minute checkpoint timer.
     /// </summary>
     /// <param name="content">The content to checkpoint.</param>
     /// <param name="cursorPosition">The cursor position at the time of the checkpoint.</param>
     public void PushCheckpoint(string content, int cursorPosition = 0)
     {
-        if (_tier2.Count > 0 && _tier2[^1].Content == content)
-        {
-            return;
-        }
+        if (GetEntryAtIndex(_currentIndex)?.Content != content)
+            PushSnapshot(content, cursorPosition);
 
-        var entry = new UndoEntry(content, cursorPosition);
-        _tier2.Add(entry);
-        _estimatedBytes += EntryBytes(entry);
-
-        if (_tier2.Count > MaxTier2)
-        {
-            _estimatedBytes -= EntryBytes(_tier2[0]);
-            _tier2.RemoveAt(0);
-            if (_currentIndex > 0)
-            {
-                _currentIndex--;
-            }
-        }
+        if (_currentIndex >= _tier2.Count)
+            _tier1Checkpoints.Add(_currentIndex - _tier2.Count);
 
         _lastCheckpointTime = _clock.Now;
         LastAccessTime = _clock.Now;
@@ -181,6 +170,7 @@ public sealed class UndoStack(long tabId, IClock? clock = null)
             {
                 _estimatedBytes -= EntryBytes(_tier1[0]);
                 _tier1.RemoveAt(0);
+                ShiftTier1Checkpoints(1);
             }
             _currentIndex--;
         }
@@ -195,7 +185,7 @@ public sealed class UndoStack(long tabId, IClock? clock = null)
     internal bool CanFreeMemory(bool isActive) =>
         isActive
             ? Math.Min(_tier2.Count, _currentIndex) > 0
-            : _tier1.Count > 1 || _tier2.Count > 0;
+            : TotalCount > 1;
 
     /// <summary>
     /// Evicts up to <paramref name="count"/> of the oldest tier-2 entries that lie strictly before
@@ -265,23 +255,28 @@ public sealed class UndoStack(long tabId, IClock? clock = null)
             return;
         }
 
-        // Remove all tier-1 bytes from budget
-        long tier1Bytes = 0;
-        foreach (var e in _tier1) tier1Bytes += EntryBytes(e);
-        _estimatedBytes -= tier1Bytes;
-
-        // Sample every 5th entry into tier-2
-        for (int i = 0; i < _tier1.Count; i += 5)
+        var previousTier2Count = _tier2.Count;
+        var selected = new List<UndoEntry>(_tier2);
+        var selectedCurrent = _currentIndex < previousTier2Count ? _currentIndex : -1;
+        for (var i = 0; i < _tier1.Count; i++)
         {
-            if (_tier2.Count < MaxTier2)
-            {
-                _tier2.Add(_tier1[i]);
-                _estimatedBytes += EntryBytes(_tier1[i]);
-            }
+            var isCurrent = previousTier2Count + i == _currentIndex;
+            if (i % 5 != 0 && i != _tier1.Count - 1 && !_tier1Checkpoints.Contains(i) && !isCurrent) continue;
+            if (isCurrent) selectedCurrent = selected.Count;
+            selected.Add(_tier1[i]);
         }
-
+        while (selected.Count > MaxTier2)
+        {
+            var remove = selectedCurrent > 0 ? 0 : selected.Count - 2;
+            selected.RemoveAt(remove);
+            if (remove < selectedCurrent) selectedCurrent--;
+        }
+        _tier2.Clear();
+        _tier2.AddRange(selected);
         _tier1.Clear();
-        _currentIndex = TotalCount > 0 ? TotalCount - 1 : -1;
+        _tier1Checkpoints.Clear();
+        _currentIndex = selectedCurrent;
+        _estimatedBytes = _tier2.Sum(EntryBytes);
     }
 
     /// <summary>
@@ -290,21 +285,13 @@ public sealed class UndoStack(long tabId, IClock? clock = null)
     /// <param name="count">Maximum number of entries to evict.</param>
     public void EvictOldestTier2(int count)
     {
-        int toRemove = Math.Min(count, _tier2.Count);
-        if (toRemove <= 0)
+        while (count-- > 0 && _tier2.Count > 0)
         {
-            return;
-        }
-
-        for (int i = 0; i < toRemove; i++)
-            _estimatedBytes -= EntryBytes(_tier2[i]);
-
-        _tier2.RemoveRange(0, toRemove);
-        _currentIndex = Math.Max(0, _currentIndex - toRemove);
-
-        if (TotalCount == 0)
-        {
-            _currentIndex = -1;
+            var remove = _currentIndex == 0 ? 1 : 0;
+            if (remove >= _tier2.Count) break;
+            _estimatedBytes -= EntryBytes(_tier2[remove]);
+            _tier2.RemoveAt(remove);
+            if (remove < _currentIndex) _currentIndex--;
         }
     }
 
@@ -326,10 +313,15 @@ public sealed class UndoStack(long tabId, IClock? clock = null)
             _estimatedBytes -= EntryBytes(_tier1[i]);
 
         // Sample every Nth entry from the batch into tier-2
-        for (int i = 0; i < batchSize; i += PromotionSampleRate)
+        for (int i = 0; i < batchSize; i++)
         {
-            if (_tier2.Count < MaxTier2)
+            if (i % PromotionSampleRate == 0 || _tier1Checkpoints.Contains(i))
             {
+                if (_tier2.Count == MaxTier2)
+                {
+                    _estimatedBytes -= EntryBytes(_tier2[0]);
+                    _tier2.RemoveAt(0);
+                }
                 _tier2.Add(_tier1[i]);
                 _estimatedBytes += EntryBytes(_tier1[i]);
             }
@@ -337,6 +329,7 @@ public sealed class UndoStack(long tabId, IClock? clock = null)
 
         // Remove the batch from tier-1
         _tier1.RemoveRange(0, batchSize);
+        ShiftTier1Checkpoints(batchSize);
 
         // Adjust currentIndex: the removed entries shifted all indices down
         _currentIndex = Math.Max(0, _currentIndex - batchSize);
@@ -367,6 +360,13 @@ public sealed class UndoStack(long tabId, IClock? clock = null)
         return _tier1[index - _tier2.Count];
     }
 
+    private void ShiftTier1Checkpoints(int removed)
+    {
+        var retained = _tier1Checkpoints.Where(index => index >= removed).Select(index => index - removed).ToArray();
+        _tier1Checkpoints.Clear();
+        _tier1Checkpoints.UnionWith(retained);
+    }
+
     /// <summary>
     /// Truncates everything after the current index, destroying the redo future.
     /// Handles the boundary where the current index spans across tier-2 and tier-1.
@@ -391,6 +391,7 @@ public sealed class UndoStack(long tabId, IClock? clock = null)
                 for (int i = tier1CurrentPos + 1; i < _tier1.Count; i++)
                     _estimatedBytes -= EntryBytes(_tier1[i]);
                 _tier1.RemoveRange(tier1CurrentPos + 1, tier1EntriesAfterCurrent);
+                _tier1Checkpoints.RemoveWhere(index => index > tier1CurrentPos);
             }
         }
         else
@@ -398,6 +399,7 @@ public sealed class UndoStack(long tabId, IClock? clock = null)
             // Current index is in tier-2; remove all tier-1 and truncate tier-2
             foreach (var e in _tier1) _estimatedBytes -= EntryBytes(e);
             _tier1.Clear();
+            _tier1Checkpoints.Clear();
             int tier2EntriesAfterCurrent = _tier2.Count - 1 - _currentIndex;
             if (tier2EntriesAfterCurrent > 0)
             {
