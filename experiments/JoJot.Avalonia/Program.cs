@@ -200,6 +200,7 @@ internal sealed class ExperimentApp : Application
         if (info is not null) window.UpdateDesktopTitle(info.Name, info.Index);
         _windows.Add(desktop, window);
         window.Closed += (_, _) => _windows.Remove(window.DesktopGuid);
+        TaskbarRelaunch.Attach(window, Options.DataDirectory);
         window.InitializeDesktopMovement();
         AttachWindowPlacement(window);
         window.Show();
@@ -294,6 +295,7 @@ internal sealed class ExperimentApp : Application
             if (info is not null) window.UpdateDesktopTitle(info.Name, info.Index);
             _windows.Add(initialDesktop, window);
             window.Closed += (_, _) => _windows.Remove(window.DesktopGuid);
+            TaskbarRelaunch.Attach(window, Options.DataDirectory);
             window.InitializeDesktopMovement();
             if (DesktopMoveProbe is { } probeTarget)
                 window.Opened += async (_, _) =>

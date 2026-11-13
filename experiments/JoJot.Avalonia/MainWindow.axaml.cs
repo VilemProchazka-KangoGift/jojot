@@ -6,6 +6,7 @@ using Avalonia.Interactivity;
 using Avalonia.Layout;
 using Avalonia.Styling;
 using Avalonia.Threading;
+using JoJot.AvaloniaExperiment.Platform;
 using JoJot.Models;
 using JoJot.Resources;
 using JoJot.Services;
@@ -40,6 +41,7 @@ public sealed partial class MainWindow : Window
         _benchmark = ExperimentApp.Benchmark;
         _viewModel = new MainWindowViewModel(desktopGuid);
         InitializeComponent();
+        WindowResizeHitTest.Attach(this);
         Width = _options.Width;
         Height = _options.Height;
         if (_benchmark is not null)
