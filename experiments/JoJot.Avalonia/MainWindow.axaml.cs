@@ -51,11 +51,18 @@ public sealed partial class MainWindow : Window
         WindowResizeHitTest.Attach(this);
         Width = _options.Width;
         Height = _options.Height;
+        SizeChanged += (_, _) => WorkArea.ColumnDefinitions[0].MaxWidth = Math.Clamp(Bounds.Width - 200, 120, 400);
         if (_benchmark is not null)
         {
             Position = new PixelPoint(80, 80);
             ShowActivated = false;
             RequestedThemeVariant = ThemeVariant.Light;
+        }
+        if (_options.VisualOutputDirectory is not null)
+        {
+            ShowActivated = false;
+            ShowInTaskbar = false;
+            Position = new PixelPoint(-12000, -12000);
         }
 
         Opened += OnOpened;

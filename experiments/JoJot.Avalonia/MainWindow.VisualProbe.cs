@@ -17,10 +17,13 @@ public sealed partial class MainWindow
         var previousCulture = PanelLanguage.Current;
         var previousTheme = RequestedThemeVariant;
         var previousOrphans = OrphanSessionGuids;
+        var previousWidth = Width;
         string? createdOrphan = null;
         try
         {
             SetVisualLanguage("en");
+            if (_notes.Count == 0 || _active is null)
+                throw new InvalidOperationException("Visual capture requires a populated disposable note fixture.");
             if (_notes.FirstOrDefault(note => note.Name == Strings.Welcome_Title) is { } welcome)
             {
                 ShowNote(welcome);
@@ -51,6 +54,9 @@ public sealed partial class MainWindow
 
             await ShowPreferencesAsync();
             await CaptureWindowAsync(directory, "preferences.png");
+            ApplyTheme("dark");
+            await CaptureWindowAsync(directory, "preferences-dark.png");
+            ApplyTheme("light");
             DismissSidePanel();
 
             ShowHelp();
@@ -73,6 +79,13 @@ public sealed partial class MainWindow
             await CaptureWindowAsync(directory, "recovery.png");
             DismissSidePanel();
 
+            foreach (var width in new[] { 720d, 510d, 320d })
+            {
+                Width = width;
+                await CaptureWindowAsync(directory, $"main-{width:0}.png");
+            }
+            Width = previousWidth;
+
             await ShowPreferencesAsync();
             await ApplyPanelLanguageAsync("cs");
             if (Strings.Pref_Theme != "Motiv" || Strings.Menu_Preferences != "Nastavení" ||
@@ -88,6 +101,7 @@ public sealed partial class MainWindow
         }
         finally
         {
+            Width = previousWidth;
             DismissSidePanel();
             OrphanSessionGuids = previousOrphans;
             if (createdOrphan is not null)
@@ -112,6 +126,21 @@ public sealed partial class MainWindow
     private async Task CaptureWindowAsync(string directory, string filename)
     {
         await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Background);
+        var toolbarButtons = new[] { UndoButton, RedoButton, CopyButton, PasteButton, PinButton,
+            CloneButton, SaveButton, SaveAsButton, FindButton, DeleteButton }.Where(button => button.IsVisible).ToArray();
+        var rectangles = toolbarButtons.Select(button =>
+        {
+            var origin = button.TranslatePoint(default, EditorToolbar) ?? throw new InvalidOperationException("Toolbar button is detached.");
+            return new Rect(origin, button.Bounds.Size);
+        }).ToArray();
+        for (var index = 0; index < rectangles.Length; index++)
+        {
+            if (!new Rect(EditorToolbar.Bounds.Size).Contains(rectangles[index]))
+                throw new InvalidOperationException($"Toolbar button is clipped in {filename}.");
+            for (var other = index + 1; other < rectangles.Length; other++)
+                if (rectangles[index].Intersects(rectangles[other]))
+                    throw new InvalidOperationException($"Toolbar buttons overlap in {filename}.");
+        }
         _options.ValidateDataPath();
         var scale = RenderScaling;
         var pixels = new PixelSize((int)Math.Ceiling(Bounds.Width * scale), (int)Math.Ceiling(Bounds.Height * scale));

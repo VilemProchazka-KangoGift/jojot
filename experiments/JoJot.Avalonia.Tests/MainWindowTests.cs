@@ -459,7 +459,7 @@ public sealed class MainWindowTests
     }
 
     [AvaloniaFact]
-    public async Task HeadersAlignAboveThinSidebarDivider()
+    public async Task SearchAndToolbarStayAboveTheirContentBesideThinSidebarDivider()
     {
         await using var fixture = new WindowFixture();
         var window = fixture.Open();
@@ -468,9 +468,10 @@ public sealed class MainWindowTests
         var editor = Find<TextBox>(window, "Editor");
         var toolbar = Find<Border>(window, "EditorToolbar");
         var splitter = Find<GridSplitter>(window, "TabSplitter");
-        Assert.Equal(toolbar.Bounds.Height, list.Bounds.Y);
+        var search = Find<TextBox>(window, "SearchBox");
+        var searchBottom = search.TranslatePoint(new Point(0, search.Bounds.Height), window)!.Value.Y;
+        Assert.True(searchBottom + 8 <= list.TranslatePoint(default, window)!.Value.Y);
         Assert.Equal(toolbar.Bounds.Height, editor.TranslatePoint(default, window)!.Value.Y);
-        Assert.Equal(toolbar.Bounds.Height, splitter.Bounds.Y);
         Assert.Equal(4, splitter.Bounds.Width);
         var line = Find<Border>(window, "TabDividerLine");
         Assert.Equal(1, line.Bounds.Width);

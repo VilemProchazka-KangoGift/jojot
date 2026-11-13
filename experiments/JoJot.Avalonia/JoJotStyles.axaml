@@ -1,12 +1,20 @@
 <Styles xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Style Selector="TextBlock.workspaceBrand">
+    <Setter Property="FontSize" Value="17" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Foreground" Value="{DynamicResource c-text-primary}" />
+  </Style>
+  <Style Selector="ListBoxItem:selected TextBlock.tabTitle">
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
   <Style Selector="Button.iconButton">
-    <Setter Property="Width" Value="28" />
-    <Setter Property="Height" Value="28" />
+    <Setter Property="Width" Value="30" />
+    <Setter Property="Height" Value="30" />
     <Setter Property="MinWidth" Value="0" />
     <Setter Property="MinHeight" Value="0" />
     <Setter Property="Padding" Value="0" />
     <Setter Property="BorderThickness" Value="0" />
-    <Setter Property="CornerRadius" Value="4" />
+    <Setter Property="CornerRadius" Value="7" />
     <Setter Property="Background" Value="Transparent" />
     <Setter Property="Foreground" Value="{DynamicResource c-toolbar-icon}" />
     <Setter Property="FontFamily" Value="Segoe Fluent Icons, Segoe MDL2 Assets" />
@@ -35,13 +43,12 @@
     <Setter Property="Background" Value="Transparent" />
   </Style>
   <Style Selector="Button.addNote">
-    <Setter Property="CornerRadius" Value="0" />
-    <Setter Property="BorderThickness" Value="1" />
-    <Setter Property="BorderBrush" Value="{DynamicResource c-border}" />
-    <Setter Property="Foreground" Value="{DynamicResource c-text-muted}" />
+    <Setter Property="CornerRadius" Value="8" />
+    <Setter Property="Background" Value="{DynamicResource c-accent}" />
+    <Setter Property="Foreground" Value="{DynamicResource c-on-accent}" />
     <Setter Property="FontFamily" Value="Segoe UI" />
-    <Setter Property="FontSize" Value="16" />
-    <Setter Property="FontWeight" Value="Bold" />
+    <Setter Property="FontSize" Value="20" />
+    <Setter Property="FontWeight" Value="SemiBold" />
   </Style>
   <Style Selector="Button.toolbarDelete">
     <Setter Property="Opacity" Value="0.7" />
@@ -56,11 +63,13 @@
     <Setter Property="Background" Value="{DynamicResource c-border}" />
   </Style>
   <Style Selector="TextBox.noteSearch, TextBox.panelInput">
+    <Setter Property="Foreground" Value="{DynamicResource c-text-primary}" />
+    <Setter Property="PlaceholderForeground" Value="{DynamicResource c-text-muted}" />
     <Setter Property="Background" Value="{DynamicResource c-sidebar-bg}" />
     <Setter Property="BorderBrush" Value="{DynamicResource c-border}" />
     <Setter Property="BorderThickness" Value="1" />
     <Setter Property="CornerRadius" Value="0" />
-    <Setter Property="Padding" Value="4,2" />
+    <Setter Property="Padding" Value="8,4" />
     <Setter Property="FontSize" Value="12" />
     <Setter Property="MinWidth" Value="0" />
     <Setter Property="MinHeight" Value="0" />
@@ -71,17 +80,22 @@
     <Setter Property="BorderThickness" Value="1" />
   </Style>
   <Style Selector="TextBox.panelInput">
+    <Setter Property="CornerRadius" Value="7" />
     <Setter Property="Background" Value="{DynamicResource c-tab-bg}" />
     <Setter Property="Padding" Value="6,5" />
     <Setter Property="FontSize" Value="13" />
   </Style>
   <Style Selector="TextBox.noteEditor">
     <Setter Property="Foreground" Value="{DynamicResource c-text-primary}" />
-    <Setter Property="Padding" Value="12,8" />
+    <Setter Property="Padding" Value="24,20" />
     <Setter Property="BorderThickness" Value="0" />
     <Setter Property="CornerRadius" Value="0" />
     <Setter Property="Background" Value="{DynamicResource c-editor-bg}" />
     <Setter Property="CaretBrush" Value="{DynamicResource c-text-primary}" />
+  </Style>
+  <Style Selector="TextBox.noteSearch">
+    <Setter Property="Background" Value="{DynamicResource c-editor-bg}" />
+    <Setter Property="CornerRadius" Value="7" />
   </Style>
   <Style Selector="TextBox.noteEditor /template/ Border#PART_BorderElement,
                    TextBox.noteEditor:pointerover /template/ Border#PART_BorderElement,
@@ -129,12 +143,17 @@
     <Setter Property="Background" Value="Transparent" />
   </Style>
   <Style Selector="Border.noteRow">
+    <Setter Property="Margin" Value="7,2" />
+    <Setter Property="CornerRadius" Value="8" />
+    <Setter Property="BorderThickness" Value="2,0,0,0" />
+    <Setter Property="BorderBrush" Value="Transparent" />
     <Setter Property="Background" Value="Transparent" />
   </Style>
   <Style Selector="ListBoxItem:pointerover Border.noteRow">
     <Setter Property="Background" Value="{DynamicResource c-hover-bg}" />
   </Style>
   <Style Selector="ListBoxItem:selected Border.noteRow">
+    <Setter Property="BorderBrush" Value="{DynamicResource c-accent}" />
     <Setter Property="Background" Value="{DynamicResource c-selected-bg}" />
   </Style>
   <Style Selector="Button.rowAction">
@@ -195,7 +214,7 @@
     <Setter Property="Padding" Value="8,5" />
     <Setter Property="BorderThickness" Value="1" />
     <Setter Property="BorderBrush" Value="{DynamicResource c-border}" />
-    <Setter Property="CornerRadius" Value="3" />
+    <Setter Property="CornerRadius" Value="7" />
     <Setter Property="Background" Value="Transparent" />
     <Setter Property="Foreground" Value="{DynamicResource c-text-primary}" />
     <Setter Property="FontSize" Value="12" />
@@ -215,7 +234,7 @@
   </Style>
   <Style Selector="CheckBox.findOption:checked, Button.segment.active">
     <Setter Property="Background" Value="{DynamicResource c-accent}" />
-    <Setter Property="Foreground" Value="{DynamicResource c-text-primary}" />
+    <Setter Property="Foreground" Value="{DynamicResource c-on-accent}" />
   </Style>
   <Style Selector="Button.panelButton:disabled">
     <Setter Property="Opacity" Value="0.5" />
@@ -237,7 +256,7 @@
   <Style Selector="Button.segment.active:disabled">
     <Setter Property="Opacity" Value="1" />
     <Setter Property="Background" Value="{DynamicResource c-accent}" />
-    <Setter Property="Foreground" Value="{DynamicResource c-text-primary}" />
+    <Setter Property="Foreground" Value="{DynamicResource c-on-accent}" />
   </Style>
   <Style Selector="Button.panelAccent, Button.panelDanger">
     <Setter Property="BorderThickness" Value="0" />
@@ -262,7 +281,7 @@
     <Setter Property="Foreground" Value="{DynamicResource c-text-muted}" />
   </Style>
   <Style Selector="CheckBox.findOption">
-    <Setter Property="Padding" Value="4,2" />
+    <Setter Property="Padding" Value="8,4" />
     <Setter Property="Margin" Value="0,0,6,0" />
   </Style>
   <Style Selector="TextBox.findField">
@@ -288,7 +307,7 @@
   </Style>
   <Style Selector="Border.hotkeyBadge">
     <Setter Property="Padding" Value="8,4" />
-    <Setter Property="CornerRadius" Value="4" />
+    <Setter Property="CornerRadius" Value="7" />
     <Setter Property="BorderThickness" Value="1" />
     <Setter Property="BorderBrush" Value="{DynamicResource c-text-muted}" />
     <Setter Property="Background" Value="{DynamicResource c-tab-bg}" />
@@ -309,7 +328,7 @@
   <Style Selector="Button.segment.active:disabled /template/ ContentPresenter#PART_ContentPresenter">
     <Setter Property="Background" Value="{DynamicResource c-accent}" />
     <Setter Property="BorderBrush" Value="{DynamicResource c-border}" />
-    <Setter Property="Foreground" Value="{DynamicResource c-text-primary}" />
+    <Setter Property="Foreground" Value="{DynamicResource c-on-accent}" />
   </Style>
   <Style Selector="Button.panelDanger:disabled /template/ ContentPresenter#PART_ContentPresenter">
     <Setter Property="Background" Value="{DynamicResource c-danger}" />
@@ -318,7 +337,7 @@
   <Style Selector="Button.fontAdjust">
     <Setter Property="BorderBrush" Value="{DynamicResource c-text-muted}" />
     <Setter Property="Padding" Value="10,4" />
-    <Setter Property="CornerRadius" Value="4" />
+    <Setter Property="CornerRadius" Value="7" />
   </Style>
   <Style Selector="TextBox.cleanupAge">
     <Setter Property="Background" Value="{DynamicResource c-editor-bg}" />

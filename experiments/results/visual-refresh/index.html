@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>JoJot — visual refresh experiment</title>
+<style>
+:root{--bg:#eef1f4;--fg:#22313b;--muted:#627480;--line:#dce2e7;--paper:#fffefa;--accent:#087f78}
+*{box-sizing:border-box}body{font:16px/1.5 system-ui,sans-serif;margin:32px;background:var(--bg);color:var(--fg)}main{max-width:1800px;margin:auto}h1{font-size:30px;letter-spacing:-.6px;margin-bottom:4px}p{color:var(--muted);max-width:850px}.pair{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin:24px 0 44px}figure{margin:0;background:var(--paper);border:1px solid var(--line);border-radius:12px;overflow:hidden}figcaption{padding:12px 16px;font-weight:600}img{display:block;width:100%;height:auto}.compact{display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;align-items:start}a{color:var(--accent)}@media(max-width:900px){body{margin:16px}.pair,.compact{grid-template-columns:1fr}}
+</style><main>
+<h1>JoJot, with a little more room to think</h1>
+<p>One implemented experiment: warm paper, slate navigation and a teal accent. Actual application renders, using the same six synthetic notes and 1000 × 680 DIP viewport. Stable reference is a managed build; the refreshed captures are from the final NativeAOT preview. Windows scaling: 150%. Native title-bar chrome is outside these client-area captures.</p>
+<div class="pair"><figure><figcaption>Stable · Light</figcaption><img src="before/main-light.png" alt="Stable light theme"></figure><figure><figcaption>Refresh · Light</figcaption><img src="after/main-light.png" alt="Refreshed light theme"></figure></div>
+<div class="pair"><figure><figcaption>Stable · Dark</figcaption><img src="before/main-dark.png" alt="Stable dark theme"></figure><figure><figcaption>Refresh · Dark</figcaption><img src="after/main-dark.png" alt="Refreshed dark theme"></figure></div>
+<div class="pair"><figure><figcaption>Stable · Find</figcaption><img src="before/find.png" alt="Stable Find panel"></figure><figure><figcaption>Refresh · Find</figcaption><img src="after/find.png" alt="Refreshed Find panel"></figure></div>
+<div class="pair"><figure><figcaption>Stable · Preferences</figcaption><img src="before/preferences.png" alt="Stable preferences"></figure><figure><figcaption>Refresh · Preferences</figcaption><img src="after/preferences.png" alt="Refreshed preferences"></figure></div>
+<h2>Compact windows</h2><p>The sidebar yields space to the editor. Toolbar actions wrap and remain reachable.</p>
+<div class="compact"><figure><figcaption>720 DIP</figcaption><img src="after/main-720.png" alt="720 DIP width"></figure><figure><figcaption>510 DIP</figcaption><img src="after/main-510.png" alt="510 DIP width"></figure><figure><figcaption>320 DIP</figcaption><img src="after/main-320.png" alt="320 DIP width"></figure></div>
+<p><a href="README.md">Implementation and verification notes</a></p>
+</main></html>

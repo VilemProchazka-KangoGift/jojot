@@ -369,7 +369,7 @@ internal sealed class ExperimentApp : Application
                 };
             desktop.MainWindow = window;
             StartupRecovery = RecoverPendingMovesAsync(window);
-            if (Options.BenchmarkOutput is null)
+            if (Options.BenchmarkOutput is null && Options.VisualOutputDirectory is null)
                 AttachWindowPlacement(window);
             MainWindow.ExitFromMenuAsync = ExitAsync;
             MainWindow.DesktopHasWindow = guid => _windows.ContainsKey(guid);

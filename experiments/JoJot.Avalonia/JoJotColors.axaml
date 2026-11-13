@@ -1,45 +1,47 @@
 <ResourceDictionary xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-  <SolidColorBrush x:Key="c-on-accent" Color="White" />
+
   <ResourceDictionary.ThemeDictionaries>
     <ResourceDictionary x:Key="Light">
-    <SolidColorBrush x:Key="c-win-bg" Color="#FAFAFA"/>
-    <SolidColorBrush x:Key="c-sidebar-bg" Color="#F5F5F5"/>
-    <SolidColorBrush x:Key="c-editor-bg" Color="#FFFFFF"/>
-    <SolidColorBrush x:Key="c-border" Color="#E0E0E0"/>
-    <SolidColorBrush x:Key="c-text-primary" Color="#1A1A1A"/>
-    <SolidColorBrush x:Key="c-text-muted" Color="#888888"/>
-    <SolidColorBrush x:Key="c-accent" Color="#2196F3"/>
-    <SolidColorBrush x:Key="c-hover-bg" Color="#F0F0F0"/>
-    <SolidColorBrush x:Key="c-selected-bg" Color="#E3F2FD"/>
-    <SolidColorBrush x:Key="c-toolbar-icon" Color="#666666"/>
-    <SolidColorBrush x:Key="c-toolbar-icon-hover" Color="#333333"/>
-    <SolidColorBrush x:Key="c-tab-bg" Color="#EEEEEE"/>
-    <SolidColorBrush x:Key="c-toast-bg" Color="#333333"/>
-    <SolidColorBrush x:Key="c-toast-fg" Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="c-on-accent" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="c-win-bg" Color="#F7F8FA"/>
+    <SolidColorBrush x:Key="c-sidebar-bg" Color="#EEF1F4"/>
+    <SolidColorBrush x:Key="c-editor-bg" Color="#FFFEFA"/>
+    <SolidColorBrush x:Key="c-border" Color="#DCE2E7"/>
+    <SolidColorBrush x:Key="c-text-primary" Color="#22313B"/>
+    <SolidColorBrush x:Key="c-text-muted" Color="#627480"/>
+    <SolidColorBrush x:Key="c-accent" Color="#087F78"/>
+    <SolidColorBrush x:Key="c-hover-bg" Color="#E2E9EC"/>
+    <SolidColorBrush x:Key="c-selected-bg" Color="#D6EBE7"/>
+    <SolidColorBrush x:Key="c-toolbar-icon" Color="#526873"/>
+    <SolidColorBrush x:Key="c-toolbar-icon-hover" Color="#263B47"/>
+    <SolidColorBrush x:Key="c-tab-bg" Color="#E8EDF0"/>
+    <SolidColorBrush x:Key="c-toast-bg" Color="#263B47"/>
+    <SolidColorBrush x:Key="c-toast-fg" Color="#FFFEFA"/>
     <SolidColorBrush x:Key="c-overlay-bg" Color="#80000000"/>
     <SolidColorBrush x:Key="c-tooltip-bg" Color="#CC333333"/>
-    <SolidColorBrush x:Key="c-danger" Color="#E74C3C"/>
+    <SolidColorBrush x:Key="c-danger" Color="#C8484B"/>
     <SolidColorBrush x:Key="c-find-match-bg" Color="#50FFDD00"/>
     <SolidColorBrush x:Key="c-find-match-active-bg" Color="#70FF8C00"/>
     </ResourceDictionary>
     <ResourceDictionary x:Key="Dark">
-    <SolidColorBrush x:Key="c-win-bg" Color="#1E1E1E"/>
-    <SolidColorBrush x:Key="c-sidebar-bg" Color="#252526"/>
-    <SolidColorBrush x:Key="c-editor-bg" Color="#1E1E1E"/>
-    <SolidColorBrush x:Key="c-border" Color="#3C3C3C"/>
-    <SolidColorBrush x:Key="c-text-primary" Color="#D4D4D4"/>
-    <SolidColorBrush x:Key="c-text-muted" Color="#808080"/>
-    <SolidColorBrush x:Key="c-accent" Color="#2196F3"/>
-    <SolidColorBrush x:Key="c-hover-bg" Color="#2D2D2D"/>
-    <SolidColorBrush x:Key="c-selected-bg" Color="#1A3A4A"/>
-    <SolidColorBrush x:Key="c-toolbar-icon" Color="#AAAAAA"/>
-    <SolidColorBrush x:Key="c-toolbar-icon-hover" Color="#FFFFFF"/>
-    <SolidColorBrush x:Key="c-tab-bg" Color="#333333"/>
-    <SolidColorBrush x:Key="c-toast-bg" Color="#3C3C3C"/>
-    <SolidColorBrush x:Key="c-toast-fg" Color="#D4D4D4"/>
+    <SolidColorBrush x:Key="c-on-accent" Color="#142028" />
+    <SolidColorBrush x:Key="c-win-bg" Color="#19242C"/>
+    <SolidColorBrush x:Key="c-sidebar-bg" Color="#142028"/>
+    <SolidColorBrush x:Key="c-editor-bg" Color="#19242C"/>
+    <SolidColorBrush x:Key="c-border" Color="#344650"/>
+    <SolidColorBrush x:Key="c-text-primary" Color="#E4EBED"/>
+    <SolidColorBrush x:Key="c-text-muted" Color="#A2B3BC"/>
+    <SolidColorBrush x:Key="c-accent" Color="#65C8BA"/>
+    <SolidColorBrush x:Key="c-hover-bg" Color="#263943"/>
+    <SolidColorBrush x:Key="c-selected-bg" Color="#214842"/>
+    <SolidColorBrush x:Key="c-toolbar-icon" Color="#AEC0C9"/>
+    <SolidColorBrush x:Key="c-toolbar-icon-hover" Color="#FFFEFA"/>
+    <SolidColorBrush x:Key="c-tab-bg" Color="#263B47"/>
+    <SolidColorBrush x:Key="c-toast-bg" Color="#344650"/>
+    <SolidColorBrush x:Key="c-toast-fg" Color="#E4EBED"/>
     <SolidColorBrush x:Key="c-overlay-bg" Color="#80000000"/>
     <SolidColorBrush x:Key="c-tooltip-bg" Color="#CC333333"/>
-    <SolidColorBrush x:Key="c-danger" Color="#E74C3C"/>
+    <SolidColorBrush x:Key="c-danger" Color="#E58C8C"/>
     <SolidColorBrush x:Key="c-find-match-bg" Color="#50CCCC00"/>
     <SolidColorBrush x:Key="c-find-match-active-bg" Color="#70FF9632"/>
     </ResourceDictionary>
