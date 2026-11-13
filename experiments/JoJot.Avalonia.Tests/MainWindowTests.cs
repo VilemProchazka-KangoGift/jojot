@@ -198,7 +198,7 @@ public sealed class MainWindowTests
         Assert.False(imported.HasUnsavedFileChanges);
         await window.SaveNoteToPathCoreAsync(imported, target);
         Assert.False(imported.HasUnsavedFileChanges);
-        Assert.Equal(new byte[] { 0xef, 0xbb, 0xbf }, (await File.ReadAllBytesAsync(target)).Take(3));
+        Assert.Equal(System.Text.Encoding.UTF8.GetBytes("explicitly saved"), await File.ReadAllBytesAsync(target));
         Assert.Equal(target, imported.FilePath);
         Assert.Equal("saved.txt", imported.Name);
 
@@ -211,6 +211,40 @@ public sealed class MainWindowTests
         Assert.Same(imported, Assert.Single(list.Items));
         Click(Find<Button>(window, "UndoToastButton"));
         Assert.Contains(unpinned, list.Items);
+    }
+
+    [AvaloniaFact]
+    public async Task ImportsTextWithAnyNameAndPreservesBomWhileRejectingBinaryTargets()
+    {
+        await using var fixture = new WindowFixture();
+        var window = fixture.Open();
+        await window.Ready;
+        var readme = Path.Combine(fixture.Directory, "README");
+        var config = Path.Combine(fixture.Directory, "settings.toml");
+        var binary = Path.Combine(fixture.Directory, "binary.txt");
+        var utf16 = new System.Text.UnicodeEncoding(bigEndian: true, byteOrderMark: true);
+        await File.WriteAllTextAsync(readme, "Text without an extension");
+        await File.WriteAllTextAsync(config, "name = 'žluťoučký'", utf16);
+        byte[] binaryBytes = [0x50, 0x4b, 0x03, 0x04, 0x00];
+        await File.WriteAllBytesAsync(binary, binaryBytes);
+
+        await window.ImportPathsAsync([config, readme, binary]);
+        var list = Find<ListBox>(window, "NoteList");
+        Assert.Contains(list.Items.OfType<NoteTab>(), note => note.FilePath == readme);
+        Assert.DoesNotContain(list.Items.OfType<NoteTab>(), note => note.FilePath == binary);
+        var selected = Assert.IsType<NoteTab>(list.SelectedItem);
+        Assert.Equal(config, selected.FilePath);
+        var editor = Find<TextBox>(window, "Editor");
+        Assert.Equal("name = 'žluťoučký'", editor.Text);
+        editor.Text = "name = 'Příliš'";
+        await window.FlushWindowAsync();
+        Press(window, editor, Key.S, PhysicalKey.S, RawInputModifiers.Control);
+        var expected = utf16.GetPreamble().Concat(utf16.GetBytes("name = 'Příliš'")).ToArray();
+        await WaitForAsync(() => editor.IsEffectivelyEnabled && File.ReadAllBytes(config).SequenceEqual(expected),
+            "UTF-16 BOM and content preserved");
+        await Assert.ThrowsAsync<InvalidDataException>(() => window.SaveNoteToPathCoreAsync(selected, binary));
+        Assert.Equal(binaryBytes, await File.ReadAllBytesAsync(binary));
+        Assert.Equal(config, selected.FilePath);
     }
 
     [AvaloniaFact]

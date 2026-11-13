@@ -13,15 +13,13 @@ namespace JoJot.AvaloniaExperiment;
 
 public sealed partial class MainWindow
 {
-    private static readonly Encoding Utf8Bom = new UTF8Encoding(encoderShouldEmitUTF8Identifier: true);
-    private static readonly FilePickerFileType TextFiles = new("Text files") { Patterns = ["*.txt"] };
     private readonly ConditionalWeakTable<NoteTab, FileBaseline> _fileBaselines = new();
-    private sealed record FileBaseline(string Path, string? Content);
+    private sealed record FileBaseline(string Path, string? Content, Encoding? Encoding);
     private string? _lastSaveDirectory;
 
-    private void SetFileBaseline(NoteTab note, string path, string? content)
+    private void SetFileBaseline(NoteTab note, string path, string? content, Encoding? encoding)
     {
-        _fileBaselines.AddOrUpdate(note, new FileBaseline(path, content));
+        _fileBaselines.AddOrUpdate(note, new FileBaseline(path, content, encoding));
         UpdateFileDirtyState(note);
     }
 
@@ -45,28 +43,20 @@ public sealed partial class MainWindow
         var saved = await Task.Run(() => ReadFileBaselineAsync(path, contentLength));
         if (note.FilePath == path &&
             (!_fileBaselines.TryGetValue(note, out var current) || current.Path != path))
-            SetFileBaseline(note, path, saved);
+            SetFileBaseline(note, path, saved?.Content, saved?.Encoding);
     }
 
-    private static async Task<string?> ReadFileBaselineAsync(string path, int contentLength)
+    private static int FileInspectionLimit(int contentLength) =>
+        Math.Max(TextNoteFiles.ImportLimit, (int)Math.Min(int.MaxValue, 4L * contentLength + 4));
+
+    private static async Task<TextNoteFiles.Document?> ReadFileBaselineAsync(string path, int contentLength)
     {
-        try
-        {
-            await using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite,
-                bufferSize: 4096, useAsync: true);
-            using var reader = new StreamReader(stream);
-            // Keep the original text even if the saved file is longer than the SQLite draft.
-            // Bound reads of externally replaced files while allowing drafts above the import limit.
-            var limit = Math.Max(contentLength, 500 * 1024);
-            var buffer = new char[limit + 1];
-            var length = await reader.ReadBlockAsync(buffer);
-            return length <= limit ? new string(buffer, 0, length) : null;
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+        try { return await TextNoteFiles.ReadAsync(path, FileInspectionLimit(contentLength)).ConfigureAwait(false); }
+        catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
         {
             // The note remains available from SQLite even when its external file cannot be read.
+            return null;
         }
-        return null;
     }
 
     private bool _filePickerOpen;
@@ -113,7 +103,7 @@ public sealed partial class MainWindow
             {
                 Title = OpenFilesLabel,
                 AllowMultiple = true,
-                FileTypeFilter = [TextFiles, FilePickerFileTypes.All],
+                FileTypeFilter = [FilePickerFileTypes.All],
             }));
             await ImportFilesCoreAsync(GetLocalPaths(selected));
         });
@@ -130,25 +120,43 @@ public sealed partial class MainWindow
     {
         if (paths.Length == 0)
             return;
-        var summary = await FileDropService.ProcessDroppedFilesAsync(paths);
-        if (summary.ValidFiles.Count > 0)
+        var files = new List<(string Path, TextNoteFiles.Document Document)>();
+        var errorCount = 0;
+        string? lastError = null;
+        foreach (var path in paths)
+        {
+            try { files.Add((path, await Task.Run(() => TextNoteFiles.ReadAsync(path)))); }
+            catch (Exception ex) when (ex is InvalidDataException or TextNoteFiles.FileTooLargeException)
+            {
+                lastError = ex.Message;
+                errorCount++;
+            }
+            catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+            {
+                lastError = string.Format(Strings.Drop_ReadFailed, Path.GetFileName(path));
+                errorCount++;
+            }
+        }
+
+        if (files.Count > 0)
         {
             await FlushEditsAsync();
             var index = _notes.Count(note => note.Pinned);
-            var firstOrder = _notes.Skip(index).Select(note => note.SortOrder).DefaultIfEmpty(0).Min() - summary.ValidFiles.Count;
+            var firstOrder = _notes.Skip(index).Select(note => note.SortOrder).DefaultIfEmpty(0).Min() - files.Count;
             NoteTab? first = null;
-            foreach (var file in summary.ValidFiles)
+            foreach (var (path, document) in files)
             {
-                var note = await InsertNoteAsync(file.FileName, file.Content!, false, firstOrder++, file.FilePath);
-                SetFileBaseline(note, file.FilePath!, file.Content!);
+                var note = await InsertNoteAsync(Path.GetFileName(path), document.Content, false, firstOrder++, path);
+                SetFileBaseline(note, path, document.Content, document.Encoding);
                 _notes.Insert(index++, note);
                 first ??= note;
             }
             SearchBox.Clear();
             ShowNote(first);
         }
-        if (summary.CombinedErrorMessage is { } error)
-            ShowInfoToast(error);
+        if (errorCount > 0 && lastError is not null)
+            ShowInfoToast(files.Count > 0
+                ? string.Format(Strings.Drop_PartialSuccess, files.Count, errorCount, lastError) : lastError);
     }
 
     private async void OnSave(object? sender, RoutedEventArgs e)
@@ -172,8 +180,8 @@ public sealed partial class MainWindow
             if (!forceDialog && note.FilePath is { } existing)
             {
                 var content = note.Content;
-                await WriteFileAsync(existing, content);
-                SetFileBaseline(note, existing, content);
+                var encoding = await WriteFileAsync(note, existing, content);
+                SetFileBaseline(note, existing, content, encoding);
                 return;
             }
             var directory = note.FilePath is { } sourcePath ? Path.GetDirectoryName(sourcePath) : _lastSaveDirectory;
@@ -184,7 +192,7 @@ public sealed partial class MainWindow
                 SuggestedStartLocation = suggested,
                 SuggestedFileName = note.FilePath is { } path ? Path.GetFileName(path) : MainWindowViewModel.GetDefaultFilename(note),
                 DefaultExtension = "txt",
-                FileTypeChoices = [TextFiles, FilePickerFileTypes.All],
+                FileTypeChoices = [FilePickerFileTypes.All],
                 ShowOverwritePrompt = true,
             }));
             if (selected?.TryGetLocalPath() is { } target)
@@ -196,13 +204,13 @@ public sealed partial class MainWindow
     internal async Task SaveNoteToPathCoreAsync(NoteTab note, string target)
     {
         var content = note.Content;
-        await WriteFileAsync(target, content);
+        var encoding = await WriteFileAsync(note, target, content);
         var name = Path.GetFileName(target);
         await NoteStore.UpdateNoteFilePathAndNameAsync(note.Id, target, name);
         _lastSaveDirectory = Path.GetDirectoryName(target);
         note.FilePath = target;
         note.Name = name;
-        SetFileBaseline(note, target, content);
+        SetFileBaseline(note, target, content, encoding);
         UpdateEditorTitle();
     }
 
@@ -213,5 +221,11 @@ public sealed partial class MainWindow
         finally { _filePickerOpen = false; }
     }
 
-    private static Task WriteFileAsync(string path, string content) => File.WriteAllTextAsync(path, content, Utf8Bom);
+    private Task<Encoding> WriteFileAsync(NoteTab note, string path, string content)
+    {
+        _fileBaselines.TryGetValue(note, out var baseline);
+        var fallback = baseline?.Encoding ?? TextNoteFiles.DefaultEncoding;
+        var limit = FileInspectionLimit(Math.Max(content.Length, baseline?.Content?.Length ?? 0));
+        return Task.Run(() => TextNoteFiles.WriteAsync(path, content, fallback, limit));
+    }
 }
