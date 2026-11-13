@@ -21,6 +21,11 @@ public sealed partial class MainWindow
         try
         {
             SetVisualLanguage("en");
+            if (_notes.FirstOrDefault(note => note.Name == Strings.Welcome_Title) is { } welcome)
+            {
+                ShowNote(welcome);
+                RefreshNoteList();
+            }
             ApplyTheme("light");
             await CaptureWindowAsync(directory, "main-light.png");
             ApplyTheme("dark");
@@ -30,11 +35,16 @@ public sealed partial class MainWindow
             ShowFindPanel();
             if (_findQuery is { } query && Editor.Text is { Length: > 0 } editorText)
             {
-                var word = editorText.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
+                var word = editorText.Contains("note", StringComparison.OrdinalIgnoreCase)
+                    ? "note"
+                    : editorText.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
                 if (word is { Length: > 0 })
                     query.Text = word[..Math.Min(word.Length, 24)];
+                await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Background);
                 _findTimer.Stop();
                 await RunFindAsync();
+                if (_findMatches.Count == 0)
+                    throw new InvalidOperationException("The visual probe did not find its selected search term.");
             }
             await CaptureWindowAsync(directory, "find.png");
             HideFindPanel();
@@ -65,7 +75,7 @@ public sealed partial class MainWindow
 
             SetVisualLanguage("cs");
             if (Strings.Pref_Theme != "Motiv" || Strings.Menu_Preferences != "Nastavení" ||
-                !Equals(AddButton.Content, "Nová poznámka"))
+                global::Avalonia.Automation.AutomationProperties.GetName(AddButton) != "Nová poznámka")
                 throw new InvalidOperationException("The Czech JoJot resources did not resolve in this build.");
             await CaptureWindowAsync(directory, "main-cs.png");
             await ShowPreferencesAsync();
@@ -92,7 +102,6 @@ public sealed partial class MainWindow
         PreferencesMenuItem.Header = Strings.Menu_Preferences;
         CleanupMenuItem.Header = Strings.Menu_Cleanup;
         RecoveryMenuItem.Header = Strings.Menu_Recover;
-        HelpMenuItem.Header = Strings.Help_Title;
         ExitMenuItem.Header = Strings.Menu_Exit;
         UpdateToolbarState();
         UpdateStatus();

@@ -84,7 +84,7 @@ public sealed partial class MainWindow
         var value = await PreferenceStore.GetPreferenceAsync("tab_panel_width");
         if (double.TryParse(value, System.Globalization.CultureInfo.InvariantCulture, out var width) &&
             double.IsFinite(width))
-            WorkArea.ColumnDefinitions[0].Width = new GridLength(Math.Clamp(width, 120, 340));
+            WorkArea.ColumnDefinitions[0].Width = new GridLength(Math.Clamp(width, 120, 400));
         _lastSavedTabWidth = WorkArea.ColumnDefinitions[0].Width.Value;
     }
 
@@ -151,7 +151,7 @@ public sealed partial class MainWindow
             scroll.Offset = new Vector(0, note.EditorScrollOffset);
     }
 
-    private void UpdateEditorTitle() => NoteTitle.Text = _active?.DisplayLabel ?? "";
+    private void UpdateEditorTitle() => AutomationProperties.SetHelpText(Editor, _active?.DisplayLabel ?? "");
 
     private void FocusEditorIfIdle()
     {
@@ -171,6 +171,7 @@ public sealed partial class MainWindow
             return;
 
         note.Content = text;
+        UpdateFileDirtyState(note);
         note.UpdatedAt = DateTime.Now;
         _dirty[note] = text;
         UpdateEditorTitle();
@@ -243,7 +244,6 @@ public sealed partial class MainWindow
     private void UpdateToolbarState()
     {
         var note = _active;
-        RenameButton.IsEnabled = note is { IsFileBacked: false };
         PinButton.IsEnabled = note is not null;
         var pinned = note?.Pinned == true;
         PinButton.Content = pinned ? "\uE77A" : "\uE718";

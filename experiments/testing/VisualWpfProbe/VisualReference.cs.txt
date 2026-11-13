@@ -1,0 +1,89 @@
+using System.IO;
+using System.Windows;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
+using System.Windows.Threading;
+using JoJot.Services;
+
+namespace JoJot;
+
+// Compiled only into the disposable release-source export.
+public partial class MainWindow
+{
+    internal async Task CaptureVisualReferenceAsync()
+    {
+        var output = Environment.GetEnvironmentVariable("JOJOT_VISUAL_OUTPUT") ?? throw new InvalidOperationException("Missing output directory");
+        Directory.CreateDirectory(output);
+        var client = (FrameworkElement)Content;
+        try
+        {
+            Width += 850 - client.ActualWidth;
+            Height += 560 - client.ActualHeight;
+            await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
+            // Seed only the isolated database created for this run.
+            await NoteStore.InsertNoteAsync(_desktopGuid, "Pinned ideas", "A pinned note with a little context.", true, 0);
+            await NoteStore.InsertNoteAsync(_desktopGuid, "Meeting notes — čtvrtek", "Discuss the roadmap and follow up with the team.\nUnicode: česky, Ω and 🐇.", false, 1);
+            await NoteStore.InsertNoteAsync(_desktopGuid, "Shopping list", "Coffee, bread, apples and something delicious for dinner.", false, 2);
+            await LoadTabsAsync();
+            await ThemeService.SetThemeAsync(ThemeService.AppTheme.Light);
+            await Capture("main-light.png");
+            await ThemeService.SetThemeAsync(ThemeService.AppTheme.Dark);
+            await Capture("main-dark.png");
+            await ThemeService.SetThemeAsync(ThemeService.AppTheme.Light);
+            ShowFindPanel();
+            FindPanelLazy.SetFindText("note");
+            OnFindTextChanged(FindPanelLazy, new JoJot.Controls.FindChangedEventArgs { Query = "note" });
+            await WaitFor(() => _findMatches.Count > 0);
+            File.WriteAllText(Path.Combine(output, "find-matches.txt"), _findMatches.Count.ToString());
+            await Capture("find.png");
+            HideFindPanel();
+            ShowPreferencesPanel();
+            await Capture("preferences.png");
+            HidePreferencesPanel();
+            ShowHelpOverlay();
+            await Capture("help.png");
+            HideHelpOverlay();
+            ShowCleanupPanel();
+            await WaitFor(() => _cleanupPanelOpen);
+            await Capture("cleanup.png");
+            HideCleanupPanel();
+            var orphan = "visual-probe-" + Guid.NewGuid().ToString("N");
+            await SessionStore.CreateSessionAsync(orphan, "Previous desktop", null);
+            await NoteStore.InsertNoteAsync(orphan, "Recovered note", "A note from a previous desktop.", false, 0);
+            VirtualDesktopService.SetOrphanedSessionGuids([orphan]);
+            ShowRecoveryPanel();
+            await WaitFor(() => _recoveryPanelOpen);
+            await Capture("recovery.png");
+            FlushContentForShutdown();
+            FlushAndClose();
+            Application.Current.Shutdown();
+        }
+        catch (Exception ex)
+        {
+            File.WriteAllText(Path.Combine(output, "error.txt"), ex.ToString());
+            Application.Current.Shutdown(1);
+        }
+
+        async Task WaitFor(Func<bool> ready)
+        {
+            for (var i = 0; i < 100 && !ready(); i++) await Task.Delay(50);
+            if (!ready()) throw new InvalidOperationException("Panel did not become ready.");
+        }
+        async Task Capture(string name)
+        {
+            await Task.Delay(500); // Let the real panel slide-in animation complete.
+            await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
+            UpdateLayout();
+            var dpi = VisualTreeHelper.GetDpi(client);
+            var width = (int)Math.Ceiling(client.ActualWidth * dpi.DpiScaleX);
+            var height = (int)Math.Ceiling(client.ActualHeight * dpi.DpiScaleY);
+            var bitmap = new RenderTargetBitmap(width, height, 96 * dpi.DpiScaleX, 96 * dpi.DpiScaleY, PixelFormats.Pbgra32);
+            bitmap.Render(client);
+            var encoder = new PngBitmapEncoder();
+            encoder.Frames.Add(BitmapFrame.Create(bitmap));
+            using var stream = File.Create(Path.Combine(output, name));
+            encoder.Save(stream);
+            File.AppendAllText(Path.Combine(output, "capture-metadata.txt"), $"{name}: {width}x{height} pixels, {client.ActualWidth}x{client.ActualHeight} DIP, scale {dpi.DpiScaleX}x{dpi.DpiScaleY}\n");
+        }
+    }
+}

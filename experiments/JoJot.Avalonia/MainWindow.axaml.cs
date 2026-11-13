@@ -68,7 +68,7 @@ public sealed partial class MainWindow : Window
     internal void UpdateDesktopTitle(string? desktopName, int? desktopIndex)
     {
         _viewModel.UpdateDesktopInfo(desktopName, desktopIndex);
-        Title = _viewModel.WindowTitle + " · Avalonia experiment";
+        Title = _viewModel.WindowTitle;
     }
 
     private async void OnOpened(object? sender, EventArgs e)
@@ -88,6 +88,7 @@ public sealed partial class MainWindow : Window
             LocalizeCoreControls();
             await LoadInitialNotesAsync();
             _ready = true;
+            Status.IsVisible = false;
             _busy = false;
             UpdateControls();
             _readySource.TrySetResult();
@@ -150,6 +151,7 @@ public sealed partial class MainWindow : Window
     {
         var loaded = await NoteStore.GetNotesForDesktopAsync(DesktopGuid);
         var (keep, empty) = MainWindowViewModel.SplitEmptyStartupNotes(loaded);
+        _ = LoadFileBaselinesAsync(keep);
         ReplaceNoteList(keep);
         if (_notes.Count == 0 && _benchmark is null && _options.CompatibilityExpected is null)
             await CreateNoteCoreAsync();
@@ -184,6 +186,7 @@ public sealed partial class MainWindow : Window
         var rows = await NoteStore.GetNotesForDesktopAsync(DesktopGuid);
         var excluded = _pendingDeletion?.Tabs.Select(note => note.Id).ToHashSet() ?? [];
         var merged = MainWindowViewModel.MergeReloadedTabs(_notes, rows, excluded);
+        _ = LoadFileBaselinesAsync(merged);
         ReplaceNoteList(merged);
         if (_notes.Count == 0)
             await CreateNoteCoreAsync();
@@ -370,11 +373,11 @@ public sealed partial class MainWindow : Window
     private void ReportError(Exception ex)
     {
         Status.Text = ex.Message;
+        Status.IsVisible = true;
         Console.Error.WriteLine(ex);
     }
 
     private void OnPreferencesMenu(object? sender, RoutedEventArgs e) => ShowPreferences();
-    private void OnHelpMenu(object? sender, RoutedEventArgs e) => ShowHelp();
     private void OnCleanupMenu(object? sender, RoutedEventArgs e) => ShowCleanup();
     private void OnRecoveryMenu(object? sender, RoutedEventArgs e) => ShowRecovery();
     private async void OnExitMenu(object? sender, RoutedEventArgs e)

@@ -1,0 +1,336 @@
+<Styles xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Style Selector="Button.iconButton">
+    <Setter Property="Width" Value="28" />
+    <Setter Property="Height" Value="28" />
+    <Setter Property="MinWidth" Value="0" />
+    <Setter Property="MinHeight" Value="0" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="CornerRadius" Value="4" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{DynamicResource c-toolbar-icon}" />
+    <Setter Property="FontFamily" Value="Segoe Fluent Icons, Segoe MDL2 Assets" />
+    <Setter Property="FontSize" Value="14" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="Focusable" Value="False" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <ContentPresenter Name="PART_ContentPresenter" Background="{TemplateBinding Background}" Foreground="{TemplateBinding Foreground}"
+                          BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}"
+                          CornerRadius="{TemplateBinding CornerRadius}" Content="{TemplateBinding Content}"
+                          ContentTemplate="{TemplateBinding ContentTemplate}"
+                          HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                          VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
+      </ControlTemplate>
+    </Setter>
+  </Style>
+  <Style Selector="Button.iconButton:pointerover">
+    <Setter Property="Background" Value="{DynamicResource c-hover-bg}" />
+    <Setter Property="Foreground" Value="{DynamicResource c-toolbar-icon-hover}" />
+  </Style>
+  <Style Selector="Button.iconButton:disabled">
+    <Setter Property="Opacity" Value="0.35" />
+    <Setter Property="Background" Value="Transparent" />
+  </Style>
+  <Style Selector="Button.addNote">
+    <Setter Property="CornerRadius" Value="0" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="BorderBrush" Value="{DynamicResource c-border}" />
+    <Setter Property="Foreground" Value="{DynamicResource c-text-muted}" />
+    <Setter Property="FontFamily" Value="Segoe UI" />
+    <Setter Property="FontSize" Value="16" />
+    <Setter Property="FontWeight" Value="Bold" />
+  </Style>
+  <Style Selector="Button.toolbarDelete">
+    <Setter Property="Opacity" Value="0.7" />
+  </Style>
+  <Style Selector="Button.toolbarDelete:pointerover, Button.closeAction:pointerover">
+    <Setter Property="Foreground" Value="{DynamicResource c-danger}" />
+    <Setter Property="Opacity" Value="1" />
+  </Style>
+  <Style Selector="Border.toolbarSeparator">
+    <Setter Property="Width" Value="1" />
+    <Setter Property="Margin" Value="4,4" />
+    <Setter Property="Background" Value="{DynamicResource c-border}" />
+  </Style>
+  <Style Selector="TextBox.noteSearch, TextBox.panelInput">
+    <Setter Property="Background" Value="{DynamicResource c-sidebar-bg}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource c-border}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="0" />
+    <Setter Property="Padding" Value="4,2" />
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="MinWidth" Value="0" />
+    <Setter Property="MinHeight" Value="0" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+  </Style>
+  <Style Selector="TextBox.noteSearch /template/ Border#PART_BorderElement,
+                   TextBox.panelInput /template/ Border#PART_BorderElement">
+    <Setter Property="BorderThickness" Value="1" />
+  </Style>
+  <Style Selector="TextBox.panelInput">
+    <Setter Property="Background" Value="{DynamicResource c-tab-bg}" />
+    <Setter Property="Padding" Value="6,5" />
+    <Setter Property="FontSize" Value="13" />
+  </Style>
+  <Style Selector="TextBox.noteEditor">
+    <Setter Property="Foreground" Value="{DynamicResource c-text-primary}" />
+    <Setter Property="Padding" Value="12,8" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="CornerRadius" Value="0" />
+    <Setter Property="Background" Value="{DynamicResource c-editor-bg}" />
+    <Setter Property="CaretBrush" Value="{DynamicResource c-text-primary}" />
+  </Style>
+  <Style Selector="TextBox.noteEditor /template/ Border#PART_BorderElement,
+                   TextBox.noteEditor:pointerover /template/ Border#PART_BorderElement,
+                   TextBox.noteEditor:focus /template/ Border#PART_BorderElement,
+                   TextBox.noteEditor:disabled /template/ Border#PART_BorderElement">
+    <Setter Property="Background" Value="{DynamicResource c-editor-bg}" />
+    <Setter Property="BorderThickness" Value="0" />
+  </Style>
+  <Style Selector="TextBox.noteSearch /template/ TextBlock#PART_PlaceholderText,
+                   TextBox.panelInput /template/ TextBlock#PART_PlaceholderText">
+    <Setter Property="Foreground" Value="{DynamicResource c-text-muted}" />
+  </Style>
+  <Style Selector="ListBox.noteList">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled" />
+  </Style>
+  <Style Selector="ListBox.noteList ListBoxItem">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="MinHeight" Value="0" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <ContentPresenter Name="PART_ContentPresenter" Content="{TemplateBinding Content}"
+                          ContentTemplate="{TemplateBinding ContentTemplate}"
+                          BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}"
+                          HorizontalContentAlignment="Stretch" />
+      </ControlTemplate>
+    </Setter>
+  </Style>
+  <Style Selector="ListBox.noteList ListBoxItem /template/ ContentPresenter#PART_ContentPresenter,
+                   ListBox.noteList ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter,
+                   ListBox.noteList ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter,
+                   ListBox.noteList ListBoxItem:selected:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="Transparent" />
+  </Style>
+  <Style Selector="Border.noteRow">
+    <Setter Property="Background" Value="Transparent" />
+  </Style>
+  <Style Selector="ListBoxItem:pointerover Border.noteRow">
+    <Setter Property="Background" Value="{DynamicResource c-hover-bg}" />
+  </Style>
+  <Style Selector="ListBoxItem:selected Border.noteRow">
+    <Setter Property="Background" Value="{DynamicResource c-selected-bg}" />
+  </Style>
+  <Style Selector="Button.rowAction">
+    <Setter Property="Width" Value="22" />
+    <Setter Property="Height" Value="22" />
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="Foreground" Value="{DynamicResource c-text-muted}" />
+  </Style>
+  <Style Selector="Button.closeAction">
+    <Setter Property="HorizontalContentAlignment" Value="Right" />
+  </Style>
+  <Style Selector="Button.hiddenAction, Button.closeAction">
+    <Setter Property="IsVisible" Value="False" />
+  </Style>
+  <Style Selector="ListBoxItem:pointerover Button.unpinnedAction, ListBoxItem:selected Button.unpinnedAction,
+                   ListBoxItem:pointerover Button.closeAction, ListBoxItem:selected Button.closeAction">
+    <Setter Property="IsVisible" Value="True" />
+  </Style>
+  <Style Selector="Border.pinnedBoundaryDrop">
+    <Setter Property="IsVisible" Value="False" />
+    <Setter Property="Background" Value="{DynamicResource c-accent}" />
+  </Style>
+  <Style Selector="ListBoxItem.dropBoundary Border.pinnedBoundaryDrop">
+    <Setter Property="IsVisible" Value="True" />
+  </Style>
+  <Style Selector="ListBoxItem.dropAbove">
+    <Setter Property="BorderThickness" Value="0,2,0,0" />
+    <Setter Property="BorderBrush" Value="{DynamicResource c-accent}" />
+  </Style>
+  <Style Selector="ListBoxItem.dropBelow">
+    <Setter Property="BorderThickness" Value="0,0,0,2" />
+    <Setter Property="BorderBrush" Value="{DynamicResource c-accent}" />
+  </Style>
+  <Style Selector="TextBlock.tabTitle">
+    <Setter Property="Foreground" Value="{DynamicResource c-text-primary}" />
+  </Style>
+  <Style Selector="TextBlock.placeholder">
+    <Setter Property="FontStyle" Value="Italic" />
+    <Setter Property="Foreground" Value="{DynamicResource c-text-muted}" />
+  </Style>
+  <Style Selector="Button.toastUndo">
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="Foreground" Value="{DynamicResource c-accent}" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <TextBlock Text="{TemplateBinding Content}" TextDecorations="Underline" />
+      </ControlTemplate>
+    </Setter>
+  </Style>
+  <Style Selector="Button.toastClose">
+    <Setter Property="Foreground" Value="{DynamicResource c-toast-fg}" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+  <Style Selector="Button.panelButton, CheckBox.findOption">
+    <Setter Property="MinWidth" Value="0" />
+    <Setter Property="MinHeight" Value="0" />
+    <Setter Property="Padding" Value="8,5" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="BorderBrush" Value="{DynamicResource c-border}" />
+    <Setter Property="CornerRadius" Value="3" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{DynamicResource c-text-primary}" />
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <ContentPresenter Name="PART_ContentPresenter" Background="{TemplateBinding Background}" Foreground="{TemplateBinding Foreground}"
+                          BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}"
+                          CornerRadius="{TemplateBinding CornerRadius}" Content="{TemplateBinding Content}"
+                          ContentTemplate="{TemplateBinding ContentTemplate}" Padding="{TemplateBinding Padding}"
+                          HorizontalContentAlignment="Center" VerticalContentAlignment="Center" />
+      </ControlTemplate>
+    </Setter>
+  </Style>
+  <Style Selector="Button.panelButton:pointerover, CheckBox.findOption:pointerover">
+    <Setter Property="Background" Value="{DynamicResource c-hover-bg}" />
+  </Style>
+  <Style Selector="CheckBox.findOption:checked, Button.segment.active">
+    <Setter Property="Background" Value="{DynamicResource c-accent}" />
+    <Setter Property="Foreground" Value="{DynamicResource c-text-primary}" />
+  </Style>
+  <Style Selector="Button.panelButton:disabled">
+    <Setter Property="Opacity" Value="0.5" />
+  </Style>
+  <Style Selector="Button.segment">
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="Padding" Value="8,6" />
+    <Setter Property="CornerRadius" Value="0" />
+    <Setter Property="BorderThickness" Value="0,1,0,1" />
+  </Style>
+  <Style Selector="Button.segment.first">
+    <Setter Property="CornerRadius" Value="4,0,0,4" />
+    <Setter Property="BorderThickness" Value="1" />
+  </Style>
+  <Style Selector="Button.segment.last">
+    <Setter Property="CornerRadius" Value="0,4,4,0" />
+    <Setter Property="BorderThickness" Value="1" />
+  </Style>
+  <Style Selector="Button.segment.active:disabled">
+    <Setter Property="Opacity" Value="1" />
+    <Setter Property="Background" Value="{DynamicResource c-accent}" />
+    <Setter Property="Foreground" Value="{DynamicResource c-text-primary}" />
+  </Style>
+  <Style Selector="Button.panelAccent, Button.panelDanger">
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Background" Value="{DynamicResource c-accent}" />
+    <Setter Property="Foreground" Value="{DynamicResource c-on-accent}" />
+    <Setter Property="Padding" Value="12,4" />
+  </Style>
+  <Style Selector="Button.panelDanger, Button.panelDanger:disabled">
+    <Setter Property="Background" Value="{DynamicResource c-danger}" />
+    <Setter Property="Foreground" Value="{DynamicResource c-on-accent}" />
+  </Style>
+  <Style Selector="Button.panelGlyph">
+    <Setter Property="FontFamily" Value="Segoe Fluent Icons, Segoe MDL2 Assets" />
+    <Setter Property="Padding" Value="6,4" />
+  </Style>
+  <Style Selector="Button.panelClose">
+    <Setter Property="HorizontalContentAlignment" Value="Right" />
+    <Setter Property="VerticalContentAlignment" Value="Top" />
+    <Setter Property="Width" Value="22" />
+    <Setter Property="Height" Value="22" />
+    <Setter Property="Focusable" Value="True" />
+    <Setter Property="Foreground" Value="{DynamicResource c-text-muted}" />
+  </Style>
+  <Style Selector="CheckBox.findOption">
+    <Setter Property="Padding" Value="4,2" />
+    <Setter Property="Margin" Value="0,0,6,0" />
+  </Style>
+  <Style Selector="TextBox.findField">
+    <Setter Property="Height" Value="29" />
+    <Setter Property="Padding" Value="6,5,24,5" />
+  </Style>
+  <Style Selector="Button.findClear">
+    <Setter Property="Width" Value="22" />
+    <Setter Property="Height" Value="22" />
+    <Setter Property="FontSize" Value="10" />
+    <Setter Property="HorizontalAlignment" Value="Right" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="Foreground" Value="{DynamicResource c-text-muted}" />
+  </Style>
+  <Style Selector="TextBlock.panelHint, TextBlock.panelSection">
+    <Setter Property="FontSize" Value="11" />
+    <Setter Property="Foreground" Value="{DynamicResource c-text-muted}" />
+  </Style>
+  <Style Selector="TextBlock.shortcutKey">
+    <Setter Property="FontFamily" Value="Consolas" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Foreground" Value="{DynamicResource c-accent}" />
+  </Style>
+  <Style Selector="Border.hotkeyBadge">
+    <Setter Property="Padding" Value="8,4" />
+    <Setter Property="CornerRadius" Value="4" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="BorderBrush" Value="{DynamicResource c-text-muted}" />
+    <Setter Property="Background" Value="{DynamicResource c-tab-bg}" />
+  </Style>
+  <Style Selector="Border#PanelHost">
+    <Setter Property="Background" Value="{DynamicResource c-win-bg}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource c-border}" />
+    <Setter Property="BorderThickness" Value="1,0,0,0" />
+  </Style>
+  <Style Selector="Border#PanelHost.helpCard">
+    <Setter Property="CornerRadius" Value="8" />
+    <Setter Property="BorderThickness" Value="0" />
+  </Style>
+  <Style Selector="Button.iconButton:disabled /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{DynamicResource c-toolbar-icon}" />
+  </Style>
+  <Style Selector="Button.segment.active:disabled /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource c-accent}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource c-border}" />
+    <Setter Property="Foreground" Value="{DynamicResource c-text-primary}" />
+  </Style>
+  <Style Selector="Button.panelDanger:disabled /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource c-danger}" />
+    <Setter Property="Foreground" Value="{DynamicResource c-on-accent}" />
+  </Style>
+  <Style Selector="Button.fontAdjust">
+    <Setter Property="BorderBrush" Value="{DynamicResource c-text-muted}" />
+    <Setter Property="Padding" Value="10,4" />
+    <Setter Property="CornerRadius" Value="4" />
+  </Style>
+  <Style Selector="TextBox.cleanupAge">
+    <Setter Property="Background" Value="{DynamicResource c-editor-bg}" />
+    <Setter Property="FontSize" Value="13" />
+  </Style>
+  <Style Selector="Border.panelRule">
+    <Setter Property="Height" Value="1" />
+    <Setter Property="Margin" Value="0,0,0,8" />
+    <Setter Property="Background" Value="{DynamicResource c-border}" />
+  </Style>
+  <Style Selector="TextBlock.emptyPreview">
+    <Setter Property="FontStyle" Value="Italic" />
+    <Setter Property="Foreground" Value="{DynamicResource c-text-muted}" />
+  </Style>
+  <Style Selector="Button.recoveryAction">
+    <Setter Property="MinHeight" Value="24" />
+    <Setter Property="CornerRadius" Value="0" />
+    <Setter Property="Padding" Value="8,3" />
+    <Setter Property="FontSize" Value="11" />
+  </Style>
+</Styles>

@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
 using Avalonia.Input;
 using Avalonia.Interactivity;
@@ -22,10 +23,10 @@ public sealed class PanelsTests
         await window.Ready;
         var panel = Assert.IsType<Border>(window.FindControl<Border>("PanelHost"));
         ClickMenu(window, "PreferencesMenuItem");
-        await MainWindowTests.WaitForAsync(() => panel.GetVisualDescendants().OfType<ComboBox>().Any(), "preferences content");
+        await MainWindowTests.WaitForAsync(() => panel.GetVisualDescendants().OfType<Button>().Any(button => Equals(button.Content, Strings.Pref_ThemeDark)), "preferences content");
         Assert.True(panel.IsVisible);
-        var theme = Assert.Single(panel.GetVisualDescendants().OfType<ComboBox>());
-        theme.SelectedIndex = 2;
+        var theme = FindButton(panel, Strings.Pref_ThemeDark);
+        Click(theme);
         await MainWindowTests.WaitForAsync(() => window.RequestedThemeVariant == ThemeVariant.Dark, "apply dark theme");
 
         Click(FindButton(panel, "+"));
@@ -35,10 +36,17 @@ public sealed class PanelsTests
         Assert.Equal("dark", await PreferenceStore.GetPreferenceAsync("theme"));
         Assert.Equal("14", await PreferenceStore.GetPreferenceAsync("font_size"));
 
-        ClickMenu(window, "HelpMenuItem");
+        Click(FindButton(panel, Strings.Help_Title));
         await MainWindowTests.WaitForAsync(() => panel.GetVisualDescendants().OfType<TextBlock>()
             .Any(text => text.Text == Strings.Help_Find), "shortcut reference");
-        Assert.DoesNotContain(panel.GetVisualDescendants().OfType<ComboBox>(), combo => combo == theme);
+        Assert.DoesNotContain(panel.GetVisualDescendants().OfType<Button>(), button => button == theme);
+        window.KeyPress(Key.F, RawInputModifiers.Control, PhysicalKey.F, null);
+        window.KeyRelease(Key.F, RawInputModifiers.Control, PhysicalKey.F, null);
+        Assert.False(panel.IsVisible);
+        var find = Assert.IsType<Border>(window.FindControl<Border>("FindHost"));
+        Assert.True(find.IsVisible);
+        var query = find.GetVisualDescendants().OfType<TextBox>().Single(box => box.Name == "FindQuery");
+        await MainWindowTests.WaitForAsync(() => query.IsFocused, "find query focus after switching panels");
     }
 
     [AvaloniaFact]
@@ -58,7 +66,7 @@ public sealed class PanelsTests
             await window.Ready;
             var panel = Assert.IsType<Border>(window.FindControl<Border>("PanelHost"));
             ClickMenu(window, "PreferencesMenuItem");
-            const string czechLabel = "\u010Ce\u0161tina";
+            const string czechLabel = "Česky";
             await MainWindowTests.WaitForAsync(() => panel.GetVisualDescendants().OfType<Button>()
                 .Any(button => Equals(button.Content, czechLabel)), "Czech language option");
             var languageButton = FindButton(panel, czechLabel);
@@ -259,7 +267,8 @@ public sealed class PanelsTests
             Button[] ClearButtons() => panel.GetVisualDescendants().OfType<Button>()
                 .Where(button => Equals(button.Content, clear)).ToArray();
             await MainWindowTests.WaitForAsync(() => ClearButtons().Length == 2, "pending move previews");
-            var labels = panel.GetVisualDescendants().OfType<TextBlock>().Select(text => text.Text).ToArray();
+            var labels = panel.GetVisualDescendants().OfType<TextBlock>()
+                .Select(text => text.Text ?? text.Inlines?.Text).ToArray();
             Assert.Contains("Source tab \u2014 Source content", labels);
             Assert.Contains(target is null ? "Destination was not recorded." : "Destination tab \u2014 Destination content", labels);
             Click(FindButton(panel, "Open desktop"));

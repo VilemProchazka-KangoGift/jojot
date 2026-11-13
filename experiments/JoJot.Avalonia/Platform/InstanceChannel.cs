@@ -88,6 +88,10 @@ internal sealed partial class InstanceChannel : IDisposable
             {
                 using var pipe = new NamedPipeClientStream(".", _pipeName, PipeDirection.Out);
                 pipe.Connect(1000);
+                // A shell-launched second instance can transfer its foreground permission
+                // to the actual pipe server before requesting activation.
+                var serverProcessId = GetServerProcessId(pipe);
+                if (serverProcessId != 0) AllowSetForegroundWindow(serverProcessId);
                 using var writer = new StreamWriter(pipe) { AutoFlush = true };
                 writer.WriteLine(JsonSerializer.Serialize(message, IpcMessageContext.Default.IpcMessage));
                 return SendResult.Delivered;
@@ -111,6 +115,17 @@ internal sealed partial class InstanceChannel : IDisposable
 
     internal static bool IsEligibleOwner(DateTime startUtc, DateTime nowUtc, TimeSpan waited) =>
         waited >= TimeSpan.FromSeconds(5) && nowUtc - startUtc >= TimeSpan.FromSeconds(10);
+
+    internal static uint GetServerProcessId(NamedPipeClientStream pipe) =>
+        OperatingSystem.IsWindows() && GetNamedPipeServerProcessId(pipe.SafePipeHandle.DangerousGetHandle(), out var id) ? id : 0;
+
+    [LibraryImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static partial bool GetNamedPipeServerProcessId(nint pipe, out uint serverProcessId);
+
+    [LibraryImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static partial bool AllowSetForegroundWindow(uint processId);
 
     private bool TryTakeAbandonedMutex()
     {

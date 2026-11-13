@@ -30,6 +30,14 @@ public sealed partial class MainWindow
             return;
         }
 
+        if (_ready && !_busy && !_closing && _renameTab is null &&
+            e.KeyModifiers == KeyModifiers.Control && e.Key is Key.F or Key.H)
+        {
+            ShowFindPanel();
+            e.Handled = true;
+            return;
+        }
+
         if (!_ready || _busy || _closing || _renameTab is not null || PanelHost.IsVisible)
             return;
         if (e.Key == Key.Enter && FindHost.IsVisible && !Editor.IsKeyboardFocusWithin &&
@@ -75,8 +83,6 @@ public sealed partial class MainWindow
             case Key.Z when ctrl && !SearchBox.IsKeyboardFocusWithin: MoveHistory(false); break;
             case Key.Y when ctrl && !SearchBox.IsKeyboardFocusWithin:
             case Key.Z when ctrlShift && !SearchBox.IsKeyboardFocusWithin: MoveHistory(true); break;
-            case Key.F when ctrl:
-            case Key.H when ctrl: ShowFindPanel(); break;
             case Key.C when ctrl && Editor.IsKeyboardFocusWithin && string.IsNullOrEmpty(Editor.SelectedText):
                 await CopyNoteAsync();
                 break;

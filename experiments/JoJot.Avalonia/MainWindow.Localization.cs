@@ -9,11 +9,11 @@ public sealed partial class MainWindow
     private static string CoreLabel(string english, string czech) =>
         Strings.Culture?.TwoLetterISOLanguageName == "cs" ? czech : english;
 
-    private static string OpenFilesLabel => CoreLabel("Open files…", "Otevřít soubory…");
+    private static string OpenFilesLabel => CoreLabel("Open File(s)…", "Otevřít soubor(y)…");
 
     private void LocalizeCoreControls()
     {
-        AddButton.Content = Strings.Date_NewNote;
+        AutomationProperties.SetName(AddButton, Strings.Date_NewNote);
         ToolTip.SetTip(AddButton, Strings.Tooltip_NewTab);
         OpenFilesMenuItem.Header = OpenFilesLabel;
         SearchBox.PlaceholderText = Strings.Search_Placeholder;
@@ -23,7 +23,6 @@ public sealed partial class MainWindow
         UndoToastButton.Content = Strings.Common_Undo;
         DropHeading.Text = Strings.Drop_FileHere;
         DropHint.Text = Strings.Drop_Hint;
-        LabelToolbarButton(RenameButton, Strings.Ctx_Rename, Strings.Ctx_Rename + " (F2)");
         LabelToolbarButton(CloneButton, Strings.Ctx_Clone, Strings.Tooltip_Clone);
         LabelToolbarButton(CopyButton, Strings.Help_Copy, Strings.Tooltip_Copy);
         LabelToolbarButton(PasteButton, Strings.Help_Paste, Strings.Tooltip_Paste);

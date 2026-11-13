@@ -15,6 +15,7 @@
     <PackageReference Include="Avalonia.Desktop" Version="12.1.6" />
     <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.6" />
     <InternalsVisibleTo Include="JoJot.Avalonia.Tests" />
+    <AvaloniaResource Include="../../JoJot/Assets/jojot.ico" Link="Assets/jojot.ico" />
     <ProjectReference Include="../JoJot.Storage/JoJot.Storage.csproj" />
   </ItemGroup>
   <!-- .NET 11 does not classify project-reference satellites as resource assets for ILC. -->

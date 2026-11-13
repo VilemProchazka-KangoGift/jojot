@@ -60,6 +60,15 @@ internal static class Program
                 using var hotkey = new GlobalHotkey(0x0007, 0x86, received.Set); // Ctrl+Alt+Shift+F23
                 return hotkey.Registered && hotkey.PostTestMessage() && received.Wait(TimeSpan.FromSeconds(5)) ? 0 : 1;
             }
+            if (args.Length == 4 && args[0] == "--data-dir" &&
+                args[2] is "--desktop-move-probe" or "--desktop-move-probe-merge")
+            {
+                if (!Guid.TryParse(args[3], out var target) || target == Guid.Empty)
+                    throw new ArgumentException("The desktop move probe requires a valid target GUID.");
+                ExperimentApp.DesktopMoveProbeMerge = args[2] == "--desktop-move-probe-merge";
+                args = args[..2];
+                ExperimentApp.DesktopMoveProbe = target.ToString();
+            }
             var options = ExperimentOptions.Parse(args);
             options.ValidateDataPath();
             AppEnvironment.SetAppDataDirectory(options.DataDirectory);
@@ -106,6 +115,8 @@ internal static class Program
 
 internal sealed class ExperimentApp : Application
 {
+    internal static string? DesktopMoveProbe { get; set; }
+    internal static bool DesktopMoveProbeMerge { get; set; }
     internal static ExperimentOptions Options { get; set; } = null!;
     internal static BenchmarkProbe? Benchmark { get; set; }
     internal static bool RestartRequested { get; private set; }
@@ -133,6 +144,8 @@ internal sealed class ExperimentApp : Application
     private bool _desktopMatching;
     private bool _matchPending;
     private bool _shuttingDown;
+    private bool _probePendingObserved;
+    private string? _probeSource;
     private uint _hotkeyModifiers = 0x000C;
     private uint _hotkeyKey = 0x4E;
     internal static bool ManagesStorageLifetime { get; private set; }
@@ -173,8 +186,8 @@ internal sealed class ExperimentApp : Application
             var window = GetOrCreateWindow(desktop);
             if (message is NewTabCommand or ShowDesktopCommand && desktop != "default")
                 VirtualDesktop.TrySwitchToDesktop(desktop);
+            WindowActivation.Activate(window);
             if (message is NewTabCommand newTab) window.RequestNewTab(newTab.InitialContent);
-            window.Activate();
         }
     }
 
@@ -262,6 +275,10 @@ internal sealed class ExperimentApp : Application
                 desktop.ShutdownMode = ShutdownMode.OnExplicitShutdown;
             var detectedDesktop = VirtualDesktop.GetCurrentDesktopOrDefault();
             _liveDesktops = VirtualDesktop.GetDesktops();
+            if (DesktopMoveProbe is { } requested &&
+                (detectedDesktop == "default" || requested.Equals(detectedDesktop, StringComparison.OrdinalIgnoreCase) ||
+                 !_liveDesktops.Any(item => item.Id.Equals(requested, StringComparison.OrdinalIgnoreCase))))
+                throw new InvalidOperationException("The desktop move probe requires a different, existing desktop.");
             _desktopNotifications = DesktopNotifications.TryRegister(() => Dispatcher.UIThread.Post(RefreshDesktops));
             _desktopPoll = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
             _desktopPoll.Tick += (_, _) => RefreshDesktops();
@@ -278,6 +295,41 @@ internal sealed class ExperimentApp : Application
             _windows.Add(initialDesktop, window);
             window.Closed += (_, _) => _windows.Remove(window.DesktopGuid);
             window.InitializeDesktopMovement();
+            if (DesktopMoveProbe is { } probeTarget)
+                window.Opened += async (_, _) =>
+                {
+                    try
+                    {
+                        await window.Ready;
+                        _probeSource = initialDesktop;
+                        if (DesktopMoveProbeMerge)
+                        {
+                            await NoteStore.InsertNoteAsync(initialDesktop, "Probe source", "Probe source marker", false, 0);
+                            await window.ReloadNotesAsync();
+                            var targetWindow = GetOrCreateWindow(probeTarget);
+                            var targetHandle = targetWindow.TryGetPlatformHandle()?.Handle ?? 0;
+                            if (!VirtualDesktop.TryMoveWindowToDesktop(targetHandle, probeTarget))
+                                throw new InvalidOperationException("Desktop move probe: target window move failed.");
+                            await targetWindow.Ready;
+                            await NoteStore.InsertNoteAsync(probeTarget, "Probe target", "Probe target marker", false, 0);
+                            await targetWindow.ReloadNotesAsync();
+                        }
+                        await LogProbeCountsAsync("before", initialDesktop, probeTarget);
+                        var handle = window.TryGetPlatformHandle()?.Handle ?? 0;
+                        if (!VirtualDesktop.TryMoveWindowToDesktop(handle, probeTarget))
+                            throw new InvalidOperationException("Desktop move probe: move failed.");
+                        if (!VirtualDesktop.TrySwitchToDesktop(probeTarget))
+                            throw new InvalidOperationException("Desktop move probe: switch failed.");
+                        window.CheckForDesktopMovement();
+                    }
+                    catch (Exception ex)
+                    {
+                        LogService.Error("Desktop move probe failed", ex);
+                        Console.Error.WriteLine(ex);
+                        FailExitCode = 1;
+                        desktop.Shutdown();
+                    }
+                };
             desktop.MainWindow = window;
             StartupRecovery = RecoverPendingMovesAsync(window);
             if (Options.BenchmarkOutput is null)
@@ -342,6 +394,8 @@ internal sealed class ExperimentApp : Application
                 _ = InitializeHotkeyAsync();
             desktop.Exit += (_, _) =>
             {
+                if (DesktopMoveProbe is not null && !VirtualDesktop.TrySwitchToDesktop(detectedDesktop))
+                    Console.Error.WriteLine("Desktop move probe: could not restore the original desktop.");
                 _hotkey?.Dispose();
                 _desktopPoll?.Stop();
                 _desktopNotifications?.Dispose();
@@ -363,6 +417,27 @@ internal sealed class ExperimentApp : Application
         _pendingMoveReview.Clear();
         _pendingMoveReview.AddRange(moves);
         foreach (var window in _windows.Values) window.NotifyOrphansChanged();
+        if (_probeSource is { } source && DesktopMoveProbe is { } target)
+        {
+            if (moves.Any(move => move.WindowId.Equals(source, StringComparison.OrdinalIgnoreCase)))
+                _probePendingObserved = true;
+            else if (_probePendingObserved)
+            {
+                _probePendingObserved = false;
+                await LogProbeCountsAsync("resolved", source, target);
+                if (_windows.TryGetValue(source, out var owner) &&
+                    string.Equals(VirtualDesktop.GetWindowDesktopId(owner.TryGetPlatformHandle()?.Handle ?? 0), source,
+                        StringComparison.OrdinalIgnoreCase))
+                    VirtualDesktop.TrySwitchToDesktop(source);
+            }
+        }
+    }
+
+    private static async Task LogProbeCountsAsync(string phase, string source, string target)
+    {
+        var sourceCount = (await NoteStore.GetNotesForDesktopAsync(source)).Count;
+        var targetCount = (await NoteStore.GetNotesForDesktopAsync(target)).Count;
+        Console.WriteLine($"Desktop move probe {phase}: source={source} target={target} sourceNotes={sourceCount} targetNotes={targetCount}");
     }
 
     private async void RefreshDesktops()

@@ -47,6 +47,7 @@ public sealed partial class MainWindow
 
         _dropItem?.Classes.Remove("dropAbove");
         _dropItem?.Classes.Remove("dropBelow");
+        _dropItem?.Classes.Remove("dropBoundary");
         _dropItem = null;
         _dropIndex = -1;
         foreach (var container in NoteList.GetVisualDescendants().OfType<ListBoxItem>())
@@ -58,7 +59,16 @@ public sealed partial class MainWindow
             var below = point.Y >= origin.Y + container.Bounds.Height / 2;
             _dropIndex = _notes.IndexOf(target) + (below ? 1 : 0);
             _dropItem = container;
-            container.Classes.Add(below ? "dropBelow" : "dropAbove");
+            if (!below && target.ShowUnpinnedSeparator)
+                container.Classes.Add("dropBoundary");
+            else if (below && _dropIndex < _notes.Count && _notes[_dropIndex].ShowUnpinnedSeparator &&
+                     NoteList.ContainerFromItem(_notes[_dropIndex]) is ListBoxItem boundary)
+            {
+                _dropItem = boundary;
+                boundary.Classes.Add("dropBoundary");
+            }
+            else
+                container.Classes.Add(below ? "dropBelow" : "dropAbove");
             break;
         }
 
@@ -95,6 +105,7 @@ public sealed partial class MainWindow
         _draggingTab = false;
         _dropItem?.Classes.Remove("dropAbove");
         _dropItem?.Classes.Remove("dropBelow");
+        _dropItem?.Classes.Remove("dropBoundary");
         _dropItem = null;
         _dropIndex = -1;
     }

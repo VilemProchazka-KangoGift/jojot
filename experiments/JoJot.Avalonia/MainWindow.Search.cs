@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.Presenters;
 using Avalonia.Controls.Primitives;
 using Avalonia.Input;
+using Avalonia.Layout;
 using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Threading;
@@ -30,49 +31,79 @@ public sealed partial class MainWindow
 
     private void ShowFindPanel()
     {
-        if (_active is null)
+        if (_active is null || !_ready || _busy || _closing)
             return;
+        DismissSidePanel();
         if (_findQuery is null)
             CreateFindPanel();
         FindHost.IsVisible = true;
         if (Editor.SelectedText is { Length: > 0 } selection && !selection.Contains('\n') && !selection.Contains('\r'))
             _findQuery!.Text = selection;
-        _findQuery!.Focus();
-        _findQuery.SelectAll();
+        FocusFindQuery();
+        Dispatcher.UIThread.Post(FocusFindQuery, DispatcherPriority.Loaded);
         ScheduleFindRefresh();
+    }
+
+    private void FocusFindQuery()
+    {
+        if (FindHost.IsVisible && _findQuery is { } query && !query.IsFocused && query.Focus())
+            query.SelectAll();
     }
 
     private void CreateFindPanel()
     {
-        var query = new TextBox { Name = "FindQuery", PlaceholderText = Strings.Find_Placeholder, MinWidth = 70 };
-        var replacement = new TextBox { Name = "FindReplacement", PlaceholderText = Strings.Find_ReplacePlaceholder, MinWidth = 70 };
-        var matchCase = new CheckBox { Content = CoreLabel("Match case", "Rozlišovat velikost písmen") };
-        var wholeWord = new CheckBox { Content = CoreLabel("Whole word", "Celá slova") };
-        var count = new TextBlock { VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center };
+        var query = new TextBox { Name = "FindQuery", PlaceholderText = Strings.Find_Placeholder };
+        var replacement = new TextBox { Name = "FindReplacement", PlaceholderText = Strings.Find_ReplacePlaceholder };
+        query.Classes.Add("panelInput");
+        replacement.Classes.Add("panelInput");
+        var matchCase = new CheckBox { Content = "Aa", Classes = { "findOption" } };
+        var wholeWord = new CheckBox { Content = "W", Classes = { "findOption" } };
+        LabelFindControl(matchCase, CoreLabel("Match case", "Rozlišovat velikost písmen"));
+        LabelFindControl(wholeWord, CoreLabel("Whole word", "Celá slova"));
+        var count = new TextBlock { VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Right };
+        count.Classes.Add("panelHint");
         _findQuery = query;
         _findReplace = replacement;
         _findCase = matchCase;
         _findWhole = wholeWord;
         _findCount = count;
 
-        var inputs = new Grid { ColumnDefinitions = new ColumnDefinitions("*,*"), ColumnSpacing = 5 };
-        Grid.SetColumn(replacement, 1);
-        inputs.Children.Add(query);
-        inputs.Children.Add(replacement);
-        var actions = new WrapPanel
+        var close = FindActionButton("\uE711", CoreLabel("Close find", "Zavřít hledání"), HideFindPanel);
+        close.Classes.Remove("panelButton");
+        close.Classes.Add("iconButton");
+        close.Classes.Add("panelClose");
+        var header = new DockPanel();
+        DockPanel.SetDock(close, Dock.Right);
+        header.Children.Add(close);
+        header.Children.Add(new TextBlock { Text = Strings.Find_Header, FontSize = 18, FontWeight = FontWeight.SemiBold,
+            VerticalAlignment = VerticalAlignment.Center });
+
+        var options = new DockPanel();
+        DockPanel.SetDock(matchCase, Dock.Left);
+        DockPanel.SetDock(wholeWord, Dock.Left);
+        options.Children.Add(matchCase);
+        options.Children.Add(wholeWord);
+        options.Children.Add(count);
+        var previous = FindActionButton("\uE70E", CoreLabel("Previous match", "Předchozí shoda"), () => NavigateFind(false));
+        var next = FindActionButton("\uE70D", CoreLabel("Next match", "Další shoda"), () => NavigateFind(true));
+        previous.Classes.Add("panelGlyph");
+        next.Classes.Add("panelGlyph");
+        var navigation = PanelRow(previous, next);
+        navigation.Margin = new Thickness(0, 0, 0, 4);
+        FindHost.Child = new ScrollViewer
         {
-            Children =
+            HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
+            Content = new StackPanel
             {
-                matchCase, wholeWord,
-                FindActionButton("↑", CoreLabel("Previous match", "Předchozí shoda"), () => NavigateFind(false)),
-                FindActionButton("↓", CoreLabel("Next match", "Další shoda"), () => NavigateFind(true)),
-                FindActionButton(Strings.Find_Replace, Strings.Find_Replace, () => ReplaceFind(false)),
-                FindActionButton(Strings.Find_ReplaceAll, Strings.Find_ReplaceAll, () => ReplaceFind(true)),
-                FindActionButton("×", CoreLabel("Close find", "Zavřít hledání"), HideFindPanel),
-                count,
+                Spacing = 8, Margin = new Thickness(16),
+                Children =
+                {
+                    header, CreateFindField(query), options, navigation, CreateFindField(replacement),
+                    PanelRow(FindActionButton(Strings.Find_Replace, Strings.Find_Replace, () => ReplaceFind(false)),
+                        FindActionButton(Strings.Find_ReplaceAll, Strings.Find_ReplaceAll, () => ReplaceFind(true))),
+                },
             },
         };
-        FindHost.Child = new StackPanel { Spacing = 4, Children = { inputs, actions } };
 
         query.TextChanged += (_, _) => ScheduleFindRefresh();
         matchCase.IsCheckedChanged += (_, _) => ScheduleFindRefresh();
@@ -92,11 +123,29 @@ public sealed partial class MainWindow
         Editor.AddHandler(ScrollViewer.ScrollChangedEvent, (_, _) => _findHighlights?.InvalidateVisual());
     }
 
+    private static Control CreateFindField(TextBox input)
+    {
+        var clear = FindActionButton("\uE711", CoreLabel("Clear text", "Vymazat text"), () => input.Clear());
+        clear.Classes.Remove("panelButton");
+        clear.Classes.Add("iconButton");
+        clear.Classes.Add("findClear");
+        clear.IsVisible = false;
+        input.Classes.Add("findField");
+        input.TextChanged += (_, _) => clear.IsVisible = !string.IsNullOrEmpty(input.Text);
+        return new Grid { Children = { input, clear } };
+    }
+
+    private static void LabelFindControl(Control control, string label)
+    {
+        ToolTip.SetTip(control, label);
+        global::Avalonia.Automation.AutomationProperties.SetName(control, label);
+    }
+
     private static Button FindActionButton(string label, string help, Action action)
     {
-        var button = new Button { Content = label, Padding = new Thickness(5, 2), Margin = new Thickness(0, 0, 4, 0) };
-        ToolTip.SetTip(button, help);
-        Avalonia.Automation.AutomationProperties.SetName(button, help);
+        var button = new Button { Content = label };
+        button.Classes.Add("panelButton");
+        LabelFindControl(button, help);
         button.Click += (_, _) => action();
         return button;
     }

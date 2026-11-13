@@ -36,9 +36,14 @@ public sealed class MainWindowTests
         var add = Find<Button>(window, "AddButton");
         var first = Assert.IsType<NoteTab>(list.SelectedItem);
         Assert.Equal(JoJot.Resources.Strings.Date_NewNote, first.DisplayLabel);
-        Assert.Equal(first.DisplayLabel, Find<TextBlock>(window, "NoteTitle").Text);
+        Assert.Equal(first.DisplayLabel, global::Avalonia.Automation.AutomationProperties.GetHelpText(editor));
         Click(add);
         Assert.Single(list.Items);
+        var searchInput = Find<TextBox>(window, "SearchBox");
+        searchInput.Focus();
+        Assert.True(searchInput.IsFocused);
+        Press(window, searchInput, Key.T, PhysicalKey.T, RawInputModifiers.Control);
+        await WaitForAsync(() => editor.IsFocused, "new tab editor focus");
 
         editor.Text = "Debounced <first> & note";
         await WaitForAsync(() => ReadContent(fixture.Directory, first.Id) == editor.Text, "debounced database write");
@@ -176,13 +181,19 @@ public sealed class MainWindowTests
         var editor = Find<TextBox>(window, "Editor");
         var imported = Assert.IsType<NoteTab>(list.SelectedItem);
         Assert.Equal(source, imported.FilePath);
-        Assert.False(Find<Button>(window, "RenameButton").IsEnabled);
+        Press(window, editor, Key.F2, PhysicalKey.F2, RawInputModifiers.None);
+        Assert.DoesNotContain(window.GetVisualDescendants().OfType<TextBox>(), box => box.Name == "InlineRenameBox");
+        Assert.False(imported.HasUnsavedFileChanges);
         editor.Text = "explicitly saved";
+        await WaitForAsync(() => imported.HasUnsavedFileChanges, "unsaved external file");
         await window.FlushWindowAsync();
+        Assert.True(imported.HasUnsavedFileChanges);
         Assert.Equal("source data", await File.ReadAllTextAsync(source));
         Press(window, editor, Key.S, PhysicalKey.S, RawInputModifiers.Control);
         await WaitForAsync(() => editor.IsEffectivelyEnabled && File.ReadAllText(source) == "explicitly saved", "file-backed save");
+        Assert.False(imported.HasUnsavedFileChanges);
         await window.SaveNoteToPathCoreAsync(imported, target);
+        Assert.False(imported.HasUnsavedFileChanges);
         Assert.Equal(new byte[] { 0xef, 0xbb, 0xbf }, (await File.ReadAllBytesAsync(target)).Take(3));
         Assert.Equal(target, imported.FilePath);
         Assert.Equal("saved.txt", imported.Name);
@@ -196,6 +207,33 @@ public sealed class MainWindowTests
         Assert.Same(imported, Assert.Single(list.Items));
         Click(Find<Button>(window, "UndoToastButton"));
         Assert.Contains(unpinned, list.Items);
+    }
+
+    [AvaloniaFact]
+    public async Task FileBackedDraftStillShowsUnsavedAfterReopenAndClearsWhenContentMatches()
+    {
+        await using var fixture = new WindowFixture();
+        var window = fixture.Open();
+        await window.Ready;
+        var path = Path.Combine(fixture.Directory, "reopen.txt");
+        const string saved = "longer saved content";
+        await File.WriteAllTextAsync(path, saved);
+        await window.ImportPathsAsync([path]);
+        var editor = Find<TextBox>(window, "Editor");
+        editor.Text = "draft";
+        await window.FlushWindowAsync();
+        window.Close();
+        await WaitForAsync(() => !window.IsVisible, "file-backed window closed");
+
+        window = fixture.Open();
+        await window.Ready;
+        editor = Find<TextBox>(window, "Editor");
+        var imported = Assert.IsType<NoteTab>(Find<ListBox>(window, "NoteList").SelectedItem);
+        Assert.Equal("draft", editor.Text);
+        await WaitForAsync(() => imported.HasUnsavedFileChanges, "reopened draft differs from file");
+        Assert.Equal(saved, await File.ReadAllTextAsync(path));
+        editor.Text = saved;
+        await WaitForAsync(() => !imported.HasUnsavedFileChanges, "restoring original text clears the file marker");
     }
 
     [AvaloniaFact]

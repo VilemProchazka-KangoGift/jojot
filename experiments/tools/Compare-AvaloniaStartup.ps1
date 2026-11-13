@@ -5,6 +5,7 @@ param(
     [Parameter(Mandatory)] [string] $ManagedExe,
     [Parameter(Mandatory)] [string] $AotExe,
     [string] $PrototypeAotExe,
+    [switch] $FullAvalonia,
     [string] $FixtureDirectory,
     [Parameter(Mandatory)] [string] $OutputDirectory,
     [Parameter(Mandatory)] [double] $Width,
@@ -22,14 +23,16 @@ $fixture = if ($FixtureDirectory) {
 }
 $desktop = (Get-Content -LiteralPath (Join-Path $fixture 'desktop.txt') -Raw).Trim()
 $fixtureDesktopId = [guid]::Empty
-if ($PrototypeAotExe -and
+if (($PrototypeAotExe -or $FullAvalonia) -and
     (-not [guid]::TryParse($desktop, [ref]$fixtureDesktopId) -or $fixtureDesktopId -eq [guid]::Empty)) {
-    throw 'The four-build comparison requires a fixture seeded on a detected Windows virtual desktop.'
+    throw 'The full Avalonia comparison requires a fixture seeded on a detected Windows virtual desktop.'
 }
 $fixtureFiles = @('jojot.db', 'startup-cache.json', '.clean-shutdown')
 $executables = [ordered]@{ 'WPF ReadyToRun' = (Resolve-Path -LiteralPath (Join-Path $WpfRun 'baseline/wpf/JoJot.exe')).Path }
 if ($PrototypeAotExe) {
     $executables['Prototype NativeAOT'] = (Resolve-Path -LiteralPath $PrototypeAotExe).Path
+}
+if ($PrototypeAotExe -or $FullAvalonia) {
     $executables['Full Avalonia ReadyToRun'] = (Resolve-Path -LiteralPath $ManagedExe).Path
     $executables['Full Avalonia NativeAOT'] = (Resolve-Path -LiteralPath $AotExe).Path
 } else {

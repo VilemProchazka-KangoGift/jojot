@@ -4,142 +4,165 @@
         xmlns:res="using:JoJot.Resources"
         x:Class="JoJot.AvaloniaExperiment.MainWindow"
         x:CompileBindings="True"
-        Title="JoJot · Avalonia experiment"
-        MinWidth="510" MinHeight="360">
-  <Grid RowDefinitions="Auto,*,Auto">
-    <Border Padding="10,7" BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
-            BorderThickness="0,0,0,1">
-      <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
-        <Button x:Name="AddButton" Click="OnAdd" Classes="accent" IsEnabled="False"
-                Content="{x:Static res:Strings.Date_NewNote}" />
-        <TextBox x:Name="SearchBox" Grid.Column="1" MaxWidth="240" HorizontalAlignment="Stretch"
-                 PlaceholderText="Search notes" AutomationProperties.Name="Search notes" TextChanged="OnSearchChanged" />
-        <Button x:Name="HamburgerButton" Grid.Column="2" Content="☰" AutomationProperties.Name="Menu">
-          <Button.Flyout>
-            <MenuFlyout>
-              <MenuItem x:Name="OpenFilesMenuItem" Header="Open files…" Click="OnOpenFiles" />
-              <MenuItem x:Name="PreferencesMenuItem" Header="Preferences" Click="OnPreferencesMenu" />
-              <MenuItem x:Name="HelpMenuItem" Header="Help" Click="OnHelpMenu" />
-              <MenuItem x:Name="CleanupMenuItem" Header="Cleanup" Click="OnCleanupMenu" />
-              <MenuItem x:Name="RecoveryMenuItem" Header="Recover notes" Click="OnRecoveryMenu" />
-              <Separator />
-              <MenuItem x:Name="ExitMenuItem" Header="Exit" Click="OnExitMenu" />
-            </MenuFlyout>
-          </Button.Flyout>
-        </Button>
-      </Grid>
-    </Border>
-    <Grid Grid.Row="1">
-      <Grid x:Name="WorkArea" IsEnabled="False">
-        <Grid.ColumnDefinitions>
-          <ColumnDefinition Width="190" MinWidth="120" MaxWidth="400" />
-          <ColumnDefinition Width="4" />
-          <ColumnDefinition Width="*" MinWidth="210" />
-        </Grid.ColumnDefinitions>
-        <Border Padding="4">
-          <ListBox x:Name="NoteList" SelectionChanged="OnNoteSelected" AutomationProperties.Name="Notes">
-            <ListBox.ItemTemplate>
-              <DataTemplate x:DataType="models:NoteTab">
-                <Grid RowDefinitions="Auto,Auto">
-                  <Border Height="1" Margin="0,0,0,4" IsVisible="{Binding ShowUnpinnedSeparator}"
-                          Background="{DynamicResource SystemControlForegroundBaseLowBrush}" />
-                  <Grid Grid.Row="1" ColumnDefinitions="Auto,Auto,*,Auto" ColumnSpacing="5">
-                    <TextBlock Text="●" IsVisible="{Binding Pinned}" VerticalAlignment="Center" FontSize="9"
-                               AutomationProperties.Name="Pinned" />
-                    <TextBlock Grid.Column="1" Text="▤" IsVisible="{Binding IsFileBacked}"
-                               AutomationProperties.Name="File-backed note" />
-                    <StackPanel Grid.Column="2" MinWidth="0">
-                      <TextBlock x:Name="TabLabel" Text="{Binding DisplayLabel}" TextTrimming="CharacterEllipsis"
-                                 Classes.placeholder="{Binding IsPlaceholder}" />
-                      <TextBlock Text="{Binding UpdatedDisplay}" FontSize="10" TextTrimming="CharacterEllipsis"
-                                 ToolTip.Tip="{Binding UpdatedTooltipText}"
-                                 Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" />
-                    </StackPanel>
-                    <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="0">
-                      <Button Classes="tabAction" Content="📌" ToolTip.Tip="{x:Static res:Strings.Tooltip_PinShort}" Click="OnRowPin" />
-                      <Button Classes="tabAction" Content="×" ToolTip.Tip="{x:Static res:Strings.Tooltip_Delete}" Click="OnRowClose" />
-                    </StackPanel>
-                  </Grid>
-                </Grid>
-              </DataTemplate>
-            </ListBox.ItemTemplate>
-          </ListBox>
+        Title="JoJot" MinWidth="320" MinHeight="420" Icon="/Assets/jojot.ico"
+        FontFamily="Segoe UI" FontSize="13"
+        Background="{DynamicResource c-win-bg}" Foreground="{DynamicResource c-text-primary}">
+  <Window.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.MergedDictionaries>
+        <ResourceInclude Source="JoJotColors.axaml" />
+      </ResourceDictionary.MergedDictionaries>
+    </ResourceDictionary>
+  </Window.Resources>
+  <Window.Styles>
+    <StyleInclude Source="JoJotStyles.axaml" />
+  </Window.Styles>
+
+  <Grid>
+    <Grid x:Name="WorkArea" IsEnabled="False">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="180" MinWidth="120" MaxWidth="400" />
+        <ColumnDefinition Width="4" />
+        <ColumnDefinition Width="*" />
+      </Grid.ColumnDefinitions>
+      <Grid RowDefinitions="Auto,*" Background="{DynamicResource c-sidebar-bg}">
+        <Border Padding="6" BorderBrush="{DynamicResource c-border}" BorderThickness="0,0,0,1">
+          <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="4">
+            <Grid>
+              <Button x:Name="HamburgerButton" Classes="iconButton" Content="&#xE700;"
+                      AutomationProperties.Name="Menu">
+                <Button.Flyout>
+                  <MenuFlyout Placement="BottomEdgeAlignedLeft">
+                    <MenuItem x:Name="RecoveryMenuItem" Header="Recover notes" Click="OnRecoveryMenu" />
+                    <Separator />
+                    <MenuItem x:Name="CleanupMenuItem" Header="Cleanup" Click="OnCleanupMenu" />
+                    <Separator />
+                    <MenuItem x:Name="OpenFilesMenuItem" Header="Open File(s)…" Click="OnOpenFiles" />
+                    <MenuItem x:Name="PreferencesMenuItem" Header="Preferences" Click="OnPreferencesMenu" />
+                    <MenuItem x:Name="ExitMenuItem" Header="Exit" Click="OnExitMenu" />
+                  </MenuFlyout>
+                </Button.Flyout>
+              </Button>
+              <Ellipse x:Name="OrphanBadge" Width="7" Height="7" IsVisible="False" IsHitTestVisible="False"
+                       HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-1,-1,0"
+                       Fill="{DynamicResource c-accent}" />
+            </Grid>
+            <TextBox x:Name="SearchBox" Grid.Column="1" Classes="noteSearch" Height="28"
+                     PlaceholderText="Search notes" AutomationProperties.Name="Search notes" TextChanged="OnSearchChanged" />
+            <Button x:Name="AddButton" Grid.Column="2" Classes="iconButton addNote" Content="+"
+                    Click="OnAdd" IsEnabled="False" />
+          </Grid>
         </Border>
-        <GridSplitter x:Name="TabSplitter" Grid.Column="1" ResizeDirection="Columns" ResizeBehavior="PreviousAndNext"
-                      Background="{DynamicResource SystemControlForegroundBaseLowBrush}" />
-        <Grid Grid.Column="2" RowDefinitions="Auto,Auto,Auto,*" Margin="9,6,9,7" RowSpacing="5">
-          <TextBlock x:Name="NoteTitle" FontSize="15" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-          <WrapPanel Grid.Row="1">
-            <Button x:Name="UndoButton" Classes="toolbar" Content="&#xE7A7;" ToolTip.Tip="Undo" AutomationProperties.Name="Undo" Click="OnUndo" />
-            <Button x:Name="RedoButton" Classes="toolbar" Content="&#xE7A6;" ToolTip.Tip="Redo" AutomationProperties.Name="Redo" Click="OnRedo" />
-            <Button x:Name="RenameButton" Classes="toolbar" Content="&#xE8AC;" Click="OnRename" />
-            <Button x:Name="PinButton" Classes="toolbar" Content="&#xE718;" Click="OnPin" />
-            <Button x:Name="CloneButton" Classes="toolbar" Content="&#xF413;" Click="OnClone" />
-            <Button x:Name="CopyButton" Classes="toolbar" Content="&#xE8C8;" Click="OnCopy" />
-            <Button x:Name="PasteButton" Classes="toolbar" Content="&#xE77F;" Click="OnPaste" />
-            <Button x:Name="SaveButton" Classes="toolbar" Content="&#xE74E;" Click="OnSave" />
-            <Button x:Name="SaveAsButton" Classes="toolbar" Content="&#xE792;" Click="OnSaveAs" />
-            <Button x:Name="FindButton" Classes="toolbar" Content="&#xE721;" Click="OnFind" />
-            <Button x:Name="DeleteButton" Classes="toolbar" Content="&#xE74D;" Click="OnDelete" />
-          </WrapPanel>
-          <Border x:Name="FindHost" Grid.Row="2" IsVisible="False" />
-          <TextBox x:Name="Editor" Grid.Row="3" FontSize="13" AcceptsReturn="True" AcceptsTab="True"
-                   IsUndoEnabled="False" IsInactiveSelectionHighlightEnabled="True" ClearSelectionOnLostFocus="False" TextWrapping="Wrap" VerticalContentAlignment="Top"
-                   HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
-                   ScrollViewer.VerticalScrollBarVisibility="Auto" TextChanged="OnEditorChanged"
-                   AutomationProperties.Name="Note editor" />
+        <ListBox x:Name="NoteList" Grid.Row="1" Classes="noteList"
+                 SelectionChanged="OnNoteSelected" AutomationProperties.Name="Notes">
+          <ListBox.ItemTemplate>
+            <DataTemplate x:DataType="models:NoteTab">
+              <StackPanel>
+                <Grid Height="9" IsVisible="{Binding ShowUnpinnedSeparator}">
+                  <Border Height="1" Margin="8,0" VerticalAlignment="Center" Background="{DynamicResource c-border}" />
+                  <Border Classes="pinnedBoundaryDrop" Height="2" VerticalAlignment="Center" />
+                </Grid>
+                <Border Classes="noteRow" Padding="8,6">
+                  <Grid RowDefinitions="22,Auto" RowSpacing="2">
+                    <DockPanel LastChildFill="True">
+                      <Button DockPanel.Dock="Left" Classes="iconButton rowAction pinnedAction"
+                              IsVisible="{Binding Pinned}" Content="&#xE718;"
+                              ToolTip.Tip="{x:Static res:Strings.Tooltip_UnpinShort}" Click="OnRowPin" />
+                      <Button DockPanel.Dock="Right" Classes="iconButton rowAction closeAction" Content="&#xE711;"
+                              ToolTip.Tip="{x:Static res:Strings.Tooltip_Delete}" Click="OnRowClose" />
+                      <Button DockPanel.Dock="Right" Classes="iconButton rowAction hiddenAction"
+                              Classes.unpinnedAction="{Binding !Pinned}" Content="&#xE718;"
+                              ToolTip.Tip="{x:Static res:Strings.Tooltip_PinShort}" Click="OnRowPin" />
+                      <DockPanel ToolTip.Tip="{Binding FilePath}">
+                        <Ellipse DockPanel.Dock="Left" Width="6" Height="6" Margin="0,0,4,0" VerticalAlignment="Center"
+                                 IsVisible="{Binding HasUnsavedFileChanges}" Fill="{DynamicResource c-accent}"
+                                 AutomationProperties.Name="{x:Static res:Strings.Tooltip_Save}"
+                                 ToolTip.Tip="{x:Static res:Strings.Tooltip_Save}" />
+                        <TextBlock DockPanel.Dock="Left" Text="&#xE8A5;" IsVisible="{Binding IsFileBacked}"
+                                   FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="11" Margin="0,0,4,0"
+                                   Foreground="{DynamicResource c-text-muted}" VerticalAlignment="Center"
+                                   AutomationProperties.Name="File-backed note" />
+                        <StackPanel VerticalAlignment="Center">
+                          <TextBlock x:Name="TabLabel" Text="{Binding DisplayLabel}" TextTrimming="CharacterEllipsis"
+                                     Classes="tabTitle" Classes.placeholder="{Binding IsPlaceholder}" />
+                        </StackPanel>
+                      </DockPanel>
+                    </DockPanel>
+                    <Grid Grid.Row="1" ColumnDefinitions="*,Auto" ColumnSpacing="4">
+                      <TextBlock Text="{Binding CreatedDisplay}" FontSize="10" TextTrimming="CharacterEllipsis"
+                                 ToolTip.Tip="{Binding CreatedTooltipText}" Foreground="{DynamicResource c-text-muted}" />
+                      <TextBlock Grid.Column="1" Text="{Binding UpdatedDisplay}" FontSize="10"
+                                 ToolTip.Tip="{Binding UpdatedTooltipText}" Foreground="{DynamicResource c-text-muted}" />
+                    </Grid>
+                  </Grid>
+                </Border>
+              </StackPanel>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+      </Grid>
+      <GridSplitter x:Name="TabSplitter" Grid.Column="1" ResizeDirection="Columns" ResizeBehavior="PreviousAndNext"
+                    Background="{DynamicResource c-border}" />
+      <Grid Grid.Column="2" RowDefinitions="Auto,*" ClipToBounds="True">
+        <Border Padding="4,2" BorderThickness="0,0,0,1" BorderBrush="{DynamicResource c-border}">
+          <DockPanel>
+            <Button x:Name="DeleteButton" DockPanel.Dock="Right" Classes="iconButton toolbarDelete" Content="&#xE74D;" Click="OnDelete" />
+            <StackPanel Orientation="Horizontal">
+              <Button x:Name="UndoButton" Classes="iconButton" Content="&#xE7A7;" Click="OnUndo" />
+              <Button x:Name="RedoButton" Classes="iconButton" Content="&#xE7A6;" Click="OnRedo" />
+              <Border Classes="toolbarSeparator" />
+              <Button x:Name="CopyButton" Classes="iconButton" Content="&#xE8C8;" Click="OnCopy" />
+              <Button x:Name="PasteButton" Classes="iconButton" Content="&#xE77F;" Click="OnPaste" />
+              <Border Classes="toolbarSeparator" />
+              <Button x:Name="PinButton" Classes="iconButton" Content="&#xE718;" Click="OnPin" />
+              <Button x:Name="CloneButton" Classes="iconButton" Content="&#xF413;" Click="OnClone" />
+              <Border Classes="toolbarSeparator" />
+              <Button x:Name="SaveButton" Classes="iconButton" Content="&#xE74E;" Click="OnSave" />
+              <Button x:Name="SaveAsButton" Classes="iconButton" Content="&#xE792;" Click="OnSaveAs" IsVisible="False" />
+              <Border Classes="toolbarSeparator" />
+              <Button x:Name="FindButton" Classes="iconButton" Content="&#xE721;" Click="OnFind" />
+            </StackPanel>
+          </DockPanel>
+        </Border>
+        <Grid Grid.Row="1" ColumnDefinitions="*,Auto">
+          <Grid>
+            <TextBox x:Name="Editor" Classes="noteEditor" FontFamily="Consolas" FontSize="13"
+                     AcceptsReturn="True" AcceptsTab="True" IsUndoEnabled="False"
+                     IsInactiveSelectionHighlightEnabled="True" ClearSelectionOnLostFocus="False"
+                     TextWrapping="Wrap" VerticalContentAlignment="Top"
+                     ScrollViewer.VerticalScrollBarVisibility="Auto" TextChanged="OnEditorChanged"
+                     AutomationProperties.Name="Note editor" />
+            <Border x:Name="ToastHost" IsVisible="False" VerticalAlignment="Bottom" Height="36" ZIndex="10"
+                    Background="{DynamicResource c-toast-bg}" Padding="12,0">
+              <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+                <TextBlock x:Name="ToastText" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"
+                           Foreground="{DynamicResource c-toast-fg}" />
+                <Button x:Name="UndoToastButton" Grid.Column="1" Classes="toastUndo" Content="Undo" Click="OnUndoToast" />
+                <Button Grid.Column="2" Classes="iconButton toastClose" Content="&#xE711;"
+                        AutomationProperties.Name="Dismiss notification" Click="OnDismissToast" />
+              </Grid>
+            </Border>
+          </Grid>
+          <Border x:Name="FindHost" Grid.Column="1" IsVisible="False" Width="280"
+                  Background="{DynamicResource c-win-bg}" BorderBrush="{DynamicResource c-border}" BorderThickness="1,0,0,0" />
         </Grid>
       </Grid>
-      <Border x:Name="FileDropHost" IsVisible="False" IsHitTestVisible="False"
-              Background="{DynamicResource SystemControlBackgroundAltHighBrush}" Opacity="0.94" Padding="12">
-        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="5">
-          <TextBlock x:Name="DropHeading" FontSize="20" FontWeight="SemiBold" TextAlignment="Center" />
-          <TextBlock x:Name="DropHint" TextAlignment="Center" TextWrapping="Wrap" />
+    </Grid>
+    <Border x:Name="FileDropHost" IsVisible="False" IsHitTestVisible="False" Background="{DynamicResource c-overlay-bg}">
+      <Border BorderBrush="{DynamicResource c-accent}" BorderThickness="3" CornerRadius="8" Margin="16">
+        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+          <TextBlock Text="&#xE896;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="48"
+                     Foreground="{DynamicResource c-accent}" HorizontalAlignment="Center" />
+          <TextBlock x:Name="DropHeading" FontSize="18" FontWeight="SemiBold" Margin="0,12,0,0"
+                     Foreground="{DynamicResource c-toast-fg}" TextAlignment="Center" />
+          <TextBlock x:Name="DropHint" FontSize="12" Margin="0,4,0,0" TextAlignment="Center"
+                     Foreground="{DynamicResource c-text-muted}" TextWrapping="Wrap" />
         </StackPanel>
       </Border>
-      <Border x:Name="PanelHost" IsVisible="False" HorizontalAlignment="Right" VerticalAlignment="Stretch"
-              Background="{DynamicResource SystemControlBackgroundAltHighBrush}"
-              BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}" BorderThickness="1,0,0,0" />
-    </Grid>
-    <StackPanel Grid.Row="2">
-      <Border x:Name="ToastHost" IsVisible="False" Padding="10,4"
-              Background="{DynamicResource SystemControlBackgroundAltMediumBrush}">
-        <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="5">
-          <TextBlock x:Name="ToastText" TextWrapping="Wrap" VerticalAlignment="Center" />
-          <Button x:Name="UndoToastButton" Grid.Column="1" Content="Undo" Click="OnUndoToast" />
-          <Button Grid.Column="2" Content="×" AutomationProperties.Name="Dismiss notification" Click="OnDismissToast" />
-        </Grid>
-      </Border>
-      <TextBlock x:Name="Status" Padding="10,4" Text="Opening notes…"
-                 Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" TextWrapping="Wrap" />
-    </StackPanel>
+    </Border>
+    <Border x:Name="HelpScrim" IsVisible="False" Background="{DynamicResource c-overlay-bg}" />
+    <Border x:Name="PanelHost" IsVisible="False" HorizontalAlignment="Right" VerticalAlignment="Stretch" />
+    <TextBlock x:Name="Status" Padding="10,4" Text="Opening notes…" HorizontalAlignment="Right" VerticalAlignment="Bottom"
+               Background="{DynamicResource c-sidebar-bg}" Foreground="{DynamicResource c-text-muted}" TextWrapping="Wrap" />
   </Grid>
-  <Window.Styles>
-    <Style Selector="Button.toolbar">
-      <Setter Property="Padding" Value="5,4" />
-      <Setter Property="Margin" Value="0,0,2,2" />
-      <Setter Property="MinWidth" Value="26" />
-      <Setter Property="FontSize" Value="14" />
-      <Setter Property="FontFamily" Value="Segoe Fluent Icons, Segoe MDL2 Assets" />
-    </Style>
-    <Style Selector="Button.tabAction">
-      <Setter Property="Opacity" Value="0" />
-      <Setter Property="Padding" Value="3,1" />
-      <Setter Property="Focusable" Value="False" />
-    </Style>
-    <Style Selector="ListBoxItem:pointerover Button.tabAction">
-      <Setter Property="Opacity" Value="1" />
-    </Style>
-    <Style Selector="ListBoxItem.dropAbove">
-      <Setter Property="BorderThickness" Value="0,2,0,0" />
-      <Setter Property="BorderBrush" Value="{DynamicResource SystemAccentColor}" />
-    </Style>
-    <Style Selector="ListBoxItem.dropBelow">
-      <Setter Property="BorderThickness" Value="0,0,0,2" />
-      <Setter Property="BorderBrush" Value="{DynamicResource SystemAccentColor}" />
-    </Style>
-    <Style Selector="TextBlock.placeholder">
-      <Setter Property="FontStyle" Value="Italic" />
-    </Style>
-  </Window.Styles>
 </Window>

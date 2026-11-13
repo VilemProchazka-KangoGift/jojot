@@ -1,9 +1,13 @@
 using System.Globalization;
+using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
+using Avalonia.Controls.Documents;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Layout;
 using Avalonia.Media;
+using Avalonia.Markup.Xaml.MarkupExtensions;
 using JoJot.Models;
 using JoJot.Resources;
 using JoJot.Services;
@@ -46,7 +50,7 @@ public sealed partial class MainWindow
         if (!ReferenceEquals(body, _panelBody))
             return;
 
-        var autoDeleteDays = new TextBox { Text = savedAutoDelete, Width = 64, MaxLength = 10 };
+        var autoDeleteDays = new TextBox { Text = savedAutoDelete, Width = 60, MaxLength = 10, Classes = { "panelInput" } };
         AutomationProperties.SetName(autoDeleteDays, Strings.Pref_AutoDelete);
         autoDeleteDays.AddHandler(InputElement.TextInputEvent, (_, e) =>
         {
@@ -61,23 +65,31 @@ public sealed partial class MainWindow
             else if (int.TryParse(value, out var days) && days > 0)
                 await PreferenceStore.SetPreferenceAsync("auto_delete_days", days.ToString(CultureInfo.InvariantCulture));
         });
-        body.Children.Add(PanelText(Strings.Pref_AutoDelete));
-        body.Children.Add(PanelRow(autoDeleteDays, PanelText(Strings.Pref_Days)));
-        body.Children.Add(PanelText(Strings.Pref_AutoDeleteHint));
-        body.Children.Add(new Separator());
+        var daysLabel = PanelText(Strings.Pref_Days);
+        daysLabel.VerticalAlignment = VerticalAlignment.Center;
+        var rule = new Border { Classes = { "panelRule" } };
+        var autoDeleteHint = PreferenceHint(Strings.Pref_AutoDeleteHint);
+        autoDeleteHint.Margin = new Thickness(0, 2, 0, 0);
+        var autoDelete = new StackPanel
+        {
+            Spacing = 6, Margin = new Thickness(0, 8, 0, 0),
+            Children = { rule, PanelText(Strings.Pref_AutoDelete), PanelRow(autoDeleteDays, daysLabel), autoDeleteHint },
+        };
 
-        var age = new TextBox { Text = "7", Width = 64, MaxLength = 10 };
+        var age = new TextBox { Text = "7", Width = 45, Height = 23, MaxLength = 10, Classes = { "noteSearch", "cleanupAge" } };
         AutomationProperties.SetName(age, Strings.Cleanup_OlderThan);
         var units = new ComboBox
         {
             ItemsSource = new[] { Strings.Cleanup_UnitDays, Strings.Cleanup_UnitHours, Strings.Cleanup_UnitWeeks, Strings.Cleanup_UnitMonths },
-            SelectedIndex = 0,
+            SelectedIndex = 0, Width = 80, Height = 23, Padding = new Thickness(5, 0),
+            MinHeight = 0, CornerRadius = new CornerRadius(0), FontSize = 13,
         };
         AutomationProperties.SetName(units, Strings.Cleanup_OlderThan);
-        var includePinned = new CheckBox { Content = Strings.Cleanup_IncludePinned };
+        var includePinned = new CheckBox { Content = Strings.Cleanup_IncludePinned, MinHeight = 0, FontSize = 13 };
         var previews = new StackPanel { Spacing = 6 };
         NoteTab[] candidates = [];
-        var delete = new Button { Content = Strings.Cleanup_Delete0 };
+        var delete = new Button { Content = Strings.Cleanup_Delete0, FontSize = 13, Classes = { "panelButton", "panelDanger" },
+            HorizontalAlignment = HorizontalAlignment.Left, Padding = new Thickness(8, 6) };
         delete.Click += async (_, _) => await RunPanelActionAsync(async () =>
         {
             await DeleteCleanupCandidatesAsync(candidates);
@@ -95,7 +107,7 @@ public sealed partial class MainWindow
             delete.IsEnabled = count != 0;
             previews.Children.Clear();
             if (count == 0)
-                previews.Children.Add(PanelText(Strings.Cleanup_NoMatch));
+                previews.Children.Add(new TextBlock { Text = Strings.Cleanup_NoMatch, Classes = { "emptyPreview" } });
             foreach (var note in candidates)
             {
                 var title = note.Pinned ? $"\u25CF {note.DisplayLabel}" : note.DisplayLabel;
@@ -106,11 +118,19 @@ public sealed partial class MainWindow
         age.TextChanged += (_, _) => RefreshPreview();
         units.SelectionChanged += (_, _) => RefreshPreview();
         includePinned.IsCheckedChanged += (_, _) => RefreshPreview();
-        body.Children.Add(PanelText(Strings.Cleanup_OlderThan));
-        body.Children.Add(PanelRow(age, units));
-        body.Children.Add(includePinned);
-        body.Children.Add(delete);
-        body.Children.Add(previews);
+        var olderThan = PanelText(Strings.Cleanup_OlderThan);
+        olderThan.VerticalAlignment = VerticalAlignment.Center;
+        var filters = new StackPanel { Spacing = 8, Children = { PanelRow(olderThan, age, units), includePinned, delete } };
+        var previewScroll = new ScrollViewer { Content = previews, Margin = new Thickness(0, 16, 0, 0) };
+        if (body.Parent is ScrollViewer bodyScroll && bodyScroll.Parent is DockPanel layout)
+        {
+            layout.Children.Remove(bodyScroll);
+            DockPanel.SetDock(filters, Dock.Top);
+            DockPanel.SetDock(autoDelete, Dock.Bottom);
+            layout.Children.Add(filters);
+            layout.Children.Add(autoDelete);
+            layout.Children.Add(previewScroll);
+        }
         RefreshPreview();
     }
 
@@ -155,16 +175,22 @@ public sealed partial class MainWindow
 
     private static Control NotePreview(string title, string excerpt, DateTime created, DateTime updated)
     {
-        var line = new TextBlock
+        var line = new TextBlock { TextTrimming = TextTrimming.CharacterEllipsis, FontSize = 11 };
+        line.Inlines!.Add(new Run(title));
+        if (!string.IsNullOrEmpty(excerpt))
         {
-            Text = string.IsNullOrEmpty(excerpt) ? title : $"{title} \u2014 {excerpt}",
-            TextTrimming = TextTrimming.CharacterEllipsis, FontSize = 12,
-        };
-        var createdText = new TextBlock { Text = NoteTab.FormatCreatedDisplay(created), FontSize = 10 };
-        var updatedText = new TextBlock { Text = NoteTab.FormatUpdatedDisplay(updated), FontSize = 10 };
+            var summary = new Run($" — {excerpt}") { FontStyle = FontStyle.Italic };
+            summary[!TextElement.ForegroundProperty] = new DynamicResourceExtension("c-text-muted");
+            line.Inlines.Add(summary);
+        }
+        var createdText = new TextBlock { Text = NoteTab.FormatCreatedDisplay(created), FontSize = 10, Classes = { "panelHint" } };
+        var updatedText = new TextBlock { Text = NoteTab.FormatUpdatedDisplay(updated), FontSize = 10, Classes = { "panelHint" },
+            HorizontalAlignment = HorizontalAlignment.Right };
         ToolTip.SetTip(createdText, NoteTab.CreatedTooltip(created));
         ToolTip.SetTip(updatedText, NoteTab.UpdatedTooltip(updated));
-        return new StackPanel { Spacing = 3, Children = { line, PanelRow(createdText, updatedText) } };
+        Grid.SetColumn(updatedText, 1);
+        var dates = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto"), Children = { createdText, updatedText } };
+        return new StackPanel { Children = { line, dates } };
     }
 
     private static readonly SemaphoreSlim OrphanRecoveryGate = new(1, 1);
@@ -173,7 +199,7 @@ public sealed partial class MainWindow
     {
         var hasRecovery = OrphanSessionGuids?.Invoke().Count > 0 || ReviewPendingMoves?.Invoke().Count > 0;
         RecoveryMenuItem.IsVisible = hasRecovery;
-        HamburgerButton.Content = hasRecovery ? "\u2630 \u2022" : "\u2630";
+        OrphanBadge.IsVisible = hasRecovery;
         ToolTip.SetTip(HamburgerButton, hasRecovery ? Strings.Menu_Recover : Strings.Tooltip_Menu);
     }
 
@@ -219,26 +245,38 @@ public sealed partial class MainWindow
 
             if (body.Children.Count > 0)
                 body.Children.Add(new Separator());
-            body.Children.Add(PanelSection(string.IsNullOrWhiteSpace(name) ? Strings.Recovery_UnknownDesktop : name));
+            var group = new StackPanel { Spacing = 3, Margin = new Thickness(0, 10, 0, 0) };
+            body.Children.Add(group);
+            group.Children.Add(new TextBlock { Text = string.IsNullOrWhiteSpace(name) ? Strings.Recovery_UnknownDesktop : name,
+                FontSize = 14, FontWeight = FontWeight.Bold });
             var countText = string.Format(PanelLanguage.Plural(Strings.Recovery_TabCount_One, Strings.Recovery_TabCount_Few,
                 Strings.Recovery_TabCount, count), count);
             var date = lastUpdated.ToString("MMM d, yyyy", Strings.Culture);
-            body.Children.Add(PanelText($"{countText} \u00B7 {date}"));
+            group.Children.Add(new TextBlock { Text = $"{countText} \u00B7 {date}", Classes = { "panelHint" },
+                Margin = new Thickness(0, 0, 0, 6) });
             foreach (var (title, excerpt, created, updated) in notes)
             {
                 var preview = Excerpt(excerpt);
                 var label = title ?? (string.IsNullOrWhiteSpace(preview) ? Strings.Recovery_EmptyNote : preview);
-                body.Children.Add(NotePreview(label, title is null ? "" : preview, created, updated));
+                group.Children.Add(NotePreview(label, title is null ? "" : preview, created, updated));
             }
             if (count > notes.Count)
-                body.Children.Add(PanelText(string.Format(Strings.Recovery_More, count - notes.Count)));
+                group.Children.Add(PanelText(string.Format(Strings.Recovery_More, count - notes.Count)));
             if (moves.Any(move => ReferencesDesktop(move, guid)))
-                body.Children.Add(PanelText(CoreLabel("Review the interrupted move before recovering this session.",
+                group.Children.Add(PanelText(CoreLabel("Review the interrupted move before recovering this session.",
                     "Před obnovením této relace zkontrolujte přerušený přesun.")));
             else
-                body.Children.Add(PanelRow(
-                    PanelAsyncButton(Strings.Recovery_Adopt, () => ResolveOrphanAsync(body, guid, true)),
-                    PanelAsyncButton(Strings.Common_Delete, () => ResolveOrphanAsync(body, guid, false))));
+            {
+                var adopt = PanelAsyncButton(Strings.Recovery_Adopt, () => ResolveOrphanAsync(body, guid, true));
+                var delete = PanelAsyncButton(Strings.Common_Delete, () => ResolveOrphanAsync(body, guid, false));
+                adopt.Classes.Add("recoveryAction");
+                delete.Classes.Add("recoveryAction");
+                delete.Classes.Add("panelDanger");
+                delete.HorizontalAlignment = HorizontalAlignment.Right;
+                Grid.SetColumn(delete, 1);
+                group.Children.Add(new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*"),
+                    Margin = new Thickness(0, 8, 0, 0), Children = { adopt, delete } });
+            }
         }
     }
 

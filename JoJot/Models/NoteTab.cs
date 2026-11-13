@@ -41,6 +41,7 @@ public sealed class NoteTab : ObservableObject
     private int _sortOrder;
     private string? _filePath;
     private bool _showUnpinnedSeparator;
+    private bool _hasUnsavedFileChanges;
 
     /// <summary>
     /// Primary key (auto-incremented row ID).
@@ -112,6 +113,13 @@ public sealed class NoteTab : ObservableObject
     {
         get => _pinned;
         set => SetProperty(ref _pinned, value);
+    }
+
+    /// <summary>Whether the current content differs from the last known external file content.</summary>
+    public bool HasUnsavedFileChanges
+    {
+        get => _hasUnsavedFileChanges;
+        set => SetProperty(ref _hasUnsavedFileChanges, value);
     }
 
     /// <summary>

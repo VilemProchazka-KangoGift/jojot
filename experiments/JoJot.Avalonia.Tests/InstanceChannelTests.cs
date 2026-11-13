@@ -8,6 +8,42 @@ namespace JoJot.Avalonia.Tests;
 public sealed class InstanceChannelTests
 {
     [Fact]
+    public void Connected_pipe_identifies_the_actual_server_process()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "JoJot-ipc-owner-" + Guid.NewGuid());
+        Directory.CreateDirectory(directory);
+        try
+        {
+            using var primary = new InstanceChannel(directory);
+            primary.Start(_ => { });
+            using var client = new NamedPipeClientStream(".", primary.PipeNameForTests, PipeDirection.Out);
+            client.Connect(5000);
+            Assert.Equal((uint)Environment.ProcessId, InstanceChannel.GetServerProcessId(client));
+        }
+        finally { Directory.Delete(directory, recursive: true); }
+    }
+
+    [Fact]
+    public void Separate_data_directories_have_independent_owners()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "JoJot-ipc-isolation-" + Guid.NewGuid());
+        var first = Path.Combine(root, "first");
+        var second = Path.Combine(root, "second");
+        Directory.CreateDirectory(first);
+        Directory.CreateDirectory(second);
+        try
+        {
+            using var firstOwner = new InstanceChannel(first);
+            using var secondOwner = new InstanceChannel(second);
+            using var sameAsFirst = new InstanceChannel(first);
+            Assert.True(firstOwner.IsPrimary);
+            Assert.True(secondOwner.IsPrimary);
+            Assert.False(sameAsFirst.IsPrimary);
+            Assert.NotEqual(firstOwner.PipeNameForTests, secondOwner.PipeNameForTests);
+        }
+        finally { Directory.Delete(root, recursive: true); }
+    }
+    [Fact]
     public void Second_instance_delivers_desktop_to_primary()
     {
         var directory = Path.Combine(Path.GetTempPath(), "JoJot-ipc-" + Guid.NewGuid());

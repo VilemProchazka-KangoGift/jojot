@@ -11,7 +11,7 @@ Publish both variants from the same frozen source with the same SDK. From the re
 ```powershell
 $dotnet = 'dotnet'
 $project = 'experiments/JoJot.Avalonia/JoJot.Avalonia.csproj'
-$root = '.local/avalonia-parity/reproduction'
+$root = '.local/avalonia-ux/reproduction'
 & $dotnet publish $project -c Release -r win-x64 --self-contained -p:PublishAot=false -p:PublishReadyToRun=true -o "$root/managed"
 & $dotnet publish $project -c Release -r win-x64 --self-contained -p:PublishAot=true -p:PublishReadyToRun=false -o "$root/native"
 & experiments/tools/Prepare-WpfBaseline.ps1 -Dotnet $dotnet
@@ -30,7 +30,7 @@ $env:LIB = "$msvc/lib/onecore/x64;$sdk/ucrt/x64;$sdk/um/x64"
 
 Run the launcher on the virtual desktop where the fixture was seeded. It copies the fixture into a fresh directory and prints that directory. To test persistence, edit a note, switch tabs, close the window, and reopen the executable with `--data-dir` set to that same copy. The installed JoJot data stays outside the experiment.
 
-The published builds on the test workstation have separate launchers. [NativeAOT launcher](../.local/avalonia-parity/final/Try-NativeAOT.cmd) · [ReadyToRun launcher](../.local/avalonia-parity/final/Try-ReadyToRun.cmd)
+The latest UX builds on the test workstation have separate launchers. [NativeAOT launcher](../.local/avalonia-ux/final/Try-NativeAOT.cmd) · [ReadyToRun launcher](../.local/avalonia-ux/final/Try-ReadyToRun.cmd)
 
 ```powershell
 $aotExe = "$root/native/JoJot.Avalonia.exe"
@@ -44,9 +44,9 @@ Set `$wpfRun` to the path printed by `Prepare-WpfBaseline.ps1`. To refresh the f
 
 The managed headless suite exercises the Avalonia controls and SQLite data paths. Storage tests exercise migration and four-store persistence. The frontend compatibility script checks the released WPF editor → NativeAOT editor → released WPF editor sequence using a disposable fixture.
 
-The frozen candidate passed 50 managed Avalonia headless tests and 6 storage tests. The WPF Release suite passed 1,297 tests, and 5 WPF Debug environment tests passed.
+The UX candidate passed 54 managed Avalonia headless tests. Earlier checks passed all 6 storage tests, 1,297 WPF Release tests and 5 WPF Debug environment tests.
 
-The frozen NativeAOT build passed the WPF-to-Avalonia-to-WPF editor round trip, the invalid compatibility-input exit check, controlled IPC owner recovery, virtual desktop enumeration and notification registration, and delivery of a synthetic Windows hotkey message. An empty database opened and reopened with one welcome note. The app produced nine native visual exports, including Czech preferences and a dark-theme view. [Compatibility log](../.local/avalonia-parity/compat-final.log) · [Native validation artifacts](../.local/avalonia-parity/native-validation-042a6477563a4182b08aea2489772ccc)
+The earlier frozen NativeAOT build passed the WPF-to-Avalonia-to-WPF editor round trip, the invalid compatibility-input exit check, controlled IPC owner recovery, virtual desktop enumeration and notification registration, and delivery of a synthetic Windows hotkey message. An empty database opened and reopened with one welcome note. Additional Windows interaction checks covered file dialogs, a recorded shortcut, and the Keep Here, Go Back, and Merge move decisions. [Native interaction checks](NATIVE_INTERACTION_CHECKS_2026-11-12.md) · [Compatibility log](../.local/avalonia-parity/compat-final.log) · [Native validation artifacts](../.local/avalonia-parity/native-validation-042a6477563a4182b08aea2489772ccc)
 
 ```powershell
 & $dotnet test experiments/JoJot.Storage.Tests/JoJot.Storage.Tests.csproj -c Release
@@ -55,19 +55,19 @@ The frozen NativeAOT build passed the WPF-to-Avalonia-to-WPF editor round trip, 
 & experiments/tools/Verify-DatabaseCompatibility.ps1 -NativeExecutable $aotExe -Dotnet $dotnet
 ```
 
-The direct xUnit runner avoids the VSTest host connection timeout observed on this workstation. Native visual exports render the application's visual tree. Physical display presentation, native dialogs, keyboard and pointer interactions, desktop switching, and OS shutdown need interactive verification. [Feature-level validation](PARITY.md)
+The direct xUnit runner avoids the VSTest host connection timeout observed on this workstation. Subsequent interactive native checks passed for file dialogs, a recorded non-Win global shortcut, and desktop Keep Here, Go Back and Merge after COM-initiated moves. The [native interaction report](NATIVE_INTERACTION_CHECKS_2026-11-12.md) records the evidence and reproducible probe commands. Win-modifier shortcut input, manual Task View dragging, monitor/DPI placement and OS shutdown still need verification. [Feature-level validation](PARITY.md)
 
 ## Measure
 
-The four-build run compares WPF `v2026.11.2` ReadyToRun, the original NativeAOT prototype from `2f2f70a`, and both deployment modes of the full Avalonia candidate. The two full builds share application source. The prototype has a shorter startup path and supplies a reference for the effect of the additional features. [Original prototype measurements](results/README.md)
+The current run compares WPF `v2026.11.2` ReadyToRun with both deployment modes of the Avalonia UX update. The two Avalonia builds share application source. The earlier four-build run also includes the original NativeAOT prototype from `2f2f70a`, which has a shorter startup path. [Earlier four-build results](results/parity/README.md) · [Original prototype results](results/README.md)
 
-Prepare the WPF probe from the release tag and retain the original prototype executable as `$prototypeExe`. The WPF probe starts with isolated IPC names, suppresses foreground activation and the global hotkey, and exits automatically. Both full Avalonia builds detect the actual Windows desktop and use isolated fixture copies. The WPF build is a loose self-contained publish from the release source.
+Prepare the WPF probe from the release tag. The WPF probe starts with isolated IPC names, suppresses foreground activation and the global hotkey, and exits automatically. Both full Avalonia builds detect the actual Windows desktop and use isolated fixture copies. The WPF build is a loose self-contained publish from the release source.
 
-Run on the display and desktop used to seed the fixture. On the 150%-scale test display the calibrated Avalonia client size is 552 by 382.666667 device-independent pixels. To calibrate another display, run one round with `-Samples 1 -Warmups 0`, then divide the WPF client dimensions in the CSV by that display's scale. The harness checks native outer and client rectangles. Allow competing builds and other intensive work to finish before timing.
+Run on the display and desktop used to seed the fixture. On the 150%-scale test display use a copy of the WPF fixture with the `startup-cache.json` window geometry height set to 686 physical pixels. Pass this copy as `$fixture`. This matches Avalonia's 552 by 420 DIP client size at that scale. On another display use `-Samples 1 -Warmups 0` to calibrate both rectangles before timing. Allow competing builds and other intensive work to finish before timing.
 
 ```powershell
 & experiments/tools/Verify-AvaloniaRuntime.ps1 -ManagedExe $managedExe -AotExe $aotExe -WpfRun $wpfRun -OutputDirectory "$root/runtime-proof"
-& experiments/tools/Compare-AvaloniaStartup.ps1 -WpfRun $wpfRun -PrototypeAotExe $prototypeExe -ManagedExe $managedExe -AotExe $aotExe -OutputDirectory "$root/measurement" -Width 552 -Height 382.666667
+& experiments/tools/Compare-AvaloniaStartup.ps1 -WpfRun $wpfRun -FixtureDirectory $fixture -FullAvalonia -ManagedExe $managedExe -AotExe $aotExe -OutputDirectory "$root/measurement" -Width 552 -Height 420
 ```
 
 Each build gets three warmups and 20 measured fresh processes. All launches start from copies of the same schema 2 fixture containing 100 notes of 1 KiB each, with a warm OS file cache. The measured schedule balances launch slot and immediate predecessor. The raw CSV includes warmups and every measured sample.
@@ -78,4 +78,4 @@ Each build gets three warmups and 20 measured fresh processes. All launches star
 
 The runtime verifier inspects modules after editor rendering in a separate run. ReadyToRun loads `coreclr.dll`. NativeAOT runs with the native SQLite provider and without the separate CoreCLR module. Payload totals count uncompressed publish-directory bytes, excluding PDB, XML, and DBG files.
 
-[Four-build results and raw data](results/parity/README.md)
+[UX update results and raw data](results/ux/README.md)

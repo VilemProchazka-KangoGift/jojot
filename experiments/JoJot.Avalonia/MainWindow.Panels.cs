@@ -41,7 +41,6 @@ public sealed partial class MainWindow
         PreferencesMenuItem.Header = Strings.Menu_Preferences;
         CleanupMenuItem.Header = Strings.Menu_Cleanup;
         RecoveryMenuItem.Header = Strings.Menu_Recover;
-        HelpMenuItem.Header = Strings.Help_Title;
         ExitMenuItem.Header = Strings.Menu_Exit;
         AutomationProperties.SetName(HamburgerButton, Strings.Tooltip_Menu);
         UpdateOrphanBadge();
@@ -94,6 +93,8 @@ public sealed partial class MainWindow
         _fontSizeDisplay = null;
         _recordShortcutButton = null;
         _globalShortcutDisplay = null;
+        HelpScrim.IsVisible = false;
+        PanelHost.Classes.Remove("helpCard");
         PanelHost.Child = null;
         PanelHost.IsVisible = false;
         PanelHost.HorizontalAlignment = HorizontalAlignment.Right;
@@ -117,9 +118,12 @@ public sealed partial class MainWindow
         if (FindHost.IsVisible)
             HideFindPanel();
         _currentPanel = panel;
-        var close = PanelButton("\u00D7", () => DismissSidePanel());
+        var close = PanelButton("\uE711", () => DismissSidePanel());
+        close.Classes.Remove("panelButton");
+        close.Classes.Add("iconButton");
+        close.Classes.Add("panelClose");
         AutomationProperties.SetName(close, Strings.Common_Cancel);
-        var header = new DockPanel { LastChildFill = true, Margin = new Thickness(0, 0, 0, 10) };
+        var header = new DockPanel { LastChildFill = true, Margin = new Thickness(0, 0, 0, 8) };
         DockPanel.SetDock(close, Dock.Right);
         header.Children.Add(close);
         header.Children.Add(new TextBlock
@@ -127,8 +131,11 @@ public sealed partial class MainWindow
             Text = title, FontWeight = FontWeight.SemiBold, FontSize = 18,
             VerticalAlignment = VerticalAlignment.Center, TextWrapping = TextWrapping.Wrap,
         });
-        _panelBody = new StackPanel { Spacing = 10 };
-        var layout = new DockPanel { Margin = new Thickness(14), LastChildFill = true, Width = 288 };
+        _panelBody = new StackPanel { Spacing = panel is "help" or "preferences" ? 0 : 8 };
+        var inset = panel == "help" ? 24 : 16;
+        var layout = new DockPanel { Margin = new Thickness(inset), LastChildFill = true };
+        PanelHost.Width = panel switch { "help" => 348, "preferences" => 300, _ => 320 };
+        PanelHost.MaxWidth = Bounds.Width;
         DockPanel.SetDock(header, Dock.Top);
         layout.Children.Add(header);
         layout.Children.Add(new ScrollViewer
@@ -143,14 +150,14 @@ public sealed partial class MainWindow
 
     private static Button PanelButton(string label, Action click)
     {
-        var button = new Button { Content = label };
+        var button = new Button { Content = label, Classes = { "panelButton" } };
         button.Click += (_, _) => click();
         return button;
     }
 
     private Button PanelAsyncButton(string label, Func<Task> click)
     {
-        var button = new Button { Content = label };
+        var button = new Button { Content = label, Classes = { "panelButton" } };
         button.Click += async (_, _) => await RunPanelActionAsync(click);
         return button;
     }
@@ -173,7 +180,7 @@ public sealed partial class MainWindow
 
     private static TextBlock PanelSection(string text) => new()
     {
-        Text = text, FontSize = 11, FontWeight = FontWeight.SemiBold, Margin = new Thickness(0, 4, 0, 0),
+        Text = text, Classes = { "panelSection" }, FontWeight = FontWeight.SemiBold, Margin = new Thickness(0, 8, 0, 8),
     };
 
     private void ShowPreferences() => _ = RunPanelActionAsync(ShowPreferencesAsync);
@@ -188,50 +195,109 @@ public sealed partial class MainWindow
         if (!ReferenceEquals(body, _panelBody))
             return;
 
-        body.Children.Add(PanelSection(Strings.Pref_SectionAppearance));
-        body.Children.Add(PanelText(Strings.Pref_Theme));
-        var themes = new ComboBox
-        {
-            ItemsSource = new[] { Strings.Pref_ThemeSystem, Strings.Pref_ThemeLight, Strings.Pref_ThemeDark },
-            SelectedIndex = themePreference switch { "light" => 1, "dark" => 2, _ => 0 },
-        };
-        AutomationProperties.SetName(themes, Strings.Pref_Theme);
-        themes.SelectionChanged += async (_, _) => await RunPanelActionAsync(async () =>
-        {
-            var choice = themes.SelectedIndex switch { 1 => "light", 2 => "dark", _ => "system" };
-            await PreferenceStore.SetPreferenceAsync("theme", choice);
-            foreach (var window in PanelWindows())
-                window.ApplyTheme(choice);
-        });
-        body.Children.Add(themes);
-        body.Children.Add(PanelText(Strings.Pref_FontSize));
-        _fontSizeDisplay = PanelText("");
-        _fontSizeDisplay.VerticalAlignment = VerticalAlignment.Center;
-        UpdateFontSizeDisplay();
-        body.Children.Add(PanelRow(
-            PanelAsyncButton("-", () => SetEditorFontAsync(Editor.FontSize - 1)),
-            _fontSizeDisplay,
-            PanelAsyncButton("+", () => SetEditorFontAsync(Editor.FontSize + 1)),
-            PanelAsyncButton(Strings.Pref_FontReset, () => SetEditorFontAsync(13))));
-
         body.Children.Add(PanelSection(Strings.Pref_SectionLanguage));
+        body.Children.Add(PreferenceLabel(Strings.Pref_Language));
         var english = PanelAsyncButton("English", () => ChangePanelLanguageAsync("en"));
-        var czech = PanelAsyncButton("\u010Ce\u0161tina", () => ChangePanelLanguageAsync("cs"));
+        var czech = PanelAsyncButton("Česky", () => ChangePanelLanguageAsync("cs"));
+        english.Classes.Set("active", PanelLanguage.Current == "en");
+        czech.Classes.Set("active", PanelLanguage.Current == "cs");
         english.IsEnabled = PanelLanguage.Current != "en" && RestartForLanguageAsync is not null;
         czech.IsEnabled = PanelLanguage.Current != "cs" && RestartForLanguageAsync is not null;
-        body.Children.Add(PanelRow(english, czech));
-        body.Children.Add(PanelText(Strings.Pref_LanguageHint));
+        body.Children.Add(PreferenceSegments(english, czech));
+        body.Children.Add(PreferenceHint(Strings.Pref_LanguageHint));
+
+        body.Children.Add(PanelSection(Strings.Pref_SectionAppearance));
+        body.Children.Add(PreferenceLabel(Strings.Pref_Theme));
+        var themeChoices = new[] { ("light", Strings.Pref_ThemeLight), ("system", Strings.Pref_ThemeSystem), ("dark", Strings.Pref_ThemeDark) };
+        var themeButtons = new List<Button>(themeChoices.Length);
+        void HighlightTheme(string? theme)
+        {
+            var normalized = theme is "light" or "dark" ? theme : "system";
+            for (var index = 0; index < themeButtons.Count; index++)
+                themeButtons[index].Classes.Set("active", themeChoices[index].Item1 == normalized);
+        }
+        foreach (var (choice, label) in themeChoices)
+        {
+            themeButtons.Add(PanelAsyncButton(label, async () =>
+            {
+                await PreferenceStore.SetPreferenceAsync("theme", choice);
+                foreach (var window in PanelWindows())
+                    window.ApplyTheme(choice);
+                HighlightTheme(choice);
+            }));
+        }
+        HighlightTheme(themePreference);
+        var themes = PreferenceSegments(themeButtons.ToArray());
+        themes.Margin = new Thickness(0, 0, 0, 16);
+        body.Children.Add(themes);
+
+        body.Children.Add(PreferenceLabel(Strings.Pref_FontSize));
+        _fontSizeDisplay = PanelText("");
+        _fontSizeDisplay.HorizontalAlignment = HorizontalAlignment.Center;
+        _fontSizeDisplay.VerticalAlignment = VerticalAlignment.Center;
+        UpdateFontSizeDisplay();
+        var decrease = PanelAsyncButton("-", () => SetEditorFontAsync(Editor.FontSize - 1));
+        var increase = PanelAsyncButton("+", () => SetEditorFontAsync(Editor.FontSize + 1));
+        decrease.FontWeight = increase.FontWeight = FontWeight.Bold;
+        decrease.FontSize = increase.FontSize = 14;
+        decrease.Classes.Add("fontAdjust");
+        increase.Classes.Add("fontAdjust");
+        Grid.SetColumn(_fontSizeDisplay, 1);
+        Grid.SetColumn(increase, 2);
+        body.Children.Add(new Grid
+        {
+            ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto"), Children = { decrease, _fontSizeDisplay, increase },
+        });
+        var reset = PanelAsyncButton(Strings.Pref_FontReset, () => SetEditorFontAsync(13));
+        reset.Classes.Remove("panelButton");
+        reset.Classes.Add("toastUndo");
+        reset.HorizontalAlignment = HorizontalAlignment.Center;
+        reset.FontSize = 11;
+        reset.Margin = new Thickness(0, 4, 0, 16);
+        body.Children.Add(reset);
 
         body.Children.Add(PanelSection(Strings.Pref_SectionShortcuts));
-        body.Children.Add(PanelText(Strings.Pref_GlobalHotkey));
+        body.Children.Add(PreferenceLabel(Strings.Pref_GlobalHotkey));
         _globalShortcutDisplay = PanelText(CurrentGlobalShortcut?.Invoke() ?? "Win+Shift+N");
         _globalShortcutDisplay.VerticalAlignment = VerticalAlignment.Center;
         _recordShortcutButton = PanelButton(Strings.Pref_HotkeyRecord, ToggleShortcutRecording);
+        _recordShortcutButton.Classes.Add("panelAccent");
         _recordShortcutButton.IsEnabled = RecordGlobalShortcutAsync is not null;
-        body.Children.Add(PanelRow(_globalShortcutDisplay, _recordShortcutButton));
-        body.Children.Add(PanelText(Strings.Pref_HotkeyHint));
+        var shortcut = new Border { Child = _globalShortcutDisplay, Classes = { "hotkeyBadge" } };
+        Grid.SetColumn(_recordShortcutButton, 1);
+        body.Children.Add(new Grid
+        {
+            ColumnDefinitions = new ColumnDefinitions("*,Auto"), ColumnSpacing = 8,
+            Children = { shortcut, _recordShortcutButton },
+        });
+        body.Children.Add(PreferenceHint(Strings.Pref_HotkeyHint));
+        body.Children.Add(PanelButton(Strings.Help_Title, ShowHelp));
+
         body.Children.Add(PanelSection(Strings.Pref_SectionAbout));
-        body.Children.Add(PanelText(string.Format(Strings.Pref_Version, typeof(MainWindow).Assembly.GetName().Version?.ToString(3))));
+        body.Children.Add(PreferenceHint(string.Format(Strings.Pref_Version, typeof(MainWindow).Assembly.GetName().Version?.ToString(3))));
+    }
+
+    private static TextBlock PreferenceLabel(string label) =>
+        new() { Text = label, Margin = new Thickness(0, 0, 0, 6) };
+
+    private static TextBlock PreferenceHint(string text) =>
+        new() { Text = text, TextWrapping = TextWrapping.Wrap, Classes = { "panelHint" },
+            Margin = new Thickness(0, 4, 0, 16) };
+
+    private static Grid PreferenceSegments(params Button[] buttons)
+    {
+        var grid = new Grid();
+        for (var index = 0; index < buttons.Length; index++)
+        {
+            var button = buttons[index];
+            button.Classes.Add("segment");
+            button.Classes.Set("first", index == 0);
+            button.Classes.Set("last", index == buttons.Length - 1);
+            grid.ColumnDefinitions.Add(new ColumnDefinition(1, GridUnitType.Star));
+            Grid.SetColumn(button, index);
+            grid.Children.Add(button);
+        }
+        return grid;
     }
 
     private async Task ChangePanelLanguageAsync(string preference)

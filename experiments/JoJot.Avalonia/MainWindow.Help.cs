@@ -18,7 +18,10 @@ public sealed partial class MainWindow
 
         PanelHost.HorizontalAlignment = HorizontalAlignment.Center;
         PanelHost.VerticalAlignment = VerticalAlignment.Center;
-        PanelHost.MaxHeight = Math.Max(240, Bounds.Height - 84);
+        PanelHost.MaxHeight = Math.Min(600, Bounds.Height);
+        PanelHost.Classes.Add("helpCard");
+        HelpScrim.IsVisible = true;
+        body.Children.Add(PreferenceHint(Strings.Help_DismissHint));
         AddHandler(PointerPressedEvent, OnHelpOutsidePressed, RoutingStrategies.Tunnel);
 
         void AddSection(string title, params (string Keys, string Description)[] shortcuts)
@@ -26,9 +29,12 @@ public sealed partial class MainWindow
             body.Children.Add(PanelSection(title));
             foreach (var (keys, description) in shortcuts)
             {
-                var row = new Grid { ColumnDefinitions = new ColumnDefinitions("115,*"), ColumnSpacing = 6 };
+                var row = new Grid { ColumnDefinitions = new ColumnDefinitions("140,*"), Margin = new Thickness(0, 2) };
                 var keyText = PanelText(keys);
+                keyText.Classes.Add("shortcutKey");
+                keyText.FontSize = 12;
                 var descriptionText = PanelText(description);
+                descriptionText.FontSize = 12;
                 Grid.SetColumn(descriptionText, 1);
                 row.Children.Add(keyText);
                 row.Children.Add(descriptionText);
@@ -51,12 +57,14 @@ public sealed partial class MainWindow
         AddSection(Strings.Help_SectionGlobal,
             (CurrentGlobalShortcut?.Invoke() ?? "Win+Shift+N", Strings.Help_FocusMinimize),
             ("Ctrl+Shift+/", Strings.Help_ShowHelp));
-        body.Children.Add(PanelText(Strings.Help_DismissHint));
     }
 
     private void OnHelpOutsidePressed(object? sender, PointerPressedEventArgs e)
     {
         if (e.Source is Visual source && source != PanelHost && !PanelHost.IsVisualAncestorOf(source))
+        {
             DismissSidePanel();
+            e.Handled = true;
+        }
     }
 }

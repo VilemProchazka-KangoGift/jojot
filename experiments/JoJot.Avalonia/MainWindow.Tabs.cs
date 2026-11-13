@@ -83,7 +83,9 @@ public sealed partial class MainWindow
             ? CoreLabel(visible == 1 ? "1 note" : $"{visible} notes",
                 $"{visible} {PanelLanguage.Plural("poznámka", "poznámky", "poznámek", visible)}")
             : CoreLabel($"{visible} of {_notes.Count} notes", $"{visible} z {_notes.Count} poznámek");
-        Status.Text = _dirty.Count == 0 ? count : $"{count} · {CoreLabel("Unsaved changes", "Neuložené změny")}";
+        global::Avalonia.Automation.AutomationProperties.SetHelpText(NoteList, count);
+        if (_ready)
+            Status.IsVisible = false;
     }
 
     private void OnSearchChanged(object? sender, TextChangedEventArgs e)
@@ -129,7 +131,11 @@ public sealed partial class MainWindow
             SearchBox.Clear();
             await CreateNoteCoreAsync(initialContent);
         });
-        FocusEditorIfIdle();
+        DismissSidePanel();
+        if (FindHost.IsVisible)
+            HideFindPanel();
+        if (!_closing && Editor.IsEffectivelyEnabled)
+            Editor.Focus();
     }
 
     private async Task CreateNoteCoreAsync(string? initialContent = null)
@@ -355,7 +361,10 @@ public sealed partial class MainWindow
     public void ShowInfoToast(string message)
     {
         if (_pendingDeletion is not null)
+        {
             Status.Text = message;
+            Status.IsVisible = true;
+        }
         else
             ShowToast(message, null);
     }
@@ -429,12 +438,6 @@ public sealed partial class MainWindow
             item.InputGesture = KeyGesture.Parse(gesture);
         item.Click += async (_, _) => await action();
         return item;
-    }
-
-    private void OnRename(object? sender, RoutedEventArgs e)
-    {
-        if (_active is { } note)
-            BeginRename(note);
     }
 
     private async void OnPin(object? sender, RoutedEventArgs e)

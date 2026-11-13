@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using System.Text;
 using Avalonia;
 using Avalonia.Input;
@@ -14,7 +15,60 @@ public sealed partial class MainWindow
 {
     private static readonly Encoding Utf8Bom = new UTF8Encoding(encoderShouldEmitUTF8Identifier: true);
     private static readonly FilePickerFileType TextFiles = new("Text files") { Patterns = ["*.txt"] };
+    private readonly ConditionalWeakTable<NoteTab, FileBaseline> _fileBaselines = new();
+    private sealed record FileBaseline(string Path, string? Content);
     private string? _lastSaveDirectory;
+
+    private void SetFileBaseline(NoteTab note, string path, string? content)
+    {
+        _fileBaselines.AddOrUpdate(note, new FileBaseline(path, content));
+        UpdateFileDirtyState(note);
+    }
+
+    private void UpdateFileDirtyState(NoteTab note)
+    {
+        note.HasUnsavedFileChanges = note.FilePath is { } path &&
+            _fileBaselines.TryGetValue(note, out var baseline) &&
+            string.Equals(path, baseline.Path, StringComparison.Ordinal) && note.Content != baseline.Content;
+    }
+
+    private Task LoadFileBaselinesAsync(IEnumerable<NoteTab> notes) =>
+        Task.WhenAll(notes.Where(note => note.IsFileBacked).Select(LoadFileBaselineAsync));
+
+    private async Task LoadFileBaselineAsync(NoteTab note)
+    {
+        if (note.FilePath is not { } path ||
+            (_fileBaselines.TryGetValue(note, out var baseline) && baseline.Path == path))
+            return;
+
+        var contentLength = note.Content.Length;
+        var saved = await Task.Run(() => ReadFileBaselineAsync(path, contentLength));
+        if (note.FilePath == path &&
+            (!_fileBaselines.TryGetValue(note, out var current) || current.Path != path))
+            SetFileBaseline(note, path, saved);
+    }
+
+    private static async Task<string?> ReadFileBaselineAsync(string path, int contentLength)
+    {
+        try
+        {
+            await using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite,
+                bufferSize: 4096, useAsync: true);
+            using var reader = new StreamReader(stream);
+            // Keep the original text even if the saved file is longer than the SQLite draft.
+            // Bound reads of externally replaced files while allowing drafts above the import limit.
+            var limit = Math.Max(contentLength, 500 * 1024);
+            var buffer = new char[limit + 1];
+            var length = await reader.ReadBlockAsync(buffer);
+            return length <= limit ? new string(buffer, 0, length) : null;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+        {
+            // The note remains available from SQLite even when its external file cannot be read.
+        }
+        return null;
+    }
+
     private bool _filePickerOpen;
 
     internal bool HasShutdownBlockingInteraction => _filePickerOpen || OwnedWindows.Any(dialog => dialog.IsVisible);
@@ -86,6 +140,7 @@ public sealed partial class MainWindow
             foreach (var file in summary.ValidFiles)
             {
                 var note = await InsertNoteAsync(file.FileName, file.Content!, false, firstOrder++, file.FilePath);
+                SetFileBaseline(note, file.FilePath!, file.Content!);
                 _notes.Insert(index++, note);
                 first ??= note;
             }
@@ -116,7 +171,9 @@ public sealed partial class MainWindow
             await FlushEditsAsync();
             if (!forceDialog && note.FilePath is { } existing)
             {
-                await WriteFileAsync(existing, note.Content);
+                var content = note.Content;
+                await WriteFileAsync(existing, content);
+                SetFileBaseline(note, existing, content);
                 return;
             }
             var directory = note.FilePath is { } sourcePath ? Path.GetDirectoryName(sourcePath) : _lastSaveDirectory;
@@ -138,12 +195,14 @@ public sealed partial class MainWindow
 
     internal async Task SaveNoteToPathCoreAsync(NoteTab note, string target)
     {
-        await WriteFileAsync(target, note.Content);
+        var content = note.Content;
+        await WriteFileAsync(target, content);
         var name = Path.GetFileName(target);
         await NoteStore.UpdateNoteFilePathAndNameAsync(note.Id, target, name);
         _lastSaveDirectory = Path.GetDirectoryName(target);
         note.FilePath = target;
         note.Name = name;
+        SetFileBaseline(note, target, content);
         UpdateEditorTitle();
     }
 
