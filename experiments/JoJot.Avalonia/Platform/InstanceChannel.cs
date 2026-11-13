@@ -51,15 +51,28 @@ internal sealed partial class InstanceChannel : IDisposable
         writer.WriteLine(Environment.ProcessPath);
     }
 
-    public void Start(Action<IpcMessage> command)
+    public void Start(Action<IpcMessage> command, bool production = false)
     {
-        _server = Task.Run(async () =>
+        _server = production
+            ? Task.WhenAll(ListenAsync(_pipeName, command), ListenAsync(LegacyPipeName(), command))
+            : ListenAsync(_pipeName, command);
+    }
+
+    private static string LegacyPipeName()
+    {
+        using var process = Process.GetCurrentProcess();
+        return $"JoJot_IPC_S{process.SessionId}";
+    }
+
+    private Task ListenAsync(string pipeName, Action<IpcMessage> command)
+    {
+        return Task.Run(async () =>
         {
             while (!_stop.IsCancellationRequested)
             {
                 try
                 {
-                    await using var pipe = new NamedPipeServerStream(_pipeName, PipeDirection.In, 1,
+                    await using var pipe = new NamedPipeServerStream(pipeName, PipeDirection.In, 1,
                         PipeTransmissionMode.Byte, PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
                     await pipe.WaitForConnectionAsync(_stop.Token).ConfigureAwait(false);
                     using var reader = new StreamReader(pipe);

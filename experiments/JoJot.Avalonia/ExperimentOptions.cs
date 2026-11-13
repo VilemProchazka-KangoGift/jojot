@@ -9,10 +9,14 @@ internal sealed record ExperimentOptions(string DataDirectory, string DesktopGui
     private static readonly string[] StorageFiles =
         ["jojot.db", "jojot.db-wal", "jojot.db-shm", ".clean-shutdown", ".experiment-lock", ".experiment-owner", ".experiment-owner.Dev", "startup-cache.json"];
 
+    internal bool UsesProductionData { get; private init; }
+
     public static ExperimentOptions Parse(string[] args)
     {
         var localData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-#if DEBUG
+#if JOJOT_PRODUCTION && !DEBUG
+        var directory = Path.Combine(localData, "JoJot");
+#elif DEBUG
         var directory = Path.Combine(localData, "JoJot.AvaloniaExperiment.Dev");
 #else
         var directory = Path.Combine(localData, "JoJot.AvaloniaExperiment");
@@ -54,10 +58,15 @@ internal sealed record ExperimentOptions(string DataDirectory, string DesktopGui
         }
 
         directory = NormalizePath(directory);
+        var usesProductionData = false;
+#if JOJOT_PRODUCTION && !DEBUG
+        usesProductionData = !explicitDirectory && benchmark is null && compatibilityExpected is null &&
+            compatibilityReplacement is null && visualOutput is null && !stayOpen;
+#endif
         foreach (var folder in new[] { "JoJot", "JoJot.Dev" })
         {
             var production = Path.Combine(localData, folder);
-            if (directory.Equals(production, StringComparison.OrdinalIgnoreCase) ||
+            if ((!usesProductionData && directory.Equals(production, StringComparison.OrdinalIgnoreCase)) ||
                 directory.StartsWith(production + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) ||
                 benchmark?.StartsWith(production + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) == true)
                 throw new ArgumentException("Choose a disposable directory outside installed JoJot data.");
@@ -79,7 +88,7 @@ internal sealed record ExperimentOptions(string DataDirectory, string DesktopGui
             compatibilityExpected is not null || !visualOutput.StartsWith(directory + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)))
             throw new ArgumentException("Visual output requires a subdirectory of an explicit disposable data directory and automatic shutdown.");
         return new ExperimentOptions(directory, desktop, benchmark, width, height, stayOpen,
-            compatibilityExpected, compatibilityReplacement, visualOutput);
+            compatibilityExpected, compatibilityReplacement, visualOutput) { UsesProductionData = usesProductionData };
     }
 
     public void ValidateDataPath()

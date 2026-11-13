@@ -87,7 +87,8 @@ internal static class Program
                         return sendResult == InstanceChannel.SendResult.Delivered ? 0 : 1;
                     ExperimentApp.QueueCommand(command);
                 }
-                instance.Start(ExperimentApp.QueueCommand);
+                using var legacyLock = options.UsesProductionData ? ProductionDataLock.Acquire() : null;
+                instance.Start(ExperimentApp.QueueCommand, options.UsesProductionData);
                 ExperimentApp.Options = options;
                 ExperimentApp.Benchmark = options.BenchmarkOutput is null ? null : new BenchmarkProbe(entry, options);
                 StartupTrace.Mark("platform-start");
@@ -200,7 +201,7 @@ internal sealed class ExperimentApp : Application
         if (info is not null) window.UpdateDesktopTitle(info.Name, info.Index);
         _windows.Add(desktop, window);
         window.Closed += (_, _) => _windows.Remove(window.DesktopGuid);
-        TaskbarRelaunch.Attach(window, Options.DataDirectory);
+        TaskbarRelaunch.Attach(window, Options.DataDirectory, Options.UsesProductionData);
         window.InitializeDesktopMovement();
         AttachWindowPlacement(window);
         window.Show();
@@ -329,7 +330,7 @@ internal sealed class ExperimentApp : Application
             if (info is not null) window.UpdateDesktopTitle(info.Name, info.Index);
             _windows.Add(initialDesktop, window);
             window.Closed += (_, _) => _windows.Remove(window.DesktopGuid);
-            TaskbarRelaunch.Attach(window, Options.DataDirectory);
+            TaskbarRelaunch.Attach(window, Options.DataDirectory, Options.UsesProductionData);
             window.InitializeDesktopMovement();
             if (DesktopMoveProbe is { } probeTarget)
                 window.Opened += async (_, _) =>

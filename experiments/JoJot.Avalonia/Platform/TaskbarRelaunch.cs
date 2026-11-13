@@ -13,7 +13,7 @@ internal static unsafe partial class TaskbarRelaunch
     private static readonly Guid PropertyFormat = new("9F4C2855-9F79-4B39-A8D0-E1D42DE1D5F3");
     private static readonly Guid PropertyStoreId = new("886D8EEB-8CF2-4446-8D02-CDBA1DBDCF99");
 
-    internal static void Attach(Window window, string directory)
+    internal static void Attach(Window window, string directory, bool production = false)
     {
         if (!OperatingSystem.IsWindows()) return;
         nint handle = 0;
@@ -21,7 +21,7 @@ internal static unsafe partial class TaskbarRelaunch
         {
             if (window.TryGetPlatformHandle() is not { HandleDescriptor: "HWND", Handle: not 0 } native) return;
             handle = native.Handle;
-            try { SetProperties(handle, BuildCommand(Environment.ProcessPath!, Environment.GetCommandLineArgs()[0], directory), BuildId(directory)); }
+            try { SetProperties(handle, BuildCommand(Environment.ProcessPath!, Environment.GetCommandLineArgs()[0], production ? null : directory), production ? "JoJot" : BuildId(directory), production ? "JoJot" : "JoJot Avalonia Experiment"); }
             catch (Exception ex) { LogService.Warn("Could not configure taskbar relaunch", ex); }
         };
         window.Closing += (_, e) =>
@@ -43,11 +43,11 @@ internal static unsafe partial class TaskbarRelaunch
 #endif
     }
 
-    internal static string BuildCommand(string executable, string entryAssembly, string directory)
+    internal static string BuildCommand(string executable, string entryAssembly, string? directory)
     {
         var host = string.Equals(Path.GetFileNameWithoutExtension(executable), "dotnet", StringComparison.OrdinalIgnoreCase)
             ? $"{Quote(executable)} {Quote(entryAssembly)}" : Quote(executable);
-        return $"{host} --data-dir {Quote(directory)}";
+        return directory is null ? host : $"{host} --data-dir {Quote(directory)}";
     }
 
     private static string Quote(string value)
@@ -67,13 +67,13 @@ internal static unsafe partial class TaskbarRelaunch
         return result.Append('\\', slashes * 2).Append('"').ToString();
     }
 
-    internal static void SetProperties(nint hwnd, string command, string id)
+    internal static void SetProperties(nint hwnd, string command, string id, string displayName = "JoJot Avalonia Experiment")
     {
         var store = OpenStore(hwnd);
         try
         {
             SetString(store, 2, command);
-            SetString(store, 4, "JoJot Avalonia Experiment");
+            SetString(store, 4, displayName);
             SetString(store, 5, id); // ID last: this triggers the taskbar refresh.
         }
         catch { ClearStore(store); throw; }
