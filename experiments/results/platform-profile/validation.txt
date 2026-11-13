@@ -1,0 +1,7 @@
+Serial Release rebuild: PASS, 0 warnings, 0 errors
+Headless xUnit: 87 total, 87 passed, 0 failed, 0 errors, 0 skipped
+Native selector: default ANGLE/D3D modules present, software absent
+Native workload: 90 edit + 90 actual viewport updates per mode; original note contents restored
+Content verification: every note ID/content matches fixture in 10 completed workload databases
+External fixture: all 100 source-file hashes unchanged
+Final frozen source manifest: matches workspace

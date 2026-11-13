@@ -1,0 +1,6 @@
+ETW attempt, 2026-11-13, base 35c9ead29e883317a7b72e240ea5b697d5dd153a
+Command: wpr -start CPU -filemode (unrestricted execution requested)
+Result: exit1; 0xc5585011; Failed to enable the policy to profile system performance.
+Token privileges: SeChangeNotifyPrivilege enabled; SeIncreaseWorkingSetPrivilege disabled; no SeSystemProfilePrivilege.
+Before and after: wpr -status reported WPR is not recording.
+No security policy change, UAC automation, or existing trace cancellation was attempted.

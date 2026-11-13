@@ -7,7 +7,10 @@ param(
     [Parameter(Mandatory)] [string] $OutputDirectory,
     [ValidateRange(1, 200)] [int] $Samples = 20,
     [ValidateRange(0, 20)] [int] $Warmups = 3,
-    [switch] $Trace
+    [switch] $Trace,
+    [ValidateSet('default', 'software')] [string] $BaselineRenderMode = 'default',
+    [ValidateSet('default', 'software')] [string] $CandidateRenderMode = 'default',
+    [switch] $RenderWorkload
 )
 $ErrorActionPreference = 'Stop'
 $executables = @((Resolve-Path -LiteralPath $BaselineExe).Path, (Resolve-Path -LiteralPath $CandidateExe).Path)
@@ -15,6 +18,10 @@ $fixture = (Resolve-Path -LiteralPath $FixtureDirectory).Path
 $desktop = (Get-Content -LiteralPath (Join-Path $fixture 'desktop.txt') -Raw).Trim()
 if (Test-Path -LiteralPath $OutputDirectory) { throw 'Choose a new output directory.' }
 $root = (New-Item -ItemType Directory -Path $OutputDirectory).FullName
+[pscustomobject]@{ Samples=$Samples; Warmups=$Warmups; Trace=[bool]$Trace;
+    RenderWorkload=[bool]$RenderWorkload; BaselineRenderMode=$BaselineRenderMode;
+    CandidateRenderMode=$CandidateRenderMode } | ConvertTo-Json |
+    Set-Content -LiteralPath (Join-Path $root 'run-settings.json')
 $files = @('jojot.db', 'startup-cache.json', '.clean-shutdown')
 $files | ForEach-Object { Get-FileHash -LiteralPath (Join-Path $fixture $_) } |
     Export-Csv -LiteralPath (Join-Path $root 'fixture-hashes.csv') -NoTypeInformation
@@ -37,6 +44,9 @@ foreach ($phase in 'warmup', 'measured') {
             $info.RedirectStandardError = $true
             if ($Trace) { $info.Environment['JOJOT_STARTUP_TRACE'] = '1' }
             else { $info.Environment.Remove('JOJOT_STARTUP_TRACE') | Out-Null }
+            $info.Environment['JOJOT_RENDER_MODE'] = @($BaselineRenderMode, $CandidateRenderMode)[$index]
+            if ($RenderWorkload) { $info.Environment['JOJOT_RENDER_WORKLOAD'] = '1' }
+            else { $info.Environment.Remove('JOJOT_RENDER_WORKLOAD') | Out-Null }
             foreach ($argument in @('--data-dir', $directory, '--desktop-guid', $desktop,
                     '--benchmark-output', $result, '--benchmark-width', '552', '--benchmark-height', '420')) {
                 $info.ArgumentList.Add($argument)
@@ -44,7 +54,7 @@ foreach ($phase in 'warmup', 'measured') {
             $process = [Diagnostics.Process]::Start($info)
             try {
                 $errors = $process.StandardError.ReadToEndAsync()
-                if (-not $process.WaitForExit(30000)) {
+                if (-not $process.WaitForExit($(if ($RenderWorkload) { 180000 } else { 30000 }))) {
                     $process.Kill(); $process.WaitForExit()
                     throw "Timed out: $directory"
                 }
@@ -56,6 +66,9 @@ foreach ($phase in 'warmup', 'measured') {
                 if (Get-ChildItem -LiteralPath $directory -Filter 'jojot*.log' -File |
                     Select-String -Pattern '\[(ERROR|FATAL)\]') { throw "Application error: $directory" }
                 $data = Get-Content -LiteralPath $result -Raw | ConvertFrom-Json
+                if ($RenderWorkload -and -not (Test-Path -LiteralPath ($result + '.render.json'))) {
+                    throw "Missing render workload: $directory"
+                }
                 if ($data.Notes -ne 100 -or $data.SelectedNoteName -ne 'Note 0' -or $data.EditorTextLength -ne 1024) {
                     throw "Unexpected fixture selection: $directory"
                 }
@@ -63,6 +76,7 @@ foreach ($phase in 'warmup', 'measured') {
                 if ($geometry -and $geometry -ne $rectangle) { throw "Geometry changed: $directory" }
                 $geometry = $rectangle
                 $row = [pscustomobject]@{ Phase=$phase; Round=$round; Variant=$variant;
+                    RenderMode=@($BaselineRenderMode, $CandidateRenderMode)[$index];
                     FirstRenderMs=$data.FirstRenderMs; EditorReadyMs=$data.EditorReadyMs;
                     EditorRenderingMs=$data.EditorRenderingMs; Geometry=$rectangle }
                 $rows.Add($row)

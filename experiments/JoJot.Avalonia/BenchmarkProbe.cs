@@ -5,6 +5,7 @@ using System.Text.Json.Serialization;
 using Avalonia.Controls;
 using Avalonia.Rendering.Composition;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 
 namespace JoJot.AvaloniaExperiment;
 
@@ -54,6 +55,59 @@ internal sealed partial class BenchmarkProbe(long entryTimestamp, ExperimentOpti
             File.Move(temporary, output, overwrite: true);
         }
         finally { File.Delete(temporary); }
+        if (Environment.GetEnvironmentVariable("JOJOT_RENDER_WORKLOAD") == "1")
+            await RecordRenderWorkloadAsync(window, output);
+    }
+
+    private static async Task RecordRenderWorkloadAsync(Window window, string output)
+    {
+        var editor = window.FindControl<TextBox>("Editor") ?? throw new InvalidOperationException("Missing editor.");
+        var original = editor.Text;
+        var originalCaret = editor.CaretIndex;
+        var results = new List<RenderWorkloadResult>();
+        using var process = Process.GetCurrentProcess();
+        try
+        {
+            // Exercise full layout and viewport scrolling with a long, ordinary text note.
+            var text = string.Join('\n', Enumerable.Range(0, 2000).Select(i => $"Line {i:D4}: the quick brown fox jumps over the lazy dog; 0123456789."));
+            editor.Text = text;
+            await WaitForRenderedBatchAsync(window);
+            var scroll = editor.GetVisualDescendants().OfType<ScrollViewer>().First();
+            if (scroll.Extent.Height <= scroll.Viewport.Height)
+                throw new InvalidOperationException("Render probe requires scrollable text.");
+            foreach (var scenario in new[] { "edit", "scroll" })
+            {
+                var frames = new double[90];
+                var minimumScrollY = double.PositiveInfinity;
+                var maximumScrollY = double.NegativeInfinity;
+                process.Refresh();
+                var cpu = process.TotalProcessorTime;
+                var start = Stopwatch.GetTimestamp();
+                for (var index = 0; index < frames.Length; index++)
+                {
+                    var frame = Stopwatch.GetTimestamp();
+                    if (scenario == "edit") editor.Text = text + new string('x', index + 1);
+                    else scroll.Offset = new Avalonia.Vector(0, index % 2 == 0 ? scroll.Extent.Height : 0);
+                    await WaitForRenderedBatchAsync(window);
+                    frames[index] = Stopwatch.GetElapsedTime(frame).TotalMilliseconds;
+                    minimumScrollY = Math.Min(minimumScrollY, scroll.Offset.Y);
+                    maximumScrollY = Math.Max(maximumScrollY, scroll.Offset.Y);
+                }
+                var elapsed = Stopwatch.GetElapsedTime(start).TotalMilliseconds;
+                process.Refresh();
+                if (scenario == "scroll" && maximumScrollY <= minimumScrollY)
+                    throw new InvalidOperationException("Render probe did not move the viewport.");
+                results.Add(new RenderWorkloadResult(scenario, editor.Text?.Length ?? 0,
+                    elapsed, (process.TotalProcessorTime - cpu).TotalMilliseconds, minimumScrollY, maximumScrollY, frames));
+            }
+        }
+        finally
+        {
+            editor.Text = original;
+            editor.CaretIndex = originalCaret;
+        }
+        File.WriteAllText(output + ".render.json", JsonSerializer.Serialize(results.ToArray(), BenchmarkJsonContext.Default.RenderWorkloadResultArray));
+        File.WriteAllLines(output + ".modules.txt", process.Modules.Cast<ProcessModule>().Select(module => module.ModuleName).Order());
     }
 
     private static async Task WaitForRenderedBatchAsync(Window window)
@@ -92,4 +146,8 @@ internal sealed record BenchmarkResult(double FirstRenderMs, double EditorReadyM
     string? SelectedNoteName, int EditorTextLength);
 
 [JsonSerializable(typeof(BenchmarkResult))]
+[JsonSerializable(typeof(RenderWorkloadResult[]))]
 internal sealed partial class BenchmarkJsonContext : JsonSerializerContext;
+
+internal sealed record RenderWorkloadResult(string Scenario, int TextLength, double ElapsedMs, double CpuMs,
+    double MinimumScrollY, double MaximumScrollY, double[] FrameMs);

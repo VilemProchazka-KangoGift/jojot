@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Globalization;
 using JoJot.Services;
+using Avalonia;
 
 namespace JoJot.AvaloniaExperiment;
 
@@ -11,6 +12,35 @@ internal static class StartupTrace
     private static readonly List<(long Timestamp, string Phase)> Events = [];
     private static long _entry;
     private static volatile bool _enabled;
+
+    internal static AppBuilder TraceSubsystems(AppBuilder builder)
+    {
+        if (!_enabled) return builder;
+        var runtime = builder.RuntimePlatformServicesInitializer;
+        var windowing = builder.WindowingSubsystemInitializer;
+        var rendering = builder.RenderingSubsystemInitializer;
+        var shaping = builder.TextShapingSubsystemInitializer;
+        if (runtime is not null)
+            builder.UseRuntimePlatformSubsystem(() => Measure("runtime", runtime), builder.RuntimePlatformServicesName!);
+        if (windowing is not null)
+            builder.UseWindowingSubsystem(() => Measure("windowing", windowing), builder.WindowingSubsystemName!);
+        if (rendering is not null)
+            builder.UseRenderingSubsystem(() => Measure("rendering", rendering), builder.RenderingSubsystemName!);
+        if (shaping is not null)
+            builder.UseTextShapingSubsystem(() => Measure("text-shaping", shaping), builder.TextShapingSubsystemName!);
+        return builder;
+    }
+
+    private static void Measure(string name, Action initialize)
+    {
+        using var process = Process.GetCurrentProcess();
+        var cpu = process.TotalProcessorTime;
+        Mark(name + "-start");
+        initialize();
+        Mark(name + "-end");
+        process.Refresh();
+        Mark(name + "-process-cpu-ms=" + (process.TotalProcessorTime - cpu).TotalMilliseconds.ToString("F3", CultureInfo.InvariantCulture));
+    }
 
     internal static void Begin(long entry)
     {

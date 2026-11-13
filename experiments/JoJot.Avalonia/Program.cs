@@ -91,7 +91,11 @@ internal static class Program
                 ExperimentApp.Options = options;
                 ExperimentApp.Benchmark = options.BenchmarkOutput is null ? null : new BenchmarkProbe(entry, options);
                 StartupTrace.Mark("platform-start");
-                result = AppBuilder.Configure<ExperimentApp>().UsePlatformDetect().StartWithClassicDesktopLifetime([]);
+                var builder = AppBuilder.Configure<ExperimentApp>().UsePlatformDetect();
+                if (Environment.GetEnvironmentVariable("JOJOT_RENDER_MODE") == "software")
+                    builder.With(new Win32PlatformOptions { RenderingMode = [Win32RenderingMode.Software] });
+                result = StartupTrace.TraceSubsystems(builder)
+                    .StartWithClassicDesktopLifetime([]);
             }
             return result != 0 ? result : ExperimentApp.FailExitCode;
         }
