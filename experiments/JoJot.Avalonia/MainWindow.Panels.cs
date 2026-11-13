@@ -271,7 +271,9 @@ public sealed partial class MainWindow
             Children = { shortcut, _recordShortcutButton },
         });
         body.Children.Add(PreferenceHint(Strings.Pref_HotkeyHint));
-        body.Children.Add(PanelButton(Strings.Help_Title, ShowHelp));
+        var shortcuts = PanelButton(Strings.Help_Title, ShowHelp);
+        shortcuts.Margin = new Thickness(0, 0, 0, 16);
+        body.Children.Add(shortcuts);
 
         body.Children.Add(PanelSection(Strings.Pref_SectionAbout));
         body.Children.Add(PreferenceHint(string.Format(Strings.Pref_Version, typeof(MainWindow).Assembly.GetName().Version?.ToString(3))));

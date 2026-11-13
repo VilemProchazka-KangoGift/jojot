@@ -1,5 +1,7 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Presenters;
+using Avalonia.Controls.Primitives;
 using Avalonia.Headless;
 using Avalonia.Input;
 using Avalonia.Input.Platform;
@@ -234,6 +236,59 @@ public sealed class MainWindowTests
         Assert.Equal(saved, await File.ReadAllTextAsync(path));
         editor.Text = saved;
         await WaitForAsync(() => !imported.HasUnsavedFileChanges, "restoring original text clears the file marker");
+    }
+
+    [AvaloniaTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task NewTabScrollsToTopAndReusedPlaceholderClampsAtEnd(bool reuse)
+    {
+        await using var fixture = new WindowFixture();
+        var window = fixture.Open();
+        await window.Ready;
+        var editor = Find<TextBox>(window, "Editor");
+        var list = Find<ListBox>(window, "NoteList");
+        var initial = Assert.IsType<NoteTab>(list.SelectedItem);
+        if (!reuse)
+            editor.Text = "Existing note";
+
+        for (var index = 0; index < 30; index++)
+            await NoteStore.InsertNoteAsync(window.DesktopGuid, $"Pinned {index}", "", true, index);
+        if (!reuse)
+        {
+            for (var index = 0; index < 30; index++)
+                await NoteStore.InsertNoteAsync(window.DesktopGuid, $"Other {index}", "", false, index + 1);
+        }
+        await window.ReloadNotesAsync();
+
+        var scroll = list.GetVisualDescendants().OfType<ScrollViewer>().First();
+        var viewport = scroll.GetVisualDescendants().OfType<ScrollContentPresenter>().First();
+        window.RequestNewTab();
+        await WaitForAsync(() =>
+        {
+            if (!editor.IsFocused || scroll.Offset.Y <= 0 || list.SelectedItem is not NoteTab note ||
+                list.ContainerFromItem(note) is not ListBoxItem row || row.TranslatePoint(default, viewport) is not { } position)
+                return false;
+            return reuse
+                ? Math.Abs(scroll.Offset.Y - (scroll.Extent.Height - scroll.Viewport.Height)) <= 1 &&
+                  position.Y + row.Bounds.Height <= scroll.Viewport.Height + 1
+                : Math.Abs(position.Y) <= 1;
+        }, "new tab aligned as close to the sidebar top as possible");
+
+        var created = Assert.IsType<NoteTab>(list.SelectedItem);
+        Assert.Equal(reuse, created.Id == initial.Id);
+        Assert.Equal(30, list.SelectedIndex);
+        var scrollbar = scroll.GetVisualDescendants().OfType<ScrollBar>().Single(bar => bar.Name == "PART_VerticalScrollBar");
+        Assert.True(scrollbar.IsVisible);
+        Assert.InRange(scrollbar.Bounds.Width, 1, 10);
+        var row = Assert.IsType<ListBoxItem>(list.ContainerFromItem(created));
+        var close = row.GetVisualDescendants().OfType<Button>().Single(button => button.Classes.Contains("closeAction"));
+        Assert.True(close.IsVisible);
+        var closeRight = close.TranslatePoint(new Point(close.Bounds.Width, 0), scroll);
+        var scrollbarLeft = scrollbar.TranslatePoint(default, scroll);
+        Assert.NotNull(closeRight);
+        Assert.NotNull(scrollbarLeft);
+        Assert.True(closeRight.Value.X <= scrollbarLeft.Value.X);
     }
 
     [AvaloniaFact]

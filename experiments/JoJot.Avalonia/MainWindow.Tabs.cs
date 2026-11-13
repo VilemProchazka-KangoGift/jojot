@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Presenters;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media;
@@ -125,17 +126,37 @@ public sealed partial class MainWindow
 
     private async Task AddNoteAsync(string? initialContent)
     {
+        NoteTab? newTab = null;
         await RunActionAsync(async () =>
         {
             await FlushEditsAsync();
             SearchBox.Clear();
             await CreateNoteCoreAsync(initialContent);
+            newTab = _active;
         });
         DismissSidePanel();
         if (FindHost.IsVisible)
             HideFindPanel();
         if (!_closing && Editor.IsEffectivelyEnabled)
             Editor.Focus();
+
+        if (newTab is not null)
+            Dispatcher.UIThread.Post(() => ScrollNewTabToTop(newTab), DispatcherPriority.Loaded);
+    }
+
+    private void ScrollNewTabToTop(NoteTab note)
+    {
+        if (_closing || !ReferenceEquals(_active, note))
+            return;
+
+        NoteList.ScrollIntoView(note);
+        if (NoteList.ContainerFromItem(note) is not ListBoxItem row ||
+            NoteList.GetVisualDescendants().OfType<ScrollViewer>().FirstOrDefault() is not { } scroll ||
+            scroll.GetVisualDescendants().OfType<ScrollContentPresenter>().FirstOrDefault() is not { } viewport ||
+            row.TranslatePoint(default, viewport) is not { } position)
+            return;
+
+        scroll.Offset = new Vector(scroll.Offset.X, scroll.Offset.Y + position.Y);
     }
 
     private async Task CreateNoteCoreAsync(string? initialContent = null)

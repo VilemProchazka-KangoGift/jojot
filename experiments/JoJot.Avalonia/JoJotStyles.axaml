@@ -99,6 +99,12 @@
     <Setter Property="BorderThickness" Value="0" />
     <Setter Property="Padding" Value="0" />
     <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled" />
+    <Setter Property="ScrollViewer.AllowAutoHide" Value="False" />
+  </Style>
+  <Style Selector="ListBox.noteList ScrollBar#PART_VerticalScrollBar">
+    <Setter Property="Width" Value="10" />
+    <Setter Property="MinWidth" Value="0" />
+    <Setter Property="ClipToBounds" Value="True" />
   </Style>
   <Style Selector="ListBox.noteList ListBoxItem">
     <Setter Property="Background" Value="Transparent" />
