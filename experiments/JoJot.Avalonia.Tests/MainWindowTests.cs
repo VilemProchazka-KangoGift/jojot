@@ -248,6 +248,44 @@ public sealed class MainWindowTests
     }
 
     [AvaloniaFact]
+    public async Task LegacyEncodingIsDetectedAndSurvivesAnAsciiSaveAndReopen()
+    {
+        await using var fixture = new WindowFixture();
+        var window = fixture.Open();
+        await window.Ready;
+        var central = Path.Combine(fixture.Directory, "central");
+        var western = Path.Combine(fixture.Directory, "western.ini");
+        await File.WriteAllBytesAsync(central, [0xe1]);
+        await File.WriteAllBytesAsync(western, [0x9c, 0xff]);
+        Assert.Equal(1250, (await TextNoteFiles.ReadAsync(central)).Encoding.CodePage);
+        Assert.Equal(1252, (await TextNoteFiles.ReadAsync(western)).Encoding.CodePage);
+
+        await window.ImportPathsAsync([western]);
+        var editor = Find<TextBox>(window, "Editor");
+        Assert.Equal("œÿ", editor.Text);
+        editor.Text = "ascii";
+        await window.FlushWindowAsync();
+        Press(window, editor, Key.S, PhysicalKey.S, RawInputModifiers.Control);
+        await WaitForAsync(() => editor.IsEffectivelyEnabled && File.ReadAllText(western) == "ascii", "ASCII file saved");
+        window.Close();
+        await WaitForAsync(() => !window.IsVisible, "legacy note window closed");
+
+        window = fixture.Open();
+        await window.Ready;
+        editor = Find<TextBox>(window, "Editor");
+        Assert.Equal("ascii", editor.Text);
+        editor.Text = "œ";
+        await window.FlushWindowAsync();
+        Press(window, editor, Key.S, PhysicalKey.S, RawInputModifiers.Control);
+        await WaitForAsync(() => editor.IsEffectivelyEnabled && File.ReadAllBytes(western).SequenceEqual(new byte[] { 0x9c }),
+            "remembered Windows-1252 restored");
+        var note = Assert.IsType<NoteTab>(Find<ListBox>(window, "NoteList").SelectedItem);
+        note.Content = "😀";
+        await Assert.ThrowsAsync<System.Text.EncoderFallbackException>(() => window.SaveNoteToPathCoreAsync(note, western));
+        Assert.Equal(new byte[] { 0x9c }, await File.ReadAllBytesAsync(western));
+    }
+
+    [AvaloniaFact]
     public async Task FileBackedDraftStillShowsUnsavedAfterReopenAndClearsWhenContentMatches()
     {
         await using var fixture = new WindowFixture();

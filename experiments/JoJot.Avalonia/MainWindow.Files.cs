@@ -1,4 +1,5 @@
 using System.Runtime.CompilerServices;
+using System.Security.Cryptography;
 using System.Text;
 using Avalonia;
 using Avalonia.Input;
@@ -40,7 +41,8 @@ public sealed partial class MainWindow
             return;
 
         var contentLength = note.Content.Length;
-        var saved = await Task.Run(() => ReadFileBaselineAsync(path, contentLength));
+        var preferred = await ReadPreferredEncodingAsync(path);
+        var saved = await Task.Run(() => ReadFileBaselineAsync(path, contentLength, preferred));
         if (note.FilePath == path &&
             (!_fileBaselines.TryGetValue(note, out var current) || current.Path != path))
             SetFileBaseline(note, path, saved?.Content, saved?.Encoding);
@@ -49,9 +51,9 @@ public sealed partial class MainWindow
     private static int FileInspectionLimit(int contentLength) =>
         Math.Max(TextNoteFiles.ImportLimit, (int)Math.Min(int.MaxValue, 4L * contentLength + 4));
 
-    private static async Task<TextNoteFiles.Document?> ReadFileBaselineAsync(string path, int contentLength)
+    private static async Task<TextNoteFiles.Document?> ReadFileBaselineAsync(string path, int contentLength, Encoding? preferred)
     {
-        try { return await TextNoteFiles.ReadAsync(path, FileInspectionLimit(contentLength)).ConfigureAwait(false); }
+        try { return await TextNoteFiles.ReadAsync(path, FileInspectionLimit(contentLength), preferred).ConfigureAwait(false); }
         catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
         {
             // The note remains available from SQLite even when its external file cannot be read.
@@ -125,7 +127,11 @@ public sealed partial class MainWindow
         string? lastError = null;
         foreach (var path in paths)
         {
-            try { files.Add((path, await Task.Run(() => TextNoteFiles.ReadAsync(path)))); }
+            try
+            {
+                var preferred = await ReadPreferredEncodingAsync(path);
+                files.Add((path, await Task.Run(() => TextNoteFiles.ReadAsync(path, preferred: preferred))));
+            }
             catch (Exception ex) when (ex is InvalidDataException or TextNoteFiles.FileTooLargeException)
             {
                 lastError = ex.Message;
@@ -148,6 +154,7 @@ public sealed partial class MainWindow
             {
                 var note = await InsertNoteAsync(Path.GetFileName(path), document.Content, false, firstOrder++, path);
                 SetFileBaseline(note, path, document.Content, document.Encoding);
+                await RememberEncodingAsync(path, document.Encoding);
                 _notes.Insert(index++, note);
                 first ??= note;
             }
@@ -221,11 +228,33 @@ public sealed partial class MainWindow
         finally { _filePickerOpen = false; }
     }
 
-    private Task<Encoding> WriteFileAsync(NoteTab note, string path, string content)
+    private static string EncodingKey(string path) =>
+        "file_encoding_" + Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(Path.GetFullPath(path).ToUpperInvariant())));
+
+    private static async Task<Encoding?> ReadPreferredEncodingAsync(string path)
+    {
+        var value = await PreferenceStore.GetPreferenceAsync(EncodingKey(path));
+        return int.TryParse(value, out var codePage) ? TextNoteFiles.GetLegacyEncoding(codePage) : null;
+    }
+
+    private static async Task RememberEncodingAsync(string path, Encoding encoding)
+    {
+        var key = EncodingKey(path);
+        if (TextNoteFiles.GetLegacyEncoding(encoding.CodePage) is not null)
+            await PreferenceStore.SetPreferenceAsync(key, encoding.CodePage.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        else if (!string.IsNullOrEmpty(await PreferenceStore.GetPreferenceAsync(key)))
+            await PreferenceStore.SetPreferenceAsync(key, "");
+    }
+
+    private async Task<Encoding> WriteFileAsync(NoteTab note, string path, string content)
     {
         _fileBaselines.TryGetValue(note, out var baseline);
-        var fallback = baseline?.Encoding ?? TextNoteFiles.DefaultEncoding;
+        var source = baseline?.Encoding ?? (note.FilePath is { } sourcePath ? await ReadPreferredEncodingAsync(sourcePath) : null);
+        var preferred = await ReadPreferredEncodingAsync(path);
+        var fallback = source ?? TextNoteFiles.DefaultEncoding;
         var limit = FileInspectionLimit(Math.Max(content.Length, baseline?.Content?.Length ?? 0));
-        return Task.Run(() => TextNoteFiles.WriteAsync(path, content, fallback, limit));
+        var encoding = await Task.Run(() => TextNoteFiles.WriteAsync(path, content, fallback, limit, preferred));
+        await RememberEncodingAsync(path, encoding);
+        return encoding;
     }
 }
