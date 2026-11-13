@@ -238,6 +238,25 @@ public sealed class MainWindowTests
         await WaitForAsync(() => !imported.HasUnsavedFileChanges, "restoring original text clears the file marker");
     }
 
+    [AvaloniaFact]
+    public async Task HeadersAlignAboveThinSidebarDivider()
+    {
+        await using var fixture = new WindowFixture();
+        var window = fixture.Open();
+        await window.Ready;
+        var list = Find<ListBox>(window, "NoteList");
+        var editor = Find<TextBox>(window, "Editor");
+        var toolbar = Find<Border>(window, "EditorToolbar");
+        var splitter = Find<GridSplitter>(window, "TabSplitter");
+        Assert.Equal(toolbar.Bounds.Height, list.Bounds.Y);
+        Assert.Equal(toolbar.Bounds.Height, editor.TranslatePoint(default, window)!.Value.Y);
+        Assert.Equal(toolbar.Bounds.Height, splitter.Bounds.Y);
+        Assert.Equal(4, splitter.Bounds.Width);
+        var line = Find<Border>(window, "TabDividerLine");
+        Assert.Equal(1, line.Bounds.Width);
+        Assert.False(line.IsHitTestVisible);
+    }
+
     [AvaloniaTheory]
     [InlineData(false)]
     [InlineData(true)]

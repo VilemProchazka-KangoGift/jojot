@@ -19,13 +19,13 @@
   </Window.Styles>
 
   <Grid>
-    <Grid x:Name="WorkArea" IsEnabled="False">
+    <Grid x:Name="WorkArea" IsEnabled="False" RowDefinitions="41,*">
       <Grid.ColumnDefinitions>
         <ColumnDefinition Width="180" MinWidth="120" MaxWidth="400" />
         <ColumnDefinition Width="4" />
         <ColumnDefinition Width="*" />
       </Grid.ColumnDefinitions>
-      <Grid RowDefinitions="Auto,*" Background="{DynamicResource c-sidebar-bg}">
+      <Grid Grid.RowSpan="2" RowDefinitions="41,*" Background="{DynamicResource c-sidebar-bg}">
         <Border Padding="6" BorderBrush="{DynamicResource c-border}" BorderThickness="0,0,0,1">
           <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="4">
             <Grid>
@@ -101,10 +101,12 @@
           </ListBox.ItemTemplate>
         </ListBox>
       </Grid>
-      <GridSplitter x:Name="TabSplitter" Grid.Column="1" ResizeDirection="Columns" ResizeBehavior="PreviousAndNext"
-                    Background="{DynamicResource c-border}" />
-      <Grid Grid.Column="2" RowDefinitions="Auto,*" ClipToBounds="True">
-        <Border Padding="4,2" BorderThickness="0,0,0,1" BorderBrush="{DynamicResource c-border}">
+      <Border Grid.Column="1" BorderThickness="0,0,0,1" BorderBrush="{DynamicResource c-border}" />
+      <Border x:Name="TabDividerLine" Grid.Row="1" Grid.Column="1" Width="1" Background="{DynamicResource c-border}" IsHitTestVisible="False" />
+      <GridSplitter x:Name="TabSplitter" Grid.Row="1" Grid.Column="1" ResizeDirection="Columns" ResizeBehavior="PreviousAndNext"
+                    MinWidth="0" Background="Transparent" />
+      <Grid Grid.Column="2" Grid.RowSpan="2" RowDefinitions="41,*" ClipToBounds="True">
+        <Border x:Name="EditorToolbar" Padding="4,6" BorderThickness="0,0,0,1" BorderBrush="{DynamicResource c-border}">
           <DockPanel>
             <Button x:Name="DeleteButton" DockPanel.Dock="Right" Classes="iconButton toolbarDelete" Content="&#xE74D;" Click="OnDelete" />
             <StackPanel Orientation="Horizontal">
