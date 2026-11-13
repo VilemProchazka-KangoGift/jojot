@@ -126,6 +126,17 @@ public sealed partial class MainWindow
     private async Task CaptureWindowAsync(string directory, string filename)
     {
         await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Background);
+        var sidebarControls = new Control[] { HamburgerButton, SearchBox, AddButton };
+        var sidebarBounds = sidebarControls.Select(control =>
+            new Rect(control.TranslatePoint(default, this)!.Value, control.Bounds.Size)).ToArray();
+        for (var index = 0; index < sidebarBounds.Length; index++)
+        {
+            if (sidebarBounds[index].Width <= 0 || sidebarBounds[index].Bottom > NoteList.TranslatePoint(default, this)!.Value.Y)
+                throw new InvalidOperationException($"Sidebar header is clipped in {filename}.");
+            if (index > 0 && (sidebarBounds[index - 1].Right + 3 > sidebarBounds[index].Left ||
+                Math.Abs(sidebarBounds[index - 1].Center.Y - sidebarBounds[index].Center.Y) > 1))
+                throw new InvalidOperationException($"Sidebar header is not inline in {filename}.");
+        }
         var toolbarButtons = new[] { UndoButton, RedoButton, CopyButton, PasteButton, PinButton,
             CloneButton, SaveButton, SaveAsButton, FindButton, DeleteButton }.Where(button => button.IsVisible).ToArray();
         var rectangles = toolbarButtons.Select(button =>

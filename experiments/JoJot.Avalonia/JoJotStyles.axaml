@@ -1,9 +1,4 @@
 <Styles xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-  <Style Selector="TextBlock.workspaceBrand">
-    <Setter Property="FontSize" Value="17" />
-    <Setter Property="FontWeight" Value="SemiBold" />
-    <Setter Property="Foreground" Value="{DynamicResource c-text-primary}" />
-  </Style>
   <Style Selector="ListBoxItem:selected TextBlock.tabTitle">
     <Setter Property="FontWeight" Value="SemiBold" />
   </Style>

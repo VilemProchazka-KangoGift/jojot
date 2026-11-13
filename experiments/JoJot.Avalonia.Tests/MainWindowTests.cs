@@ -469,6 +469,15 @@ public sealed class MainWindowTests
         var toolbar = Find<Border>(window, "EditorToolbar");
         var splitter = Find<GridSplitter>(window, "TabSplitter");
         var search = Find<TextBox>(window, "SearchBox");
+        var menu = Find<Button>(window, "HamburgerButton");
+        var add = Find<Button>(window, "AddButton");
+        var menuOrigin = menu.TranslatePoint(default, window)!.Value;
+        var searchOrigin = search.TranslatePoint(default, window)!.Value;
+        var addOrigin = add.TranslatePoint(default, window)!.Value;
+        Assert.True(menuOrigin.X + menu.Bounds.Width + 4 <= searchOrigin.X);
+        Assert.True(searchOrigin.X + search.Bounds.Width + 4 <= addOrigin.X);
+        Assert.Equal(menuOrigin.Y + menu.Bounds.Height / 2, searchOrigin.Y + search.Bounds.Height / 2);
+        Assert.Equal(addOrigin.Y + add.Bounds.Height / 2, searchOrigin.Y + search.Bounds.Height / 2);
         var searchBottom = search.TranslatePoint(new Point(0, search.Bounds.Height), window)!.Value.Y;
         Assert.True(searchBottom + 8 <= list.TranslatePoint(default, window)!.Value.Y);
         Assert.Equal(toolbar.Bounds.Height, editor.TranslatePoint(default, window)!.Value.Y);
