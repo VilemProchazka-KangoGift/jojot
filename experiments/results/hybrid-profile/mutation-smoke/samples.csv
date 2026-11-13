@@ -1,0 +1,3 @@
+"Phase","Round","Variant","RenderMode","FirstRenderMs","EditorReadyMs","EditorRenderingMs","Geometry"
+"measured","1","baseline","default","2090.1445999999996","2100.3201999999997","2188.4575","80,80,850,686,828,630"
+"measured","1","candidate","default","497.2885","497.2706","580.2636","80,80,850,686,828,630"

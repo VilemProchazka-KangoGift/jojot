@@ -1,0 +1,10 @@
+Native feasibility: 4 clean disposable launches, no successful GPU transition
+Option mutation + replacement: same compositor, GPU modules absent, 218.75/252.54ms transition cost
+Backend reinitialization: rejected, UI thread dispatcher already initialized
+Current startup comparison: 20 measured pairs + 3 warmup pairs
+Current render comparison: 1 pair, 90 edits + 90 verified scroll updates each
+Content integrity: 52 completed fixture databases match all original note IDs/content
+Reproduction: regenerated source manifest exactly matches tested native probe
+Application source: unchanged; current comparison binary source manifest matches workspace
+PowerShell reproduction scripts: parse successfully
+Native compile: succeeded; NuGet audit unavailable due DNS failure; no dependency changes

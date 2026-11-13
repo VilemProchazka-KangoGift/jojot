@@ -1,0 +1,30 @@
+diff --git a/experiments/JoJot.Avalonia/BenchmarkProbe.cs b/.local/avalonia-hybrid-profile/probe/source/experiments/JoJot.Avalonia/BenchmarkProbe.cs
+index 7f4678d..be524e6 100644
+--- a/experiments/JoJot.Avalonia/BenchmarkProbe.cs
++++ b/.local/avalonia-hybrid-profile/probe/source/experiments/JoJot.Avalonia/BenchmarkProbe.cs
+@@ -55,8 +55,11 @@ internal sealed partial class BenchmarkProbe(long entryTimestamp, ExperimentOpti
+             File.Move(temporary, output, overwrite: true);
+         }
+         finally { File.Delete(temporary); }
++        var originalWindow = window;
++        if (HybridProbe.Enabled) window = await HybridProbe.TransitionAsync(window, output);
+         if (Environment.GetEnvironmentVariable("JOJOT_RENDER_WORKLOAD") == "1")
+             await RecordRenderWorkloadAsync(window, output);
++        if (!ReferenceEquals(window, originalWindow)) window.Close();
+     }
+ 
+     private static async Task RecordRenderWorkloadAsync(Window window, string output)
+@@ -110,7 +113,7 @@ internal sealed partial class BenchmarkProbe(long entryTimestamp, ExperimentOpti
+         File.WriteAllLines(output + ".modules.txt", process.Modules.Cast<ProcessModule>().Select(module => module.ModuleName).Order());
+     }
+ 
+-    private static async Task WaitForRenderedBatchAsync(Window window)
++    internal static async Task WaitForRenderedBatchAsync(Window window)
+     {
+         // Allow pending layout/render invalidations to reach the compositor before
+         // awaiting its render-thread completion. This is a renderer milestone,
+@@ -151,3 +154,4 @@ internal sealed partial class BenchmarkJsonContext : JsonSerializerContext;
+ 
+ internal sealed record RenderWorkloadResult(string Scenario, int TextLength, double ElapsedMs, double CpuMs,
+     double MinimumScrollY, double MaximumScrollY, double[] FrameMs);
++

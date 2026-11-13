@@ -1,0 +1,23 @@
+diff --git a/experiments/JoJot.Avalonia/Program.cs b/.local/avalonia-hybrid-profile/probe/source/experiments/JoJot.Avalonia/Program.cs
+index 63157d7..cb2cced 100644
+--- a/experiments/JoJot.Avalonia/Program.cs
++++ b/.local/avalonia-hybrid-profile/probe/source/experiments/JoJot.Avalonia/Program.cs
+@@ -94,6 +94,13 @@ internal static class Program
+                 var builder = AppBuilder.Configure<ExperimentApp>().UsePlatformDetect();
+                 if (Environment.GetEnvironmentVariable("JOJOT_RENDER_MODE") == "software")
+                     builder.With(new Win32PlatformOptions { RenderingMode = [Win32RenderingMode.Software] });
++                if (HybridProbe.Enabled)
++                {
++                    var hybridOptions = new Win32PlatformOptions { RenderingMode = [Win32RenderingMode.Software] };
++                    builder.With(hybridOptions);
++                    HybridProbe.MutateOptions = () => hybridOptions.RenderingMode = [Win32RenderingMode.AngleEgl, Win32RenderingMode.Software];
++                    HybridProbe.Reinitialize = builder.WindowingSubsystemInitializer!;
++                }
+                 result = StartupTrace.TraceSubsystems(builder)
+                     .StartWithClassicDesktopLifetime([]);
+             }
+@@ -723,3 +730,4 @@ internal sealed class ExperimentApp : Application
+         }
+     }
+ }
++

@@ -1,0 +1,74 @@
+using System.Diagnostics;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using Avalonia.Controls;
+using Avalonia.Rendering.Composition;
+
+namespace JoJot.AvaloniaExperiment;
+
+internal static class HybridProbe
+{
+    internal static bool Enabled => Environment.GetEnvironmentVariable("JOJOT_HYBRID_PROBE") is "mutate" or "reinitialize";
+    internal static Action MutateOptions = null!;
+    internal static Action Reinitialize = null!;
+
+    internal static async Task<Window> TransitionAsync(Window oldWindow, string output)
+    {
+        var mode = Environment.GetEnvironmentVariable("JOJOT_HYBRID_PROBE")!;
+        var before = Modules();
+        var initialCompositor = ElementComposition.GetElementVisual(oldWindow)!.Compositor;
+        var started = Stopwatch.GetTimestamp();
+        var initializeMs = 0d;
+        MainWindow? replacement = null;
+        string? failure = null;
+        var sameCompositor = true;
+        try
+        {
+            MutateOptions();
+            if (mode == "reinitialize") Reinitialize();
+            initializeMs = Stopwatch.GetElapsedTime(started).TotalMilliseconds;
+            var benchmark = ExperimentApp.Benchmark;
+            try
+            {
+                ExperimentApp.Benchmark = null;
+                replacement = new MainWindow(((MainWindow)oldWindow).DesktopGuid)
+                {
+                    ShowActivated = false,
+                    Position = oldWindow.Position,
+                    Width = oldWindow.Width,
+                    Height = oldWindow.Height,
+                    RequestedThemeVariant = oldWindow.RequestedThemeVariant
+                };
+            }
+            finally { ExperimentApp.Benchmark = benchmark; }
+            replacement.Show();
+            await replacement.Ready.WaitAsync(TimeSpan.FromSeconds(10));
+            await BenchmarkProbe.WaitForRenderedBatchAsync(replacement);
+            sameCompositor = ReferenceEquals(initialCompositor, ElementComposition.GetElementVisual(replacement)!.Compositor);
+            var originalText = oldWindow.FindControl<TextBox>("Editor")!.Text;
+            if (replacement.FindControl<TextBox>("Editor")!.Text != originalText)
+                throw new InvalidOperationException("Replacement editor text changed.");
+            oldWindow.Hide();
+        }
+        catch (Exception ex)
+        {
+            failure = ex.GetType().Name + ": " + ex.Message;
+            replacement?.Close();
+            replacement = null;
+        }
+        var result = new HybridResult(mode, initializeMs, Stopwatch.GetElapsedTime(started).TotalMilliseconds,
+            replacement is not null, sameCompositor, failure, before, Modules());
+        File.WriteAllText(output + ".hybrid.json", JsonSerializer.Serialize(result, HybridJsonContext.Default.HybridResult));
+        return replacement ?? oldWindow;
+    }
+
+    private static string[] Modules()
+    {
+        using var process = Process.GetCurrentProcess();
+        return process.Modules.Cast<ProcessModule>().Select(module => module.ModuleName).Order().ToArray();
+    }
+}
+internal sealed record HybridResult(string Mode, double InitializeMs, double TransitionMs, bool Recreated,
+    bool SameCompositor, string? Failure, string[] ModulesBefore, string[] ModulesAfter);
+[JsonSerializable(typeof(HybridResult))]
+internal sealed partial class HybridJsonContext : JsonSerializerContext;
