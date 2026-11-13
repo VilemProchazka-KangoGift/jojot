@@ -4,6 +4,8 @@ The Avalonia candidate reuses JoJot's production SQLite stores, schema, and migr
 
 ## Build
 
+The Windows x64 NativeAOT preview installer is built from `installer/jojot-avalonia.iss`. It installs per user and creates a separate JoJot Avalonia Preview Start menu entry. It uses `%LOCALAPPDATA%\JoJot.AvaloniaExperiment` for notes and settings, the same data directory as the earlier release-mode previews. Installation leaves existing WPF files and notes in place. Uninstall preserves preview notes and settings.
+
 Use PowerShell 7 and the .NET 11 SDK on Windows x64. NativeAOT uses the Visual Studio C++ linker and Windows SDK. A standard installation uses Visual Studio 2022 or newer with the Desktop development with C++ workload. [Microsoft NativeAOT prerequisites](https://learn.microsoft.com/en-us/dotnet/core/deploying/native-aot/index) · [Avalonia NativeAOT guide](https://docs.avaloniaui.net/docs/deployment/native-aot)
 
 Publish both variants from the same frozen source with the same SDK. From the repository root, choose a new output path.
