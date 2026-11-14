@@ -134,6 +134,11 @@ public sealed partial class MainWindow
         _ = LoadActiveFileBaselineAsync();
     }
 
+    private static readonly Avalonia.Media.Geometry PinIcon = Avalonia.Media.Geometry.Parse(
+        "M8,1 L13,6 L12,7 L11,6 L8,9 L8,11 L7,12 L5,10 L2,13 L1,12 L4,9 L2,7 L3,6 H5 L8,3 L7,2 Z");
+    private static readonly Avalonia.Media.Geometry UnpinIcon = Avalonia.Media.Geometry.Parse(
+        "M8,1 L13,6 L12,7 L11,6 L8,9 L8,11 L7,12 L5,10 L2,13 L1,12 L4,9 L2,7 L3,6 H5 L8,3 L7,2 Z M1,1 L15,15 L14,16 L0,2 Z");
+
     private void SaveEditorPosition()
     {
         if (_active is not { } note)
@@ -247,7 +252,8 @@ public sealed partial class MainWindow
         var note = _active;
         PinButton.IsEnabled = note is not null;
         var pinned = note?.Pinned == true;
-        PinButton.Content = pinned ? "\uE77A" : "\uE718";
+        if (PinButton.Content is PathIcon icon)
+            icon.Data = pinned ? UnpinIcon : PinIcon;
         PinButton.Classes.Set("active", pinned);
         ToolTip.SetTip(PinButton, pinned ? Strings.Tooltip_Unpin : Strings.Tooltip_Pin);
         AutomationProperties.SetName(PinButton, pinned ? Strings.Ctx_Unpin : Strings.Ctx_Pin);

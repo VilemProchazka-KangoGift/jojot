@@ -67,6 +67,8 @@ internal static unsafe partial class VirtualDesktop
 
     internal static string GetCurrentDesktopOrDefault()
     {
+        if (OperatingSystem.IsLinux())
+            return X11Workspaces.Read()?.Current ?? "default";
         if (!OperatingSystem.IsWindows() || Environment.OSVersion.Version.Build < 22621)
             return "default";
         var iid = Environment.OSVersion.Version.Build >= 26100
@@ -106,7 +108,8 @@ internal static unsafe partial class VirtualDesktop
 
     internal sealed record Desktop(string Id, string Name, int Index);
 
-    internal static IReadOnlyList<Desktop> GetDesktops() => EnumerateDesktops();
+    internal static IReadOnlyList<Desktop> GetDesktops() =>
+        (OperatingSystem.IsLinux() ? X11Workspaces.Read()?.Desktops : null) ?? EnumerateDesktops();
     internal static IReadOnlyList<string> GetDesktopIds() => GetDesktops().Select(d => d.Id).ToArray();
 
     private static string GetName(nint desktop, Guid id)

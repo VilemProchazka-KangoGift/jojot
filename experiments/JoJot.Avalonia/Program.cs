@@ -50,7 +50,7 @@ internal static class Program
                 foreach (var desktop in desktops)
                     Console.WriteLine($"Desktop: {desktop.Id} {desktop.Index} {desktop.Name}");
                 if (!OperatingSystem.IsWindows())
-                    return current == "default" && desktops.Count == 1 ? 0 : 1;
+                    return desktops.Any(desktop => desktop.Id == current) ? 0 : 1;
                 using var notifications = DesktopNotifications.TryRegister(() => { });
                 Console.WriteLine(notifications is not null ? "Notifications: registered" :
                     Environment.OSVersion.Version.Build < 26100 ? "Notifications: unsupported" : "Notifications: failed");
@@ -145,6 +145,9 @@ internal sealed class ExperimentApp : Application
     private TaskCompletionSource? _reservationsDrained;
     private readonly HashSet<string> _pendingActivations = new(StringComparer.OrdinalIgnoreCase);
     private GlobalHotkey? _hotkey;
+    private X11GlobalHotkey? _x11Hotkey;
+    private static bool SupportsGlobalHotkey => GlobalHotkey.IsSupported || X11GlobalHotkey.IsSupported;
+    private bool HotkeyRegistered => _hotkey?.Registered == true || _x11Hotkey?.Registered == true;
     private DesktopNotifications? _desktopNotifications;
     private DispatcherTimer? _desktopPoll;
     private readonly DesktopPolling _desktopPolling = new();
@@ -429,22 +432,26 @@ internal sealed class ExperimentApp : Application
             };
             MainWindow.SaveWindowGeometryAsync = SaveWindowGeometryAsync;
             MainWindow.CurrentGlobalShortcut = () => $"{(_hotkeyModifiers & 8) switch { 0 => "", _ => "Win + " }}{(_hotkeyModifiers & 2) switch { 0 => "", _ => "Ctrl + " }}{(_hotkeyModifiers & 1) switch { 0 => "", _ => "Alt + " }}{(_hotkeyModifiers & 4) switch { 0 => "", _ => "Shift + " }}{GlobalHotkey.KeyName(_hotkeyKey)}";
-            MainWindow.PauseGlobalShortcut = paused => _hotkey?.PauseForRecording(paused);
-            MainWindow.RecordGlobalShortcutAsync = UpdateHotkeyAsync;
+            MainWindow.PauseGlobalShortcut = paused =>
+            {
+                _hotkey?.PauseForRecording(paused);
+                _x11Hotkey?.PauseForRecording(paused);
+            };
+            MainWindow.RecordGlobalShortcutAsync = SupportsGlobalHotkey ? UpdateHotkeyAsync : null;
             desktop.ShutdownRequested += (_, args) =>
             {
                 if (!FlushForSessionEnd())
                     args.Cancel = true;
             };
             Dispatcher.UIThread.Post(DrainCommands);
-            if (GlobalHotkey.IsSupported && Options.BenchmarkOutput is null &&
+            if (SupportsGlobalHotkey && Options.BenchmarkOutput is null &&
                 Options.CompatibilityExpected is null && Options.VisualOutputDirectory is null)
                 _ = InitializeHotkeyAsync();
             desktop.Exit += (_, _) =>
             {
                 if (DesktopMoveProbe is not null && !VirtualDesktop.TrySwitchToDesktop(detectedDesktop))
                     Console.Error.WriteLine("Desktop move probe: could not restore the original desktop.");
-                _hotkey?.Dispose();
+                StopHotkey();
                 _desktopPoll?.Stop();
                 _desktopNotifications?.Dispose();
                 if (_storageTask?.IsCompletedSuccessfully == true)
@@ -571,6 +578,15 @@ internal sealed class ExperimentApp : Application
 
     private async Task<bool> TryMatchDesktopsAsync(IReadOnlyList<VirtualDesktop.Desktop> desktops)
     {
+        if (OperatingSystem.IsLinux())
+        {
+            // EWMH workspace IDs are indices. Keep disappeared workspaces' notes
+            // on their original keys so a temporary count change cannot move them.
+            var ids = desktops.Select(desktop => desktop.Id).ToHashSet(StringComparer.Ordinal);
+            var sessions = await SessionStore.GetAllSessionsAsync();
+            SetOrphans(sessions.Select(session => session.DesktopGuid).Where(id => !ids.Contains(id)));
+            return true;
+        }
         if (_desktopMatching || MainWindow.DesktopMoveCheckActive) return false;
         _desktopMatching = true;
         try
@@ -618,7 +634,7 @@ internal sealed class ExperimentApp : Application
             _hotkeyModifiers = uint.TryParse(modifiers, out var m) ? m : 0x000C;
             _hotkeyKey = uint.TryParse(key, out var k) ? k : 0x4E;
             StartHotkey();
-            if (_hotkey?.Registered != true)
+            if (!HotkeyRegistered)
                 foreach (var window in _windows.Values) window.ShowGlobalHotkeyConflict();
         }
         catch (Exception ex) { Console.Error.WriteLine(ex); }
@@ -626,18 +642,27 @@ internal sealed class ExperimentApp : Application
 
     private void StartHotkey()
     {
-        _hotkey ??= new GlobalHotkey(_hotkeyModifiers, _hotkeyKey,
-            () => Dispatcher.UIThread.Post(() =>
+        void ActivateCurrentWorkspace() => Dispatcher.UIThread.Post(() =>
             {
                 var guid = VirtualDesktop.GetCurrentDesktopOrDefault();
                 if (_shuttingDown) return;
                 if (_reservedDesktops.Contains(guid)) { _pendingActivations.Add(guid); return; }
                 var target = GetOrCreateWindow(guid);
                 WindowActivation.Activate(target);
-            }));
+            });
+        if (GlobalHotkey.IsSupported)
+            _hotkey ??= new GlobalHotkey(_hotkeyModifiers, _hotkeyKey, ActivateCurrentWorkspace);
+        else if (X11GlobalHotkey.IsSupported)
+            _x11Hotkey ??= new X11GlobalHotkey(_hotkeyModifiers, _hotkeyKey, ActivateCurrentWorkspace);
     }
 
-    private void StopHotkey() { _hotkey?.Dispose(); _hotkey = null; }
+    private void StopHotkey()
+    {
+        _hotkey?.Dispose();
+        _hotkey = null;
+        _x11Hotkey?.Dispose();
+        _x11Hotkey = null;
+    }
 
     private async Task<bool> UpdateHotkeyAsync(Key key, KeyModifiers modifiers)
     {
@@ -664,7 +689,7 @@ internal sealed class ExperimentApp : Application
             "Oem8" => 0xDF, "OemBackslash" or "Oem102" => 0xE2,
             _ => 0
         };
-        if (vk == 0) return false;
+        if (vk == 0 || (!GlobalHotkey.IsSupported && !X11GlobalHotkey.SupportsKey(vk))) return false;
         uint flags = 0;
         if (modifiers.HasFlag(KeyModifiers.Alt)) flags |= 1;
         if (modifiers.HasFlag(KeyModifiers.Control)) flags |= 2;
@@ -675,8 +700,15 @@ internal sealed class ExperimentApp : Application
         StopHotkey();
         _hotkeyModifiers = flags;
         _hotkeyKey = vk;
-        StartHotkey();
-        if (_hotkey?.Registered != true)
+        try
+        {
+            StartHotkey();
+        }
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or DllNotFoundException)
+        {
+            LogService.Warn("Could not register the requested global shortcut", ex);
+        }
+        if (!HotkeyRegistered)
         {
             StopHotkey();
             _hotkeyModifiers = oldModifiers;

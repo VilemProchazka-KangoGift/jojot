@@ -31,7 +31,6 @@
     <Setter Property="CornerRadius" Value="7" />
     <Setter Property="Background" Value="Transparent" />
     <Setter Property="Foreground" Value="{DynamicResource c-toolbar-icon}" />
-    <Setter Property="FontFamily" Value="Segoe Fluent Icons, Segoe MDL2 Assets" />
     <Setter Property="FontSize" Value="14" />
     <Setter Property="HorizontalContentAlignment" Value="Center" />
     <Setter Property="VerticalContentAlignment" Value="Center" />
@@ -318,7 +317,6 @@
     <Setter Property="Foreground" Value="{DynamicResource c-on-accent}" />
   </Style>
   <Style Selector="Button.panelGlyph">
-    <Setter Property="FontFamily" Value="Segoe Fluent Icons, Segoe MDL2 Assets" />
     <Setter Property="Padding" Value="6,4" />
   </Style>
   <Style Selector="Button.panelClose">

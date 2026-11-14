@@ -117,7 +117,7 @@ public sealed partial class MainWindow
         if (FindHost.IsVisible)
             HideFindPanel();
         _currentPanel = panel;
-        var close = PanelButton("\uE711", () => DismissSidePanel());
+        var close = PanelButton("×", () => DismissSidePanel());
         close.Classes.Remove("panelButton");
         close.Classes.Add("iconButton");
         close.Classes.Add("panelClose");

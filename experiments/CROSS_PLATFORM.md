@@ -37,4 +37,6 @@ Run the same managed command with a .NET 11 SDK that matches the Mac's architect
 
 ## Platform scope
 
-Linux and macOS currently use one default desktop session, with best-effort window placement. Windows-style system-wide hotkeys, desktop moves, Task View integration, and taskbar relaunch properties are Windows-only. Database-backed note editing remains available on both platforms. Platform-specific behavior on macOS and native Wayland has not been tested.
+Linux uses separate note sessions for X11 window managers that expose EWMH workspace properties. Sessions follow workspace positions, so reordering workspaces may change which set of notes appears at a position. The first workspace uses the existing default session. On a display without workspace properties, JoJot uses that default session. Opening JoJot or invoking its global shortcut targets the current workspace. Moving a window between workspaces leaves its notes in their original session. The workspace routing was exercised with Openbox under private Xvfb.
+
+Global shortcuts on Linux use X11 key grabs. A compositor or another application can reserve the requested key combination. Native Wayland system-wide shortcuts are outside this implementation. macOS uses a single default session. Both platforms provide best-effort window placement. Windows desktop moves, Task View integration, and taskbar relaunch properties remain Windows-specific.

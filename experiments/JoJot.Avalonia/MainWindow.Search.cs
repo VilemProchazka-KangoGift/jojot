@@ -79,7 +79,7 @@ public sealed partial class MainWindow
         _findWhole = wholeWord;
         _findCount = count;
 
-        var close = FindActionButton("\uE711", CoreLabel("Close find", "Zavřít hledání"), HideFindPanel);
+        var close = FindActionButton("×", CoreLabel("Close find", "Zavřít hledání"), HideFindPanel);
         close.Classes.Remove("panelButton");
         close.Classes.Add("iconButton");
         close.Classes.Add("panelClose");
@@ -90,8 +90,8 @@ public sealed partial class MainWindow
             VerticalAlignment = VerticalAlignment.Center };
         header.Children.Add(title);
 
-        var previous = FindActionButton("\uE70E", CoreLabel("Previous match", "Předchozí shoda"), () => NavigateFind(false));
-        var next = FindActionButton("\uE70D", CoreLabel("Next match", "Další shoda"), () => NavigateFind(true));
+        var previous = FindActionButton("⌃", CoreLabel("Previous match", "Předchozí shoda"), () => NavigateFind(false));
+        var next = FindActionButton("⌄", CoreLabel("Next match", "Další shoda"), () => NavigateFind(true));
         previous.Name = "FindPrevious";
         next.Name = "FindNext";
         previous.Classes.Add("panelGlyph");
@@ -162,7 +162,7 @@ public sealed partial class MainWindow
 
     private static Control CreateFindField(TextBox input, out Button clearButton)
     {
-        var clear = FindActionButton("\uE711", CoreLabel("Clear text", "Vymazat text"), () => input.Clear());
+        var clear = FindActionButton("×", CoreLabel("Clear text", "Vymazat text"), () => input.Clear());
         clear.Classes.Remove("panelButton");
         clear.Classes.Add("iconButton");
         clear.Classes.Add("findClear");

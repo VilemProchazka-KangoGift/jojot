@@ -29,8 +29,9 @@
         <Border Padding="6,8" BorderBrush="{DynamicResource c-border}" BorderThickness="0,0,0,1">
           <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="4">
             <Grid>
-              <Button x:Name="HamburgerButton" Classes="iconButton" Content="&#xE700;"
+              <Button x:Name="HamburgerButton" Classes="iconButton"
                       AutomationProperties.Name="Menu">
+                <PathIcon Width="14" Height="14" Data="M2,3 H14 V4 H2 Z M2,7 H14 V8 H2 Z M2,11 H14 V12 H2 Z" />
                 <Button.Flyout>
                   <MenuFlyout Placement="BottomEdgeAlignedLeft">
                     <MenuItem x:Name="RecoveryMenuItem" Header="Recover notes" Click="OnRecoveryMenu" />
@@ -68,22 +69,25 @@
                   <Grid RowDefinitions="22,Auto" RowSpacing="2">
                     <DockPanel LastChildFill="True">
                       <Button DockPanel.Dock="Left" Classes="iconButton rowAction pinnedAction"
-                              IsVisible="{Binding Pinned}" Content="&#xE718;"
-                              ToolTip.Tip="{Binding UnpinTooltip}" Click="OnRowPin" />
-                      <Button DockPanel.Dock="Right" Classes="iconButton rowAction closeAction" Content="&#xE711;"
-                              ToolTip.Tip="{Binding DeleteTooltip}" Click="OnRowClose" />
+                              IsVisible="{Binding Pinned}"
+                              ToolTip.Tip="{Binding UnpinTooltip}" Click="OnRowPin">
+                                <PathIcon Width="14" Height="14" Data="M8,1 L13,6 L12,7 L11,6 L8,9 L8,11 L7,12 L5,10 L2,13 L1,12 L4,9 L2,7 L3,6 H5 L8,3 L7,2 Z" />
+                              </Button>
+                      <Button DockPanel.Dock="Right" Classes="iconButton rowAction closeAction"
+                              ToolTip.Tip="{Binding DeleteTooltip}" Click="OnRowClose">
+                                <PathIcon Width="14" Height="14" Data="M3,2 L8,7 L13,2 L14,3 L9,8 L14,13 L13,14 L8,9 L3,14 L2,13 L7,8 L2,3 Z" />
+                              </Button>
                       <Button DockPanel.Dock="Right" Classes="iconButton rowAction hiddenAction"
-                              Classes.unpinnedAction="{Binding !Pinned}" Content="&#xE718;"
-                              ToolTip.Tip="{Binding PinTooltip}" Click="OnRowPin" />
+                              Classes.unpinnedAction="{Binding !Pinned}"
+                              ToolTip.Tip="{Binding PinTooltip}" Click="OnRowPin">
+                                <PathIcon Width="14" Height="14" Data="M8,1 L13,6 L12,7 L11,6 L8,9 L8,11 L7,12 L5,10 L2,13 L1,12 L4,9 L2,7 L3,6 H5 L8,3 L7,2 Z" />
+                              </Button>
                       <DockPanel ToolTip.Tip="{Binding FilePath}">
                         <Ellipse DockPanel.Dock="Left" Width="6" Height="6" Margin="0,0,4,0" VerticalAlignment="Center"
                                  IsVisible="{Binding HasUnsavedFileChanges}" Fill="{DynamicResource c-accent}"
                                  AutomationProperties.Name="{Binding SaveTooltip}"
                                  ToolTip.Tip="{Binding SaveTooltip}" />
-                        <TextBlock DockPanel.Dock="Left" Text="&#xE8A5;" IsVisible="{Binding IsFileBacked}"
-                                   FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="11" Margin="0,0,4,0"
-                                   Foreground="{DynamicResource c-text-muted}" VerticalAlignment="Center"
-                                   AutomationProperties.Name="File-backed note" />
+                        <PathIcon DockPanel.Dock="Left" Width="11" Height="11" IsVisible="{Binding IsFileBacked}" Data="M3,1 H9 L13,5 V15 H3 Z M4,2 V14 H12 V6 H8 V2 Z" Margin="0,0,4,0" Foreground="{DynamicResource c-text-muted}" VerticalAlignment="Center" AutomationProperties.Name="File-backed note" />
                         <StackPanel VerticalAlignment="Center">
                           <TextBlock x:Name="TabLabel" Text="{Binding DisplayLabel}" TextTrimming="CharacterEllipsis"
                                      Classes="tabTitle" Classes.placeholder="{Binding IsPlaceholder}" />
@@ -110,21 +114,39 @@
       <Grid Grid.Column="2" Grid.RowSpan="2" RowDefinitions="Auto,*" ClipToBounds="True">
         <Border x:Name="EditorToolbar" Padding="12,9" BorderThickness="0,0,0,1" BorderBrush="{DynamicResource c-border}">
           <DockPanel>
-            <Button x:Name="DeleteButton" DockPanel.Dock="Right" Classes="iconButton toolbarDelete" Content="&#xE74D;" Click="OnDelete" />
+            <Button x:Name="DeleteButton" DockPanel.Dock="Right" Classes="iconButton toolbarDelete" Click="OnDelete">
+              <PathIcon Width="14" Height="14" Data="M5,2 H11 V3 H14 V4 H2 V3 H5 Z M3,5 H13 L12,15 H4 Z M5,6 V13 H6 V6 Z M8,6 V13 H9 V6 Z M10,6 V13 H11 V6 Z" />
+            </Button>
             <WrapPanel Orientation="Horizontal">
-              <Button x:Name="UndoButton" Classes="iconButton" Content="&#xE7A7;" Click="OnUndo" />
-              <Button x:Name="RedoButton" Classes="iconButton" Content="&#xE7A6;" Click="OnRedo" />
+              <Button x:Name="UndoButton" Classes="iconButton" Click="OnUndo">
+                <PathIcon Width="14" Height="14" Data="M5,2 L1,6 L5,10 V7 H10 A3,3 0 0 1 10,13 H7 V14 H10 A4,4 0 0 0 10,6 H5 Z" />
+              </Button>
+              <Button x:Name="RedoButton" Classes="iconButton" Click="OnRedo">
+                <PathIcon Width="14" Height="14" Data="M11,2 L15,6 L11,10 V7 H6 A3,3 0 0 0 6,13 H9 V14 H6 A4,4 0 0 1 6,6 H11 Z" />
+              </Button>
               <Border Classes="toolbarSeparator" />
-              <Button x:Name="CopyButton" Classes="iconButton" Content="&#xE8C8;" Click="OnCopy" />
-              <Button x:Name="PasteButton" Classes="iconButton" Content="&#xE77F;" Click="OnPaste" />
+              <Button x:Name="CopyButton" Classes="iconButton" Click="OnCopy">
+                <PathIcon Width="14" Height="14" Data="M1,1 H10 V4 H14 V15 H5 V12 H1 Z M2,2 V11 H5 V4 H9 V2 Z M6,5 V14 H13 V5 Z" />
+              </Button>
+              <Button x:Name="PasteButton" Classes="iconButton" Click="OnPaste">
+                <PathIcon Width="14" Height="14" Data="M3,3 H5 V1 H11 V3 H13 V15 H3 Z M4,4 V14 H12 V4 H11 V6 H5 V4 Z M6,2 V5 H10 V2 Z" />
+              </Button>
               <Border Classes="toolbarSeparator" />
-              <Button x:Name="PinButton" Classes="iconButton" Content="&#xE718;" Click="OnPin" />
+              <Button x:Name="PinButton" Classes="iconButton" Click="OnPin">
+                <PathIcon Width="14" Height="14" Data="M8,1 L13,6 L12,7 L11,6 L8,9 L8,11 L7,12 L5,10 L2,13 L1,12 L4,9 L2,7 L3,6 H5 L8,3 L7,2 Z" />
+              </Button>
               <Button x:Name="CloneButton" Classes="iconButton" Content="&#xF413;" Click="OnClone" />
               <Border Classes="toolbarSeparator" />
-              <Button x:Name="SaveButton" Classes="iconButton" Content="&#xE74E;" Click="OnSave" />
-              <Button x:Name="SaveAsButton" Classes="iconButton" Content="&#xE792;" Click="OnSaveAs" IsVisible="False" />
+              <Button x:Name="SaveButton" Classes="iconButton" Click="OnSave">
+                <PathIcon Width="14" Height="14" Data="M2,1 H11 L14,4 V15 H2 Z M4,2 V6 H11 V2 Z M4,9 V14 H12 V9 Z" />
+              </Button>
+              <Button x:Name="SaveAsButton" Classes="iconButton" Click="OnSaveAs" IsVisible="False">
+                <PathIcon Width="14" Height="14" Data="M1,1 H10 L13,4 V7 H12 V4 H10 V2 H2 V14 H7 V15 H1 Z M4,3 H8 V6 H4 Z M8,13 L13,8 L15,10 L10,15 H8 Z" />
+              </Button>
               <Border Classes="toolbarSeparator" />
-              <Button x:Name="FindButton" Classes="iconButton" Content="&#xE721;" Click="OnFind" />
+              <Button x:Name="FindButton" Classes="iconButton" Click="OnFind">
+                <PathIcon Width="14" Height="14" Data="M7,1 A5,5 0 1 0 7,11 A5,5 0 1 0 7,1 Z M7,2 A4,4 0 1 1 7,10 A4,4 0 1 1 7,2 Z M10,10 L11,9 L15,13 L14,14 Z" />
+              </Button>
             </WrapPanel>
           </DockPanel>
         </Border>
@@ -142,8 +164,10 @@
                 <TextBlock x:Name="ToastText" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"
                            Foreground="{DynamicResource c-toast-fg}" />
                 <Button x:Name="UndoToastButton" Grid.Column="1" Classes="toastUndo" Content="Undo" Click="OnUndoToast" />
-                <Button Grid.Column="2" Classes="iconButton toastClose" Content="&#xE711;"
-                        AutomationProperties.Name="Dismiss notification" Click="OnDismissToast" />
+                <Button Grid.Column="2" Classes="iconButton toastClose"
+                        AutomationProperties.Name="Dismiss notification" Click="OnDismissToast">
+                          <PathIcon Width="14" Height="14" Data="M3,2 L8,7 L13,2 L14,3 L9,8 L14,13 L13,14 L8,9 L3,14 L2,13 L7,8 L2,3 Z" />
+                        </Button>
               </Grid>
             </Border>
           </Grid>
@@ -155,8 +179,7 @@
     <Border x:Name="FileDropHost" IsVisible="False" IsHitTestVisible="False" Background="{DynamicResource c-overlay-bg}">
       <Border BorderBrush="{DynamicResource c-accent}" BorderThickness="3" CornerRadius="8" Margin="16">
         <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
-          <TextBlock Text="&#xE896;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="48"
-                     Foreground="{DynamicResource c-accent}" HorizontalAlignment="Center" />
+          <PathIcon Width="48" Height="48" Data="M7,1 H9 V8 L12,5 L13,6 L8,11 L3,6 L4,5 L7,8 Z M2,11 H3 V14 H13 V11 H14 V15 H2 Z" Foreground="{DynamicResource c-accent}" />
           <TextBlock x:Name="DropHeading" FontSize="18" FontWeight="SemiBold" Margin="0,12,0,0"
                      Foreground="{DynamicResource c-toast-fg}" TextAlignment="Center" />
           <TextBlock x:Name="DropHint" FontSize="12" Margin="0,4,0,0" TextAlignment="Center"
