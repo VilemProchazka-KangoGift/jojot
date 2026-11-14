@@ -15,13 +15,14 @@ internal static unsafe partial class TaskbarRelaunch
 
     internal static void Attach(Window window, string directory, bool production = false)
     {
-        if (!OperatingSystem.IsWindows()) return;
+        // Production keeps the path-based identity used by the WPF shortcuts.
+        if (production || !OperatingSystem.IsWindows()) return;
         nint handle = 0;
         window.Opened += (_, _) =>
         {
             if (window.TryGetPlatformHandle() is not { HandleDescriptor: "HWND", Handle: not 0 } native) return;
             handle = native.Handle;
-            try { SetProperties(handle, BuildCommand(Environment.ProcessPath!, Environment.GetCommandLineArgs()[0], production ? null : directory), production ? "JoJot" : BuildId(directory), production ? "JoJot" : "JoJot Avalonia Experiment"); }
+            try { SetProperties(handle, BuildCommand(Environment.ProcessPath!, Environment.GetCommandLineArgs()[0], directory), BuildId(directory)); }
             catch (Exception ex) { LogService.Warn("Could not configure taskbar relaunch", ex); }
         };
         window.Closing += (_, e) =>
@@ -43,11 +44,11 @@ internal static unsafe partial class TaskbarRelaunch
 #endif
     }
 
-    internal static string BuildCommand(string executable, string entryAssembly, string? directory)
+    internal static string BuildCommand(string executable, string entryAssembly, string directory)
     {
         var host = string.Equals(Path.GetFileNameWithoutExtension(executable), "dotnet", StringComparison.OrdinalIgnoreCase)
             ? $"{Quote(executable)} {Quote(entryAssembly)}" : Quote(executable);
-        return directory is null ? host : $"{host} --data-dir {Quote(directory)}";
+        return $"{host} --data-dir {Quote(directory)}";
     }
 
     private static string Quote(string value)
@@ -67,13 +68,13 @@ internal static unsafe partial class TaskbarRelaunch
         return result.Append('\\', slashes * 2).Append('"').ToString();
     }
 
-    internal static void SetProperties(nint hwnd, string command, string id, string displayName = "JoJot Avalonia Experiment")
+    internal static void SetProperties(nint hwnd, string command, string id)
     {
         var store = OpenStore(hwnd);
         try
         {
             SetString(store, 2, command);
-            SetString(store, 4, displayName);
+            SetString(store, 4, "JoJot Avalonia Experiment");
             SetString(store, 5, id); // ID last: this triggers the taskbar refresh.
         }
         catch { ClearStore(store); throw; }
