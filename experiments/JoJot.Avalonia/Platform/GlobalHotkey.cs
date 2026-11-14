@@ -17,9 +17,17 @@ internal sealed unsafe partial class GlobalHotkey : IDisposable
     private static nint _keyboardHook;
     private static int _winHeld;
     internal static bool IsWinHeld => Volatile.Read(ref _winHeld) != 0;
+    internal static bool IsSupported => OperatingSystem.IsWindows();
 
     internal static string KeyName(uint key)
     {
+        if (!IsSupported)
+            return key switch
+            {
+                >= 0x30 and <= 0x39 or >= 0x41 and <= 0x5A => ((char)key).ToString(),
+                >= 0x70 and <= 0x87 => $"F{key - 0x6F}",
+                _ => $"0x{key:X2}",
+            };
         var scan = MapVirtualKey(key, 0);
         var extended = key is >= 0x21 and <= 0x28 or 0x2D or 0x2E or 0x6F;
         char* result = stackalloc char[128];
@@ -30,6 +38,7 @@ internal sealed unsafe partial class GlobalHotkey : IDisposable
 
     public GlobalHotkey(uint modifiers, uint key, Action callback)
     {
+        if (!IsSupported) throw new PlatformNotSupportedException("Global shortcuts are currently supported on Windows only.");
         _modifiers = modifiers;
         _key = key;
         _callback = callback;

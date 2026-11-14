@@ -49,6 +49,8 @@ internal static partial class TextNoteFiles
         path = Path.GetFullPath(path);
         await using var original = OpenExisting(path);
         var identity = original is null ? default : GetIdentity(original);
+        UnixFileMode? unixMode = !OperatingSystem.IsWindows() && original is not null
+            ? File.GetUnixFileMode(path) : null;
         var encoding = original is { Length: > 0 }
             ? (await ReadAsync(original, path, inspectionLimit, preferred).ConfigureAwait(false)).Encoding
             : fallback;
@@ -64,6 +66,8 @@ internal static partial class TextNoteFiles
                 await staging.WriteAsync(bytes).ConfigureAwait(false);
                 staging.Flush(flushToDisk: true);
             }
+            if (unixMode is { } mode && !OperatingSystem.IsWindows())
+                File.SetUnixFileMode(stagingPath, mode);
 
             beforeCommit?.Invoke();
             if (original is null)
@@ -107,8 +111,19 @@ internal static partial class TextNoteFiles
         catch (FileNotFoundException) { return null; }
     }
 
-    private static (ulong Volume, ulong Low, ulong High) GetIdentity(FileStream file)
+    private static unsafe (ulong Volume, ulong Low, ulong High) GetIdentity(FileStream file)
     {
+        if (!OperatingSystem.IsWindows())
+        {
+            // POSIX fstat identifies the open file even if its path is renamed.
+            // Darwin and Linux put st_ino at offset 8; Darwin's st_dev is 32-bit.
+            byte* buffer = stackalloc byte[512];
+            if (FStat(checked((int)file.SafeFileHandle.DangerousGetHandle()), buffer) != 0)
+                throw new IOException("Could not determine the destination file identity.",
+                    new System.ComponentModel.Win32Exception(Marshal.GetLastPInvokeError()));
+            var device = OperatingSystem.IsMacOS() ? *(uint*)buffer : *(ulong*)buffer;
+            return (device, *(ulong*)(buffer + 8), 0);
+        }
         if (!GetFileInformationByHandleEx(file.SafeFileHandle, 18, out var identity, 24))
             throw new IOException("Could not determine the destination file identity.",
                 new System.ComponentModel.Win32Exception(Marshal.GetLastPInvokeError()));
@@ -127,6 +142,8 @@ internal static partial class TextNoteFiles
     [return: MarshalAs(UnmanagedType.Bool)]
     private static partial bool GetFileInformationByHandleEx(SafeFileHandle file, int informationClass,
         out FileIdentity identity, uint size);
+    [LibraryImport("libc", EntryPoint = "fstat", SetLastError = true)]
+    private static unsafe partial int FStat(int file, byte* stat);
 
     private static FileStream Open(string path, FileMode mode, FileAccess access, FileShare share) =>
         new(path, mode, access, share, bufferSize: 4096, useAsync: true);

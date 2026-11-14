@@ -49,6 +49,8 @@ internal static class Program
                 Console.WriteLine($"Current: {current}");
                 foreach (var desktop in desktops)
                     Console.WriteLine($"Desktop: {desktop.Id} {desktop.Index} {desktop.Name}");
+                if (!OperatingSystem.IsWindows())
+                    return current == "default" && desktops.Count == 1 ? 0 : 1;
                 using var notifications = DesktopNotifications.TryRegister(() => { });
                 Console.WriteLine(notifications is not null ? "Notifications: registered" :
                     Environment.OSVersion.Version.Build < 26100 ? "Notifications: unsupported" : "Notifications: failed");
@@ -57,6 +59,8 @@ internal static class Program
             }
             if (args.Length == 1 && args[0] == "--hotkey-probe")
             {
+                if (!GlobalHotkey.IsSupported)
+                    throw new PlatformNotSupportedException("The global hotkey is available on Windows.");
                 using var received = new ManualResetEventSlim();
                 using var hotkey = new GlobalHotkey(0x0007, 0x86, received.Set); // Ctrl+Alt+Shift+F23
                 return hotkey.Registered && hotkey.PostTestMessage() && received.Wait(TimeSpan.FromSeconds(5)) ? 0 : 1;
@@ -64,6 +68,8 @@ internal static class Program
             if (args.Length == 4 && args[0] == "--data-dir" &&
                 args[2] is "--desktop-move-probe" or "--desktop-move-probe-merge")
             {
+                if (!OperatingSystem.IsWindows())
+                    throw new PlatformNotSupportedException("The desktop move probe is available on Windows.");
                 if (!Guid.TryParse(args[3], out var target) || target == Guid.Empty)
                     throw new ArgumentException("The desktop move probe requires a valid target GUID.");
                 ExperimentApp.DesktopMoveProbeMerge = args[2] == "--desktop-move-probe-merge";
@@ -87,13 +93,14 @@ internal static class Program
                         return sendResult == InstanceChannel.SendResult.Delivered ? 0 : 1;
                     ExperimentApp.QueueCommand(command);
                 }
-                using var legacyLock = options.UsesProductionData ? ProductionDataLock.Acquire() : null;
-                instance.Start(ExperimentApp.QueueCommand, options.UsesProductionData);
+                var useLegacyWindowsIdentity = OperatingSystem.IsWindows() && options.UsesProductionData;
+                using var legacyLock = useLegacyWindowsIdentity ? ProductionDataLock.Acquire() : null;
+                instance.Start(ExperimentApp.QueueCommand, useLegacyWindowsIdentity);
                 ExperimentApp.Options = options;
                 ExperimentApp.Benchmark = options.BenchmarkOutput is null ? null : new BenchmarkProbe(entry, options);
                 StartupTrace.Mark("platform-start");
                 var builder = AppBuilder.Configure<ExperimentApp>().UsePlatformDetect();
-                if (!string.Equals(Environment.GetEnvironmentVariable("JOJOT_RENDER_MODE"), "gpu",
+                if (OperatingSystem.IsWindows() && !string.Equals(Environment.GetEnvironmentVariable("JOJOT_RENDER_MODE"), "gpu",
                     StringComparison.OrdinalIgnoreCase))
                     builder.With(new Win32PlatformOptions { RenderingMode = [Win32RenderingMode.Software] });
                 result = StartupTrace.TraceSubsystems(builder)
@@ -430,7 +437,8 @@ internal sealed class ExperimentApp : Application
                     args.Cancel = true;
             };
             Dispatcher.UIThread.Post(DrainCommands);
-            if (Options.BenchmarkOutput is null && Options.CompatibilityExpected is null && Options.VisualOutputDirectory is null)
+            if (GlobalHotkey.IsSupported && Options.BenchmarkOutput is null &&
+                Options.CompatibilityExpected is null && Options.VisualOutputDirectory is null)
                 _ = InitializeHotkeyAsync();
             desktop.Exit += (_, _) =>
             {

@@ -31,6 +31,8 @@ public sealed class FindContrastTests
             window.RequestedThemeVariant = theme;
             Assert.False(button.IsEffectivelyEnabled);
             Assert.Equal(1, button.Opacity);
+            await MainWindowTests.WaitForAsync(
+                () => button.GetVisualDescendants().OfType<ContentPresenter>().Any(), "cleanup action template");
             var presenter = button.GetVisualDescendants().OfType<ContentPresenter>().Single();
             Assert.True(Contrast(Brush(presenter.Background), Brush(presenter.Foreground)) >= 4.5);
             var point = button.TranslatePoint(new Point(button.Bounds.Width / 2, button.Bounds.Height / 2), window)!.Value;

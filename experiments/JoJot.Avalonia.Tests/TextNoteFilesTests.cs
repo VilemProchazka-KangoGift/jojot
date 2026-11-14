@@ -84,12 +84,25 @@ public sealed class TextNoteFilesTests : IDisposable
         var path = Path.Combine(_directory, "existing.txt");
         var encoding = new UnicodeEncoding(false, true, true);
         await File.WriteAllTextAsync(path, "original", encoding, TestContext.Current.CancellationToken);
-        File.SetCreationTimeUtc(path, DateTime.UtcNow.AddDays(-1));
+        if (OperatingSystem.IsWindows()) File.SetCreationTimeUtc(path, DateTime.UtcNow.AddDays(-1));
         var creationTime = File.GetCreationTimeUtc(path);
         await TextNoteFiles.WriteAsync(path, "replacement", TextNoteFiles.DefaultEncoding, 100);
-        Assert.Equal(creationTime, File.GetCreationTimeUtc(path));
+        if (OperatingSystem.IsWindows()) Assert.Equal(creationTime, File.GetCreationTimeUtc(path));
         Assert.Equal(encoding.GetPreamble().Concat(encoding.GetBytes("replacement")), await File.ReadAllBytesAsync(path, TestContext.Current.CancellationToken));
         Assert.Single(Directory.EnumerateFileSystemEntries(_directory));
+    }
+
+    [Fact]
+    public async Task ReplacementPreservesUnixPermissions()
+    {
+        if (OperatingSystem.IsWindows()) return;
+        var path = Path.Combine(_directory, "permissions.txt");
+        await File.WriteAllTextAsync(path, "original", TestContext.Current.CancellationToken);
+        var mode = UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.GroupRead;
+        File.SetUnixFileMode(path, mode);
+        await TextNoteFiles.WriteAsync(path, "replacement", TextNoteFiles.DefaultEncoding, 100);
+        Assert.Equal(mode, File.GetUnixFileMode(path));
+        Assert.Equal("replacement", await File.ReadAllTextAsync(path, TestContext.Current.CancellationToken));
     }
 
     public void Dispose() => Directory.Delete(_directory, recursive: true);

@@ -26,9 +26,14 @@ internal sealed partial class BenchmarkProbe(long entryTimestamp, ExperimentOpti
     {
         await WaitForRenderedBatchAsync(window);
         var elapsed = Elapsed();
-        var handle = window.TryGetPlatformHandle()?.Handle ?? throw new InvalidOperationException("Window has no native handle.");
-        if (GetWindowRect(handle, out var bounds) == 0 || GetClientRect(handle, out var client) == 0)
-            throw new InvalidOperationException("Cannot read benchmark window geometry.");
+        NativeRect bounds = default;
+        NativeRect client = default;
+        if (OperatingSystem.IsWindows())
+        {
+            var handle = window.TryGetPlatformHandle()?.Handle ?? throw new InvalidOperationException("Window has no native handle.");
+            if (GetWindowRect(handle, out bounds) == 0 || GetClientRect(handle, out client) == 0)
+                throw new InvalidOperationException("Cannot read benchmark window geometry.");
+        }
         return new Frame(elapsed, window.Position.X / window.RenderScaling, window.Position.Y / window.RenderScaling,
             window.Bounds.Width, window.Bounds.Height, bounds, client);
     }

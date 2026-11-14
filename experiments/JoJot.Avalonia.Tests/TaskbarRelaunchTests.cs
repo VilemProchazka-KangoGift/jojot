@@ -6,7 +6,7 @@ namespace JoJot.AvaloniaExperiment.Tests;
 
 public sealed class TaskbarRelaunchTests
 {
-    [Fact]
+    [Fact(Skip = "The taskbar relaunch command uses Windows paths.", SkipUnless = nameof(IsWindows))]
     public void Command_preserves_the_data_directory_and_hosted_entry_assembly()
     {
         var command = TaskbarRelaunch.BuildCommand(@"C:\Tools With Spaces\dotnet.exe", @"C:\Apps\JoJot.dll", @"P:\Data With Spaces\");
@@ -15,7 +15,9 @@ public sealed class TaskbarRelaunchTests
         Assert.NotEqual(TaskbarRelaunch.BuildId(@"P:\data"), TaskbarRelaunch.BuildId(@"P:\other"));
     }
 
-    [Fact]
+    public static bool IsWindows => OperatingSystem.IsWindows();
+
+    [Fact(Skip = "The native window property store is available on Windows.", SkipUnless = nameof(IsWindows))]
     public void Native_window_property_store_round_trips_and_clears_relaunch_values()
     {
         var apartment = CoInitializeEx(0, 2);

@@ -11,7 +11,7 @@ namespace JoJot.AvaloniaExperiment.Platform;
 // Separate namespace per data directory keeps the experiment isolated from installed JoJot.
 internal sealed partial class InstanceChannel : IDisposable
 {
-    private readonly Mutex _mutex;
+    private readonly Mutex? _mutex;
     private readonly string _pipeName;
     private readonly string _ownerPath;
     private readonly CancellationTokenSource _stop = new();
@@ -23,21 +23,47 @@ internal sealed partial class InstanceChannel : IDisposable
 
     public InstanceChannel(string dataDirectory)
     {
-        var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(dataDirectory.ToUpperInvariant())))[..24];
+        var directoryKey = OperatingSystem.IsWindows() || OperatingSystem.IsMacOS()
+            ? dataDirectory.ToUpperInvariant() : dataDirectory;
+        var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(directoryKey)))[..24];
         using var process = System.Diagnostics.Process.GetCurrentProcess();
 #if DEBUG
         const string suffix = ".Dev";
 #else
         const string suffix = "";
 #endif
-        _pipeName = $"JoJot_Avalonia_{process.SessionId}_{hash}{suffix}";
+        _pipeName = OperatingSystem.IsWindows()
+            ? $"JoJot_Avalonia_{process.SessionId}_{hash}{suffix}"
+            : $"JoJot_Avalonia_{hash}{suffix}";
         _ownerPath = Path.Combine(dataDirectory, $".experiment-owner{suffix}");
+        if (!OperatingSystem.IsWindows())
+        {
+            IsPrimary = TryAcquireUnixOwner();
+            return;
+        }
+
         _mutex = new Mutex(true, $"Local\\{_pipeName}", out var created);
         IsPrimary = created;
         if (created)
         {
             try { WriteOwnerIdentity(); }
             catch { _mutex.ReleaseMutex(); _mutex.Dispose(); throw; }
+        }
+    }
+
+    private bool TryAcquireUnixOwner()
+    {
+        try
+        {
+            // Keep the same inode for subsequent contenders; deleting an owned
+            // marker would let a second process open and lock a different inode.
+            _ownerFile = new FileStream(_ownerPath, FileMode.OpenOrCreate,
+                FileAccess.ReadWrite, FileShare.None);
+            return true;
+        }
+        catch (IOException)
+        {
+            return false;
         }
     }
 
@@ -72,7 +98,8 @@ internal sealed partial class InstanceChannel : IDisposable
             {
                 try
                 {
-                    await using var pipe = new NamedPipeServerStream(pipeName, PipeDirection.In, 1,
+                    var direction = OperatingSystem.IsWindows() ? PipeDirection.In : PipeDirection.InOut;
+                    await using var pipe = new NamedPipeServerStream(pipeName, direction, 1,
                         PipeTransmissionMode.Byte, PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
                     await pipe.WaitForConnectionAsync(_stop.Token).ConfigureAwait(false);
                     using var reader = new StreamReader(pipe);
@@ -80,7 +107,11 @@ internal sealed partial class InstanceChannel : IDisposable
                     readDeadline.CancelAfter(TimeSpan.FromSeconds(2));
                     var line = await reader.ReadLineAsync(readDeadline.Token).ConfigureAwait(false);
                     if (line is not null && JsonSerializer.Deserialize(line, IpcMessageContext.Default.IpcMessage) is { } message)
+                    {
                         command(message);
+                        if (!OperatingSystem.IsWindows())
+                            await pipe.WriteAsync(new byte[] { 1 }, readDeadline.Token).ConfigureAwait(false);
+                    }
                 }
                 catch (OperationCanceledException) when (_stop.IsCancellationRequested) { break; }
                 catch (OperationCanceledException) { }
@@ -99,20 +130,24 @@ internal sealed partial class InstanceChannel : IDisposable
         {
             try
             {
-                using var pipe = new NamedPipeClientStream(".", _pipeName, PipeDirection.Out);
+                var direction = OperatingSystem.IsWindows() ? PipeDirection.Out : PipeDirection.InOut;
+                using var pipe = new NamedPipeClientStream(".", _pipeName, direction);
                 pipe.Connect(1000);
                 // A shell-launched second instance can transfer its foreground permission
                 // to the actual pipe server before requesting activation.
                 var serverProcessId = GetServerProcessId(pipe);
-                if (serverProcessId != 0) AllowSetForegroundWindow(serverProcessId);
+                if (OperatingSystem.IsWindows() && serverProcessId != 0) AllowSetForegroundWindow(serverProcessId);
                 using var writer = new StreamWriter(pipe) { AutoFlush = true };
                 writer.WriteLine(JsonSerializer.Serialize(message, IpcMessageContext.Default.IpcMessage));
+                if (!OperatingSystem.IsWindows() && !ReceiveAcknowledgement(pipe))
+                    continue;
                 return SendResult.Delivered;
             }
             catch (TimeoutException)
             {
                 if (TryTakeAbandonedMutex()) return SendResult.Takeover;
-                if (waited.Elapsed >= TimeSpan.FromSeconds(5) && TryRecoverOwner(waited.Elapsed))
+                if (OperatingSystem.IsWindows() && waited.Elapsed >= TimeSpan.FromSeconds(5) &&
+                    TryRecoverOwner(waited.Elapsed))
                     return SendResult.Takeover;
             }
             catch (IOException ex)
@@ -124,6 +159,14 @@ internal sealed partial class InstanceChannel : IDisposable
             catch (UnauthorizedAccessException ex) { LastError = ex.ToString(); return SendResult.Failed; }
         }
         return SendResult.Failed;
+    }
+
+    private static bool ReceiveAcknowledgement(NamedPipeClientStream pipe)
+    {
+        using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+        var response = new byte[1];
+        try { return pipe.ReadAsync(response, deadline.Token).AsTask().GetAwaiter().GetResult() == 1 && response[0] == 1; }
+        catch (OperationCanceledException) { return false; }
     }
 
     internal static bool IsEligibleOwner(DateTime startUtc, DateTime nowUtc, TimeSpan waited) =>
@@ -142,6 +185,11 @@ internal sealed partial class InstanceChannel : IDisposable
 
     private bool TryTakeAbandonedMutex()
     {
+        if (_mutex is null)
+        {
+            IsPrimary = TryAcquireUnixOwner();
+            return IsPrimary;
+        }
         try { if (!_mutex.WaitOne(0)) return false; }
         catch (AbandonedMutexException) { }
         try { WriteOwnerIdentity(); IsPrimary = true; return true; }
@@ -150,6 +198,9 @@ internal sealed partial class InstanceChannel : IDisposable
 
     private bool TryRecoverOwner(TimeSpan waited)
     {
+        if (_mutex is null)
+            return false;
+
         try
         {
             string[] lines;
@@ -215,7 +266,7 @@ internal sealed partial class InstanceChannel : IDisposable
         _stop.Dispose();
         _ownerFile?.Dispose();
         if (IsPrimary)
-            _mutex.ReleaseMutex();
-        _mutex.Dispose();
+            _mutex?.ReleaseMutex();
+        _mutex?.Dispose();
     }
 }

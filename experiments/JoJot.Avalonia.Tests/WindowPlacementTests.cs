@@ -1,4 +1,6 @@
 using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Headless.XUnit;
 using JoJot.AvaloniaExperiment.Platform;
 using JoJot.Models;
 using Xunit;
@@ -7,6 +9,23 @@ namespace JoJot.Avalonia.Tests;
 
 public sealed class WindowPlacementTests
 {
+    [AvaloniaFact]
+    public void PortableGeometryRoundTripsPositionSizeAndMaximizedState()
+    {
+        var window = new Window { Width = 640, Height = 480, Position = new PixelPoint(40, 50) };
+        window.Show();
+        try
+        {
+            var captured = Assert.IsType<WindowGeometry>(WindowPlacement.CapturePortable(window));
+            Assert.Equal(40, captured.Left);
+            Assert.Equal(50, captured.Top);
+            Assert.Equal(640 * window.RenderScaling, captured.Width);
+            Assert.Equal(480 * window.RenderScaling, captured.Height);
+            WindowPlacement.RestorePortable(window, captured with { IsMaximized = true });
+            Assert.Equal(WindowState.Maximized, window.WindowState);
+        }
+        finally { window.Close(); }
+    }
     [Fact]
     public void Clamp_chooses_closest_screen_edge_and_preserves_size_and_state()
     {

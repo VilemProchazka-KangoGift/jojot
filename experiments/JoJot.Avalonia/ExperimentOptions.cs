@@ -13,7 +13,7 @@ internal sealed record ExperimentOptions(string DataDirectory, string DesktopGui
 
     public static ExperimentOptions Parse(string[] args)
     {
-        var localData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        var localData = GetDataRoot();
 #if JOJOT_PRODUCTION && !DEBUG
         var directory = Path.Combine(localData, "JoJot");
 #elif DEBUG
@@ -63,12 +63,13 @@ internal sealed record ExperimentOptions(string DataDirectory, string DesktopGui
         usesProductionData = !explicitDirectory && benchmark is null && compatibilityExpected is null &&
             compatibilityReplacement is null && visualOutput is null && !stayOpen;
 #endif
+        var pathComparison = OperatingSystem.IsLinux() ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
         foreach (var folder in new[] { "JoJot", "JoJot.Dev" })
         {
             var production = Path.Combine(localData, folder);
-            if ((!usesProductionData && directory.Equals(production, StringComparison.OrdinalIgnoreCase)) ||
-                directory.StartsWith(production + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) ||
-                benchmark?.StartsWith(production + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) == true)
+            if ((!usesProductionData && directory.Equals(production, pathComparison)) ||
+                directory.StartsWith(production + Path.DirectorySeparatorChar, pathComparison) ||
+                benchmark?.StartsWith(production + Path.DirectorySeparatorChar, pathComparison) == true)
                 throw new ArgumentException("Choose a disposable directory outside installed JoJot data.");
         }
 
@@ -85,10 +86,25 @@ internal sealed record ExperimentOptions(string DataDirectory, string DesktopGui
                 throw new ArgumentException("Compatibility editing requires both text values, an explicit disposable data directory and automatic shutdown.");
         }
         if (visualOutput is not null && (!explicitDirectory || benchmark is not null || stayOpen ||
-            compatibilityExpected is not null || !visualOutput.StartsWith(directory + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)))
+            compatibilityExpected is not null || !visualOutput.StartsWith(directory + Path.DirectorySeparatorChar, pathComparison)))
             throw new ArgumentException("Visual output requires a subdirectory of an explicit disposable data directory and automatic shutdown.");
         return new ExperimentOptions(directory, desktop, benchmark, width, height, stayOpen,
             compatibilityExpected, compatibilityReplacement, visualOutput) { UsesProductionData = usesProductionData };
+    }
+
+    private static string GetDataRoot()
+    {
+        if (OperatingSystem.IsWindows())
+            return Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+
+        var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        if (OperatingSystem.IsMacOS())
+            return Path.Combine(home, "Library", "Application Support");
+
+        var xdg = Environment.GetEnvironmentVariable("XDG_DATA_HOME");
+        return xdg is not null && Path.IsPathFullyQualified(xdg)
+            ? Path.TrimEndingDirectorySeparator(Path.GetFullPath(xdg))
+            : Path.Combine(home, ".local", "share");
     }
 
     public void ValidateDataPath()
@@ -121,9 +137,9 @@ internal sealed record ExperimentOptions(string DataDirectory, string DesktopGui
     private static string NormalizePath(string path)
     {
         var fullPath = Path.TrimEndingDirectorySeparator(Path.GetFullPath(path));
-        if (fullPath.StartsWith(@"\\?\", StringComparison.Ordinal) ||
+        if (OperatingSystem.IsWindows() && (fullPath.StartsWith(@"\\?\", StringComparison.Ordinal) ||
             fullPath.StartsWith(@"\\.\", StringComparison.Ordinal) ||
-            fullPath.Split(Path.DirectorySeparatorChar).Any(part => part.EndsWith('.') || part.EndsWith(' ')))
+            fullPath.Split(Path.DirectorySeparatorChar).Any(part => part.EndsWith('.') || part.EndsWith(' '))))
             throw new ArgumentException("Choose a path without device prefixes or trailing spaces and periods.");
         return fullPath;
     }

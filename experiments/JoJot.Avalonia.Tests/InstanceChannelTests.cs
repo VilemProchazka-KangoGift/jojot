@@ -18,7 +18,8 @@ public sealed class InstanceChannelTests
             primary.Start(_ => { });
             using var client = new NamedPipeClientStream(".", primary.PipeNameForTests, PipeDirection.Out);
             client.Connect(5000);
-            Assert.Equal((uint)Environment.ProcessId, InstanceChannel.GetServerProcessId(client));
+            Assert.Equal(OperatingSystem.IsWindows() ? (uint)Environment.ProcessId : 0u,
+                InstanceChannel.GetServerProcessId(client));
         }
         finally { Directory.Delete(directory, recursive: true); }
     }
