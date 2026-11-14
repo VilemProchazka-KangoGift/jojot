@@ -33,6 +33,10 @@ The two Windows Shell tests are skipped on Linux. The X11 smoke uses a private X
 
 ## macOS
 
+JoJot keeps one note session across macOS Spaces. AppKit reports when the active Space changes, but the notification carries no stable Space identifier. The application keeps its database keys independent of these notifications. [Apple's active Space notification](https://developer.apple.com/documentation/appkit/nsworkspace/activespacedidchangenotification)
+
+On a Mac, verify that changing Spaces leaves the same notes available, closing and reopening preserves edits, and a second launch targets the running instance. Check shortcut recording, duplicate shortcut rejection, and activation from a separate app. Test the Command and Option modifiers and the keyboard layout you use. The shortcut currently maps common keys to ANSI positions.
+
 Run the same managed command with a .NET 11 SDK that matches the Mac's architecture. A framework-dependent ARM64 publish from Linux compiled successfully. The preview stores its data in `~/Library/Application Support/JoJot.AvaloniaExperiment`. Installing, signing, and testing a macOS app bundle require a Mac.
 
 ## Platform scope

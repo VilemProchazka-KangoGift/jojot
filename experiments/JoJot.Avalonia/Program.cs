@@ -146,8 +146,11 @@ internal sealed class ExperimentApp : Application
     private readonly HashSet<string> _pendingActivations = new(StringComparer.OrdinalIgnoreCase);
     private GlobalHotkey? _hotkey;
     private X11GlobalHotkey? _x11Hotkey;
-    private static bool SupportsGlobalHotkey => GlobalHotkey.IsSupported || X11GlobalHotkey.IsSupported;
-    private bool HotkeyRegistered => _hotkey?.Registered == true || _x11Hotkey?.Registered == true;
+    private MacGlobalHotkey? _macHotkey;
+    private static bool SupportsGlobalHotkey =>
+        GlobalHotkey.IsSupported || X11GlobalHotkey.IsSupported || MacGlobalHotkey.IsSupported;
+    private bool HotkeyRegistered =>
+        _hotkey?.Registered == true || _x11Hotkey?.Registered == true || _macHotkey?.Registered == true;
     private DesktopNotifications? _desktopNotifications;
     private DispatcherTimer? _desktopPoll;
     private readonly DesktopPolling _desktopPolling = new();
@@ -431,11 +434,12 @@ internal sealed class ExperimentApp : Application
                 return Task.CompletedTask;
             };
             MainWindow.SaveWindowGeometryAsync = SaveWindowGeometryAsync;
-            MainWindow.CurrentGlobalShortcut = () => $"{(_hotkeyModifiers & 8) switch { 0 => "", _ => "Win + " }}{(_hotkeyModifiers & 2) switch { 0 => "", _ => "Ctrl + " }}{(_hotkeyModifiers & 1) switch { 0 => "", _ => "Alt + " }}{(_hotkeyModifiers & 4) switch { 0 => "", _ => "Shift + " }}{GlobalHotkey.KeyName(_hotkeyKey)}";
+            MainWindow.CurrentGlobalShortcut = FormatHotkey;
             MainWindow.PauseGlobalShortcut = paused =>
             {
                 _hotkey?.PauseForRecording(paused);
                 _x11Hotkey?.PauseForRecording(paused);
+                _macHotkey?.PauseForRecording(paused);
             };
             MainWindow.RecordGlobalShortcutAsync = SupportsGlobalHotkey ? UpdateHotkeyAsync : null;
             desktop.ShutdownRequested += (_, args) =>
@@ -654,6 +658,18 @@ internal sealed class ExperimentApp : Application
             _hotkey ??= new GlobalHotkey(_hotkeyModifiers, _hotkeyKey, ActivateCurrentWorkspace);
         else if (X11GlobalHotkey.IsSupported)
             _x11Hotkey ??= new X11GlobalHotkey(_hotkeyModifiers, _hotkeyKey, ActivateCurrentWorkspace);
+        else if (MacGlobalHotkey.IsSupported)
+            _macHotkey ??= new MacGlobalHotkey(_hotkeyModifiers, _hotkeyKey, ActivateCurrentWorkspace);
+    }
+
+    private string FormatHotkey()
+    {
+        var mac = OperatingSystem.IsMacOS();
+        var meta = mac ? "Command + " : OperatingSystem.IsLinux() ? "Super + " : "Win + ";
+        var alt = mac ? "Option + " : "Alt + ";
+        return $"{((_hotkeyModifiers & 8) != 0 ? meta : "")}{((_hotkeyModifiers & 2) != 0 ? "Ctrl + " : "")}" +
+               $"{((_hotkeyModifiers & 1) != 0 ? alt : "")}{((_hotkeyModifiers & 4) != 0 ? "Shift + " : "")}" +
+               GlobalHotkey.KeyName(_hotkeyKey);
     }
 
     private void StopHotkey()
@@ -662,6 +678,8 @@ internal sealed class ExperimentApp : Application
         _hotkey = null;
         _x11Hotkey?.Dispose();
         _x11Hotkey = null;
+        _macHotkey?.Dispose();
+        _macHotkey = null;
     }
 
     private async Task<bool> UpdateHotkeyAsync(Key key, KeyModifiers modifiers)
@@ -689,7 +707,9 @@ internal sealed class ExperimentApp : Application
             "Oem8" => 0xDF, "OemBackslash" or "Oem102" => 0xE2,
             _ => 0
         };
-        if (vk == 0 || (!GlobalHotkey.IsSupported && !X11GlobalHotkey.SupportsKey(vk))) return false;
+        if (vk == 0 || (!GlobalHotkey.IsSupported &&
+            !(X11GlobalHotkey.IsSupported && X11GlobalHotkey.SupportsKey(vk)) &&
+            !(MacGlobalHotkey.IsSupported && MacGlobalHotkey.SupportsKey(vk)))) return false;
         uint flags = 0;
         if (modifiers.HasFlag(KeyModifiers.Alt)) flags |= 1;
         if (modifiers.HasFlag(KeyModifiers.Control)) flags |= 2;
