@@ -424,7 +424,11 @@ internal sealed class ExperimentApp : Application
             MainWindow.CurrentGlobalShortcut = () => $"{(_hotkeyModifiers & 8) switch { 0 => "", _ => "Win + " }}{(_hotkeyModifiers & 2) switch { 0 => "", _ => "Ctrl + " }}{(_hotkeyModifiers & 1) switch { 0 => "", _ => "Alt + " }}{(_hotkeyModifiers & 4) switch { 0 => "", _ => "Shift + " }}{GlobalHotkey.KeyName(_hotkeyKey)}";
             MainWindow.PauseGlobalShortcut = paused => _hotkey?.PauseForRecording(paused);
             MainWindow.RecordGlobalShortcutAsync = UpdateHotkeyAsync;
-            desktop.ShutdownRequested += (_, _) => FlushForSessionEnd();
+            desktop.ShutdownRequested += (_, args) =>
+            {
+                if (!FlushForSessionEnd())
+                    args.Cancel = true;
+            };
             Dispatcher.UIThread.Post(DrainCommands);
             if (Options.BenchmarkOutput is null && Options.CompatibilityExpected is null && Options.VisualOutputDirectory is null)
                 _ = InitializeHotkeyAsync();
@@ -706,8 +710,12 @@ internal sealed class ExperimentApp : Application
         }
     }
 
-    private void FlushForSessionEnd()
+    private bool FlushForSessionEnd()
     {
+        if (_shuttingDown || _reservationsDrained is not null ||
+            _storageTask is not { IsCompletedSuccessfully: true } ||
+            _windows.Values.Any(window => window.HasShutdownBlockingInteraction || !window.Ready.IsCompletedSuccessfully))
+            return false;
         _shuttingDown = true;
         foreach (var window in _windows.Values.ToArray())
         {
@@ -721,7 +729,13 @@ internal sealed class ExperimentApp : Application
                     StartupSnapshot.UpdateGeometry(window.DesktopGuid, geometry);
                 }
             }
-            catch (Exception ex) { LogService.Error("Failed to flush during session shutdown", ex); }
+            catch (Exception ex)
+            {
+                LogService.Error("Failed to flush during session shutdown", ex);
+                _shuttingDown = false;
+                return false;
+            }
         }
+        return true;
     }
 }

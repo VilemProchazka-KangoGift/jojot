@@ -699,6 +699,21 @@ public sealed class MainWindowTests
         }
     }
     [AvaloniaFact]
+    public async Task SessionShutdownFlushesEditorTextBeforeDebounce()
+    {
+        await using var fixture = new WindowFixture();
+        var window = fixture.Open();
+        await window.Ready;
+        Find<Button>(window, "AddButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        var editor = Find<TextBox>(window, "Editor");
+        await WaitForAsync(() => editor.IsEnabled, "new note activated");
+        editor.Text = "draft saved by session close";
+        window.FlushForOsShutdown();
+        Assert.Contains(await NoteStore.GetNotesForDesktopAsync("default"),
+            note => note.Content == "draft saved by session close");
+    }
+
+    [AvaloniaFact]
     public async Task VisibleOwnedDialogBlocksShutdownUntilDismissed()
     {
         await using var fixture = new WindowFixture();
