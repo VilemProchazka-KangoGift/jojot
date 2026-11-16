@@ -75,7 +75,11 @@ public sealed class FindContrastTests
             var copy = window.FindControl<Button>("CopyButton")!;
             Assert.Equal(ThemeVariant.Dark, copy.ActualThemeVariant);
             Assert.Equal(theme, editor.ActualThemeVariant);
-            Assert.Equal(theme, window.FindControl<Button>("AddButton")!.ActualThemeVariant);
+            Assert.Equal(ThemeVariant.Dark, window.FindControl<Button>("AddButton")!.ActualThemeVariant);
+            Assert.Equal(ThemeVariant.Dark, window.FindControl<TextBox>("SearchBox")!.ActualThemeVariant);
+            Assert.Equal(ThemeVariant.Dark, window.FindControl<ListBox>("NoteList")!.ActualThemeVariant);
+            Assert.Equal(ThemeVariant.Dark, window.FindControl<Border>("FindHost")!.ActualThemeVariant);
+            Assert.Equal(Resource("c-editor-bg"), Brush(editor.Background));
             Assert.True(window.TryFindResource("c-win-bg", ThemeVariant.Dark, out var darkBackground));
             Assert.Equal(Brush(Assert.IsAssignableFrom<IBrush>(darkBackground)), Brush(toolbar.Background));
             Assert.True(Contrast(Brush(toolbar.Background), Brush(copy.Foreground)) >= 4.5);
