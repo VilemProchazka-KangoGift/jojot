@@ -73,16 +73,25 @@ public sealed class FindContrastTests
             Assert.True(Contrast(Brush(editor.SelectionBrush), Brush(editor.SelectionForegroundBrush)) >= 4.5);
             var toolbar = window.FindControl<Border>("EditorToolbar")!;
             var copy = window.FindControl<Button>("CopyButton")!;
-            Assert.Equal(ThemeVariant.Dark, copy.ActualThemeVariant);
+            Assert.Equal(theme, copy.ActualThemeVariant);
             Assert.Equal(theme, editor.ActualThemeVariant);
-            Assert.Equal(ThemeVariant.Dark, window.FindControl<Button>("AddButton")!.ActualThemeVariant);
-            Assert.Equal(ThemeVariant.Dark, window.FindControl<TextBox>("SearchBox")!.ActualThemeVariant);
-            Assert.Equal(ThemeVariant.Dark, window.FindControl<ListBox>("NoteList")!.ActualThemeVariant);
-            Assert.Equal(ThemeVariant.Dark, window.FindControl<Border>("FindHost")!.ActualThemeVariant);
+            Assert.Equal(theme, window.FindControl<Button>("AddButton")!.ActualThemeVariant);
+            var search = window.FindControl<TextBox>("SearchBox")!;
+            Assert.Equal(theme, search.ActualThemeVariant);
+            Assert.Equal(theme, window.FindControl<ListBox>("NoteList")!.ActualThemeVariant);
+            Assert.Equal(theme, window.FindControl<Border>("FindHost")!.ActualThemeVariant);
             Assert.Equal(Resource("c-editor-bg"), Brush(editor.Background));
-            Assert.True(window.TryFindResource("c-win-bg", ThemeVariant.Dark, out var darkBackground));
-            Assert.Equal(Brush(Assert.IsAssignableFrom<IBrush>(darkBackground)), Brush(toolbar.Background));
+            Assert.Equal(Resource("c-chrome-field-bg"), Brush(search.Background));
+            Assert.Equal(Resource("c-win-bg"), Brush(toolbar.Background));
             Assert.True(Contrast(Brush(toolbar.Background), Brush(copy.Foreground)) >= 4.5);
+            Assert.True(Contrast(Resource("c-sidebar-bg"), Resource("c-text-muted")) >= 4.5);
+            Assert.True(Contrast(Resource("c-selected-bg"), Resource("c-text-muted")) >= 4.5);
+            if (theme == ThemeVariant.Light)
+            {
+                Assert.True(Resource("c-win-bg").R < Resource("c-editor-bg").R);
+                Assert.True(Resource("c-sidebar-bg").R < Resource("c-editor-bg").R);
+                Assert.True(Brush(search.Background).R < Brush(editor.Background).R);
+            }
             foreach (var name in new[] { "AddButton", "CopyButton" })
             {
                 var button = window.FindControl<Button>(name)!;

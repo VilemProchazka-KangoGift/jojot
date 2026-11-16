@@ -3,20 +3,21 @@
   <ResourceDictionary.ThemeDictionaries>
     <ResourceDictionary x:Key="Light">
     <SolidColorBrush x:Key="c-on-accent" Color="#FFFFFF" />
-    <SolidColorBrush x:Key="c-win-bg" Color="#F7F8FA"/>
-    <SolidColorBrush x:Key="c-sidebar-bg" Color="#EEF1F4"/>
+    <SolidColorBrush x:Key="c-win-bg" Color="#E6E6E6"/>
+    <SolidColorBrush x:Key="c-sidebar-bg" Color="#E3E3E3"/>
     <SolidColorBrush x:Key="c-editor-bg" Color="#FFFEFA"/>
-    <SolidColorBrush x:Key="c-border" Color="#DCE2E7"/>
+    <SolidColorBrush x:Key="c-chrome-field-bg" Color="#F4F4F4"/>
+    <SolidColorBrush x:Key="c-border" Color="#C8CBCD"/>
     <SolidColorBrush x:Key="c-text-primary" Color="#22313B"/>
-    <SolidColorBrush x:Key="c-text-muted" Color="#627480"/>
+    <SolidColorBrush x:Key="c-text-muted" Color="#50616C"/>
     <SolidColorBrush x:Key="c-accent" Color="#087F78"/>
     <SolidColorBrush x:Key="c-accent-hover" Color="#076F69"/>
     <SolidColorBrush x:Key="c-accent-pressed" Color="#065D59"/>
-    <SolidColorBrush x:Key="c-hover-bg" Color="#E2E9EC"/>
+    <SolidColorBrush x:Key="c-hover-bg" Color="#D7DADC"/>
     <SolidColorBrush x:Key="c-selected-bg" Color="#D6EBE7"/>
     <SolidColorBrush x:Key="c-toolbar-icon" Color="#526873"/>
     <SolidColorBrush x:Key="c-toolbar-icon-hover" Color="#263B47"/>
-    <SolidColorBrush x:Key="c-tab-bg" Color="#E8EDF0"/>
+    <SolidColorBrush x:Key="c-tab-bg" Color="#E0E2E3"/>
     <SolidColorBrush x:Key="c-toast-bg" Color="#263B47"/>
     <SolidColorBrush x:Key="c-toast-fg" Color="#FFFEFA"/>
     <SolidColorBrush x:Key="c-overlay-bg" Color="#80000000"/>
@@ -32,6 +33,7 @@
     <SolidColorBrush x:Key="c-win-bg" Color="#19242C"/>
     <SolidColorBrush x:Key="c-sidebar-bg" Color="#142028"/>
     <SolidColorBrush x:Key="c-editor-bg" Color="#19242C"/>
+    <SolidColorBrush x:Key="c-chrome-field-bg" Color="#19242C"/>
     <SolidColorBrush x:Key="c-border" Color="#344650"/>
     <SolidColorBrush x:Key="c-text-primary" Color="#E4EBED"/>
     <SolidColorBrush x:Key="c-text-muted" Color="#A2B3BC"/>

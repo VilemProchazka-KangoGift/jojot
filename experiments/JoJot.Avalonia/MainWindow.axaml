@@ -1,6 +1,5 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:documents="using:Avalonia.Controls.Documents"
         xmlns:models="using:JoJot.Models"
 
         x:Class="JoJot.AvaloniaExperiment.MainWindow"
@@ -29,153 +28,149 @@
     <StyleInclude Source="JoJotStyles.axaml" />
   </Window.Styles>
 
-  <ThemeVariantScope RequestedThemeVariant="Dark" documents:TextElement.Foreground="{DynamicResource c-text-primary}">
-    <Grid Background="{DynamicResource c-win-bg}">
-      <Grid x:Name="WorkArea" IsEnabled="False" RowDefinitions="49,*">
-        <Grid.ColumnDefinitions>
-          <ColumnDefinition Width="220" MinWidth="120" MaxWidth="400" />
-          <ColumnDefinition Width="4" />
-          <ColumnDefinition Width="*" />
-        </Grid.ColumnDefinitions>
-        <Grid Grid.RowSpan="2" RowDefinitions="49,*" Background="{DynamicResource c-sidebar-bg}">
-          <Border Padding="6,8" BorderBrush="{DynamicResource c-border}" BorderThickness="0,0,0,1">
-            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="4">
-              <Grid>
-                <Button x:Name="HamburgerButton" Classes="iconButton"
-                        AutomationProperties.Name="Menu">
-                  <PathIcon Width="14" Height="14" Data="M2,3 H14 V4 H2 Z M2,7 H14 V8 H2 Z M2,11 H14 V12 H2 Z" />
-                  <Button.Flyout>
-                    <MenuFlyout Placement="BottomEdgeAlignedLeft">
-                      <MenuItem x:Name="RecoveryMenuItem" Header="Recover notes" Click="OnRecoveryMenu" />
-                      <Separator />
-                      <MenuItem x:Name="CleanupMenuItem" Header="Cleanup" Click="OnCleanupMenu" />
-                      <Separator />
-                      <MenuItem x:Name="OpenFilesMenuItem" Header="Open File(s)…" Click="OnOpenFiles" />
-                      <MenuItem x:Name="PreferencesMenuItem" Header="Preferences" Click="OnPreferencesMenu" />
-                      <MenuItem x:Name="ExitMenuItem" Header="Exit" Click="OnExitMenu" />
-                    </MenuFlyout>
-                  </Button.Flyout>
-                </Button>
-                <Ellipse x:Name="OrphanBadge" Width="7" Height="7" IsVisible="False" IsHitTestVisible="False"
-                         HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-1,-1,0"
-                         Fill="{DynamicResource c-accent}" />
-              </Grid>
-              <TextBox x:Name="SearchBox" Grid.Column="1" Classes="noteSearch" Height="32"
-                       PlaceholderText="Search notes" AutomationProperties.Name="Search notes" TextChanged="OnSearchChanged" />
-              <Button x:Name="AddButton" Grid.Column="2" Classes="iconButton addNote"
-                      Click="OnAdd" IsEnabled="False">
-                <PathIcon Width="12" Height="12" Data="M5,0 H7 V5 H12 V7 H7 V12 H5 V7 H0 V5 H5 Z" />
+  <Grid>
+    <Grid x:Name="WorkArea" IsEnabled="False" RowDefinitions="49,*">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="220" MinWidth="120" MaxWidth="400" />
+        <ColumnDefinition Width="4" />
+        <ColumnDefinition Width="*" />
+      </Grid.ColumnDefinitions>
+      <Grid Grid.RowSpan="2" RowDefinitions="49,*" Background="{DynamicResource c-sidebar-bg}">
+        <Border Padding="6,8" BorderBrush="{DynamicResource c-border}" BorderThickness="0,0,0,1">
+          <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="4">
+            <Grid>
+              <Button x:Name="HamburgerButton" Classes="iconButton"
+                      AutomationProperties.Name="Menu">
+                <PathIcon Width="14" Height="14" Data="M2,3 H14 V4 H2 Z M2,7 H14 V8 H2 Z M2,11 H14 V12 H2 Z" />
+                <Button.Flyout>
+                  <MenuFlyout Placement="BottomEdgeAlignedLeft">
+                    <MenuItem x:Name="RecoveryMenuItem" Header="Recover notes" Click="OnRecoveryMenu" />
+                    <Separator />
+                    <MenuItem x:Name="CleanupMenuItem" Header="Cleanup" Click="OnCleanupMenu" />
+                    <Separator />
+                    <MenuItem x:Name="OpenFilesMenuItem" Header="Open File(s)…" Click="OnOpenFiles" />
+                    <MenuItem x:Name="PreferencesMenuItem" Header="Preferences" Click="OnPreferencesMenu" />
+                    <MenuItem x:Name="ExitMenuItem" Header="Exit" Click="OnExitMenu" />
+                  </MenuFlyout>
+                </Button.Flyout>
               </Button>
+              <Ellipse x:Name="OrphanBadge" Width="7" Height="7" IsVisible="False" IsHitTestVisible="False"
+                       HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-1,-1,0"
+                       Fill="{DynamicResource c-accent}" />
             </Grid>
-          </Border>
-          <ListBox x:Name="NoteList" Grid.Row="1" Classes="noteList"
-                   SelectionChanged="OnNoteSelected" AutomationProperties.Name="Notes">
-            <ListBox.ItemTemplate>
-              <DataTemplate x:DataType="models:NoteTab">
-                <StackPanel>
-                  <Grid Height="9" IsVisible="{Binding ShowUnpinnedSeparator}">
-                    <Border Height="1" Margin="8,0" VerticalAlignment="Center" Background="{DynamicResource c-border}" />
-                    <Border Classes="pinnedBoundaryDrop" Height="2" VerticalAlignment="Center" />
-                  </Grid>
-                  <Border Classes="noteRow" Padding="9,8">
-                    <Grid RowDefinitions="22,Auto" RowSpacing="2">
-                      <DockPanel LastChildFill="True">
-                        <Button DockPanel.Dock="Left" Classes="iconButton rowAction pinnedAction"
-                                IsVisible="{Binding Pinned}"
-                                ToolTip.Tip="{Binding UnpinTooltip}" Click="OnRowPin">
-                                  <PathIcon Width="14" Height="14" Data="M8,1 L13,6 L12,7 L11,6 L8,9 L8,11 L7,12 L5,10 L2,13 L1,12 L4,9 L2,7 L3,6 H5 L8,3 L7,2 Z" />
-                                </Button>
-                        <Button DockPanel.Dock="Right" Classes="iconButton rowAction closeAction"
-                                ToolTip.Tip="{Binding DeleteTooltip}" Click="OnRowClose">
-                                  <PathIcon Width="14" Height="14" Data="M3,2 L8,7 L13,2 L14,3 L9,8 L14,13 L13,14 L8,9 L3,14 L2,13 L7,8 L2,3 Z" />
-                                </Button>
-                        <Button DockPanel.Dock="Right" Classes="iconButton rowAction hiddenAction"
-                                Classes.unpinnedAction="{Binding !Pinned}"
-                                ToolTip.Tip="{Binding PinTooltip}" Click="OnRowPin">
-                                  <PathIcon Width="14" Height="14" Data="M8,1 L13,6 L12,7 L11,6 L8,9 L8,11 L7,12 L5,10 L2,13 L1,12 L4,9 L2,7 L3,6 H5 L8,3 L7,2 Z" />
-                                </Button>
-                        <DockPanel ToolTip.Tip="{Binding FilePath}">
-                          <Ellipse DockPanel.Dock="Left" Width="6" Height="6" Margin="0,0,4,0" VerticalAlignment="Center"
-                                   IsVisible="{Binding HasUnsavedFileChanges}" Fill="{DynamicResource c-accent}"
-                                   AutomationProperties.Name="{Binding SaveTooltip}"
-                                   ToolTip.Tip="{Binding SaveTooltip}" />
-                          <PathIcon DockPanel.Dock="Left" Width="11" Height="11" IsVisible="{Binding IsFileBacked}" Data="M3,1 H9 L13,5 V15 H3 Z M4,2 V14 H12 V6 H8 V2 Z" Margin="0,0,4,0" Foreground="{DynamicResource c-text-muted}" VerticalAlignment="Center" AutomationProperties.Name="File-backed note" />
-                          <StackPanel VerticalAlignment="Center">
-                            <TextBlock x:Name="TabLabel" Text="{Binding DisplayLabel}" TextTrimming="CharacterEllipsis"
-                                       Classes="tabTitle" Classes.placeholder="{Binding IsPlaceholder}" />
-                          </StackPanel>
-                        </DockPanel>
+            <TextBox x:Name="SearchBox" Grid.Column="1" Classes="noteSearch" Height="32"
+                     PlaceholderText="Search notes" AutomationProperties.Name="Search notes" TextChanged="OnSearchChanged" />
+            <Button x:Name="AddButton" Grid.Column="2" Classes="iconButton addNote"
+                    Click="OnAdd" IsEnabled="False">
+              <PathIcon Width="12" Height="12" Data="M5,0 H7 V5 H12 V7 H7 V12 H5 V7 H0 V5 H5 Z" />
+            </Button>
+          </Grid>
+        </Border>
+        <ListBox x:Name="NoteList" Grid.Row="1" Classes="noteList"
+                 SelectionChanged="OnNoteSelected" AutomationProperties.Name="Notes">
+          <ListBox.ItemTemplate>
+            <DataTemplate x:DataType="models:NoteTab">
+              <StackPanel>
+                <Grid Height="9" IsVisible="{Binding ShowUnpinnedSeparator}">
+                  <Border Height="1" Margin="8,0" VerticalAlignment="Center" Background="{DynamicResource c-border}" />
+                  <Border Classes="pinnedBoundaryDrop" Height="2" VerticalAlignment="Center" />
+                </Grid>
+                <Border Classes="noteRow" Padding="9,8">
+                  <Grid RowDefinitions="22,Auto" RowSpacing="2">
+                    <DockPanel LastChildFill="True">
+                      <Button DockPanel.Dock="Left" Classes="iconButton rowAction pinnedAction"
+                              IsVisible="{Binding Pinned}"
+                              ToolTip.Tip="{Binding UnpinTooltip}" Click="OnRowPin">
+                                <PathIcon Width="14" Height="14" Data="M8,1 L13,6 L12,7 L11,6 L8,9 L8,11 L7,12 L5,10 L2,13 L1,12 L4,9 L2,7 L3,6 H5 L8,3 L7,2 Z" />
+                              </Button>
+                      <Button DockPanel.Dock="Right" Classes="iconButton rowAction closeAction"
+                              ToolTip.Tip="{Binding DeleteTooltip}" Click="OnRowClose">
+                                <PathIcon Width="14" Height="14" Data="M3,2 L8,7 L13,2 L14,3 L9,8 L14,13 L13,14 L8,9 L3,14 L2,13 L7,8 L2,3 Z" />
+                              </Button>
+                      <Button DockPanel.Dock="Right" Classes="iconButton rowAction hiddenAction"
+                              Classes.unpinnedAction="{Binding !Pinned}"
+                              ToolTip.Tip="{Binding PinTooltip}" Click="OnRowPin">
+                                <PathIcon Width="14" Height="14" Data="M8,1 L13,6 L12,7 L11,6 L8,9 L8,11 L7,12 L5,10 L2,13 L1,12 L4,9 L2,7 L3,6 H5 L8,3 L7,2 Z" />
+                              </Button>
+                      <DockPanel ToolTip.Tip="{Binding FilePath}">
+                        <Ellipse DockPanel.Dock="Left" Width="6" Height="6" Margin="0,0,4,0" VerticalAlignment="Center"
+                                 IsVisible="{Binding HasUnsavedFileChanges}" Fill="{DynamicResource c-accent}"
+                                 AutomationProperties.Name="{Binding SaveTooltip}"
+                                 ToolTip.Tip="{Binding SaveTooltip}" />
+                        <PathIcon DockPanel.Dock="Left" Width="11" Height="11" IsVisible="{Binding IsFileBacked}" Data="M3,1 H9 L13,5 V15 H3 Z M4,2 V14 H12 V6 H8 V2 Z" Margin="0,0,4,0" Foreground="{DynamicResource c-text-muted}" VerticalAlignment="Center" AutomationProperties.Name="File-backed note" />
+                        <StackPanel VerticalAlignment="Center">
+                          <TextBlock x:Name="TabLabel" Text="{Binding DisplayLabel}" TextTrimming="CharacterEllipsis"
+                                     Classes="tabTitle" Classes.placeholder="{Binding IsPlaceholder}" />
+                        </StackPanel>
                       </DockPanel>
-                      <Grid Grid.Row="1" ColumnDefinitions="*,Auto" ColumnSpacing="4">
-                        <TextBlock Text="{Binding CreatedDisplay}" FontSize="10" TextTrimming="CharacterEllipsis"
-                                   ToolTip.Tip="{Binding CreatedTooltipText}" Foreground="{DynamicResource c-text-muted}" />
-                        <TextBlock Grid.Column="1" Text="{Binding UpdatedDisplay}" FontSize="10"
-                                   ToolTip.Tip="{Binding UpdatedTooltipText}" Foreground="{DynamicResource c-text-muted}" />
-                      </Grid>
+                    </DockPanel>
+                    <Grid Grid.Row="1" ColumnDefinitions="*,Auto" ColumnSpacing="4">
+                      <TextBlock Text="{Binding CreatedDisplay}" FontSize="10" TextTrimming="CharacterEllipsis"
+                                 ToolTip.Tip="{Binding CreatedTooltipText}" Foreground="{DynamicResource c-text-muted}" />
+                      <TextBlock Grid.Column="1" Text="{Binding UpdatedDisplay}" FontSize="10"
+                                 ToolTip.Tip="{Binding UpdatedTooltipText}" Foreground="{DynamicResource c-text-muted}" />
                     </Grid>
-                  </Border>
-                </StackPanel>
-              </DataTemplate>
-            </ListBox.ItemTemplate>
-          </ListBox>
-        </Grid>
-        <Border Grid.Column="1" BorderThickness="0,0,0,1" BorderBrush="{DynamicResource c-border}" />
-        <Border x:Name="TabDividerLine" Grid.Row="1" Grid.Column="1" Width="1" Background="{DynamicResource c-border}" IsHitTestVisible="False" />
-        <GridSplitter x:Name="TabSplitter" Grid.Row="1" Grid.Column="1" ResizeDirection="Columns" ResizeBehavior="PreviousAndNext"
-                      MinWidth="0" Background="Transparent" />
-        <Grid Grid.Column="2" Grid.RowSpan="2" RowDefinitions="Auto,*" ClipToBounds="True">
-          <Border x:Name="EditorToolbar" Padding="12,9" BorderThickness="0,0,0,1"
-                  Background="{DynamicResource c-win-bg}" BorderBrush="{DynamicResource c-border}">
-            <DockPanel>
-              <Button x:Name="DeleteButton" DockPanel.Dock="Right" Classes="iconButton toolbarDelete" Click="OnDelete">
-                <PathIcon Width="14" Height="14" Data="{StaticResource DeleteGlyph}" />
+                  </Grid>
+                </Border>
+              </StackPanel>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+      </Grid>
+      <Border Grid.Column="1" BorderThickness="0,0,0,1" BorderBrush="{DynamicResource c-border}" />
+      <Border x:Name="TabDividerLine" Grid.Row="1" Grid.Column="1" Width="1" Background="{DynamicResource c-border}" IsHitTestVisible="False" />
+      <GridSplitter x:Name="TabSplitter" Grid.Row="1" Grid.Column="1" ResizeDirection="Columns" ResizeBehavior="PreviousAndNext"
+                    MinWidth="0" Background="Transparent" />
+      <Grid Grid.Column="2" Grid.RowSpan="2" RowDefinitions="Auto,*" ClipToBounds="True">
+        <Border x:Name="EditorToolbar" Padding="12,9" BorderThickness="0,0,0,1"
+                Background="{DynamicResource c-win-bg}" BorderBrush="{DynamicResource c-border}">
+          <DockPanel>
+            <Button x:Name="DeleteButton" DockPanel.Dock="Right" Classes="iconButton toolbarDelete" Click="OnDelete">
+              <PathIcon Width="14" Height="14" Data="{StaticResource DeleteGlyph}" />
+            </Button>
+            <WrapPanel Orientation="Horizontal">
+              <Button x:Name="UndoButton" Classes="iconButton" Click="OnUndo">
+                <PathIcon Width="14" Height="14" Data="{StaticResource UndoGlyph}" />
               </Button>
-              <WrapPanel Orientation="Horizontal">
-                <Button x:Name="UndoButton" Classes="iconButton" Click="OnUndo">
-                  <PathIcon Width="14" Height="14" Data="{StaticResource UndoGlyph}" />
-                </Button>
-                <Button x:Name="RedoButton" Classes="iconButton" Click="OnRedo">
-                  <PathIcon Width="14" Height="14" Data="{StaticResource RedoGlyph}" />
-                </Button>
-                <Border Classes="toolbarSeparator" />
-                <Button x:Name="CopyButton" Classes="iconButton" Click="OnCopy">
-                  <PathIcon Width="14" Height="14" Data="{StaticResource CopyGlyph}" />
-                </Button>
-                <Button x:Name="PasteButton" Classes="iconButton" Click="OnPaste">
-                  <PathIcon Width="14" Height="14" Data="{StaticResource PasteGlyph}" />
-                </Button>
-                <Border Classes="toolbarSeparator" />
-                <Button x:Name="PinButton" Classes="iconButton" Click="OnPin">
-                  <PathIcon Width="14" Height="14" />
-                </Button>
-                <Button x:Name="CloneButton" Classes="iconButton" Click="OnClone">
-                  <PathIcon Width="14" Height="14" Data="{StaticResource CloneGlyph}" />
-                </Button>
-                <Border Classes="toolbarSeparator" />
-                <Button x:Name="SaveButton" Classes="iconButton" Click="OnSave">
-                  <PathIcon Width="14" Height="14" Data="{StaticResource SaveGlyph}" />
-                </Button>
-                <Button x:Name="SaveAsButton" Classes="iconButton" Click="OnSaveAs" IsVisible="False">
-                  <PathIcon Width="14" Height="14" Data="{StaticResource SaveAsGlyph}" />
-                </Button>
-                <Border Classes="toolbarSeparator" />
-                <Button x:Name="FindButton" Classes="iconButton" Click="OnFind">
-                  <PathIcon Width="14" Height="14" Data="{StaticResource FindGlyph}" />
-                </Button>
-              </WrapPanel>
-            </DockPanel>
-          </Border>
-          <Grid Grid.Row="1" ColumnDefinitions="*,Auto">
-            <ThemeVariantScope RequestedThemeVariant="{Binding $parent[Window].ActualThemeVariant}">
-              <Grid>
-                <TextBox x:Name="Editor" Classes="noteEditor" FontFamily="Consolas" FontSize="13"
-                         AcceptsReturn="True" AcceptsTab="True" IsUndoEnabled="False"
-                         IsInactiveSelectionHighlightEnabled="True" ClearSelectionOnLostFocus="False"
-                         TextWrapping="Wrap" VerticalContentAlignment="Top"
-                         ScrollViewer.VerticalScrollBarVisibility="Auto" TextChanged="OnEditorChanged"
-                         AutomationProperties.Name="Note editor" />
-              </Grid>
-            </ThemeVariantScope>
+              <Button x:Name="RedoButton" Classes="iconButton" Click="OnRedo">
+                <PathIcon Width="14" Height="14" Data="{StaticResource RedoGlyph}" />
+              </Button>
+              <Border Classes="toolbarSeparator" />
+              <Button x:Name="CopyButton" Classes="iconButton" Click="OnCopy">
+                <PathIcon Width="14" Height="14" Data="{StaticResource CopyGlyph}" />
+              </Button>
+              <Button x:Name="PasteButton" Classes="iconButton" Click="OnPaste">
+                <PathIcon Width="14" Height="14" Data="{StaticResource PasteGlyph}" />
+              </Button>
+              <Border Classes="toolbarSeparator" />
+              <Button x:Name="PinButton" Classes="iconButton" Click="OnPin">
+                <PathIcon Width="14" Height="14" />
+              </Button>
+              <Button x:Name="CloneButton" Classes="iconButton" Click="OnClone">
+                <PathIcon Width="14" Height="14" Data="{StaticResource CloneGlyph}" />
+              </Button>
+              <Border Classes="toolbarSeparator" />
+              <Button x:Name="SaveButton" Classes="iconButton" Click="OnSave">
+                <PathIcon Width="14" Height="14" Data="{StaticResource SaveGlyph}" />
+              </Button>
+              <Button x:Name="SaveAsButton" Classes="iconButton" Click="OnSaveAs" IsVisible="False">
+                <PathIcon Width="14" Height="14" Data="{StaticResource SaveAsGlyph}" />
+              </Button>
+              <Border Classes="toolbarSeparator" />
+              <Button x:Name="FindButton" Classes="iconButton" Click="OnFind">
+                <PathIcon Width="14" Height="14" Data="{StaticResource FindGlyph}" />
+              </Button>
+            </WrapPanel>
+          </DockPanel>
+        </Border>
+        <Grid Grid.Row="1" ColumnDefinitions="*,Auto">
+          <Grid>
+            <TextBox x:Name="Editor" Classes="noteEditor" FontFamily="Consolas" FontSize="13"
+                     AcceptsReturn="True" AcceptsTab="True" IsUndoEnabled="False"
+                     IsInactiveSelectionHighlightEnabled="True" ClearSelectionOnLostFocus="False"
+                     TextWrapping="Wrap" VerticalContentAlignment="Top"
+                     ScrollViewer.VerticalScrollBarVisibility="Auto" TextChanged="OnEditorChanged"
+                     AutomationProperties.Name="Note editor" />
             <Border x:Name="ToastHost" IsVisible="False" VerticalAlignment="Bottom" Height="36" ZIndex="10"
                     Background="{DynamicResource c-toast-bg}" Padding="12,0">
               <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
@@ -188,26 +183,26 @@
                         </Button>
               </Grid>
             </Border>
-            <Border x:Name="FindHost" Grid.Column="1" IsVisible="False" Width="280"
-                    Background="{DynamicResource c-win-bg}" BorderBrush="{DynamicResource c-border}" BorderThickness="1,0,0,0" />
           </Grid>
+          <Border x:Name="FindHost" Grid.Column="1" IsVisible="False" Width="280"
+                  Background="{DynamicResource c-win-bg}" BorderBrush="{DynamicResource c-border}" BorderThickness="1,0,0,0" />
         </Grid>
       </Grid>
-      <Border x:Name="FileDropHost" IsVisible="False" IsHitTestVisible="False" Background="{DynamicResource c-overlay-bg}">
-        <Border BorderBrush="{DynamicResource c-accent}" BorderThickness="3" CornerRadius="8" Margin="16">
-          <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
-            <PathIcon Width="48" Height="48" Data="M7,1 H9 V8 L12,5 L13,6 L8,11 L3,6 L4,5 L7,8 Z M2,11 H3 V14 H13 V11 H14 V15 H2 Z" Foreground="{DynamicResource c-accent}" />
-            <TextBlock x:Name="DropHeading" FontSize="18" FontWeight="SemiBold" Margin="0,12,0,0"
-                       Foreground="{DynamicResource c-toast-fg}" TextAlignment="Center" />
-            <TextBlock x:Name="DropHint" FontSize="12" Margin="0,4,0,0" TextAlignment="Center"
-                       Foreground="{DynamicResource c-text-muted}" TextWrapping="Wrap" />
-          </StackPanel>
-        </Border>
-      </Border>
-      <Border x:Name="HelpScrim" IsVisible="False" Background="{DynamicResource c-overlay-bg}" />
-      <Border x:Name="PanelHost" IsVisible="False" HorizontalAlignment="Right" VerticalAlignment="Stretch" />
-      <TextBlock x:Name="Status" Padding="10,4" Text="Opening notes…" HorizontalAlignment="Right" VerticalAlignment="Bottom"
-                 Background="{DynamicResource c-sidebar-bg}" Foreground="{DynamicResource c-text-muted}" TextWrapping="Wrap" />
     </Grid>
-  </ThemeVariantScope>
+    <Border x:Name="FileDropHost" IsVisible="False" IsHitTestVisible="False" Background="{DynamicResource c-overlay-bg}">
+      <Border BorderBrush="{DynamicResource c-accent}" BorderThickness="3" CornerRadius="8" Margin="16">
+        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+          <PathIcon Width="48" Height="48" Data="M7,1 H9 V8 L12,5 L13,6 L8,11 L3,6 L4,5 L7,8 Z M2,11 H3 V14 H13 V11 H14 V15 H2 Z" Foreground="{DynamicResource c-accent}" />
+          <TextBlock x:Name="DropHeading" FontSize="18" FontWeight="SemiBold" Margin="0,12,0,0"
+                     Foreground="{DynamicResource c-toast-fg}" TextAlignment="Center" />
+          <TextBlock x:Name="DropHint" FontSize="12" Margin="0,4,0,0" TextAlignment="Center"
+                     Foreground="{DynamicResource c-text-muted}" TextWrapping="Wrap" />
+        </StackPanel>
+      </Border>
+    </Border>
+    <Border x:Name="HelpScrim" IsVisible="False" Background="{DynamicResource c-overlay-bg}" />
+    <Border x:Name="PanelHost" IsVisible="False" HorizontalAlignment="Right" VerticalAlignment="Stretch" />
+    <TextBlock x:Name="Status" Padding="10,4" Text="Opening notes…" HorizontalAlignment="Right" VerticalAlignment="Bottom"
+               Background="{DynamicResource c-sidebar-bg}" Foreground="{DynamicResource c-text-muted}" TextWrapping="Wrap" />
+  </Grid>
 </Window>

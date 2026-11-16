@@ -7,14 +7,14 @@
     <Setter Property="CornerRadius" Value="5" />
     <Setter Property="BorderThickness" Value="1" />
     <Setter Property="BorderBrush" Value="{DynamicResource c-accent}" />
-    <Setter Property="Background" Value="{DynamicResource c-editor-bg}" />
+    <Setter Property="Background" Value="{DynamicResource c-chrome-field-bg}" />
     <Setter Property="Foreground" Value="{DynamicResource c-text-primary}" />
     <Setter Property="PlaceholderForeground" Value="{DynamicResource c-text-muted}" />
     <Setter Property="VerticalContentAlignment" Value="Center" />
   </Style>
   <Style Selector="TextBox.inlineRename /template/ Border#PART_BorderElement,
                    TextBox.inlineRename:focus /template/ Border#PART_BorderElement">
-    <Setter Property="Background" Value="{DynamicResource c-editor-bg}" />
+    <Setter Property="Background" Value="{DynamicResource c-chrome-field-bg}" />
     <Setter Property="BorderBrush" Value="{DynamicResource c-accent}" />
     <Setter Property="BorderThickness" Value="1" />
   </Style>
@@ -138,7 +138,7 @@
     <Setter Property="CaretBrush" Value="{DynamicResource c-text-primary}" />
   </Style>
   <Style Selector="TextBox.noteSearch">
-    <Setter Property="Background" Value="{DynamicResource c-editor-bg}" />
+    <Setter Property="Background" Value="{DynamicResource c-chrome-field-bg}" />
     <Setter Property="CornerRadius" Value="7" />
   </Style>
   <Style Selector="TextBox.noteEditor.findActive">
@@ -395,7 +395,7 @@
     <Setter Property="CornerRadius" Value="7" />
   </Style>
   <Style Selector="TextBox.cleanupAge">
-    <Setter Property="Background" Value="{DynamicResource c-editor-bg}" />
+    <Setter Property="Background" Value="{DynamicResource c-chrome-field-bg}" />
     <Setter Property="FontSize" Value="13" />
   </Style>
   <Style Selector="Border.panelRule">
