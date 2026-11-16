@@ -12,6 +12,16 @@
       <ResourceDictionary.MergedDictionaries>
         <ResourceInclude Source="JoJotColors.axaml" />
       </ResourceDictionary.MergedDictionaries>
+      <!-- Portable outline equivalents of the toolbar's familiar desktop symbols. -->
+      <StreamGeometry x:Key="UndoGlyph">M6.4,2.5 L2,6.5 L6.4,10.5 L7.4,9.4 L5,7.25 H10.5 A3,3 0 0 1 10.5,13.25 H8 V14.75 H10.5 A4.5,4.5 0 0 0 10.5,5.75 H5 L7.4,3.6 Z</StreamGeometry>
+      <StreamGeometry x:Key="RedoGlyph">M9.6,2.5 L14,6.5 L9.6,10.5 L8.6,9.4 L11,7.25 H5.5 A3,3 0 0 0 5.5,13.25 H8 V14.75 H5.5 A4.5,4.5 0 0 1 5.5,5.75 H11 L8.6,3.6 Z</StreamGeometry>
+      <StreamGeometry x:Key="CopyGlyph">F0 M2,1 H9.5 V2.5 H3.5 V11 H2 Z M5,4 H11.5 L14,6.5 V15 H5 Z M6.5,5.5 V13.5 H12.5 V7.1 L10.9,5.5 Z</StreamGeometry>
+      <StreamGeometry x:Key="PasteGlyph">F0 M6,1 H10 L11,3 H13.5 V15 H2.5 V3 H5 Z M6.6,2.5 L6,4.5 H10 L9.4,2.5 Z M4,4.5 V13.5 H12 V4.5 H11.5 V6 H4.5 V4.5 Z</StreamGeometry>
+      <StreamGeometry x:Key="CloneGlyph">F0 M2,1 H9.5 V2.5 H3.5 V11 H2 Z M5,4 H11.5 L14,6.5 V15 H5 Z M6.5,5.5 V13.5 H12.5 V7.1 L10.9,5.5 Z M9,7.5 H10 V9 H11.5 V10 H10 V11.5 H9 V10 H7.5 V9 H9 Z</StreamGeometry>
+      <StreamGeometry x:Key="SaveGlyph">F0 M1.5,1.5 H11.5 L14.5,4.5 V14.5 H1.5 Z M3,3 V13 H4.5 V8.5 H11.5 V13 H13 V5.1 L10.9,3 H10.5 V6.5 H4.5 V3 Z M6,3 V5 H9 V3 Z M6,10 V13 H10 V10 Z</StreamGeometry>
+      <StreamGeometry x:Key="SaveAsGlyph">F0 M1.5,1.5 H10.5 L13,4 V6 H11.5 V4.6 L9.9,3 H9.5 V6.5 H4.5 V3 H3 V13 H6 V14.5 H1.5 Z M6,3 V5 H8 V3 Z M7.5,11.9 L12.8,6.6 L15,8.8 L9.7,14.1 L7,14.7 Z M8.8,12.6 L8.65,13.05 L9.1,12.9 L13.2,8.8 L12.8,8.4 Z</StreamGeometry>
+      <StreamGeometry x:Key="FindGlyph">F0 M6.4,1.25 A5.15,5.15 0 1 0 6.4,11.55 A5.15,5.15 0 1 0 6.4,1.25 Z M6.4,2.75 A3.65,3.65 0 1 1 6.4,10.05 A3.65,3.65 0 1 1 6.4,2.75 Z M10.95,9.9 L15.05,14 L14,15.05 L9.9,10.95 Z</StreamGeometry>
+      <StreamGeometry x:Key="DeleteGlyph">F0 M5.5,1.25 H10.5 V2.75 H14 V4.25 H2 V2.75 H5.5 Z M3.25,5.25 H4.75 L5.2,13.25 H10.8 L11.25,5.25 H12.75 L12.2,14.75 H3.8 Z M6.2,6 H7.4 V11.75 H6.2 Z M8.6,6 H9.8 V11.75 H8.6 Z</StreamGeometry>
     </ResourceDictionary>
   </Window.Resources>
   <Window.Styles>
@@ -115,37 +125,39 @@
         <Border x:Name="EditorToolbar" Padding="12,9" BorderThickness="0,0,0,1" BorderBrush="{DynamicResource c-border}">
           <DockPanel>
             <Button x:Name="DeleteButton" DockPanel.Dock="Right" Classes="iconButton toolbarDelete" Click="OnDelete">
-              <PathIcon Width="14" Height="14" Data="M5,2 H11 V3 H14 V4 H2 V3 H5 Z M3,5 H13 L12,15 H4 Z M5,6 V13 H6 V6 Z M8,6 V13 H9 V6 Z M10,6 V13 H11 V6 Z" />
+              <PathIcon Width="14" Height="14" Data="{StaticResource DeleteGlyph}" />
             </Button>
             <WrapPanel Orientation="Horizontal">
               <Button x:Name="UndoButton" Classes="iconButton" Click="OnUndo">
-                <PathIcon Width="14" Height="14" Data="M5,2 L1,6 L5,10 V7 H10 A3,3 0 0 1 10,13 H7 V14 H10 A4,4 0 0 0 10,6 H5 Z" />
+                <PathIcon Width="14" Height="14" Data="{StaticResource UndoGlyph}" />
               </Button>
               <Button x:Name="RedoButton" Classes="iconButton" Click="OnRedo">
-                <PathIcon Width="14" Height="14" Data="M11,2 L15,6 L11,10 V7 H6 A3,3 0 0 0 6,13 H9 V14 H6 A4,4 0 0 1 6,6 H11 Z" />
+                <PathIcon Width="14" Height="14" Data="{StaticResource RedoGlyph}" />
               </Button>
               <Border Classes="toolbarSeparator" />
               <Button x:Name="CopyButton" Classes="iconButton" Click="OnCopy">
-                <PathIcon Width="14" Height="14" Data="M1,1 H10 V4 H14 V15 H5 V12 H1 Z M2,2 V11 H5 V4 H9 V2 Z M6,5 V14 H13 V5 Z" />
+                <PathIcon Width="14" Height="14" Data="{StaticResource CopyGlyph}" />
               </Button>
               <Button x:Name="PasteButton" Classes="iconButton" Click="OnPaste">
-                <PathIcon Width="14" Height="14" Data="M3,3 H5 V1 H11 V3 H13 V15 H3 Z M4,4 V14 H12 V4 H11 V6 H5 V4 Z M6,2 V5 H10 V2 Z" />
+                <PathIcon Width="14" Height="14" Data="{StaticResource PasteGlyph}" />
               </Button>
               <Border Classes="toolbarSeparator" />
               <Button x:Name="PinButton" Classes="iconButton" Click="OnPin">
-                <PathIcon Width="14" Height="14" Data="M8,1 L13,6 L12,7 L11,6 L8,9 L8,11 L7,12 L5,10 L2,13 L1,12 L4,9 L2,7 L3,6 H5 L8,3 L7,2 Z" />
+                <PathIcon Width="14" Height="14" />
               </Button>
-              <Button x:Name="CloneButton" Classes="iconButton" Content="&#xF413;" Click="OnClone" />
+              <Button x:Name="CloneButton" Classes="iconButton" Click="OnClone">
+                <PathIcon Width="14" Height="14" Data="{StaticResource CloneGlyph}" />
+              </Button>
               <Border Classes="toolbarSeparator" />
               <Button x:Name="SaveButton" Classes="iconButton" Click="OnSave">
-                <PathIcon Width="14" Height="14" Data="M2,1 H11 L14,4 V15 H2 Z M4,2 V6 H11 V2 Z M4,9 V14 H12 V9 Z" />
+                <PathIcon Width="14" Height="14" Data="{StaticResource SaveGlyph}" />
               </Button>
               <Button x:Name="SaveAsButton" Classes="iconButton" Click="OnSaveAs" IsVisible="False">
-                <PathIcon Width="14" Height="14" Data="M1,1 H10 L13,4 V7 H12 V4 H10 V2 H2 V14 H7 V15 H1 Z M4,3 H8 V6 H4 Z M8,13 L13,8 L15,10 L10,15 H8 Z" />
+                <PathIcon Width="14" Height="14" Data="{StaticResource SaveAsGlyph}" />
               </Button>
               <Border Classes="toolbarSeparator" />
               <Button x:Name="FindButton" Classes="iconButton" Click="OnFind">
-                <PathIcon Width="14" Height="14" Data="M7,1 A5,5 0 1 0 7,11 A5,5 0 1 0 7,1 Z M7,2 A4,4 0 1 1 7,10 A4,4 0 1 1 7,2 Z M10,10 L11,9 L15,13 L14,14 Z" />
+                <PathIcon Width="14" Height="14" Data="{StaticResource FindGlyph}" />
               </Button>
             </WrapPanel>
           </DockPanel>

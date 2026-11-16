@@ -135,7 +135,7 @@ public sealed partial class MainWindow
     }
 
     private static readonly Avalonia.Media.Geometry PinIcon = Avalonia.Media.Geometry.Parse(
-        "M8,1 L13,6 L12,7 L11,6 L8,9 L8,11 L7,12 L5,10 L2,13 L1,12 L4,9 L2,7 L3,6 H5 L8,3 L7,2 Z");
+        "F0 M8.5,1 L14,6.5 L12.95,7.55 L12,6.6 L8.9,9.7 V11.8 L7.7,13 L5.8,11.1 L2.9,14 L1.85,12.95 L4.75,10.05 L2.85,8.15 L4.05,6.95 H6.15 L9.25,3.85 L8.5,3.1 Z M10.3,4.9 L6.75,8.45 H5.25 L7.4,10.6 V9.1 L10.95,5.55 Z");
     private static readonly Avalonia.Media.Geometry UnpinIcon = Avalonia.Media.Geometry.Parse(
         "M8,1 L13,6 L12,7 L11,6 L8,9 L8,11 L7,12 L5,10 L2,13 L1,12 L4,9 L2,7 L3,6 H5 L8,3 L7,2 Z M1,1 L15,15 L14,16 L0,2 Z");
 
