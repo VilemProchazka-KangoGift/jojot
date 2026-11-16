@@ -3,12 +3,12 @@
 ; ==========================================================================
 ;
 ; Build prerequisites:
-;   1. Publish the application (self-contained, win-x64):
+;   1. Publish the application (self-contained, win-x64 or win-arm64):
 ;      dotnet publish experiments/JoJot.Avalonia/JoJot.Avalonia.csproj -c Release -r win-x64 --self-contained -p:JoJotProduction=true
 ;
 ;   2. Compile this installer script:
 ;      iscc /DPublishDir=<absolute path to the production publish> installer/jojot.iss
-;      (or use the full path to ISCC.exe from your Inno Setup installation)
+;      Pass /DTargetArm64 for a win-arm64 publish. Use Inno Setup 6.3 or newer.
 ;
 ; Output:
 ;   installer/output/JoJot-2026.11.8-Setup.exe
@@ -31,16 +31,25 @@ DisableProgramGroupPage=yes
 DisableDirPage=yes
 DisableReadyPage=yes
 OutputDir=..\installer\output
+#ifdef TargetArm64
+OutputBaseFilename=JoJot-2026.11.8-Windows-arm64-Setup
+#else
 OutputBaseFilename=JoJot-2026.11.8-Setup
+#endif
 SetupIconFile=..\experiments\JoJot.Avalonia\Assets\jojot.ico
 UninstallDisplayIcon={app}\JoJot.exe
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
+#ifdef TargetArm64
+ArchitecturesAllowed=arm64
+ArchitecturesInstallIn64BitMode=arm64
+#else
 ArchitecturesAllowed=x64compatible
 ; Install the 64-bit app under Program Files, not Program Files (x86). Existing installs stay
 ; where they are (Inno reuses the previous install dir) until uninstalled and reinstalled.
 ArchitecturesInstallIn64BitMode=x64compatible
+#endif
 PrivilegesRequired=admin
 UsedUserAreasWarning=no
 CloseApplications=yes
