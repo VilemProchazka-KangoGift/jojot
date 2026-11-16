@@ -507,6 +507,32 @@ public sealed class MainWindowTests
         var line = Find<Border>(window, "TabDividerLine");
         Assert.Equal(1, line.Bounds.Width);
         Assert.False(line.IsHitTestVisible);
+        var lineOrigin = line.TranslatePoint(default, window)!.Value;
+        var splitterOrigin = splitter.TranslatePoint(default, window)!.Value;
+        Assert.Equal(0, lineOrigin.Y);
+        Assert.Equal(list.TranslatePoint(default, window)!.Value.Y, splitterOrigin.Y);
+        Assert.Equal(splitterOrigin.Y + splitter.Bounds.Height, lineOrigin.Y + line.Bounds.Height);
+        Assert.InRange(Math.Abs(splitterOrigin.X + splitter.Bounds.Width / 2 - (lineOrigin.X + line.Bounds.Width / 2)), 0, 0.5);
+        var rule = Find<Border>(window, "HeaderDividerLine");
+        Assert.Equal(1, rule.Bounds.Height);
+        Assert.False(rule.IsHitTestVisible);
+        AssertAlignedHeader();
+
+        var oneRowHeight = toolbar.Bounds.Height;
+        window.Width = 420;
+        await WaitForAsync(() => toolbar.Bounds.Height > oneRowHeight, "wrapped toolbar layout");
+        AssertAlignedHeader();
+
+        void AssertAlignedHeader()
+        {
+            var ruleOrigin = rule.TranslatePoint(default, window)!.Value;
+            var split = splitter.TranslatePoint(default, window)!.Value;
+            Assert.Equal(0, ruleOrigin.X);
+            Assert.Equal(window.Bounds.Width, rule.Bounds.Width);
+            Assert.Equal(list.TranslatePoint(default, window)!.Value.Y, ruleOrigin.Y + rule.Bounds.Height);
+            Assert.Equal(editor.TranslatePoint(default, window)!.Value.Y, ruleOrigin.Y + rule.Bounds.Height);
+            Assert.Equal(split.Y, ruleOrigin.Y + rule.Bounds.Height);
+        }
     }
 
     [AvaloniaTheory]

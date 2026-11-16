@@ -82,7 +82,7 @@ public sealed class FindContrastTests
             Assert.Equal(theme, window.FindControl<Border>("FindHost")!.ActualThemeVariant);
             Assert.Equal(Resource("c-editor-bg"), Brush(editor.Background));
             Assert.Equal(Resource("c-chrome-field-bg"), Brush(search.Background));
-            Assert.Equal(Resource("c-win-bg"), Brush(toolbar.Background));
+            Assert.Equal(Resource("c-sidebar-bg"), Brush(toolbar.Background));
             Assert.True(Contrast(Brush(toolbar.Background), Brush(copy.Foreground)) >= 4.5);
             Assert.True(Contrast(Resource("c-sidebar-bg"), Resource("c-text-muted")) >= 4.5);
             Assert.True(Contrast(Resource("c-selected-bg"), Resource("c-text-muted")) >= 4.5);

@@ -23,7 +23,7 @@ internal static partial class WindowChromeTheme
     }
 
     internal static (uint Caption, uint Text) GetColors(Window window) =>
-        (GetColor(window, "c-win-bg"), GetColor(window, "c-text-primary"));
+        (GetColor(window, "c-sidebar-bg"), GetColor(window, "c-text-primary"));
 
     private static uint GetColor(Window window, string key) =>
         window.TryFindResource(key, window.ActualThemeVariant, out var resource) && resource is ISolidColorBrush brush
