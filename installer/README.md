@@ -17,10 +17,10 @@ Both installers share the Windows app identity and installation path. The ARM64 
 
 ## Linux and macOS
 
-The Unix packages use the existing platform data paths documented in [Cross-platform support](../experiments/CROSS_PLATFORM.md). Install the Linux package on a Debian-family amd64 system with glibc 2.38 or newer using `sudo apt install ./JoJot-2026.11.8-linux-amd64.deb`. On a Mac, extract the archive matching the Mac's architecture and move JoJot.app to Applications. The macOS bundles were checked on the build host. Launch and Gatekeeper behavior still need validation on a Mac. macOS distribution signing and notarization require a Mac and Apple Developer credentials.
+The Unix packages use the existing platform data paths documented in [Cross-platform support](../experiments/CROSS_PLATFORM.md). Install the Linux package on a Debian-family amd64 system with glibc 2.38 or newer using `sudo apt install ./JoJot-2026.11.9-linux-amd64.deb`. On a Mac, extract the archive matching the Mac's architecture and move JoJot.app to Applications. The macOS bundles were checked on the build host. Launch and Gatekeeper behavior still need validation on a Mac. macOS distribution signing and notarization require a Mac and Apple Developer credentials.
 
 ```bash
-version=2026.11.8
+version=2026.11.9
 dotnet publish experiments/JoJot.Avalonia -c Release -r linux-x64 --self-contained -p:PublishAot=true -o .local/release/linux-x64
 bash installer/package-unix.sh "$version" linux-x64 .local/release/linux-x64 installer/output
 for rid in osx-arm64 osx-x64; do

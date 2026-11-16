@@ -11,7 +11,7 @@
 ;      Pass /DTargetArm64 for a win-arm64 publish. Use Inno Setup 6.3 or newer.
 ;
 ; Output:
-;   installer/output/JoJot-2026.11.8-Setup.exe
+;   installer/output/JoJot-2026.11.9-Setup.exe
 ;
 ; ==========================================================================
 
@@ -22,8 +22,8 @@
 [Setup]
 AppId={{B7E45A2C-8D31-4F6A-9E52-1C3D7A8B9F04}
 AppName=JoJot
-AppVersion=2026.11.8
-AppVerName=JoJot 2026.11.8
+AppVersion=2026.11.9
+AppVerName=JoJot 2026.11.9
 AppPublisher=Vilem Prochazka
 DefaultDirName={autopf}\JoJot
 DefaultGroupName=JoJot
@@ -32,9 +32,9 @@ DisableDirPage=yes
 DisableReadyPage=yes
 OutputDir=..\installer\output
 #ifdef TargetArm64
-OutputBaseFilename=JoJot-2026.11.8-Windows-arm64-Setup
+OutputBaseFilename=JoJot-2026.11.9-Windows-arm64-Setup
 #else
-OutputBaseFilename=JoJot-2026.11.8-Setup
+OutputBaseFilename=JoJot-2026.11.9-Setup
 #endif
 SetupIconFile=..\experiments\JoJot.Avalonia\Assets\jojot.ico
 UninstallDisplayIcon={app}\JoJot.exe
