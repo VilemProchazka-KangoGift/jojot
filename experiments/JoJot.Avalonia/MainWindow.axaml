@@ -122,46 +122,49 @@
       <GridSplitter x:Name="TabSplitter" Grid.Row="1" Grid.Column="1" ResizeDirection="Columns" ResizeBehavior="PreviousAndNext"
                     MinWidth="0" Background="Transparent" />
       <Grid Grid.Column="2" Grid.RowSpan="2" RowDefinitions="Auto,*" ClipToBounds="True">
-        <Border x:Name="EditorToolbar" Padding="12,9" BorderThickness="0,0,0,1" BorderBrush="{DynamicResource c-border}">
-          <DockPanel>
-            <Button x:Name="DeleteButton" DockPanel.Dock="Right" Classes="iconButton toolbarDelete" Click="OnDelete">
-              <PathIcon Width="14" Height="14" Data="{StaticResource DeleteGlyph}" />
-            </Button>
-            <WrapPanel Orientation="Horizontal">
-              <Button x:Name="UndoButton" Classes="iconButton" Click="OnUndo">
-                <PathIcon Width="14" Height="14" Data="{StaticResource UndoGlyph}" />
+        <ThemeVariantScope RequestedThemeVariant="Dark">
+          <Border x:Name="EditorToolbar" Padding="12,9" BorderThickness="0,0,0,1"
+                  Background="{DynamicResource c-win-bg}" BorderBrush="{DynamicResource c-border}">
+            <DockPanel>
+              <Button x:Name="DeleteButton" DockPanel.Dock="Right" Classes="iconButton toolbarDelete" Click="OnDelete">
+                <PathIcon Width="14" Height="14" Data="{StaticResource DeleteGlyph}" />
               </Button>
-              <Button x:Name="RedoButton" Classes="iconButton" Click="OnRedo">
-                <PathIcon Width="14" Height="14" Data="{StaticResource RedoGlyph}" />
-              </Button>
-              <Border Classes="toolbarSeparator" />
-              <Button x:Name="CopyButton" Classes="iconButton" Click="OnCopy">
-                <PathIcon Width="14" Height="14" Data="{StaticResource CopyGlyph}" />
-              </Button>
-              <Button x:Name="PasteButton" Classes="iconButton" Click="OnPaste">
-                <PathIcon Width="14" Height="14" Data="{StaticResource PasteGlyph}" />
-              </Button>
-              <Border Classes="toolbarSeparator" />
-              <Button x:Name="PinButton" Classes="iconButton" Click="OnPin">
-                <PathIcon Width="14" Height="14" />
-              </Button>
-              <Button x:Name="CloneButton" Classes="iconButton" Click="OnClone">
-                <PathIcon Width="14" Height="14" Data="{StaticResource CloneGlyph}" />
-              </Button>
-              <Border Classes="toolbarSeparator" />
-              <Button x:Name="SaveButton" Classes="iconButton" Click="OnSave">
-                <PathIcon Width="14" Height="14" Data="{StaticResource SaveGlyph}" />
-              </Button>
-              <Button x:Name="SaveAsButton" Classes="iconButton" Click="OnSaveAs" IsVisible="False">
-                <PathIcon Width="14" Height="14" Data="{StaticResource SaveAsGlyph}" />
-              </Button>
-              <Border Classes="toolbarSeparator" />
-              <Button x:Name="FindButton" Classes="iconButton" Click="OnFind">
-                <PathIcon Width="14" Height="14" Data="{StaticResource FindGlyph}" />
-              </Button>
-            </WrapPanel>
-          </DockPanel>
-        </Border>
+              <WrapPanel Orientation="Horizontal">
+                <Button x:Name="UndoButton" Classes="iconButton" Click="OnUndo">
+                  <PathIcon Width="14" Height="14" Data="{StaticResource UndoGlyph}" />
+                </Button>
+                <Button x:Name="RedoButton" Classes="iconButton" Click="OnRedo">
+                  <PathIcon Width="14" Height="14" Data="{StaticResource RedoGlyph}" />
+                </Button>
+                <Border Classes="toolbarSeparator" />
+                <Button x:Name="CopyButton" Classes="iconButton" Click="OnCopy">
+                  <PathIcon Width="14" Height="14" Data="{StaticResource CopyGlyph}" />
+                </Button>
+                <Button x:Name="PasteButton" Classes="iconButton" Click="OnPaste">
+                  <PathIcon Width="14" Height="14" Data="{StaticResource PasteGlyph}" />
+                </Button>
+                <Border Classes="toolbarSeparator" />
+                <Button x:Name="PinButton" Classes="iconButton" Click="OnPin">
+                  <PathIcon Width="14" Height="14" />
+                </Button>
+                <Button x:Name="CloneButton" Classes="iconButton" Click="OnClone">
+                  <PathIcon Width="14" Height="14" Data="{StaticResource CloneGlyph}" />
+                </Button>
+                <Border Classes="toolbarSeparator" />
+                <Button x:Name="SaveButton" Classes="iconButton" Click="OnSave">
+                  <PathIcon Width="14" Height="14" Data="{StaticResource SaveGlyph}" />
+                </Button>
+                <Button x:Name="SaveAsButton" Classes="iconButton" Click="OnSaveAs" IsVisible="False">
+                  <PathIcon Width="14" Height="14" Data="{StaticResource SaveAsGlyph}" />
+                </Button>
+                <Border Classes="toolbarSeparator" />
+                <Button x:Name="FindButton" Classes="iconButton" Click="OnFind">
+                  <PathIcon Width="14" Height="14" Data="{StaticResource FindGlyph}" />
+                </Button>
+              </WrapPanel>
+            </DockPanel>
+          </Border>
+        </ThemeVariantScope>
         <Grid Grid.Row="1" ColumnDefinitions="*,Auto">
           <Grid>
             <TextBox x:Name="Editor" Classes="noteEditor" FontFamily="Consolas" FontSize="13"

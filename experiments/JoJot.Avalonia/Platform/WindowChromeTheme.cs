@@ -26,7 +26,7 @@ internal static partial class WindowChromeTheme
         (GetColor(window, "c-win-bg"), GetColor(window, "c-text-primary"));
 
     private static uint GetColor(Window window, string key) =>
-        window.TryFindResource(key, window.ActualThemeVariant, out var resource) && resource is ISolidColorBrush brush
+        window.TryFindResource(key, ThemeVariant.Dark, out var resource) && resource is ISolidColorBrush brush
             ? (uint)(brush.Color.R | brush.Color.G << 8 | brush.Color.B << 16)
             : uint.MaxValue; // DWMWA_COLOR_DEFAULT restores the system-owned appearance.
 
@@ -34,7 +34,7 @@ internal static partial class WindowChromeTheme
     {
         if (!OperatingSystem.IsWindows() || window.TryGetPlatformHandle() is not { HandleDescriptor: "HWND" } platform)
             return;
-        var dark = window.ActualThemeVariant == ThemeVariant.Dark ? 1u : 0u;
+        var dark = 1u;
         _ = DwmSetWindowAttribute(platform.Handle, 20, in dark, sizeof(uint));
         var colors = GetColors(window);
         // Unsupported attributes return an HRESULT; leave native chrome intact on older Windows.

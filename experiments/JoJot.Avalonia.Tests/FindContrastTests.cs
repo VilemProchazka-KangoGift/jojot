@@ -71,6 +71,14 @@ public sealed class FindContrastTests
             window.KeyRelease(Key.Escape, RawInputModifiers.None, PhysicalKey.Escape, null);
             Assert.DoesNotContain("findActive", editor.Classes);
             Assert.True(Contrast(Brush(editor.SelectionBrush), Brush(editor.SelectionForegroundBrush)) >= 4.5);
+            var toolbar = window.FindControl<Border>("EditorToolbar")!;
+            var copy = window.FindControl<Button>("CopyButton")!;
+            Assert.Equal(ThemeVariant.Dark, copy.ActualThemeVariant);
+            Assert.Equal(theme, editor.ActualThemeVariant);
+            Assert.Equal(theme, window.FindControl<Button>("AddButton")!.ActualThemeVariant);
+            Assert.True(window.TryFindResource("c-win-bg", ThemeVariant.Dark, out var darkBackground));
+            Assert.Equal(Brush(Assert.IsAssignableFrom<IBrush>(darkBackground)), Brush(toolbar.Background));
+            Assert.True(Contrast(Brush(toolbar.Background), Brush(copy.Foreground)) >= 4.5);
             foreach (var name in new[] { "AddButton", "CopyButton" })
             {
                 var button = window.FindControl<Button>(name)!;

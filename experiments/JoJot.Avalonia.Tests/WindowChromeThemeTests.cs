@@ -9,17 +9,17 @@ namespace JoJot.AvaloniaExperiment.Tests;
 public sealed class WindowChromeThemeTests
 {
     [AvaloniaFact]
-    public async Task CaptionColorsFollowLiveThemeAndUseWindowsColorRefOrdering()
+    public async Task CaptionColorsKeepDarkPaletteAcrossLiveThemeChanges()
     {
         await using var fixture = new MainWindowTests.WindowFixture();
         var window = fixture.Open();
         await window.Ready;
         window.RequestedThemeVariant = ThemeVariant.Light;
-        Assert.Equal((0x00FAF8F7u, 0x003B3122u), WindowChromeTheme.GetColors(window));
+        Assert.Equal((0x002C2419u, 0x00EDEBE4u), WindowChromeTheme.GetColors(window));
         window.RequestedThemeVariant = ThemeVariant.Dark;
         Assert.Equal((0x002C2419u, 0x00EDEBE4u), WindowChromeTheme.GetColors(window));
         window.RequestedThemeVariant = ThemeVariant.Light;
-        Assert.Equal((0x00FAF8F7u, 0x003B3122u), WindowChromeTheme.GetColors(window));
+        Assert.Equal((0x002C2419u, 0x00EDEBE4u), WindowChromeTheme.GetColors(window));
     }
 
     [AvaloniaFact]
